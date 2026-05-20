@@ -1,4 +1,6 @@
- 
+//-- main.rs ----------------------------------------------------------------------------------------------------------------------
+#![allow(non_snake_case, non_camel_case_types, non_upper_case_globals)]
+
 use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
@@ -6,7 +8,9 @@ use kosh::Buffer;
 use tracing::{debug, info, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
 
-/// Kosh: A starter Rust CLI template configured for WSL development
+//---------------------------------------------------------------------------------------------------------------------------------
+/// Kosh:
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args
@@ -15,6 +19,8 @@ struct Args
     #[arg(short, long)]
     verbose: bool,
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 fn setup_logging(verbose: bool) -> Result<()>
 {
@@ -40,8 +46,12 @@ fn setup_logging(verbose: bool) -> Result<()>
     Ok(())
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 fn main() -> Result<()>
 {
+    kosh::buff::TestBuff();
+
     // Parse command line arguments
     let args = Args::parse();
 
