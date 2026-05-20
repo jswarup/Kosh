@@ -26,25 +26,20 @@ impl<T: Clone> Buff<T>
 {
     pub fn new(len: usize, initial_value: T) -> Self
     {
-        let is_zst = std::mem::size_of::<T>() == 0;
+        let     is_zst = std::mem::size_of::<T>() == 0;
 
         if len == 0 || is_zst
         {
-            return Buff
-            {
-                ptr: NonNull::dangling(),
-                len,
-                _marker: PhantomData,
-            };
+            return Buff { ptr: NonNull::dangling(), len, _marker: PhantomData};
         }
 
         // Calculate layout for an array of T with length `len`
-        let layout = Layout::array::<T>(len).expect("Layout calculation failed");
+        let     layout = Layout::array::<T>( len).expect( "Layout calculation failed");
 
         unsafe
         {
-            // Allocate memory
-            let raw_ptr = alloc(layout) as *mut T;
+
+            let     raw_ptr = alloc(layout) as *mut T;  // Allocate memory
             if raw_ptr.is_null()
             {
                 handle_alloc_error(layout);
@@ -64,40 +59,24 @@ impl<T: Clone> Buff<T>
                 {
                     unsafe
                     {
-                        // Drop already initialized elements
-                        let slice_ptr = std::ptr::slice_from_raw_parts_mut(self.ptr, self.initialized_count);
-                        std::ptr::drop_in_place(slice_ptr);
 
-                        // Deallocate the contiguous chunk of raw memory
-                        dealloc(self.ptr as *mut u8, self.layout);
+                        let     slice_ptr = std::ptr::slice_from_raw_parts_mut(self.ptr, self.initialized_count);
+                        std::ptr::drop_in_place(slice_ptr);             // Drop already initialized elements
+                        dealloc(self.ptr as *mut u8, self.layout);              // Deallocate the contiguous chunk of raw memory
                     }
                 }
             }
 
-            let mut guard = RawAllocationGuard
-            {
-                ptr: raw_ptr,
-                layout,
-                initialized_count: 0,
-            };
+            let mut guard = RawAllocationGuard { ptr: raw_ptr, layout, initialized_count: 0 };
 
-            // Initialize each element in the contiguous memory block
-            for i in 0..len
+            for i in 0..len                             // Initialize each element in the contiguous memory block
             {
-                // .add(i) automatically calculates the correct byte offset based on the size of T
                 std::ptr::write(raw_ptr.add(i), initial_value.clone());
                 guard.initialized_count += 1;
             }
+            _ = std::mem::ManuallyDrop::new( guard);                           // Defuse the guard so memory/elements aren't cleaned up when exiting the block
 
-            // Defuse the guard so memory/elements aren't cleaned up when exiting the block
-            std::mem::forget(guard);
-
-            Buff
-            {
-                ptr: NonNull::new_unchecked(raw_ptr),
-                len,
-                _marker: PhantomData,
-            }
+            return Buff { ptr: NonNull::new_unchecked(raw_ptr), len, _marker: PhantomData }
         }
     }
 
@@ -109,7 +88,7 @@ impl<T> Deref for Buff<T>
 {
     type Target = [T];
 
-    fn deref(&self) -> &Self::Target
+    fn deref( &self) -> &Self::Target
     {
         unsafe
         {
@@ -117,6 +96,8 @@ impl<T> Deref for Buff<T>
         }
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 impl<T> DerefMut for Buff<T>
 {
