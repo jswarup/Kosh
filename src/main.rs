@@ -4,7 +4,6 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
-use kosh::Buffer;
 use tracing::{debug, info, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
 
@@ -50,43 +49,17 @@ fn setup_logging(verbose: bool) -> Result<()>
 
 fn main() -> Result<()>
 {
-    kosh::buff::TestBuff();
-
-    // Parse command line arguments
-    let args = Args::parse();
-
-    // Initialize logging based on verbosity flag
-    setup_logging(args.verbose).context("Setting up logging framework failed")?;
+    let args = Args::parse();                                                   // Parse command line arguments
+    setup_logging(args.verbose).context("Setting up logging framework failed")?;      // Initialize logging based on verbosity flag
 
     debug!("Starting Kosh CLI and demonstrating Buffer usage");
+    kosh::buff::TestBuff();
 
-    // Initialize a new Buffer of integers using the custom naming convention
-    let mut buffer = Buffer::New(vec![100, 200, 300]);
-    info!("Initialized a new Buffer of integers with len: {}", buffer.Len());
+    info!("Initialized a new Buffer of integers with len: {}", 4);
 
-    // Print initial elements
-    for i in 0..buffer.Len()
-    {
-        if let Some(val) = buffer.Get(i)
-        {
-            println!("Buffer element at index {}: {}", i, val.to_string().cyan());
-        }
-    }
-
-    // Set an element and push a new one
-    buffer.Set(1, 250).context("Failed to set buffer element")?;
-    buffer.Push(400);
-    info!("Modified buffer, new len: {}", buffer.Len());
-
-    println!("{}", "Updated Buffer:".green().bold());
-    for i in 0..buffer.Len()
-    {
-        if let Some(val) = buffer.Get(i)
-        {
-            println!("  [{}] = {}", i, val.to_string().yellow());
-        }
-    }
-
+    println!("Buffer element at index {}: {}", 0.to_string().red(), 4.to_string().cyan());
     debug!("Kosh CLI execution finished successfully");
-    Ok(())
+    return Ok(())
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
