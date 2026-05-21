@@ -13,7 +13,7 @@ pub struct USeg
 
 impl USeg
 {
-    pub fn new(first: u32, last: u32) -> Self
+    pub fn New(first: u32, last: u32) -> Self
     {
         USeg
         {
@@ -22,17 +22,17 @@ impl USeg
         }
     }
 
-    pub fn first(&self) -> u32
+    pub fn First(&self) -> u32
     {
         self._First
     }
 
-    pub fn last(&self) -> u32
+    pub fn Last(&self) -> u32
     {
         self._Last
     }
 
-    pub fn len(&self) -> u32
+    pub fn Len(&self) -> u32
     {
         if self._Last >= self._First
         {
@@ -44,32 +44,32 @@ impl USeg
         }
     }
 
-    pub fn is_empty(&self) -> bool
+    pub fn IsEmpty(&self) -> bool
     {
-        self.len() == 0
+        self.Len() == 0
     }
 
     pub fn LSnip(&self, count: u32) -> Self
     {
-        if count >= self.len()
+        if count >= self.Len()
         {
-            USeg::new(1, 0)
+            USeg::New(1, 0)
         }
         else
         {
-            USeg::new(self._First + count, self._Last)
+            USeg::New(self._First + count, self._Last)
         }
     }
 
     pub fn RSnip(&self, count: u32) -> Self
     {
-        if count >= self.len()
+        if count >= self.Len()
         {
-            USeg::new(1, 0)
+            USeg::New(1, 0)
         }
         else
         {
-            USeg::new(self._First, self._Last - count)
+            USeg::New(self._First, self._Last - count)
         }
     }
 }

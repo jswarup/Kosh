@@ -22,7 +22,7 @@ unsafe impl<'a, T: Sync> Sync for Arr<'a, T> {}
 
 impl<'a, T> Arr<'a, T>
 {
-    pub fn new(ptr: NonNull<T>, size: usize) -> Self
+    pub fn New(ptr: NonNull<T>, size: usize) -> Self
     {
         Arr
         {

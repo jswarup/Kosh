@@ -9,7 +9,7 @@ use crate::silo::useg::USeg;
 #[test]
 fn BuffBasicOps()
 {
-    let mut buff = Buff::new(10, 42);
+    let mut buff = Buff::New(10, 42);
     assert_eq!(buff.len(), 10);
     assert_eq!(buff[0], 42);
     assert_eq!(buff[1], 42);
@@ -29,24 +29,24 @@ fn BuffBasicOps()
 fn BuffFrom()
 {
     // Test creation from a slice
-    let slice_data = [10, 20, 30];
-    let buff_from_slice = Buff::from(&slice_data[..]);
-    assert_eq!(buff_from_slice.len(), 3);
-    assert_eq!(buff_from_slice[0], 10);
-    assert_eq!(buff_from_slice[1], 20);
-    assert_eq!(buff_from_slice[2], 30);
+    let sliceData = [10, 20, 30];
+    let buffFromSlice = Buff::from(&sliceData[..]);
+    assert_eq!(buffFromSlice.len(), 3);
+    assert_eq!(buffFromSlice[0], 10);
+    assert_eq!(buffFromSlice[1], 20);
+    assert_eq!(buffFromSlice[2], 30);
 
     // Test creation from a Vec
-    let vec_data = vec![40, 50];
-    let buff_from_vec = Buff::from(vec_data);
-    assert_eq!(buff_from_vec.len(), 2);
-    assert_eq!(buff_from_vec[0], 40);
-    assert_eq!(buff_from_vec[1], 50);
+    let vecData = vec![40, 50];
+    let buffFromVec = Buff::from(vecData);
+    assert_eq!(buffFromVec.len(), 2);
+    assert_eq!(buffFromVec[0], 40);
+    assert_eq!(buffFromVec[1], 50);
 
     // Test creation from an array directly
-    let buff_from_arr = Buff::from([100, 200, 300, 400]);
-    assert_eq!(buff_from_arr.len(), 4);
-    assert_eq!(buff_from_arr[2], 300);
+    let buffFromArr = Buff::from([100, 200, 300, 400]);
+    assert_eq!(buffFromArr.len(), 4);
+    assert_eq!(buffFromArr[2], 300);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -54,7 +54,7 @@ fn BuffFrom()
 #[test]
 fn BufZST()
 {
-    let buff = Buff::new(10, ());
+    let buff = Buff::New(10, ());
     assert_eq!(buff.len(), 10);
     assert_eq!(buff[5], ());
 }
@@ -64,7 +64,7 @@ fn BufZST()
 #[test]
 fn BuffSendSync()
 {
-    let buff = Buff::new(5, 42);
+    let buff = Buff::New(5, 42);
     let handle = std::thread::spawn(move ||
     {
         assert_eq!(buff.len(), 5);
@@ -79,16 +79,16 @@ fn BuffSendSync()
 #[test]
 fn ArrBasicOps()
 {
-    let mut buff = Buff::new(3, 42);
+    let mut buff = Buff::New(3, 42);
     {
-        let mut arr = buff.as_mut_arr();
+        let mut arr = buff.AsMutArr();
         assert_eq!(arr.len(), 3);
         assert_eq!(arr[0], 42);
         arr[1] = 100;
     }
     assert_eq!(buff[1], 100);
 
-    let arr2 = buff.as_arr();
+    let arr2 = buff.AsArr();
     assert_eq!(arr2[1], 100);
 }
 
@@ -97,10 +97,10 @@ fn ArrBasicOps()
 #[test]
 fn ArrDebug()
 {
-    let mut buff = Buff::new(3, 10);
+    let mut buff = Buff::New(3, 10);
     buff[1] = 20;
     buff[2] = 30;
-    let arr = buff.as_arr();
+    let arr = buff.AsArr();
     assert_eq!(format!("{:?}", arr), "[10, 20, 30]");
 }
 
@@ -109,15 +109,15 @@ fn ArrDebug()
 #[test]
 fn USegBasicOps()
 {
-    let seg = USeg::new(10, 20);
-    assert_eq!(seg.first(), 10);
-    assert_eq!(seg.last(), 20);
-    assert_eq!(seg.len(), 11);
-    assert!(!seg.is_empty());
+    let seg = USeg::New(10, 20);
+    assert_eq!(seg.First(), 10);
+    assert_eq!(seg.Last(), 20);
+    assert_eq!(seg.Len(), 11);
+    assert!(!seg.IsEmpty());
 
-    let empty_seg = USeg::new(20, 10);
-    assert_eq!(empty_seg.len(), 0);
-    assert!(empty_seg.is_empty());
+    let emptySeg = USeg::New(20, 10);
+    assert_eq!(emptySeg.Len(), 0);
+    assert!(emptySeg.IsEmpty());
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -125,32 +125,31 @@ fn USegBasicOps()
 #[test]
 fn USegSnip()
 {
-    let seg = USeg::new(10, 20);
+    let seg = USeg::New(10, 20);
 
     // Test LSnip
-    let l_snipped = seg.LSnip(5);
-    assert_eq!(l_snipped.first(), 15);
-    assert_eq!(l_snipped.last(), 20);
-    assert_eq!(l_snipped.len(), 6);
+    let lSnipped = seg.LSnip(5);
+    assert_eq!(lSnipped.First(), 15);
+    assert_eq!(lSnipped.Last(), 20);
+    assert_eq!(lSnipped.Len(), 6);
 
-    let l_empty = seg.LSnip(11);
-    assert!(l_empty.is_empty());
+    let lEmpty = seg.LSnip(11);
+    assert!(lEmpty.IsEmpty());
 
-    let l_overflow = seg.LSnip(15);
-    assert!(l_overflow.is_empty());
+    let lOverflow = seg.LSnip(15);
+    assert!(lOverflow.IsEmpty());
 
     // Test RSnip
-    let r_snipped = seg.RSnip(4);
-    assert_eq!(r_snipped.first(), 10);
-    assert_eq!(r_snipped.last(), 16);
-    assert_eq!(r_snipped.len(), 7);
+    let rSnipped = seg.RSnip(4);
+    assert_eq!(rSnipped.First(), 10);
+    assert_eq!(rSnipped.Last(), 16);
+    assert_eq!(rSnipped.Len(), 7);
 
-    let r_empty = seg.RSnip(11);
-    assert!(r_empty.is_empty());
+    let rEmpty = seg.RSnip(11);
+    assert!(rEmpty.IsEmpty());
 
-    let r_underflow = seg.RSnip(20);
-    assert!(r_underflow.is_empty());
+    let rUnderflow = seg.RSnip(20);
+    assert!(rUnderflow.IsEmpty());
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
