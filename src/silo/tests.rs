@@ -1,9 +1,10 @@
 //-- tests.rs ----------------------------------------------------------------------------------------------------------------------
 
+use crate::silo::buff::Buff;
+use crate::silo::useg::USeg;
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
-use crate::silo::buff::Buff;
 
 #[test]
 fn BuffBasicOps()
@@ -104,3 +105,52 @@ fn ArrDebug()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn USegBasicOps()
+{
+    let seg = USeg::new(10, 20);
+    assert_eq!(seg.first(), 10);
+    assert_eq!(seg.last(), 20);
+    assert_eq!(seg.len(), 11);
+    assert!(!seg.is_empty());
+
+    let empty_seg = USeg::new(20, 10);
+    assert_eq!(empty_seg.len(), 0);
+    assert!(empty_seg.is_empty());
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn USegSnip()
+{
+    let seg = USeg::new(10, 20);
+
+    // Test LSnip
+    let l_snipped = seg.LSnip(5);
+    assert_eq!(l_snipped.first(), 15);
+    assert_eq!(l_snipped.last(), 20);
+    assert_eq!(l_snipped.len(), 6);
+
+    let l_empty = seg.LSnip(11);
+    assert!(l_empty.is_empty());
+
+    let l_overflow = seg.LSnip(15);
+    assert!(l_overflow.is_empty());
+
+    // Test RSnip
+    let r_snipped = seg.RSnip(4);
+    assert_eq!(r_snipped.first(), 10);
+    assert_eq!(r_snipped.last(), 16);
+    assert_eq!(r_snipped.len(), 7);
+
+    let r_empty = seg.RSnip(11);
+    assert!(r_empty.is_empty());
+
+    let r_underflow = seg.RSnip(20);
+    assert!(r_underflow.is_empty());
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+

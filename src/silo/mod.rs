@@ -2,6 +2,7 @@
 
 pub mod arr;
 pub mod buff;
+pub mod useg;
 #[cfg(test)]
 mod tests;
 
