@@ -22,74 +22,7 @@ unsafe impl<T: Sync> Sync for Buff<T> {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct Arr<'a, T>
-{
-    _Ptr: NonNull<T>,
-    _Size: usize,
-    _Marker: PhantomData<&'a T>,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-unsafe impl<'a, T: Send> Send for Arr<'a, T> {}
-unsafe impl<'a, T: Sync> Sync for Arr<'a, T> {}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl<'a, T> Arr<'a, T>
-{
-    pub fn new(ptr: NonNull<T>, size: usize) -> Self
-    {
-        Arr
-        {
-            _Ptr: ptr,
-            _Size: size,
-            _Marker: PhantomData,
-        }
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl<'a, T> Deref for Arr<'a, T>
-{
-    type Target = [T];
-
-    fn deref( &self) -> &Self::Target
-    {
-        unsafe
-        {
-            std::slice::from_raw_parts(self._Ptr.as_ptr(), self._Size)
-        }
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl<'a, T> DerefMut for Arr<'a, T>
-{
-    fn deref_mut(&mut self) -> &mut Self::Target
-    {
-        unsafe
-        {
-            std::slice::from_raw_parts_mut(self._Ptr.as_ptr(), self._Size)
-        }
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl<'a, T> Clone for Arr<'a, T>
-{
-    fn clone(&self) -> Self
-    {
-        *self
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl<'a, T> Copy for Arr<'a, T> {}
+pub use crate::arr::Arr;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -157,22 +90,12 @@ impl<T> Buff<T>
 {
     pub fn as_arr(&self) -> Arr<'_, T>
     {
-        Arr
-        {
-            _Ptr: self._Ptr,
-            _Size: self._Size,
-            _Marker: PhantomData,
-        }
+        Arr::new(self._Ptr, self._Size)
     }
 
     pub fn as_mut_arr(&mut self) -> Arr<'_, T>
     {
-        Arr
-        {
-            _Ptr: self._Ptr,
-            _Size: self._Size,
-            _Marker: PhantomData,
-        }
+        Arr::new(self._Ptr, self._Size)
     }
 }
 

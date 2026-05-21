@@ -4,6 +4,8 @@
 pub mod buffer;
 pub use buffer::Buffer;
 
+pub mod arr;
+
 pub mod buff;
 pub use buff::{Buff, Arr, TestBuff};
 
