@@ -22,6 +22,77 @@ unsafe impl<T: Sync> Sync for Buff<T> {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+pub struct Arr<'a, T>
+{
+    _Ptr: NonNull<T>,
+    _Size: usize,
+    _Marker: PhantomData<&'a T>,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+unsafe impl<'a, T: Send> Send for Arr<'a, T> {}
+unsafe impl<'a, T: Sync> Sync for Arr<'a, T> {}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl<'a, T> Arr<'a, T>
+{
+    pub fn new(ptr: NonNull<T>, size: usize) -> Self
+    {
+        Arr
+        {
+            _Ptr: ptr,
+            _Size: size,
+            _Marker: PhantomData,
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl<'a, T> Deref for Arr<'a, T>
+{
+    type Target = [T];
+
+    fn deref( &self) -> &Self::Target
+    {
+        unsafe
+        {
+            std::slice::from_raw_parts(self._Ptr.as_ptr(), self._Size)
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl<'a, T> DerefMut for Arr<'a, T>
+{
+    fn deref_mut(&mut self) -> &mut Self::Target
+    {
+        unsafe
+        {
+            std::slice::from_raw_parts_mut(self._Ptr.as_ptr(), self._Size)
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl<'a, T> Clone for Arr<'a, T>
+{
+    fn clone(&self) -> Self
+    {
+        *self
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl<'a, T> Copy for Arr<'a, T> {}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl<T: Clone> Buff<T>
 {
     pub fn new(_Size: usize, initial_value: T) -> Self
@@ -78,6 +149,31 @@ impl<T: Clone> Buff<T>
         }
     }
 
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl<T> Buff<T>
+{
+    pub fn as_arr(&self) -> Arr<'_, T>
+    {
+        Arr
+        {
+            _Ptr: self._Ptr,
+            _Size: self._Size,
+            _Marker: PhantomData,
+        }
+    }
+
+    pub fn as_mut_arr(&mut self) -> Arr<'_, T>
+    {
+        Arr
+        {
+            _Ptr: self._Ptr,
+            _Size: self._Size,
+            _Marker: PhantomData,
+        }
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -182,6 +278,22 @@ mod tests
         let buffer = Buff::new(10, ());
         assert_eq!(buffer.len(), 10);
         assert_eq!(buffer[5], ());
+    }
+
+    #[test]
+    fn test_arr_basic_ops()
+    {
+        let mut buffer = Buff::new(3, 42);
+        {
+            let mut arr = buffer.as_mut_arr();
+            assert_eq!(arr.len(), 3);
+            assert_eq!(arr[0], 42);
+            arr[1] = 100;
+        }
+        assert_eq!(buffer[1], 100);
+
+        let arr2 = buffer.as_arr();
+        assert_eq!(arr2[1], 100);
     }
 
     struct PanicOnClone
