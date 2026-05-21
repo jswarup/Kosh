@@ -57,7 +57,7 @@ fn main() -> Result<()>
 
     println!("Buff element at index {}: {}", 0.to_string().red(), 4.to_string().cyan());
     debug!("Kosh CLI execution finished successfully");
-    return Ok(())
+    Ok(())
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
