@@ -1,7 +1,6 @@
 //-- buff.rs ----------------------------------------------------------------------------------------------------------------------
 
 use std::alloc::{alloc, dealloc, handle_alloc_error, Layout};
-use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
 use crate::arr::Arr;
@@ -10,9 +9,7 @@ use crate::arr::Arr;
 
 pub struct Buff<T>
 {
-    _Ptr: NonNull<T>,
-    _Size: usize,
-    _Marker: PhantomData<T>,
+    _Ptr: NonNull<[T]>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -31,17 +28,18 @@ impl<T> Buff<T>
 
 impl<T: Clone> Buff<T>
 {
-    pub fn new(_Size: usize, initial_value: T) -> Self
+    pub fn new(size: usize, initial_value: T) -> Self
     {
         let     is_zst = std::mem::size_of::<T>() == 0;
 
-        if _Size == 0 || is_zst
+        if size == 0 || is_zst
         {
-            return Buff { _Ptr: NonNull::dangling(), _Size, _Marker: PhantomData};
+            let dangling = NonNull::slice_from_raw_parts(NonNull::dangling(), size);
+            return Buff { _Ptr: dangling };
         }
 
-        // Calculate _Layout for an array of T with length `_Size`
-        let     _Layout = Layout::array::<T>( _Size).expect( "Layout calculation failed");
+        // Calculate _Layout for an array of T with length `size`
+        let     _Layout = Layout::array::<T>(size).expect( "Layout calculation failed");
 
         unsafe
         {
@@ -77,14 +75,16 @@ impl<T: Clone> Buff<T>
 
             let mut guard = RawAllocationGuard { _Ptr: raw_ptr, _Layout, _InitCount: 0 };
 
-            for i in 0.._Size                             // Initialize each element in the contiguous memory block
+            for i in 0..size                             // Initialize each element in the contiguous memory block
             {
                 std::ptr::write(raw_ptr.add(i), initial_value.clone());
                 guard._InitCount += 1;
             }
             _ = std::mem::ManuallyDrop::new( guard);                           // Defuse the guard so memory/elements aren't cleaned up when exiting the block
 
-            Buff { _Ptr: NonNull::new_unchecked(raw_ptr), _Size, _Marker: PhantomData }
+            let non_null_ptr = NonNull::new_unchecked(raw_ptr);
+            let slice_ptr = NonNull::slice_from_raw_parts(non_null_ptr, size);
+            Buff { _Ptr: slice_ptr }
         }
     }
 
@@ -96,12 +96,12 @@ impl<T> Buff<T>
 {
     pub fn as_arr(&self) -> Arr<'_, T>
     {
-        Arr::new(self._Ptr, self._Size)
+        Arr::new(self._Ptr.cast::<T>(), self._Ptr.len())
     }
 
     pub fn as_mut_arr(&mut self) -> Arr<'_, T>
     {
-        Arr::new(self._Ptr, self._Size)
+        Arr::new(self._Ptr.cast::<T>(), self._Ptr.len())
     }
 }
 
@@ -115,7 +115,7 @@ impl<T> Deref for Buff<T>
     {
         unsafe
         {
-            std::slice::from_raw_parts(self._Ptr.as_ptr(), self._Size)
+            self._Ptr.as_ref()
         }
     }
 }
@@ -128,7 +128,7 @@ impl<T> DerefMut for Buff<T>
     {
         unsafe
         {
-            std::slice::from_raw_parts_mut(self._Ptr.as_ptr(), self._Size)
+            self._Ptr.as_mut()
         }
     }
 }
@@ -139,21 +139,22 @@ impl<T> Drop for Buff<T>
 {
     fn drop(&mut self)
     {
+        let size = self._Ptr.len();
         let is_zst = std::mem::size_of::<T>() == 0;
-        if self._Size == 0 || is_zst
+        if size == 0 || is_zst
         {
             return;
         }
 
-        let _Layout = Layout::array::<T>(self._Size).expect( "Too Big");
+        let _Layout = Layout::array::<T>(size).expect( "Too Big");
 
         unsafe
         {
             // Drop all elements via slice pointer
-            std::ptr::drop_in_place(std::ptr::slice_from_raw_parts_mut(self._Ptr.as_ptr(), self._Size));
+            std::ptr::drop_in_place(self._Ptr.as_ptr());
 
             // Deallocate the contiguous chunk of raw memory
-            dealloc(self._Ptr.as_ptr() as *mut u8, _Layout);
+            dealloc(self._Ptr.cast::<u8>().as_ptr(), _Layout);
         }
     }
 }
@@ -164,12 +165,14 @@ impl<T: Clone> Clone for Buff<T>
 {
     fn clone(&self) -> Self
     {
-        if self._Size == 0 || std::mem::size_of::<T>() == 0
+        let size = self._Ptr.len();
+        if size == 0 || std::mem::size_of::<T>() == 0
         {
-            return Buff { _Ptr: NonNull::dangling(), _Size: self._Size, _Marker: PhantomData };
+            let dangling = NonNull::slice_from_raw_parts(NonNull::dangling(), size);
+            return Buff { _Ptr: dangling };
         }
 
-        let _Layout = Layout::array::<T>(self._Size).expect("Layout calculation failed");
+        let _Layout = Layout::array::<T>(size).expect("Layout calculation failed");
 
         unsafe
         {
@@ -179,7 +182,7 @@ impl<T: Clone> Clone for Buff<T>
                 handle_alloc_error(_Layout);
             }
 
-            // Panic guard � same pattern as Buff::new
+            // Panic guard – same pattern as Buff::new
             struct CloneGuard<T>
             {
                 _Ptr: *mut T,
@@ -205,14 +208,16 @@ impl<T: Clone> Clone for Buff<T>
 
             let mut guard = CloneGuard { _Ptr: raw_ptr, _Layout, _InitCount: 0 };
 
-            for i in 0..self._Size
+            for i in 0..size
             {
                 std::ptr::write(raw_ptr.add(i), self[i].clone());
                 guard._InitCount += 1;
             }
             _ = std::mem::ManuallyDrop::new(guard);
 
-            Buff { _Ptr: NonNull::new_unchecked(raw_ptr), _Size: self._Size, _Marker: PhantomData }
+            let non_null_ptr = NonNull::new_unchecked(raw_ptr);
+            let slice_ptr = NonNull::slice_from_raw_parts(non_null_ptr, size);
+            Buff { _Ptr: slice_ptr }
         }
     }
 }
