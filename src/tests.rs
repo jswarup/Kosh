@@ -25,6 +25,32 @@ fn BuffBasicOps()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
+fn BuffFrom()
+{
+    // Test creation from a slice
+    let slice_data = [10, 20, 30];
+    let buff_from_slice = Buff::from(&slice_data[..]);
+    assert_eq!(buff_from_slice.len(), 3);
+    assert_eq!(buff_from_slice[0], 10);
+    assert_eq!(buff_from_slice[1], 20);
+    assert_eq!(buff_from_slice[2], 30);
+
+    // Test creation from a Vec
+    let vec_data = vec![40, 50];
+    let buff_from_vec = Buff::from(vec_data);
+    assert_eq!(buff_from_vec.len(), 2);
+    assert_eq!(buff_from_vec[0], 40);
+    assert_eq!(buff_from_vec[1], 50);
+
+    // Test creation from an array directly
+    let buff_from_arr = Buff::from([100, 200, 300, 400]);
+    assert_eq!(buff_from_arr.len(), 4);
+    assert_eq!(buff_from_arr[2], 300);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
 fn BufZST()
 {
     let buff = Buff::new(10, ());
@@ -48,6 +74,18 @@ fn ArrBasicOps()
 
     let arr2 = buff.as_arr();
     assert_eq!(arr2[1], 100);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn ArrDebug()
+{
+    let mut buff = Buff::new(3, 10);
+    buff[1] = 20;
+    buff[2] = 30;
+    let arr = buff.as_arr();
+    assert_eq!(format!("{:?}", arr), "[10, 20, 30]");
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

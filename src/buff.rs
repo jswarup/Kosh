@@ -223,3 +223,86 @@ impl<T: Clone> Clone for Buff<T>
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+impl<T: Clone> From<&[T]> for Buff<T>
+{
+    fn from(slice: &[T]) -> Self
+    {
+        let size = slice.len();
+        if size == 0 || std::mem::size_of::<T>() == 0
+        {
+            let dangling = NonNull::slice_from_raw_parts(NonNull::dangling(), size);
+            return Buff { _Ptr: dangling };
+        }
+
+        let _Layout = Layout::array::<T>(size).expect("Layout calculation failed");
+
+        unsafe
+        {
+            let raw_ptr = alloc(_Layout) as *mut T;
+            if raw_ptr.is_null()
+            {
+                handle_alloc_error(_Layout);
+            }
+
+            struct InitGuard<T>
+            {
+                _Ptr: *mut T,
+                _Layout: Layout,
+                _InitCount: usize,
+            }
+
+            impl<T> Drop for InitGuard<T>
+            {
+                fn drop(&mut self)
+                {
+                    unsafe
+                    {
+                        if self._InitCount > 0
+                        {
+                            let slice_ptr = std::ptr::slice_from_raw_parts_mut(self._Ptr, self._InitCount);
+                            std::ptr::drop_in_place(slice_ptr);
+                        }
+                        dealloc(self._Ptr as *mut u8, self._Layout);
+                    }
+                }
+            }
+
+            let mut guard = InitGuard { _Ptr: raw_ptr, _Layout, _InitCount: 0 };
+
+            for i in 0..size
+            {
+                std::ptr::write(raw_ptr.add(i), slice[i].clone());
+                guard._InitCount += 1;
+            }
+            _ = std::mem::ManuallyDrop::new(guard);
+
+            let non_null_ptr = NonNull::new_unchecked(raw_ptr);
+            let slice_ptr = NonNull::slice_from_raw_parts(non_null_ptr, size);
+            Buff { _Ptr: slice_ptr }
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl<T: Clone> From<Vec<T>> for Buff<T>
+{
+    fn from(vec: Vec<T>) -> Self
+    {
+        Self::from(vec.as_slice())
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl<T: Clone, const N: usize> From<[T; N]> for Buff<T>
+{
+    fn from(arr: [T; N]) -> Self
+    {
+        Self::from(&arr[..])
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
