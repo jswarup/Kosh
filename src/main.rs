@@ -52,8 +52,6 @@ fn main() -> Result<()>
     let args = Args::parse();                                                   // Parse command line arguments
     setup_logging(args.verbose).context("Setting up logging framework failed")?;      // Initialize logging based on verbosity flag
 
-    debug!("Starting Kosh CLI and demonstrating Buff usage");
-    kosh::buff::TestBuff();
 
     info!("Initialized a new Buff of integers with len: {}", 4);
 

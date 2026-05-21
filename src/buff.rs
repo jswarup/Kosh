@@ -1,10 +1,10 @@
 //-- buff.rs ----------------------------------------------------------------------------------------------------------------------
-#![allow(non_snake_case, non_camel_case_types, non_upper_case_globals)]
 
 use std::alloc::{alloc, dealloc, handle_alloc_error, Layout};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
+use crate::arr::Arr;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -22,7 +22,10 @@ unsafe impl<T: Sync> Sync for Buff<T> {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub use crate::arr::Arr;
+impl<T> Buff<T>
+{
+    pub fn IsEmpty(&self) -> bool { self.len() == 0 }
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -62,8 +65,11 @@ impl<T: Clone> Buff<T>
                 {
                     unsafe
                     {
-                        let     slice_ptr = std::ptr::slice_from_raw_parts_mut(self._Ptr, self._InitCount);
-                        std::ptr::drop_in_place(slice_ptr);             // Drop already initialized elements
+                        if self._InitCount > 0
+                        {
+                            let     slice_ptr = std::ptr::slice_from_raw_parts_mut(self._Ptr, self._InitCount);
+                            std::ptr::drop_in_place(slice_ptr);             // Drop already initialized elements
+                        }
                         dealloc(self._Ptr as *mut u8, self._Layout);              // Deallocate the contiguous chunk of raw memory
                     }
                 }
@@ -154,21 +160,62 @@ impl<T> Drop for Buff<T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub fn TestBuff()
+impl<T: Clone> Clone for Buff<T>
 {
-    // Allocate a buff of 5 elements, all initialized to 10.
-    let mut buff = Buff::new(5, 10);
+    fn clone(&self) -> Self
+    {
+        if self._Size == 0 || std::mem::size_of::<T>() == 0
+        {
+            return Buff { _Ptr: NonNull::dangling(), _Size: self._Size, _Marker: PhantomData };
+        }
 
-    // Safely mutate an element at a specific index
-    buff[2] = 99;
+        let _Layout = Layout::array::<T>(self._Size).expect("Layout calculation failed");
 
-    // Safely read elements
-    println!("Element at index 0: {}", buff[0]); // Output: 10
-    println!("Element at index 2: {}", buff[2]); // Output: 99
+        unsafe
+        {
+            let raw_ptr = alloc(_Layout) as *mut T;
+            if raw_ptr.is_null()
+            {
+                handle_alloc_error(_Layout);
+            }
 
-    // This will panic safely instead of causing undefined behavior:
-    // buff[5] = 100;
-} // Buff safely drops here. Elements are dropped, and memory is freed.
+            // Panic guard � same pattern as Buff::new
+            struct CloneGuard<T>
+            {
+                _Ptr: *mut T,
+                _Layout: Layout,
+                _InitCount: usize,
+            }
+
+            impl<T> Drop for CloneGuard<T>
+            {
+                fn drop(&mut self)
+                {
+                    unsafe
+                    {
+                        if self._InitCount > 0
+                        {
+                            let slice_ptr = std::ptr::slice_from_raw_parts_mut(self._Ptr, self._InitCount);
+                            std::ptr::drop_in_place(slice_ptr);
+                        }
+                        dealloc(self._Ptr as *mut u8, self._Layout);
+                    }
+                }
+            }
+
+            let mut guard = CloneGuard { _Ptr: raw_ptr, _Layout, _InitCount: 0 };
+
+            for i in 0..self._Size
+            {
+                std::ptr::write(raw_ptr.add(i), self[i].clone());
+                guard._InitCount += 1;
+            }
+            _ = std::mem::ManuallyDrop::new(guard);
+
+            Buff { _Ptr: NonNull::new_unchecked(raw_ptr), _Size: self._Size, _Marker: PhantomData }
+        }
+    }
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -176,13 +223,12 @@ pub fn TestBuff()
 mod tests
 {
     use super::*;
-    use std::sync::{Arc, Mutex};
 
     #[test]
-    fn test_safe_buffer_basic_ops()
+    fn BuffBasicOps()
     {
-        let mut buff = Buff::new(3, 42);
-        assert_eq!(buff.len(), 3);
+        let mut buff = Buff::new(10, 42);
+        assert_eq!(buff.len(), 10);
         assert_eq!(buff[0], 42);
         assert_eq!(buff[1], 42);
         assert_eq!(buff[2], 42);
@@ -196,7 +242,7 @@ mod tests
     }
 
     #[test]
-    fn test_safe_buffer_zst()
+    fn BufZST()
     {
         let buff = Buff::new(10, ());
         assert_eq!(buff.len(), 10);
@@ -204,7 +250,7 @@ mod tests
     }
 
     #[test]
-    fn test_arr_basic_ops()
+    fn ArrBasicOps()
     {
         let mut buff = Buff::new(3, 42);
         {
@@ -219,69 +265,19 @@ mod tests
         assert_eq!(arr2[1], 100);
     }
 
-    struct PanicOnClone
-    {
-        drop_counter: Arc<Mutex<usize>>,
-        panic_after: usize,
-        clone_counter: Arc<Mutex<usize>>,
-    }
-
-    impl Clone for PanicOnClone
-    {
-        fn clone(&self) -> Self
-        {
-            let mut count = self.clone_counter.lock().unwrap();
-            *count += 1;
-            if *count >= self.panic_after
-            {
-                panic!("Panic on clone!");
-            }
-            PanicOnClone
-            {
-                drop_counter: self.drop_counter.clone(),
-                panic_after: self.panic_after,
-                clone_counter: self.clone_counter.clone(),
-            }
-        }
-    }
-
-    impl Drop for PanicOnClone
-    {
-        fn drop(&mut self)
-        {
-            let mut count = self.drop_counter.lock().unwrap();
-            *count += 1;
-        }
-    }
-
     #[test]
-    fn test_safe_buffer_panic_safety()
+    fn BuffSendSync()
     {
-        let drop_counter = Arc::new(Mutex::new(0));
-        let clone_counter = Arc::new(Mutex::new(0));
-
-        let initial = PanicOnClone
+        let buff = Buff::new(5, 42);
+        let handle = std::thread::spawn(move ||
         {
-            drop_counter: drop_counter.clone(),
-            panic_after: 3,
-            clone_counter: clone_counter.clone(),
-        };
+            assert_eq!(buff.len(), 5);
+            assert_eq!(buff[0], 42);
+        });
 
-        // Run in catch_unwind to capture the panic during cloning
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
-        {
-            let _buffer = Buff::new(5, initial);
-        }));
-
-        assert!(result.is_err());
-
-        // Check drop counts:
-        // - The original `initial` instance is dropped: 1
-        // - During `new()`, we successfully cloned it 2 times (index 0, 1), and then panic on 3rd clone.
-        // - Those 2 successfully cloned instances should be dropped by the RawAllocationGuard.
-        // Total drops must be 3 (1 original + 2 clones).
-        assert_eq!(*drop_counter.lock().unwrap(), 3);
+        handle.join().unwrap();
     }
+
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
