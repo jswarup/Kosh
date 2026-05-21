@@ -3,7 +3,7 @@
 use std::alloc::{alloc, dealloc, handle_alloc_error, Layout};
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
-use crate::arr::Arr;
+use crate::silo::arr::Arr;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
