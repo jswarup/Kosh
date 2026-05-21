@@ -156,19 +156,19 @@ impl<T> Drop for Buff<T>
 
 pub fn TestBuff()
 {
-    // Allocate a buffer of 5 elements, all initialized to 10.
-    let mut buffer = Buff::new(5, 10);
+    // Allocate a buff of 5 elements, all initialized to 10.
+    let mut buff = Buff::new(5, 10);
 
     // Safely mutate an element at a specific index
-    buffer[2] = 99;
+    buff[2] = 99;
 
     // Safely read elements
-    println!("Element at index 0: {}", buffer[0]); // Output: 10
-    println!("Element at index 2: {}", buffer[2]); // Output: 99
+    println!("Element at index 0: {}", buff[0]); // Output: 10
+    println!("Element at index 2: {}", buff[2]); // Output: 99
 
     // This will panic safely instead of causing undefined behavior:
-    // buffer[5] = 100;
-} // Buffer safely drops here. Elements are dropped, and memory is freed.
+    // buff[5] = 100;
+} // Buff safely drops here. Elements are dropped, and memory is freed.
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -181,41 +181,41 @@ mod tests
     #[test]
     fn test_safe_buffer_basic_ops()
     {
-        let mut buffer = Buff::new(3, 42);
-        assert_eq!(buffer.len(), 3);
-        assert_eq!(buffer[0], 42);
-        assert_eq!(buffer[1], 42);
-        assert_eq!(buffer[2], 42);
+        let mut buff = Buff::new(3, 42);
+        assert_eq!(buff.len(), 3);
+        assert_eq!(buff[0], 42);
+        assert_eq!(buff[1], 42);
+        assert_eq!(buff[2], 42);
 
-        buffer[1] = 100;
-        assert_eq!(buffer[1], 100);
+        buff[1] = 100;
+        assert_eq!(buff[1], 100);
 
         // Test slice methods made available via Deref
-        assert_eq!(buffer.first(), Some(&42));
-        assert_eq!(buffer.last(), Some(&42));
+        assert_eq!(buff.first(), Some(&42));
+        assert_eq!(buff.last(), Some(&42));
     }
 
     #[test]
     fn test_safe_buffer_zst()
     {
-        let buffer = Buff::new(10, ());
-        assert_eq!(buffer.len(), 10);
-        assert_eq!(buffer[5], ());
+        let buff = Buff::new(10, ());
+        assert_eq!(buff.len(), 10);
+        assert_eq!(buff[5], ());
     }
 
     #[test]
     fn test_arr_basic_ops()
     {
-        let mut buffer = Buff::new(3, 42);
+        let mut buff = Buff::new(3, 42);
         {
-            let mut arr = buffer.as_mut_arr();
+            let mut arr = buff.as_mut_arr();
             assert_eq!(arr.len(), 3);
             assert_eq!(arr[0], 42);
             arr[1] = 100;
         }
-        assert_eq!(buffer[1], 100);
+        assert_eq!(buff[1], 100);
 
-        let arr2 = buffer.as_arr();
+        let arr2 = buff.as_arr();
         assert_eq!(arr2[1], 100);
     }
 

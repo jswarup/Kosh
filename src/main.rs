@@ -52,12 +52,12 @@ fn main() -> Result<()>
     let args = Args::parse();                                                   // Parse command line arguments
     setup_logging(args.verbose).context("Setting up logging framework failed")?;      // Initialize logging based on verbosity flag
 
-    debug!("Starting Kosh CLI and demonstrating Buffer usage");
+    debug!("Starting Kosh CLI and demonstrating Buff usage");
     kosh::buff::TestBuff();
 
-    info!("Initialized a new Buffer of integers with len: {}", 4);
+    info!("Initialized a new Buff of integers with len: {}", 4);
 
-    println!("Buffer element at index {}: {}", 0.to_string().red(), 4.to_string().cyan());
+    println!("Buff element at index {}: {}", 0.to_string().red(), 4.to_string().cyan());
     debug!("Kosh CLI execution finished successfully");
     return Ok(())
 }
