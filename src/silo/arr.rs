@@ -80,7 +80,7 @@ impl<'a, T> Arr<'a, T>
 
     pub fn  USeg( &self) ->USeg
     {
-        USeg::New( 0, self.Size())
+        USeg::Create( 0, self.Size())
     }
 
     pub fn LSnip( &self, count: u32) -> Self

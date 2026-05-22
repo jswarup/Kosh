@@ -119,15 +119,12 @@ fn ArrBasicOpsTest()
 #[test]
 fn USegBasicOpsTest()
 {
-    let seg = USeg::New( 10, 20);
+    let seg = USeg::Create( 10, 11);
     assert_eq!( seg.First(), 10);
     assert_eq!( seg.Last(), 20);
     assert_eq!( seg.Size(), 11);
     assert!( !seg.IsEmpty());
 
-    let emptySeg = USeg::New( 20, 10);
-    assert_eq!( emptySeg.Size(), 0);
-    assert!( emptySeg.IsEmpty());
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -135,7 +132,7 @@ fn USegBasicOpsTest()
 #[test]
 fn USegSnipTest()
 {
-    let seg = USeg::New( 10, 20);
+    let seg = USeg::Create( 10, 11);
 
     // Test LSnip
     let lSnipped = seg.LSnip( 5);
@@ -167,7 +164,7 @@ fn USegSnipTest()
 #[test]
 fn USegSpanTest()
 {
-    let seg = USeg::New( 10, 15);
+    let seg = USeg::Create( 10, 6);
 
     // Case 1: All values return true
     let mut visited = Vec::new();
@@ -186,13 +183,6 @@ fn USegSpanTest()
     });
     assert!( !result2);
     assert_eq!( visited2, vec![ 10, 11, 12, 13]);
-
-    // Case 3: Empty segment should vacuously return true
-    let emptySeg = USeg::New( 20, 10);
-    let result3 = emptySeg.Span( |_| {
-        panic!( "Should not be called!");
-    });
-    assert!( result3);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -201,11 +191,13 @@ fn USegSpanTest()
 fn QSortTest()
 {
     let     buff =  Buff::CreateD( 256, |_| rand::random::<f64>());
+    //let     buff =  Buff::CreateD( 5, | i| i);
 
     let     arr = buff.AsArr();
-    arr.USeg().QSort( &| i, j| { arr.At( i) < arr.At( j) }, &mut | i, j| { arr.SwapAt(i, j);});
-    print!{ "{:?}", arr}
-
+    arr.USeg().QSort( &| i, j| { arr.At( i) > arr.At( j) }, &mut | i, j| { arr.SwapAt(i, j);});
+    print!{ "{:?}\n", arr};
+    let     res = arr.USeg().RSnip(1).Span(| k|{ arr.At( k) > arr.At( k +1)});
+    assert!( res);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

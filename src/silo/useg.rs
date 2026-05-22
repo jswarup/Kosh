@@ -13,12 +13,12 @@ pub struct USeg
 
 impl USeg
 {
-    pub fn New( first: u32, last: u32) -> Self
+    pub fn Create( first: u32, sz: u32) -> Self
     {
         USeg
         {
             _First: first,
-            _Last: last,
+            _Last: (first +sz).wrapping_sub( 1),
         }
     }
 
@@ -41,7 +41,7 @@ impl USeg
     {
         if self._Last >= self._First
         {
-            self._Last - self._First + 1
+            self._Last.wrapping_add( 1).wrapping_sub( self._First)
         }
         else
         {
@@ -56,25 +56,19 @@ impl USeg
 
     pub fn LSnip( &self, count: u32) -> Self
     {
-        if count >= self.Size()
-        {
-            USeg::New( 1, 0)
-        }
-        else
-        {
-            USeg::New( self._First + count, self._Last)
+        if  self.Size() < count {
+            USeg::Create( u32::MAX, 0)
+        } else {
+            USeg::Create( self._First + count, self.Size() -count)
         }
     }
 
     pub fn RSnip( &self, count: u32) -> Self
     {
-        if count >= self.Size()
-        {
-            USeg::New( 1, 0)
-        }
-        else
-        {
-            USeg::New( self._First, self._Last - count)
+        if  self.Size() < count {
+            USeg::Create( u32::MAX, 0)
+        } else {
+            USeg::Create( self._First, self.Size() - count)
         }
     }
 
@@ -106,18 +100,15 @@ impl USeg
             swapAt( self._First, mid);
         }
         let mut pivot = self._First;
-        let     snip = self.LSnip( 1);
-        if !snip.IsEmpty()
+        self.LSnip( 1).Span( &mut |i|
         {
-            for i in snip._First..=snip._Last
+            if lessAt( i, self._First)
             {
-                if lessAt( i, self._First)
-                {
-                    pivot += 1;
-                    swapAt( pivot, i);
-                }
+                pivot += 1;
+                swapAt( pivot, i);
             }
-        }
+            true
+        });
         if lessAt( pivot, self._First)
         {
             swapAt( self._First, pivot);
@@ -134,12 +125,12 @@ impl USeg
         let     pivot = self.Partition( lessAt, swapAt);
 
         // Recursively sort the two sub-arrays
-        let     useg1 = USeg::New( self._First, pivot - self._First);
+        let     useg1 = USeg::Create( self._First, pivot - self._First);
         if  useg1.Size() > 1
         {
             useg1.QSort( lessAt, swapAt);
         }
-        let     useg2 = USeg::New( pivot + 1, self._Last - pivot);
+        let     useg2 = USeg::Create( pivot + 1, self._Last - pivot);
         if useg2.Size() > 1
         {
             useg2.QSort( lessAt, swapAt);
