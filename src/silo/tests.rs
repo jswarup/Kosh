@@ -85,23 +85,34 @@ fn ArrBasicOps()
         assert_eq!( arr.len(), 3);
         assert_eq!( arr[ 0], 42);
         arr[ 1] = 100;
+
+        // Test At
+        assert_eq!( *arr.At( 1), 100);
+
+        // Test SetAt
+        arr.SetAt( 2, &200);
+        assert_eq!( *arr.At( 2), 200);
+
+        // Test MoveAt
+        let mut val = 300;
+        arr.MoveAt( 0, &mut val);
+        assert_eq!( *arr.At( 0), 300);
+        assert_eq!( val, 0); // 0 is i32 default
+
+        // Test SwapAt
+        arr.SwapAt( 0, 2);
+        assert_eq!( *arr.At( 0), 200);
+        assert_eq!( *arr.At( 2), 300);
     }
+    assert_eq!( buff[ 0], 200);
     assert_eq!( buff[ 1], 100);
+    assert_eq!( buff[ 2], 300);
 
     let arr2 = buff.AsArr();
     assert_eq!( arr2[ 1], 100);
-}
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[test]
-fn ArrDebug()
-{
-    let mut buff = Buff::New( 3, 10);
-    buff[ 1] = 20;
-    buff[ 2] = 30;
-    let arr = buff.AsArr();
-    assert_eq!( format!( "{:?}", arr), "[10, 20, 30]");
+    // Test Debug trait
+    assert_eq!( format!( "{:?}", arr2), "[200, 100, 300]");
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -158,7 +169,7 @@ fn USegSnip()
 fn USegSpan()
 {
     let seg = USeg::New( 10, 15);
-    
+
     // Case 1: All values return true
     let mut visited = Vec::new();
     let result = seg.Span( |val| {

@@ -35,7 +35,12 @@ impl<'a, T> Arr<'a, T>
         self._Size
     }
 
-    fn At( &self, k:u32) -> &T
+    pub fn len( &self) -> u32
+    {
+        self.Size()
+    }
+
+    pub fn At( &self, k:u32) -> &T
     {
         unsafe
         {
@@ -44,19 +49,11 @@ impl<'a, T> Arr<'a, T>
     }
 
 
-    fn SetAt( &self, k:u32, a :&T) where T: Clone
+    pub fn SetAt( &self, k:u32, a :&T) where T: Clone
     {
         unsafe
         {
             *self._Ptr.add( k as usize).as_mut() = a.clone();
-        }
-    }
-
-    pub fn SwapAt( &self, i: u32, j: u32)
-    {
-        unsafe
-        {
-            std::ptr::swap( self._Ptr.add( i as usize).as_ptr(), self._Ptr.add( j as usize).as_ptr());
         }
     }
 
@@ -65,6 +62,14 @@ impl<'a, T> Arr<'a, T>
         unsafe
         {
             *self._Ptr.add( k as usize).as_mut() = std::mem::take( a);
+        }
+    }
+
+    pub fn SwapAt( &self, i: u32, j: u32)
+    {
+        unsafe
+        {
+            std::ptr::swap( self._Ptr.add( i as usize).as_ptr(), self._Ptr.add( j as usize).as_ptr());
         }
     }
 
