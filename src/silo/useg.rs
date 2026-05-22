@@ -2,7 +2,7 @@
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive( Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct USeg
 {
     pub _First: u32,
@@ -13,7 +13,7 @@ pub struct USeg
 
 impl USeg
 {
-    pub fn New(first: u32, last: u32) -> Self
+    pub fn New( first: u32, last: u32) -> Self
     {
         USeg
         {
@@ -22,17 +22,17 @@ impl USeg
         }
     }
 
-    pub fn First(&self) -> u32
+    pub fn First( &self) -> u32
     {
         self._First
     }
 
-    pub fn Last(&self) -> u32
+    pub fn Last( &self) -> u32
     {
         self._Last
     }
 
-    pub fn Size(&self) -> u32
+    pub fn Size( &self) -> u32
     {
         if self._Last >= self._First
         {
@@ -44,38 +44,38 @@ impl USeg
         }
     }
 
-    pub fn IsEmpty(&self) -> bool
+    pub fn IsEmpty( &self) -> bool
     {
         self.Size() == 0
     }
 
-    pub fn LSnip(&self, count: u32) -> Self
+    pub fn LSnip( &self, count: u32) -> Self
     {
         if count >= self.Size()
         {
-            USeg::New(1, 0)
+            USeg::New( 1, 0)
         }
         else
         {
-            USeg::New(self._First + count, self._Last)
+            USeg::New( self._First + count, self._Last)
         }
     }
 
-    pub fn RSnip(&self, count: u32) -> Self
+    pub fn RSnip( &self, count: u32) -> Self
     {
         if count >= self.Size()
         {
-            USeg::New(1, 0)
+            USeg::New( 1, 0)
         }
         else
         {
-            USeg::New(self._First, self._Last - count)
+            USeg::New( self._First, self._Last - count)
         }
     }
 
-    pub fn Span<F>(&self, mut f: F) -> bool
+    pub fn Span<F>( &self, mut f: F) -> bool
     where
-        F: FnMut(u32) -> bool,
+        F: FnMut( u32) -> bool,
     {
         if self.IsEmpty()
         {
@@ -83,7 +83,7 @@ impl USeg
         }
         for i in self._First..=self._Last
         {
-            if !f(i)
+            if !f( i)
             {
                 return false;
             }
