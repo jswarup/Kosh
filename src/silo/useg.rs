@@ -126,7 +126,7 @@ impl USeg
     }
 
 
-    fn QSort<LessAt, SwapAt>( &self, lessAt: &LessAt, swapAt: &mut SwapAt)
+    pub fn QSort<LessAt, SwapAt>( &self, lessAt: &LessAt, swapAt: &mut SwapAt)
         where
             LessAt: Fn( u32, u32) -> bool, SwapAt: FnMut( u32, u32),
     {
