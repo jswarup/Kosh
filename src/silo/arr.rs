@@ -27,12 +27,7 @@ impl<'a, T> Arr<'a, T>
 {
     pub fn New( ptr: NonNull<T>, size: u32) -> Self
     {
-        Arr
-        {
-            _Ptr: ptr,
-            _Size: size,
-            _Marker: PhantomData,
-        }
+        Arr { _Ptr: ptr, _Size: size, _Marker: PhantomData, }
     }
 
     pub fn Size( &self) -> u32
@@ -54,6 +49,17 @@ impl<'a, T> Arr<'a, T>
         unsafe
         {
             *self._Ptr.add( k as usize).as_mut() = a.clone();
+        }
+    }
+
+    pub fn SwapAt( &self, i: u32, j: u32)
+    {
+        unsafe
+        {
+            std::ptr::swap(
+                self._Ptr.add( i as usize).as_ptr(),
+                self._Ptr.add( j as usize).as_ptr(),
+            );
         }
     }
 
