@@ -4,6 +4,9 @@ use std::marker::PhantomData;
 use std::ops::{ Deref, DerefMut};
 use std::ptr::NonNull;
 
+use crate::silo::useg::USeg;
+
+
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub struct Arr<'a, T>
@@ -37,9 +40,31 @@ impl<'a, T> Arr<'a, T>
         self._Size
     }
 
+    fn At( &self, k:u32) -> &T
+    {
+        unsafe
+        {
+            self._Ptr.add( k as usize).as_ref()
+        }
+    }
+
+
+    fn SetAt( &self, k:u32, a :&T) where T: Clone
+    {
+        unsafe
+        {
+            *self._Ptr.add( k as usize).as_mut() = a.clone();
+        }
+    }
+
     pub fn IsEmpty( &self) -> bool
     {
         self.Size() == 0
+    }
+
+    pub fn  USeg( &self) ->USeg
+    {
+        USeg::New( 0, self.Size())
     }
 
     pub fn LSnip( &self, count: u32) -> Self
@@ -50,6 +75,19 @@ impl<'a, T> Arr<'a, T>
     pub fn RSnip( &self, count: u32) -> Self
     {
         Arr::New( self._Ptr, self.Size() - count)
+    }
+
+
+    pub fn Span<F>( &self, mut f: F) -> bool
+        where F: FnMut( &T) -> bool,
+    {
+        if self.IsEmpty()
+        {
+            return true;
+        }
+        self.USeg().Span( |k| {
+            f( self.At( k))
+        })
     }
 }
 
