@@ -56,10 +56,15 @@ impl<'a, T> Arr<'a, T>
     {
         unsafe
         {
-            std::ptr::swap(
-                self._Ptr.add( i as usize).as_ptr(),
-                self._Ptr.add( j as usize).as_ptr(),
-            );
+            std::ptr::swap( self._Ptr.add( i as usize).as_ptr(), self._Ptr.add( j as usize).as_ptr());
+        }
+    }
+
+    pub fn MoveAt( &self, k: u32, a: &mut T) where T: Default
+    {
+        unsafe
+        {
+            *self._Ptr.add( k as usize).as_mut() = std::mem::take( a);
         }
     }
 
