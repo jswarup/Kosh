@@ -112,11 +112,11 @@ fn USegBasicOps()
     let seg = USeg::New(10, 20);
     assert_eq!(seg.First(), 10);
     assert_eq!(seg.Last(), 20);
-    assert_eq!(seg.Len(), 11);
+    assert_eq!(seg.Size(), 11);
     assert!(!seg.IsEmpty());
 
     let emptySeg = USeg::New(20, 10);
-    assert_eq!(emptySeg.Len(), 0);
+    assert_eq!(emptySeg.Size(), 0);
     assert!(emptySeg.IsEmpty());
 }
 
@@ -131,7 +131,7 @@ fn USegSnip()
     let lSnipped = seg.LSnip(5);
     assert_eq!(lSnipped.First(), 15);
     assert_eq!(lSnipped.Last(), 20);
-    assert_eq!(lSnipped.Len(), 6);
+    assert_eq!(lSnipped.Size(), 6);
 
     let lEmpty = seg.LSnip(11);
     assert!(lEmpty.IsEmpty());
@@ -143,7 +143,7 @@ fn USegSnip()
     let rSnipped = seg.RSnip(4);
     assert_eq!(rSnipped.First(), 10);
     assert_eq!(rSnipped.Last(), 16);
-    assert_eq!(rSnipped.Len(), 7);
+    assert_eq!(rSnipped.Size(), 7);
 
     let rEmpty = seg.RSnip(11);
     assert!(rEmpty.IsEmpty());
@@ -153,3 +153,37 @@ fn USegSnip()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn USegSpan()
+{
+    let seg = USeg::New(10, 15);
+    
+    // Case 1: All values return true
+    let mut visited = Vec::new();
+    let result = seg.Span(|val| {
+        visited.push(val);
+        true
+    });
+    assert!(result);
+    assert_eq!(visited, vec![10, 11, 12, 13, 14, 15]);
+
+    // Case 2: One value returns false (early termination)
+    let mut visited2 = Vec::new();
+    let result2 = seg.Span(|val| {
+        visited2.push(val);
+        val < 13
+    });
+    assert!(!result2);
+    assert_eq!(visited2, vec![10, 11, 12, 13]);
+
+    // Case 3: Empty segment should vacuously return true
+    let emptySeg = USeg::New(20, 10);
+    let result3 = emptySeg.Span(|_| {
+        panic!("Should not be called!");
+    });
+    assert!(result3);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+

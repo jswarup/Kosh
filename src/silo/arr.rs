@@ -9,7 +9,7 @@ use std::ptr::NonNull;
 pub struct Arr<'a, T>
 {
     _Ptr: NonNull<T>,
-    _Size: usize,
+    _Size: u32,
     _Marker: PhantomData<&'a T>,
 }
 
@@ -22,7 +22,7 @@ unsafe impl<'a, T: Sync> Sync for Arr<'a, T> {}
 
 impl<'a, T> Arr<'a, T>
 {
-    pub fn New(ptr: NonNull<T>, size: usize) -> Self
+    pub fn New(ptr: NonNull<T>, size: u32) -> Self
     {
         Arr
         {
@@ -30,6 +30,26 @@ impl<'a, T> Arr<'a, T>
             _Size: size,
             _Marker: PhantomData,
         }
+    }
+
+    pub fn Size(&self) -> u32
+    {
+        self._Size
+    }
+
+    pub fn IsEmpty(&self) -> bool
+    {
+        self.Size() == 0
+    }
+
+    pub fn LSnip(&self, count: u32) -> Self
+    {
+        Arr::New( unsafe { self._Ptr.add(count as usize) }, self.Size() - count)
+    }
+
+    pub fn RSnip(&self, count: u32) -> Self
+    {
+        Arr::New( self._Ptr, self.Size() -count)
     }
 }
 
@@ -43,7 +63,7 @@ impl<'a, T> Deref for Arr<'a, T>
     {
         unsafe
         {
-            std::slice::from_raw_parts(self._Ptr.as_ptr(), self._Size)
+            std::slice::from_raw_parts(self._Ptr.as_ptr(), self._Size as usize)
         }
     }
 }
@@ -56,7 +76,7 @@ impl<'a, T> DerefMut for Arr<'a, T>
     {
         unsafe
         {
-            std::slice::from_raw_parts_mut(self._Ptr.as_ptr(), self._Size)
+            std::slice::from_raw_parts_mut(self._Ptr.as_ptr(), self._Size as usize)
         }
     }
 }

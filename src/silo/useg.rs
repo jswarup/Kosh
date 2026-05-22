@@ -32,7 +32,7 @@ impl USeg
         self._Last
     }
 
-    pub fn Len(&self) -> u32
+    pub fn Size(&self) -> u32
     {
         if self._Last >= self._First
         {
@@ -46,12 +46,12 @@ impl USeg
 
     pub fn IsEmpty(&self) -> bool
     {
-        self.Len() == 0
+        self.Size() == 0
     }
 
     pub fn LSnip(&self, count: u32) -> Self
     {
-        if count >= self.Len()
+        if count >= self.Size()
         {
             USeg::New(1, 0)
         }
@@ -63,7 +63,7 @@ impl USeg
 
     pub fn RSnip(&self, count: u32) -> Self
     {
-        if count >= self.Len()
+        if count >= self.Size()
         {
             USeg::New(1, 0)
         }
@@ -71,6 +71,24 @@ impl USeg
         {
             USeg::New(self._First, self._Last - count)
         }
+    }
+
+    pub fn Span<F>(&self, mut f: F) -> bool
+    where
+        F: FnMut(u32) -> bool,
+    {
+        if self.IsEmpty()
+        {
+            return true;
+        }
+        for i in self._First..=self._Last
+        {
+            if !f(i)
+            {
+                return false;
+            }
+        }
+        true
     }
 }
 

@@ -38,15 +38,15 @@ impl<T: Clone> Buff<T>
             return Buff { _Ptr: dangling };
         }
 
-        // Calculate _Layout for an array of T with length `size`
-        let     _Layout = Layout::array::<T>(size).expect( "Layout calculation failed");
+        // Calculate layout for an array of T with length `size`
+        let     layout = Layout::array::<T>(size).expect( "Layout calculation failed");
 
         unsafe
         {
-            let     rawPtr = alloc(_Layout) as *mut T;  // Allocate memory
+            let     rawPtr = alloc(layout) as *mut T;  // Allocate memory
             if rawPtr.is_null()
             {
-                handle_alloc_error(_Layout);
+                handle_alloc_error(layout);
             }
 
             // Drop guard to prevent resource leaks if initialValue.clone() panics during loop
@@ -73,7 +73,7 @@ impl<T: Clone> Buff<T>
                 }
             }
 
-            let mut guard = RawAllocationGuard { _Ptr: rawPtr, _Layout, _InitCount: 0 };
+            let mut guard = RawAllocationGuard { _Ptr: rawPtr, _Layout: layout, _InitCount: 0 };
 
             for i in 0..size                             // Initialize each element in the contiguous memory block
             {
@@ -96,12 +96,12 @@ impl<T> Buff<T>
 {
     pub fn AsArr(&self) -> Arr<'_, T>
     {
-        Arr::New(self._Ptr.cast::<T>(), self._Ptr.len())
+        Arr::New(self._Ptr.cast::<T>(), self._Ptr.len() as u32)
     }
 
     pub fn AsMutArr(&mut self) -> Arr<'_, T>
     {
-        Arr::New(self._Ptr.cast::<T>(), self._Ptr.len())
+        Arr::New(self._Ptr.cast::<T>(), self._Ptr.len() as u32)
     }
 }
 
@@ -146,7 +146,7 @@ impl<T> Drop for Buff<T>
             return;
         }
 
-        let _Layout = Layout::array::<T>(size).expect( "Too Big");
+        let layout = Layout::array::<T>(size).expect( "Too Big");
 
         unsafe
         {
@@ -154,7 +154,7 @@ impl<T> Drop for Buff<T>
             std::ptr::drop_in_place(self._Ptr.as_ptr());
 
             // Deallocate the contiguous chunk of raw memory
-            dealloc(self._Ptr.cast::<u8>().as_ptr(), _Layout);
+            dealloc(self._Ptr.cast::<u8>().as_ptr(), layout);
         }
     }
 }
@@ -172,14 +172,14 @@ impl<T: Clone> Clone for Buff<T>
             return Buff { _Ptr: dangling };
         }
 
-        let _Layout = Layout::array::<T>(size).expect("Layout calculation failed");
+        let layout = Layout::array::<T>(size).expect("Layout calculation failed");
 
         unsafe
         {
-            let rawPtr = alloc(_Layout) as *mut T;
+            let rawPtr = alloc(layout) as *mut T;
             if rawPtr.is_null()
             {
-                handle_alloc_error(_Layout);
+                handle_alloc_error(layout);
             }
 
             // Panic guard – same pattern as Buff::new
@@ -206,7 +206,7 @@ impl<T: Clone> Clone for Buff<T>
                 }
             }
 
-            let mut guard = CloneGuard { _Ptr: rawPtr, _Layout, _InitCount: 0 };
+            let mut guard = CloneGuard { _Ptr: rawPtr, _Layout: layout, _InitCount: 0 };
 
             for i in 0..size
             {
@@ -235,14 +235,14 @@ impl<T: Clone> From<&[T]> for Buff<T>
             return Buff { _Ptr: dangling };
         }
 
-        let _Layout = Layout::array::<T>(size).expect("Layout calculation failed");
+        let layout = Layout::array::<T>(size).expect("Layout calculation failed");
 
         unsafe
         {
-            let rawPtr = alloc(_Layout) as *mut T;
+            let rawPtr = alloc(layout) as *mut T;
             if rawPtr.is_null()
             {
-                handle_alloc_error(_Layout);
+                handle_alloc_error(layout);
             }
 
             struct InitGuard<T>
@@ -268,7 +268,7 @@ impl<T: Clone> From<&[T]> for Buff<T>
                 }
             }
 
-            let mut guard = InitGuard { _Ptr: rawPtr, _Layout, _InitCount: 0 };
+            let mut guard = InitGuard { _Ptr: rawPtr, _Layout: layout, _InitCount: 0 };
 
             for i in 0..size
             {
