@@ -127,4 +127,68 @@ impl<T: AtomicInt> Atm<T>
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+/// A simple spinlock.
+pub struct SpinLock
+{
+    _Locked: AtomicBool,
+}
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl SpinLock
+{
+    //------------------------------------------------------------------------------------------------------------------------------
+    /// Creates a new unlocked spinlock.
+    pub const fn New() -> Self
+    {
+        Self
+        {
+            _Locked: AtomicBool::new(false),
+        }
+    }
+
+    //------------------------------------------------------------------------------------------------------------------------------
+    /// Acquires the spinlock, blocking the current thread until it is able to do so.
+    pub fn Acquire(&self)
+    {
+        while self._Locked.compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed).is_err()
+        {
+            while self._Locked.load(Ordering::Relaxed)
+            {
+                std::hint::spin_loop();
+            }
+        }
+    }
+
+    //------------------------------------------------------------------------------------------------------------------------------
+    /// Acquires the spinlock and returns a guard that releases the lock when dropped.
+    pub fn Lock(&self) -> SpinLockGuard<'_>
+    {
+        self.Acquire();
+        SpinLockGuard { _Lock: self }
+    }
+
+    //------------------------------------------------------------------------------------------------------------------------------
+    /// Releases the spinlock.
+    pub fn Release(&self)
+    {
+        self._Locked.store(false, Ordering::Release);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+/// An RAII implementation of a "scoped lock" of a spinlock.
+pub struct SpinLockGuard<'a>
+{
+    _Lock: &'a SpinLock,
+}
+
+impl<'a> Drop for SpinLockGuard<'a>
+{
+    fn drop(&mut self)
+    {
+        self._Lock.Release();
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
