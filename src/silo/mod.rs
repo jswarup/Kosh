@@ -3,6 +3,7 @@
 pub mod arr;
 pub mod atm;
 pub mod buff;
+pub mod stk;
 pub mod useg;
 
 #[cfg(test)]
