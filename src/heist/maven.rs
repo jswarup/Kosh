@@ -13,7 +13,7 @@ trait AtelierT
     fn  AllocJobs( &mut self, stk: &mut Stk< u16>) -> u32;
     fn  FreeJobs( &mut self, stk: &mut Stk< u16>) -> u32;
     fn  IncrSzSchedJob( &mut self,  inc : u32) -> u32;
-    fn ExecuteJob( &mut self,  mavenInd : u16,  jobId : u16);
+    fn  ExecuteJob( &mut self,  mavenInd : u16,  jobId : u16);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
