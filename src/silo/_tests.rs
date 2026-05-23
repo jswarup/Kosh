@@ -2,6 +2,8 @@
 
 use crate::silo::buff::Buff;
 use crate::silo::useg::USeg;
+use crate::silo::atm::Atm;
+use std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -198,6 +200,42 @@ fn QSortTest()
     print!{ "{:?}\n", arr};
     let     res = arr.USeg().RSnip(1).Span(| k|{ arr.At( k) > arr.At( k +1)});
     assert!( res);
+}
+
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn TestAtmBasicOps() {
+    let atmVar = Atm::New(10i32);
+
+    // Test Get and Set
+    assert_eq!(atmVar.Get(), 10);
+    atmVar.Set(42);
+    assert_eq!(atmVar.Get(), 42);
+
+    // Test FetchAdd
+    let prevVal = atmVar.FetchAdd(8, Ordering::SeqCst);
+    assert_eq!(prevVal, 42);
+    assert_eq!(atmVar.Get(), 50);
+
+    // Test CompareExchange (success)
+    let successRes = atmVar.CompareExchange(50, 100, Ordering::SeqCst, Ordering::SeqCst);
+    assert_eq!(successRes, Ok(50));
+    assert_eq!(atmVar.Get(), 100);
+
+    // Test CompareExchange (failure)
+    let failureRes = atmVar.CompareExchange(50, 200, Ordering::SeqCst, Ordering::SeqCst);
+    assert_eq!(failureRes, Err(100));
+    assert_eq!(atmVar.Get(), 100);
+}
+
+#[test]
+fn TestAtmUsize() {
+    let atmVar = Atm::New(0usize);
+
+    atmVar.FetchAdd(1, Ordering::SeqCst);
+    assert_eq!(atmVar.Get(), 1);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
