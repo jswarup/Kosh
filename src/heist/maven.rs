@@ -5,6 +5,7 @@ use crate::silo::stk::Stk;
 //---------------------------------------------------------------------------------------------------------------------------------
 /// Trait to abstract Atelier
 
+#[allow(dead_code)]
 trait AtelierT
 {
     fn  IncrPredAt( &mut self, jobId: u16, inc : u16) -> u16;
