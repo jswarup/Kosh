@@ -2,6 +2,7 @@
 //!  a thin wrapper around `u32` providing seamless integer operations.
 
 use std::ops::{Add, Sub, Mul, Div, Rem, BitAnd, BitOr, BitXor, Not, Shl, Shr, Neg, Deref};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
@@ -132,5 +133,19 @@ impl From<UInt32> for u32 {
         v.0
     }
 }
+
+use crate::silo::atm::AtomicInt;
+
+impl AtomicInt for UInt32 {
+    type AtomicType = AtomicU32;
+    fn IntoAtomic(self) -> Self::AtomicType { AtomicU32::new(self.0) }
+    fn Get(a: &Self::AtomicType, order: Ordering) -> Self { UInt32(a.load(order)) }
+    fn Set(a: &Self::AtomicType, val: Self, order: Ordering) { a.store(val.0, order); }
+    fn FetchAdd(a: &Self::AtomicType, val: Self, order: Ordering) -> Self { UInt32(a.fetch_add(val.0, order)) }
+    fn CompareExchange(a: &Self::AtomicType, current: Self, newVal: Self, success: Ordering, failure: Ordering) -> Result<Self, Self> {
+        a.compare_exchange(current.0, newVal.0, success, failure).map(UInt32).map_err(UInt32)
+    }
+}
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
