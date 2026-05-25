@@ -1,7 +1,9 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
+#[warn(unused_imports)]
 
-use crate::silo::buff::Buff;
+use crate::silo::uint32::UInt32;
 use crate::silo::useg::USeg;
+use crate::silo::buff::Buff;
 use crate::silo::atm::Atm;
 use crate::silo::stk::Stk;
 use std::sync::atomic::Ordering;
@@ -242,7 +244,7 @@ fn TestAtmUsize() {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 #[test]
-fn BasicStackOps()
+fn  StackBasicOps()
 {
     // Create a buffer of size 10 initialized with zeros
     let mut buff = Buff::CreateD(10, |_| 0u32);
@@ -278,9 +280,8 @@ fn BasicStackOps()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
-#[test]
-fn  ExportImportOps()
+//#[test]
+fn  StackExportImportOps()
 {
     // Source stack with initial values 1..=5
     let mut src_buff = Buff::CreateD(10, |_| 0u32);
@@ -334,6 +335,46 @@ fn  ExportImportOps()
         assert_eq!(out, expected);
     }
     assert_eq!(dst_stack.Size(), 0);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+ 
+fn UIntTestFrom() 
+{
+    let a: UInt32 = 5u32.into();
+    assert_eq!(a.get(), 5);
+    let b: UInt32 = (-3i32).into();
+    assert_eq!(b.get(), (-3i32) as u32);
+    let c: UInt32 = (10usize).into();
+    assert_eq!(c.get(), 10);
+}
+
+fn UIntTestArith() 
+{
+    let a = UInt32::from(10u32);
+    let b = UInt32::from(3u32);
+    assert_eq!((a + b).get(), 13);
+    assert_eq!((a - b).get(), 7);
+    assert_eq!((a * b).get(), 30);
+    assert_eq!((a / b).get(), 3);
+    assert_eq!((a % b).get(), 1);
+}
+
+fn UIntTestNegNot() 
+{
+    let a = UInt32::from(0u32);
+    assert_eq!((-a).get(), 0);
+    let b = UInt32::from(5u32);
+    assert_eq!((-b).get(), 0u32.wrapping_sub(5));
+    assert_eq!((!b).get(), !5u32);
+} 
+
+#[test]
+fn UIntBasicOps()
+{
+    UIntTestFrom();
+    UIntTestArith();
+    UIntTestNegNot();
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

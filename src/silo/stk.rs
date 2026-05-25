@@ -5,6 +5,7 @@ use crate::silo::atm::Atm;
 use crate::silo::useg::USeg;
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
 pub struct Stk<'a, 'b, T>
 {
     _Size: &'a mut Atm< u32>,
@@ -95,13 +96,13 @@ impl<'a, 'b, T> Stk<'a, 'b, T>
             szAlloc = if szAlloc > maxMov { maxMov } else { szAlloc };
 
             if szAlloc == 0 ||
-                self._Size.CompareExchange( sz, sz - szAlloc, std::sync::atomic::Ordering::SeqCst, std::sync::atomic::Ordering::SeqCst).is_ok()
+                self._Size.CompareExchange( sz, sz.wrapping_sub( szAlloc), std::sync::atomic::Ordering::SeqCst, std::sync::atomic::Ordering::SeqCst).is_ok()
             {
                 break szAlloc;
             }
         };
-        let sz = self.Size();
-        let stkSz = stk._Size.FetchAdd( (0u32).wrapping_sub(szAlloc), std::sync::atomic::Ordering::SeqCst) - szAlloc;
+        let stkSz = self.Size();
+        let sz = self._Size.FetchAdd( (0u32).wrapping_sub(szAlloc), std::sync::atomic::Ordering::SeqCst) - szAlloc;
         USeg::Create(0, szAlloc).Span( | i| {
             stk._Arr.SetAt( stkSz - szAlloc + i, self._Arr.At( sz + i));
             true
