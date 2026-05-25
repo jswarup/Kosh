@@ -1,7 +1,7 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 #[warn(unused_imports)]
 
-use crate::silo::uint32::UInt32;
+use crate::silo::uint32::U32;
 use crate::silo::useg::USeg;
 use crate::silo::buff::Buff;
 use crate::silo::atm::Atm;
@@ -341,33 +341,33 @@ fn  StackExportImportOps()
  
 fn UIntTestFrom() 
 {
-    let  q = UInt32::from( 0);
-    let a: UInt32 = 5u32.into();
-    assert_eq!(a.Get(), 5);
-    let b: UInt32 = (-3i32).into();
-    assert_eq!(b.Get(), (-3i32) as u32);
-    let c: UInt32 = (10usize).into();
-    assert_eq!(c.Get(), 10);
+    let  q = U32::from( 0);
+    let a: U32 = 5u32.into();
+    assert_eq!(a, 5);
+    let b: U32 = (-3i32).into();
+    assert_eq!(b, (-3i32) as u32);
+    let c: U32 = (10usize).into();
+    assert_eq!(c, 10);
 }
 
 fn UIntTestArith() 
 {
-    let a = UInt32::from(10u32);
-    let b = UInt32::from(3u32);
-    assert_eq!((a + b).Get(), 13);
-    assert_eq!((a - b).Get(), 7);
-    assert_eq!((a * b).Get(), 30);
-    assert_eq!((a / b).Get(), 3);
-    assert_eq!((a % b).Get(), 1);
+    let a = U32::from(10u32);
+    let b = U32::from(3u32);
+    assert_eq!((a + b) , 13);
+    assert_eq!((a - b), 7);
+    assert_eq!((a * b), 30);
+    assert_eq!((a / b), 3);
+    assert_eq!((a % b), 1);
 }
 
 fn UIntTestNegNot() 
 {
-    let a = UInt32::from(0u32);
-    assert_eq!((-a).Get(), 0);
-    let b = UInt32::from(5u32);
-    assert_eq!((-b).Get(), 0u32.wrapping_sub(5));
-    assert_eq!((!b).Get(), !5u32);
+    let a = U32::from(0u32);
+    assert_eq!((-a), 0);
+    let b = U32::from(5u32);
+    assert_eq!((-b), 0u32.wrapping_sub(5));
+    assert_eq!((!b), !5u32);
 } 
 
 #[test]

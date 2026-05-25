@@ -15,7 +15,7 @@ pub struct Silo;
 use crate::silo::buff::Buff;
 use crate::silo::atm::Atm;
 use crate::silo::stk::Stk;
-use crate::silo::uint32::UInt32;
+use crate::silo::uint32::U32;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
