@@ -197,7 +197,7 @@ impl<T> Buff<T>
         }
     }
 
-    pub fn CreateD< Dispenser>( size: u32, dispenser: Dispenser) -> Self
+    pub fn Create< Dispenser>( size: u32, dispenser: Dispenser) -> Self
         where
             Dispenser: Fn( u32) -> T
     {
@@ -263,7 +263,7 @@ impl<T> Buff<T>
     pub fn New( size: u32, initialValue: T) -> Self
         where T :Clone
     {
-        Buff::CreateD( size, |_| { initialValue.clone() })
+        Buff::Create( size, |_| { initialValue.clone() })
     }
 }
 

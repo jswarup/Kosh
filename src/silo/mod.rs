@@ -23,7 +23,7 @@ use crate::silo::uint32::U32;
 #[allow(dead_code)]
 pub fn ExportImportOps() {
     // Source stack with initial values 1..=5
-    let mut src_buff = Buff::CreateD(10, |_| 0u32);
+    let mut src_buff = Buff::Create(10, |_| 0u32);
     let mut src_atm = Atm::New(0u32);
     let mut src_arr = src_buff.AsMutArr();
     let mut src_stack = Stk::Create(&mut src_atm, &mut src_arr);
@@ -34,7 +34,7 @@ pub fn ExportImportOps() {
     assert_eq!(src_stack.Size(), 5);
 
     // Destination stack initially empty
-    let mut dst_buff = Buff::CreateD(10, |_| 0u32);
+    let mut dst_buff = Buff::Create(10, |_| 0u32);
     let mut dst_atm = Atm::New(0u32);
     let mut dst_arr = dst_buff.AsMutArr();
     let mut dst_stack = Stk::Create(&mut dst_atm, &mut dst_arr);

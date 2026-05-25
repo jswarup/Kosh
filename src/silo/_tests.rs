@@ -68,7 +68,7 @@ fn BufZSTTest()
 #[test]
 fn BuffSendSyncTest()
 {
-    let buff = Buff::CreateD( 5, |_| {42});
+    let buff = Buff::Create( 5, |_| {42});
     let handle = std::thread::spawn( move ||
     {
         assert_eq!( buff.len(), 5);
@@ -194,8 +194,8 @@ fn USegSpanTest()
 #[test]
 fn QSortTest()
 {
-    let     buff =  Buff::CreateD( 256, |_| rand::random::<f64>());
-    //let     buff =  Buff::CreateD( 5, | i| i);
+    let     buff =  Buff::Create( 256, |_| rand::random::<f64>());
+    //let     buff =  Buff::New( 5, | i| i);
 
     let     arr = buff.AsArr();
     arr.USeg().QSort( &| i, j| { arr.At( i) > arr.At( j) }, &mut | i, j| { arr.SwapAt(i, j);});
@@ -247,7 +247,7 @@ fn TestAtmUsize() {
 fn  StackBasicOps()
 {
     // Create a buffer of size 10 initialized with zeros
-    let mut buff = Buff::CreateD(10, |_| 0u32);
+    let mut buff = Buff::Create(10, |_| 0u32);
     // Atomic counter for size tracking
     let mut atm = Atm::New(0u32);
     // Obtain a mutable Arr view over the buffer
@@ -284,7 +284,7 @@ fn  StackBasicOps()
 fn  StackExportImportOps()
 {
     // Source stack with initial values 1..=5
-    let mut src_buff = Buff::CreateD(10, |_| 0u32);
+    let mut src_buff = Buff::Create(10, |_| 0u32);
     let mut src_atm = Atm::New(0u32);
     let mut src_arr = src_buff.AsMutArr();
     let mut src_stack = Stk::Create(&mut src_atm, &mut src_arr);
@@ -295,7 +295,7 @@ fn  StackExportImportOps()
     assert_eq!(src_stack.Size(), 5);
 
     // Destination stack initially empty
-    let mut dst_buff = Buff::CreateD(10, |_| 0u32);
+    let mut dst_buff = Buff::Create(10, |_| 0u32);
     let mut dst_atm = Atm::New(0u32);
     let mut dst_arr = dst_buff.AsMutArr();
     let mut dst_stack = Stk::Create(&mut dst_atm, &mut dst_arr);
