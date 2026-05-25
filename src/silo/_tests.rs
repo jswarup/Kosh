@@ -13,7 +13,7 @@ use std::sync::atomic::Ordering;
 #[test]
 fn BuffBasicOpsTest()
 {
-    let mut buff = Buff::New( 10, 42);
+    let mut buff = Buff::New(U32::from(10), 42);
     assert_eq!( buff.len(), 10);
     assert_eq!( buff[ 0], 42);
     assert_eq!( buff[ 1], 42);
@@ -285,7 +285,7 @@ fn  StackBasicOps()
 fn  StackExportImportOps()
 {
     // Source stack with initial values 1..=5
-    let mut src_buff = Buff::Create(10, |_| 0u32);
+    let mut src_buff = Buff::Create(10, |_| 0);
     let mut src_atm = Atm::New(U32::from(0));
     let mut src_arr = src_buff.AsMutArr();
     let mut src_stack = Stk::Create(&mut src_atm, &mut src_arr);
@@ -293,10 +293,10 @@ fn  StackExportImportOps()
         let mut val = i;
         assert!(src_stack.Push(&mut val));
     }
-    assert_eq!(src_stack.Size(), 5);
+    assert_eq!(src_stack.Size(), U32::from(5));
 
     // Destination stack initially empty
-    let mut dst_buff = Buff::Create(10, |_| 0u32);
+    let mut dst_buff = Buff::Create(10, |_| 0);
     let mut dst_atm = Atm::New(U32::from(0));
     let mut dst_arr = dst_buff.AsMutArr();
     let mut dst_stack = Stk::Create(&mut dst_atm, &mut dst_arr);

@@ -27,7 +27,7 @@ impl U32 {
         self.0
     }
 
-    /// Get the inner `u32` value.
+    /// Get the inner `usize` value.
     #[inline]
     pub const fn as_usize(self) -> usize {
         self.0 as usize
