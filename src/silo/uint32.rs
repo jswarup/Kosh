@@ -10,44 +10,17 @@ use std::sync::atomic::{AtomicU32, Ordering};
 pub struct UInt32(pub u32);
 
 impl UInt32 {
-    /// Returns the inner value.
+    
+    
     #[inline]
-    pub const fn get(self) -> u32 {
+    pub const fn Get(self) -> u32 {
         self.0
     }
 
     /// Performs a wrapping subtraction, returning a new `UInt32`.
     #[inline]
-    pub const fn wrapping_sub(self, other: UInt32) -> Self {
+    pub const fn WrappingSub(self, other: UInt32) -> Self {
         Self(self.0.wrapping_sub(other.0))
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-// Conversions
-impl From<u32> for UInt32 {
-    #[inline]
-    fn from(v: u32) -> Self {
-        Self(v)
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl From<i32> for UInt32 {
-    #[inline]
-    fn from(v: i32) -> Self {
-        Self(v as u32)
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl From<usize> for UInt32 {
-    #[inline]
-    fn from(v: usize) -> Self {
-        Self(v as u32)
     }
 }
 
@@ -125,14 +98,6 @@ impl Deref for UInt32 {
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-// Optional: Implement `From<UInt32>` for `u32` for explicit conversion.
-
-impl From<UInt32> for u32 {
-    #[inline]
-    fn from(v: UInt32) -> Self {
-        v.0
-    }
-}
 
 use crate::silo::atm::AtomicInt;
 
@@ -149,3 +114,43 @@ impl AtomicInt for UInt32 {
 
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+impl From<UInt32> for u32 {
+    #[inline]
+    fn from(v: UInt32) -> Self { v.0 }
+}
+
+impl From<UInt32> for i32 {
+    #[inline]
+    fn from(v: UInt32) -> Self { v.0 as i32 }
+}
+
+impl From<UInt32> for usize {
+    #[inline]
+    fn from(v: UInt32) -> Self { v.0 as usize }
+}
+// Additional convenience implementations for testing and interoperability
+impl From<u32> for UInt32 {
+    #[inline]
+    fn from(v: u32) -> Self { UInt32(v) }
+}
+impl From<i32> for UInt32 {
+    #[inline]
+    fn from(v: i32) -> Self { UInt32(v as u32) }
+}
+impl From<usize> for UInt32 {
+    #[inline]
+    fn from(v: usize) -> Self { UInt32(v as u32) }
+}
+impl PartialEq<u32> for UInt32 {
+    fn eq(&self, other: &u32) -> bool { self.0 == *other }
+}
+impl PartialEq<UInt32> for u32 {
+    fn eq(&self, other: &UInt32) -> bool { *self == other.0 }
+}
+impl PartialOrd<u32> for UInt32 {
+    fn partial_cmp(&self, other: &u32) -> Option<std::cmp::Ordering> { self.0.partial_cmp(other) }
+}
+impl PartialOrd<UInt32> for u32 {
+    fn partial_cmp(&self, other: &UInt32) -> Option<std::cmp::Ordering> { self.partial_cmp(&other.0) }
+}

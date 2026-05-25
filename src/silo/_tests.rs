@@ -341,32 +341,33 @@ fn  StackExportImportOps()
  
 fn UIntTestFrom() 
 {
+    let  q = UInt32::from( 0);
     let a: UInt32 = 5u32.into();
-    assert_eq!(a.get(), 5);
+    assert_eq!(a.Get(), 5);
     let b: UInt32 = (-3i32).into();
-    assert_eq!(b.get(), (-3i32) as u32);
+    assert_eq!(b.Get(), (-3i32) as u32);
     let c: UInt32 = (10usize).into();
-    assert_eq!(c.get(), 10);
+    assert_eq!(c.Get(), 10);
 }
 
 fn UIntTestArith() 
 {
     let a = UInt32::from(10u32);
     let b = UInt32::from(3u32);
-    assert_eq!((a + b).get(), 13);
-    assert_eq!((a - b).get(), 7);
-    assert_eq!((a * b).get(), 30);
-    assert_eq!((a / b).get(), 3);
-    assert_eq!((a % b).get(), 1);
+    assert_eq!((a + b).Get(), 13);
+    assert_eq!((a - b).Get(), 7);
+    assert_eq!((a * b).Get(), 30);
+    assert_eq!((a / b).Get(), 3);
+    assert_eq!((a % b).Get(), 1);
 }
 
 fn UIntTestNegNot() 
 {
     let a = UInt32::from(0u32);
-    assert_eq!((-a).get(), 0);
+    assert_eq!((-a).Get(), 0);
     let b = UInt32::from(5u32);
-    assert_eq!((-b).get(), 0u32.wrapping_sub(5));
-    assert_eq!((!b).get(), !5u32);
+    assert_eq!((-b).Get(), 0u32.wrapping_sub(5));
+    assert_eq!((!b).Get(), !5u32);
 } 
 
 #[test]
