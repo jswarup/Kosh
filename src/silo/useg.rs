@@ -1,139 +1,127 @@
 //-- silo/useg.rs ---------------------------------------------------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
+use crate::silo::uint32::U32;
 #[derive( Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct USeg
 {
-    pub _First: u32,
-    pub _Last: u32,
+    pub _First: U32,
+    pub _Last: U32,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl USeg
 {
-    pub fn Create( first: u32, sz: u32) -> Self
+    pub fn Create(first: U32, sz: U32) -> Self
     {
         USeg
         {
             _First: first,
-            _Last: (first +sz).wrapping_sub( 1),
+            _Last: (first + sz) - U32::from(1),
         }
     }
 
-    pub fn First( &self) -> u32
-    {
+    pub fn First(&self) -> U32 {
         self._First
     }
 
-    pub fn Last( &self) -> u32
-    {
+    pub fn Last(&self) -> U32 {
         self._Last
     }
 
-    pub fn Mid( &self) -> u32
+    pub fn Mid(&self) -> U32
     {
-        ( self._First + self._Last) /2
+        // Compute mid as U32 using inner u32 arithmetic
+        let sum = self._First.as_u32() + self._Last.as_u32();
+        let mid = sum / 2;
+        U32::from(mid)
     }
 
-    pub fn Size( &self) -> u32
+    pub fn Size(&self) -> U32
     {
-        if self._Last >= self._First
-        {
-            self._Last.wrapping_add( 1).wrapping_sub( self._First)
-        }
-        else
-        {
-            0
-        }
-    }
-
-    pub fn IsEmpty( &self) -> bool
-    {
-        self.Size() == 0
-    }
-
-    pub fn LSnip( &self, count: u32) -> Self
-    {
-        if  self.Size() < count {
-            USeg::Create( u32::MAX, 0)
+        if self._Last >= self._First {
+            self._Last + U32::from(1) - self._First
         } else {
-            USeg::Create( self._First + count, self.Size() -count)
+            U32::from(0)
         }
     }
 
-    pub fn RSnip( &self, count: u32) -> Self
+    pub fn IsEmpty(&self) -> bool
     {
-        if  self.Size() < count {
-            USeg::Create( u32::MAX, 0)
+        self.Size() == U32::from(0)
+    }
+
+    pub fn LSnip(&self, count: U32) -> Self
+    {
+        if self.Size() < count {
+            USeg::Create(U32::Max(), U32::from(0))
         } else {
-            USeg::Create( self._First, self.Size() - count)
+            USeg::Create(self._First + count, self.Size() - count)
         }
     }
 
-    pub fn Span<F>( &self, mut f: F) -> bool
-        where
-            F: FnMut( u32) -> bool,
+    pub fn RSnip(&self, count: U32) -> Self
     {
-        if self.IsEmpty()
-        {
+        if self.Size() < count {
+            USeg::Create(U32::Max(), U32::from(0))
+        } else {
+            USeg::Create(self._First, self.Size() - count)
+        }
+    }
+
+    pub fn Span<F>(&self, mut f: F) -> bool
+    where
+        F: FnMut(U32) -> bool,
+    {
+        if self.IsEmpty() {
             return true;
         }
-        for i in self._First..=self._Last
-        {
-            if !f( i)
-            {
+        for i in self._First.as_u32()..=self._Last.as_u32() {
+            if !f(U32::from(i)) {
                 return false;
             }
         }
         true
     }
 
-    fn Partition<LessAt, SwapAt>( &self, lessAt: &LessAt, swapAt: &mut SwapAt) -> u32
-        where
-            LessAt: Fn( u32, u32) -> bool, SwapAt: FnMut( u32, u32),
+    fn Partition<LessAt, SwapAt>(&self, lessAt: &LessAt, swapAt: &mut SwapAt) -> U32
+    where
+        LessAt: Fn(U32, U32) -> bool,
+        SwapAt: FnMut(U32, U32),
     {
-        let     mid = self.Mid();
-        if lessAt( self._First, mid)
-        {
-            swapAt( self._First, mid);
+        let mid = self.Mid();
+        if lessAt(self._First, mid) {
+            swapAt(self._First, mid);
         }
         let mut pivot = self._First;
-        self.LSnip( 1).Span( &mut |i|
-        {
-            if lessAt( i, self._First)
-            {
-                pivot += 1;
-                swapAt( pivot, i);
+        self.LSnip(U32::from(1)).Span(&mut |i| {
+            if lessAt(i, self._First) {
+                pivot = pivot + U32::from(1);
+                swapAt(pivot, i);
             }
             true
         });
-        if lessAt( pivot, self._First)
-        {
-            swapAt( self._First, pivot);
+        if lessAt(pivot, self._First) {
+            swapAt(self._First, pivot);
         }
-        return pivot;
+        pivot
     }
 
 
-    pub fn QSort<LessAt, SwapAt>( &self, lessAt: &LessAt, swapAt: &mut SwapAt)
-        where
-            LessAt: Fn( u32, u32) -> bool, SwapAt: FnMut( u32, u32),
+    pub fn QSort<LessAt, SwapAt>(&self, lessAt: &LessAt, swapAt: &mut SwapAt)
+    where
+        LessAt: Fn(U32, U32) -> bool,
+        SwapAt: FnMut(U32, U32),
     {
-
-        let     pivot = self.Partition( lessAt, swapAt);
-
-        // Recursively sort the two sub-arrays
-        let     useg1 = USeg::Create( self._First, pivot - self._First);
-        if  useg1.Size() > 1
-        {
-            useg1.QSort( lessAt, swapAt);
+        let pivot = self.Partition(lessAt, swapAt);
+        let useg1 = USeg::Create(self._First, pivot - self._First);
+        if useg1.Size() > U32::from(1) {
+            useg1.QSort(lessAt, swapAt);
         }
-        let     useg2 = USeg::Create( pivot + 1, self._Last - pivot);
-        if useg2.Size() > 1
-        {
-            useg2.QSort( lessAt, swapAt);
+        let useg2 = USeg::Create(pivot + U32::from(1), self._Last - pivot);
+        if useg2.Size() > U32::from(1) {
+            useg2.QSort(lessAt, swapAt);
         }
     }
 

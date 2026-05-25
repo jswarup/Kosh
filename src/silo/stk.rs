@@ -1,6 +1,7 @@
 //-- stk.rs -------------------------------------------------------------------------------------------------------------------------
 
 use crate::silo::arr::Arr;
+use crate::silo::uint32::U32;
 use crate::silo::atm::Atm;
 use crate::silo::useg::USeg;
 
@@ -8,7 +9,7 @@ use crate::silo::useg::USeg;
 
 pub struct Stk<'a, 'b, T>
 {
-    _Size: &'a mut Atm< u32>,
+    _Size: &'a mut Atm<U32>,
     _Arr: &'b mut Arr<'b, T>,
 }
 
@@ -16,23 +17,23 @@ pub struct Stk<'a, 'b, T>
 
 impl<'a, 'b, T> Stk<'a, 'b, T>
 {
-    pub fn Create(_Size: &'a mut Atm<u32>, _Arr: &'b mut Arr<'b, T>) -> Self
+    pub fn Create(_Size: &'a mut Atm<U32>, _Arr: &'b mut Arr<'b, T>) -> Self
     {
         Self { _Size, _Arr }
     }
 
-    pub fn Size( &self) -> u32
+    pub fn Size( &self) -> U32
     {
         self._Size.Get()
     }
-    pub fn SzVoid( &self) -> u32
+    pub fn SzVoid( &self) -> U32
     {
-        self._Arr.Size() -self.Size()
+        self._Arr.Size() - self.Size()
     }
 
     pub fn USeg( &self) -> USeg
     {
-        USeg::Create( 0, self.Size())
+        USeg::Create( U32::from(0), self.Size())
     }
 
     pub fn Arr( &self) -> Arr< 'b, T>
@@ -43,12 +44,12 @@ impl<'a, 'b, T> Stk<'a, 'b, T>
     pub fn Pop( &mut self, val: &mut T) -> bool where T: Default + Clone
     {
         let sz = self.Size();
-        if ( sz == 0) ||
-            ( self._Size.CompareExchange(sz, sz - 1, std::sync::atomic::Ordering::SeqCst, std::sync::atomic::Ordering::SeqCst).is_err())
+        if ( sz == U32::from(0)) ||
+            ( self._Size.CompareExchange(sz, sz - U32::from(1), std::sync::atomic::Ordering::SeqCst, std::sync::atomic::Ordering::SeqCst).is_err())
         {
             return false;
         }
-        *val = self._Arr.At( sz - 1).clone();
+        *val = self._Arr.At( sz - U32::from(1)).clone();
         true
     }
 
@@ -56,7 +57,7 @@ impl<'a, 'b, T> Stk<'a, 'b, T>
     {
         let sz = self.Size();
         if (sz >= self._Arr.Size()) ||
-            self._Size.CompareExchange(sz, sz + 1, std::sync::atomic::Ordering::SeqCst, std::sync::atomic::Ordering::SeqCst).is_err()
+            self._Size.CompareExchange(sz, sz + U32::from(1), std::sync::atomic::Ordering::SeqCst, std::sync::atomic::Ordering::SeqCst).is_err()
         {
             return false;
         }
@@ -64,7 +65,7 @@ impl<'a, 'b, T> Stk<'a, 'b, T>
         true
     }
 
-    pub fn Import(&mut self, stk: &mut Stk<'_, '_, T>, maxMov: u32) -> u32 where T: Clone
+    pub fn Import(&mut self, stk: &mut Stk<'_, '_, T>, maxMov: U32) -> U32 where T: Clone
     {
         let szAlloc = loop {
             let     sz = self.Size();
@@ -79,15 +80,15 @@ impl<'a, 'b, T> Stk<'a, 'b, T>
             }
         };
         let sz = self.Size();
-        let stkSz = stk._Size.FetchAdd( (0u32).wrapping_sub(szAlloc), std::sync::atomic::Ordering::SeqCst) - szAlloc;
-        USeg::Create(0, szAlloc).Span( | i| {
+        let stkSz = stk._Size.FetchAdd( U32::from(0) - szAlloc, std::sync::atomic::Ordering::SeqCst) - szAlloc;
+        USeg::Create(U32::from(0), szAlloc).Span( | i| {
             self._Arr.SetAt( sz - szAlloc + i, stk._Arr.At( stkSz + i));
             true
         });
         szAlloc
     }
 
-    pub fn Export(&mut self, stk: &mut Stk<'_, '_, T>, maxMov: u32) -> u32 where T: Clone
+    pub fn Export(&mut self, stk: &mut Stk<'_, '_, T>, maxMov: U32) -> U32 where T: Clone
     {
         let szAlloc = loop {
             let     sz = stk.Size();
@@ -96,14 +97,14 @@ impl<'a, 'b, T> Stk<'a, 'b, T>
             szAlloc = if szAlloc > maxMov { maxMov } else { szAlloc };
 
             if szAlloc == 0 ||
-                self._Size.CompareExchange( sz, sz.wrapping_sub( szAlloc), std::sync::atomic::Ordering::SeqCst, std::sync::atomic::Ordering::SeqCst).is_ok()
+                self._Size.CompareExchange( sz, sz - szAlloc, std::sync::atomic::Ordering::SeqCst, std::sync::atomic::Ordering::SeqCst).is_ok()
             {
                 break szAlloc;
             }
         };
         let stkSz = self.Size();
-        let sz = self._Size.FetchAdd( (0u32).wrapping_sub(szAlloc), std::sync::atomic::Ordering::SeqCst) - szAlloc;
-        USeg::Create(0, szAlloc).Span( | i| {
+        let sz = self._Size.FetchAdd( U32::from(0) - szAlloc, std::sync::atomic::Ordering::SeqCst) - szAlloc;
+        USeg::Create(U32::from(0), szAlloc).Span( | i| {
             stk._Arr.SetAt( stkSz - szAlloc + i, self._Arr.At( sz + i));
             true
         });

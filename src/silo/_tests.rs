@@ -91,22 +91,22 @@ fn ArrBasicOpsTest()
         arr[ 1] = 100;
 
         // Test At
-        assert_eq!( *arr.At( 1), 100);
+        assert_eq!( *arr.At( U32::from(1)), 100);
 
         // Test SetAt
-        arr.SetAt( 2, &200);
-        assert_eq!( *arr.At( 2), 200);
+        arr.SetAt( U32::from(2), &200u32);
+        assert_eq!( *arr.At( U32::from(2)), 200);
 
         // Test MoveAt
         let mut val = 300;
-        arr.MoveAt( 0, &mut val);
-        assert_eq!( *arr.At( 0), 300);
+        arr.MoveAt( U32::from(0), &mut val);
+        assert_eq!( *arr.At( U32::from(0)), 300);
         assert_eq!( val, 0); // 0 is i32 default
 
         // Test SwapAt
-        arr.SwapAt( 0, 2);
-        assert_eq!( *arr.At( 0), 200);
-        assert_eq!( *arr.At( 2), 300);
+        arr.SwapAt( U32::from(0), U32::from(2));
+        assert_eq!( *arr.At( U32::from(0)), 200);
+        assert_eq!( *arr.At( U32::from(2)), 300);
     }
     assert_eq!( buff[ 0], 200);
     assert_eq!( buff[ 1], 100);
@@ -124,7 +124,7 @@ fn ArrBasicOpsTest()
 #[test]
 fn USegBasicOpsTest()
 {
-    let seg = USeg::Create( 10, 11);
+    let seg = USeg::Create( U32::from(10), U32::from(11));
     assert_eq!( seg.First(), 10);
     assert_eq!( seg.Last(), 20);
     assert_eq!( seg.Size(), 11);
@@ -136,30 +136,30 @@ fn USegBasicOpsTest()
 #[test]
 fn USegSnipTest()
 {
-    let seg = USeg::Create( 10, 11);
+    let seg = USeg::Create( U32::from(10), U32::from(11));
 
     // Test LSnip
-    let lSnipped = seg.LSnip( 5);
+    let lSnipped = seg.LSnip( U32::from(5));
     assert_eq!( lSnipped.First(), 15);
     assert_eq!( lSnipped.Last(), 20);
     assert_eq!( lSnipped.Size(), 6);
 
-    let lEmpty = seg.LSnip( 11);
+    let lEmpty = seg.LSnip( U32::from(11));
     assert!( lEmpty.IsEmpty());
 
-    let lOverflow = seg.LSnip( 15);
+    let lOverflow = seg.LSnip( U32::from(15));
     assert!( lOverflow.IsEmpty());
 
     // Test RSnip
-    let rSnipped = seg.RSnip( 4);
+    let rSnipped = seg.RSnip( U32::from(4));
     assert_eq!( rSnipped.First(), 10);
     assert_eq!( rSnipped.Last(), 16);
     assert_eq!( rSnipped.Size(), 7);
 
-    let rEmpty = seg.RSnip( 11);
+    let rEmpty = seg.RSnip( U32::from(11));
     assert!( rEmpty.IsEmpty());
 
-    let rUnderflow = seg.RSnip( 20);
+    let rUnderflow = seg.RSnip( U32::from(20));
     assert!( rUnderflow.IsEmpty());
 }
 
@@ -168,7 +168,7 @@ fn USegSnipTest()
 #[test]
 fn USegSpanTest()
 {
-    let seg = USeg::Create( 10, 6);
+    let seg = USeg::Create( U32::from(10), U32::from(6));
 
     // Case 1: All values return true
     let mut visited = Vec::new();
@@ -198,9 +198,9 @@ fn QSortTest()
     //let     buff =  Buff::New( 5, | i| i);
 
     let     arr = buff.AsArr();
-    arr.USeg().QSort( &| i, j| { arr.At( i) > arr.At( j) }, &mut | i, j| { arr.SwapAt(i, j);});
+    arr.USeg().QSort(&| i, j| { arr.At(i) > arr.At(j) }, &mut | i, j| { arr.SwapAt(i, j); });
     print!{ "{:?}\n", arr};
-    let     res = arr.USeg().RSnip(1).Span(| k|{ arr.At( k) > arr.At( k +1)});
+    let     res = arr.USeg().RSnip(U32::from(1)).Span(| k| { arr.At(k) > arr.At(k + U32::from(1)) });
     assert!( res);
 }
 
@@ -249,21 +249,21 @@ fn  StackBasicOps()
     // Create a buffer of size 10 initialized with zeros
     let mut buff = Buff::Create(10, |_| 0u32);
     // Atomic counter for size tracking
-    let mut atm = Atm::New(0u32);
+    let mut atm = Atm::New(U32::from(0));
     // Obtain a mutable Arr view over the buffer
     let mut arr = buff.AsMutArr();
     // Create the stack
     let mut stack = Stk::Create(&mut atm, &mut arr);
 
     // Stack should start empty
-    assert_eq!(stack.Size(), 0);
+    assert_eq!(stack.Size(), U32::from(0));
 
     // Push values 1..=5 onto the stack
     for i in 1..=5u32 {
         let mut val = i;
         assert!(stack.Push(&mut val), "push failed at {}", i);
     }
-    assert_eq!(stack.Size(), 5);
+    assert_eq!(stack.Size(), U32::from(5));
 
 
     // Pop values and verify LIFO order
@@ -272,7 +272,7 @@ fn  StackBasicOps()
         assert!(stack.Pop(&mut out), "pop failed at {}", expected);
         assert_eq!(out, expected);
     }
-    assert_eq!(stack.Size(), 0);
+    assert_eq!(stack.Size(), U32::from(0));
 
     // Popping from an empty stack should return false
     let mut out = 0u32;
@@ -285,7 +285,7 @@ fn  StackExportImportOps()
 {
     // Source stack with initial values 1..=5
     let mut src_buff = Buff::Create(10, |_| 0u32);
-    let mut src_atm = Atm::New(0u32);
+    let mut src_atm = Atm::New(U32::from(0));
     let mut src_arr = src_buff.AsMutArr();
     let mut src_stack = Stk::Create(&mut src_atm, &mut src_arr);
     for i in 1..=5u32 {
@@ -296,16 +296,16 @@ fn  StackExportImportOps()
 
     // Destination stack initially empty
     let mut dst_buff = Buff::Create(10, |_| 0u32);
-    let mut dst_atm = Atm::New(0u32);
+    let mut dst_atm = Atm::New(U32::from(0));
     let mut dst_arr = dst_buff.AsMutArr();
     let mut dst_stack = Stk::Create(&mut dst_atm, &mut dst_arr);
     assert_eq!(dst_stack.Size(), 0);
 
     // Export from source to destination (move all 5 elements)
-    let moved = src_stack.Export(&mut dst_stack, 5);
-    assert_eq!(moved, 5);
-    assert_eq!(src_stack.Size(), 0);
-    assert_eq!(dst_stack.Size(), 5);
+    let moved = src_stack.Export(&mut dst_stack, U32::from(5));
+    assert_eq!(moved, U32::from(5));
+    assert_eq!(src_stack.Size(), U32::from(0));
+    assert_eq!(dst_stack.Size(), U32::from(5));
 
     // Verify order in destination stack (should be LIFO 5..=1)
     for expected in (1..=5u32).rev() {
@@ -323,10 +323,10 @@ fn  StackExportImportOps()
     assert_eq!(src_stack.Size(), 5);
 
     // Import from source into destination (move all 5 elements)
-    let imported = dst_stack.Import(&mut src_stack, 5);
+    let imported = dst_stack.Import(&mut src_stack, U32::from(5));
     // Import uses a mutable reference, src_stack remains usable.
-    assert_eq!(imported, 5);
-    assert_eq!(dst_stack.Size(), 5);
+    assert_eq!(imported, U32::from(5));
+    assert_eq!(dst_stack.Size(), U32::from(5));
 
     // Verify imported order (LIFO, should be 14..=10)
     for expected in (10..=14u32).rev() {

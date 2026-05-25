@@ -5,6 +5,7 @@ use std::ops::{ Deref, DerefMut};
 use std::ptr::NonNull;
 
 use crate::silo::useg::USeg;
+use crate::silo::uint32::U32;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -29,67 +30,64 @@ impl<'a, T> Arr<'a, T>
         Arr { _Ptr: ptr, _Size: size, _Marker: PhantomData, }
     }
 
-    pub fn Size( &self) -> u32
+    pub fn Size( &self) -> U32
     {
-        self._Size
+        U32::from(self._Size)
     }
 
-    pub fn len( &self) -> u32
+    pub fn len( &self) -> U32
     {
         self.Size()
     }
 
-    pub fn At( &self, k:u32) -> &T
+    pub fn At( &self, k:U32) -> &T
     {
-        unsafe
-        {
-            self._Ptr.add( k as usize).as_ref()
+        unsafe {
+            &*self._Ptr.as_ptr().add(k.as_u32() as usize)
         }
     }
 
 
-    pub fn SetAt( &self, k:u32, a :&T) where T: Clone
+    pub fn SetAt( &self, k:U32, a :&T) where T: Clone
     {
-        unsafe
-        {
-            *self._Ptr.add( k as usize).as_mut() = a.clone();
+        unsafe {
+            *self._Ptr.as_ptr().add(k.as_u32() as usize) = a.clone();
         }
     }
 
-    pub fn MoveAt( &self, k: u32, a: &mut T) where T: Default
+    pub fn MoveAt( &self, k:U32, a: &mut T) where T: Default
     {
-        unsafe
-        {
-            *self._Ptr.add( k as usize).as_mut() = std::mem::take( a);
+        unsafe {
+            *self._Ptr.as_ptr().add(k.as_u32() as usize) = std::mem::take(a);
         }
     }
 
-    pub fn SwapAt( &self, i: u32, j: u32)
+    pub fn SwapAt( &self, i:U32, j:U32)
     {
         unsafe
         {
-            std::ptr::swap( self._Ptr.add( i as usize).as_ptr(), self._Ptr.add( j as usize).as_ptr());
+            std::ptr::swap( self._Ptr.add( i.as_u32() as usize).as_ptr(), self._Ptr.add( j.as_u32() as usize).as_ptr());
         }
     }
 
     pub fn IsEmpty( &self) -> bool
     {
-        self.Size() == 0
+        self.Size() == U32::from(0)
     }
 
     pub fn  USeg( &self) ->USeg
     {
-        USeg::Create( 0, self.Size())
+        USeg::Create( U32::from(0), self.Size())
     }
 
-    pub fn LSnip( &self, count: u32) -> Self
+    pub fn LSnip( &self, count: U32) -> Self
     {
-        Arr::New( unsafe { self._Ptr.add( count as usize) }, self.Size() - count)
+        Arr::New( unsafe { self._Ptr.add(count.as_u32() as usize) }, (self.Size() - count).as_u32())
     }
 
-    pub fn RSnip( &self, count: u32) -> Self
+    pub fn RSnip( &self, count: U32) -> Self
     {
-        Arr::New( self._Ptr, self.Size() - count)
+        Arr::New( self._Ptr, (self.Size() - count).as_u32())
     }
 
 
