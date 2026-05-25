@@ -12,7 +12,7 @@ use crate::silo::uint32::U32;
 pub struct Arr<'a, T>
 {
     _Ptr: NonNull<T>,
-    _Size: u32,
+    _Size: U32,
     _Marker: PhantomData<&'a T>,
 }
 
@@ -25,14 +25,14 @@ unsafe impl<'a, T: Sync> Sync for Arr<'a, T> {}
 
 impl<'a, T> Arr<'a, T>
 {
-    pub fn New( ptr: NonNull<T>, size: u32) -> Self
+    pub fn New( ptr: NonNull<T>, size: U32) -> Self
     {
         Arr { _Ptr: ptr, _Size: size, _Marker: PhantomData, }
     }
 
     pub fn Size( &self) -> U32
     {
-        U32::from(self._Size)
+        self._Size
     }
 
     pub fn len( &self) -> U32
@@ -82,12 +82,12 @@ impl<'a, T> Arr<'a, T>
 
     pub fn LSnip( &self, count: U32) -> Self
     {
-        Arr::New( unsafe { self._Ptr.add(count.as_u32() as usize) }, (self.Size() - count).as_u32())
+        Arr::New( unsafe { self._Ptr.add(count.as_u32() as usize) }, self.Size() - count)
     }
 
     pub fn RSnip( &self, count: U32) -> Self
     {
-        Arr::New( self._Ptr, (self.Size() - count).as_u32())
+        Arr::New( self._Ptr, self.Size() - count)
     }
 
 
@@ -114,7 +114,7 @@ impl<'a, T> Deref for Arr<'a, T>
     {
         unsafe
         {
-            std::slice::from_raw_parts( self._Ptr.as_ptr(), self._Size as usize)
+            std::slice::from_raw_parts( self._Ptr.as_ptr(), usize::from(self._Size))
         }
     }
 }
@@ -127,7 +127,7 @@ impl<'a, T> DerefMut for Arr<'a, T>
     {
         unsafe
         {
-            std::slice::from_raw_parts_mut( self._Ptr.as_ptr(), self._Size as usize)
+            std::slice::from_raw_parts_mut( self._Ptr.as_ptr(), usize::from(self._Size))
         }
     }
 }

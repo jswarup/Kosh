@@ -26,6 +26,13 @@ impl U32 {
     pub const fn as_u32(self) -> u32 {
         self.0
     }
+
+    /// Get the inner `u32` value.
+    #[inline]
+    pub const fn as_usize(self) -> usize {
+        self.0 as usize
+    }
+
     /// Maximum value for `U32`.
     #[inline]
     pub const fn Max() -> Self {

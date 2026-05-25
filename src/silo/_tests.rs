@@ -281,6 +281,7 @@ fn  StackBasicOps()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 //#[test]
+#[allow(dead_code)]
 fn  StackExportImportOps()
 {
     // Source stack with initial values 1..=5
@@ -341,7 +342,7 @@ fn  StackExportImportOps()
  
 fn UIntTestFrom() 
 {
-    let  q = U32::from( 0);
+    let _q = U32::from(0);
     let a: U32 = 5u32.into();
     assert_eq!(a, 5);
     let b: U32 = (-3i32).into();

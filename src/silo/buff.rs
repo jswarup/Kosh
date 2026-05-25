@@ -6,7 +6,7 @@ use std::ptr::NonNull;
 use crate::silo::arr::Arr;
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
+use crate::silo::uint32::U32;
 pub struct Buff<T>
 {
     _Ptr: NonNull<[ T]>,
@@ -23,16 +23,16 @@ impl<T> Buff<T>
 {
     pub fn IsEmpty( &self) -> bool { self.is_empty() }
 
-    pub fn Size( &self) -> u32
+    pub fn Size( &self) -> U32
     {
-        self._Ptr.len() as u32
+        U32::from(self._Ptr.len() as u32)
     }
 
-    pub fn Resize( &mut self, newSize: u32) where T: Default
+    pub fn Resize( &mut self, newSize: U32) where T: Default
     {
-        let newSize = newSize as usize;
+        let newSize_usize = usize::from(newSize);
         let oldSize = self._Ptr.len();
-        if newSize <= oldSize
+        if newSize_usize <= oldSize
         {
             return;
         }
@@ -40,14 +40,14 @@ impl<T> Buff<T>
         let isZst = std::mem::size_of::<T>() == 0;
         if isZst
         {
-            self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), newSize);
+            self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), newSize_usize);
             return;
         }
 
         unsafe
         {
             let oldLayout = Layout::array::<T>( oldSize).unwrap();
-            let newLayout = Layout::array::<T>( newSize).unwrap();
+            let newLayout = Layout::array::<T>( newSize_usize).unwrap();
 
             let rawPtr = if oldSize == 0 {
                 alloc( newLayout)
@@ -99,7 +99,7 @@ impl<T> Buff<T>
                 _Phantom: std::marker::PhantomData,
             };
 
-            for i in oldSize..newSize
+            for i in oldSize..newSize_usize
             {
                 std::ptr::write( rawPtrT.add( i), T::default());
                 guard._InitCount += 1;
@@ -108,16 +108,17 @@ impl<T> Buff<T>
             std::mem::forget( guard);
 
             let nonNullPtr = NonNull::new_unchecked( rawPtrT);
-            self._Ptr = NonNull::slice_from_raw_parts( nonNullPtr, newSize);
+            self._Ptr = NonNull::slice_from_raw_parts( nonNullPtr, newSize_usize);
         }
     }
 
-    pub fn ResizeD< Dispenser>( &mut self, newSize: u32, dispenser: Dispenser)
+    pub fn ResizeD< Dispenser>( &mut self, newSize: U32, dispenser: Dispenser)
         where
-            Dispenser: Fn( u32) -> T
+            Dispenser: Fn( U32) -> T
     {
-        let oldSize = self._Ptr.len() as u32;
-        if newSize <= oldSize
+        let newSize_usize = usize::from(newSize);
+        let oldSize = self._Ptr.len();
+        if newSize_usize <= oldSize
         {
             return;
         }
@@ -125,14 +126,14 @@ impl<T> Buff<T>
         let isZst = std::mem::size_of::<T>() == 0;
         if isZst
         {
-            self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), newSize as usize);
+            self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), newSize_usize);
             return;
         }
 
         unsafe
         {
-            let oldLayout = Layout::array::<T>( oldSize as usize).unwrap();
-            let newLayout = Layout::array::<T>( newSize as usize).unwrap();
+            let oldLayout = Layout::array::<T>( oldSize).unwrap();
+            let newLayout = Layout::array::<T>( newSize_usize).unwrap();
 
             let rawPtr = if oldSize == 0 {
                 alloc( newLayout)
@@ -179,21 +180,21 @@ impl<T> Buff<T>
             let mut guard = ResizeGuard::<T> {
                 _RawPtr: rawPtr,
                 _NewLayout: newLayout,
-                _OldSize: oldSize  as usize,
+                _OldSize: oldSize,
                 _InitCount: 0,
                 _Phantom: std::marker::PhantomData,
             };
 
-            for i in oldSize..newSize
+            for i in oldSize..newSize_usize
             {
-                std::ptr::write( rawPtrT.add( i  as usize), dispenser( i));
+                std::ptr::write( rawPtrT.add( i), dispenser( U32::from(i as u32)));
                 guard._InitCount += 1;
             }
 
             std::mem::forget( guard);
 
             let nonNullPtr = NonNull::new_unchecked( rawPtrT);
-            self._Ptr = NonNull::slice_from_raw_parts( nonNullPtr, newSize as usize);
+            self._Ptr = NonNull::slice_from_raw_parts( nonNullPtr, newSize_usize);
         }
     }
 
@@ -260,10 +261,11 @@ impl<T> Buff<T>
     }
 
 
-    pub fn New( size: u32, initialValue: T) -> Self
+    pub fn New<S: Into<U32>>(size: S, initialValue: T) -> Self
         where T :Clone
     {
-        Buff::Create( size, |_| { initialValue.clone() })
+        let sz = size.into();
+        Buff::Create(sz.as_u32(), |_| { initialValue.clone() })
     }
 }
 
@@ -277,12 +279,12 @@ impl<T> Buff<T>
 {
     pub fn AsArr( &self) -> Arr<'_, T>
     {
-        Arr::New( self._Ptr.cast::<T>(), self._Ptr.len() as u32)
+        Arr::New( self._Ptr.cast::<T>(), U32::from(self._Ptr.len() as u32))
     }
 
     pub fn AsMutArr( &mut self) -> Arr<'_, T>
     {
-        Arr::New( self._Ptr.cast::<T>(), self._Ptr.len() as u32)
+        Arr::New( self._Ptr.cast::<T>(), U32::from(self._Ptr.len() as u32))
     }
 }
 
