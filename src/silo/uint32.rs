@@ -9,7 +9,29 @@ use std::sync::atomic::{AtomicU32, Ordering};
 #[repr(transparent)]
 pub struct U32(pub u32);
 
-impl U32 { 
+impl U32 {
+    /// Create a `U32` from a primitive `u32` (inherent method).
+    #[inline]
+    pub const fn from(v: u32) -> Self {
+        U32(v)
+    }
+    /// Create a `U32` from a primitive `u32`.
+    #[inline]
+    pub const fn from_u32(v: u32) -> Self {
+        U32(v)
+    }
+
+    /// Get the inner `u32` value.
+    #[inline]
+    pub const fn as_u32(self) -> u32 {
+        self.0
+    }
+    /// Maximum value for `U32`.
+    #[inline]
+    pub const fn Max() -> Self {
+        U32(u32::MAX)
+    }
+
     pub const fn Get(self) -> u32 {
         self.0
     }  
