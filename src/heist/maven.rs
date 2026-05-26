@@ -9,7 +9,7 @@ use crate::silo::atm::Spinlock;
 /// Trait to abstract Atelier
 
 #[allow(dead_code)]
-trait AtelierT
+pub(crate) trait AtelierT
 {
     fn  IncrPredAt( &mut self, jobId: u16, inc : u16) -> u16;
     fn  GrabJob( &mut self) -> u16 ;
@@ -21,7 +21,7 @@ trait AtelierT
 }
 
 
-struct Maven
+pub struct Maven
 {
     _Index: U16,
     _CurSuccId: U16,
