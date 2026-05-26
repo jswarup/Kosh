@@ -55,7 +55,7 @@ impl USeg
     pub fn LSnip(&self, count: U32) -> Self
     {
         if self.Size() < count {
-            USeg::Create(U32::Max(), U32::from(0))
+            USeg::Create(U32::_X, U32::from(0))
         } else {
             USeg::Create(self._First + count, self.Size() - count)
         }
@@ -64,7 +64,7 @@ impl USeg
     pub fn RSnip(&self, count: U32) -> Self
     {
         if self.Size() < count {
-            USeg::Create(U32::Max(), U32::from(0))
+            USeg::Create(U32::_X, U32::from(0))
         } else {
             USeg::Create(self._First, self.Size() - count)
         }

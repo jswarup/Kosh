@@ -11,6 +11,10 @@ use crate::silo::atm::AtomicInt;
 pub struct U32(pub u32);
 
 impl U32 {
+    pub const _X: Self = U32::from( u32::MAX);
+    pub const _0: Self = U32::from( 0u32);
+    pub const _1: Self = U32::from( 1u32);
+
     /// Create a `U32` from a primitive `u32` (inherent method).
     #[inline]
     pub const fn from(v: u32) -> Self {
@@ -21,7 +25,9 @@ impl U32 {
     pub const fn from_u32(v: u32) -> Self {
         U32(v)
     }
-
+    pub const fn from_usize(v: usize) -> Self {
+        U32(v as u32)
+    }
     /// Get the inner `u32` value.
     #[inline]
     pub const fn as_u32(self) -> u32 {
@@ -32,12 +38,6 @@ impl U32 {
     #[inline]
     pub const fn as_usize(self) -> usize {
         self.0 as usize
-    }
-
-    /// Maximum value for `U32`.
-    #[inline]
-    pub const fn Max() -> Self {
-        U32(u32::MAX)
     }
 
     pub const fn Get(self) -> u32 {
@@ -51,6 +51,10 @@ impl U32 {
 pub struct U16(pub u16);
 
 impl U16 {
+    pub const _X: Self = U16::from( u16::MAX);
+    pub const _0: Self = U16::from( 0u16);
+    pub const _1: Self = U16::from( 1u16);
+
     /// Create a `U16` from a primitive `u16` (inherent method).
     #[inline]
     pub const fn from(v: u16) -> Self {

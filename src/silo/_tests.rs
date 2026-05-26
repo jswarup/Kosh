@@ -69,7 +69,7 @@ fn BufZSTTest()
 #[test]
 fn BuffSendSyncTest()
 {
-    let buff = Buff::Create( 5, |_| {42});
+    let buff = Buff::Create( U32::from( 5), |_| {42});
     let handle = std::thread::spawn( move ||
     {
         assert_eq!( buff.len(), 5);
@@ -195,7 +195,7 @@ fn USegSpanTest()
 #[test]
 fn QSortTest()
 {
-    let     buff =  Buff::Create( 256, |_| rand::random::<f64>());
+    let     buff =  Buff::Create( U32( 256), |_| rand::random::<f64>());
     //let     buff =  Buff::New( 5, | i| i);
 
     let     arr = buff.AsArr();
@@ -248,7 +248,7 @@ fn TestAtmUsize() {
 fn  StackBasicOps()
 {
     // Create a buffer of size 10 initialized with zeros
-    let mut buff = Buff::Create(10, |_| 0u32);
+    let mut buff = Buff::Create( U32( 10), |_| 0u32);
     // Atomic counter for size tracking
     let mut atm = Atm::New(U32::from(0));
     // Obtain a mutable Arr view over the buffer

@@ -20,11 +20,21 @@ impl<T: Default> Stash<T>
     {
         Self
         {
-            _Buff: Buff::Create(sz.as_u32(), |_| T::default()),
+            _Buff: Buff::Create(sz , |_| T::default()),
             _Atm: Atm::New(U32::from(0)),
         }
     }
 
+
+    pub fn Create< Dispenser>( sz: U32, szStk : U32, dispenser: Dispenser) -> Self
+        where
+            Dispenser: Fn( U32) -> T
+    {   Self
+        {
+            _Buff: Buff::Create(sz, dispenser),
+            _Atm: Atm::New( szStk)
+        }
+    }
 
     pub fn Size( &self) -> U32 { self._Atm.Get() }
 

@@ -128,14 +128,14 @@ impl<T: AtomicInt> Atm<T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 /// A simple spinlock.
-pub struct SpinLock
+pub struct Spinlock
 {
     _Locked: AtomicBool,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl SpinLock
+impl Spinlock
 {
     //------------------------------------------------------------------------------------------------------------------------------
     /// Creates a new unlocked spinlock.
@@ -180,7 +180,7 @@ impl SpinLock
 /// An RAII implementation of a "scoped lock" of a spinlock.
 pub struct SpinLockGuard<'a>
 {
-    _Lock: &'a SpinLock,
+    _Lock: &'a Spinlock,
 }
 
 impl<'a> Drop for SpinLockGuard<'a>

@@ -198,20 +198,20 @@ impl<T> Buff<T>
         }
     }
 
-    pub fn Create< Dispenser>( size: u32, dispenser: Dispenser) -> Self
+    pub fn Create< Dispenser>( size: U32, dispenser: Dispenser) -> Self
         where
-            Dispenser: Fn( u32) -> T
+            Dispenser: Fn( U32) -> T
     {
         let     isZst = std::mem::size_of::<T>() == 0;
 
         if size == 0 || isZst
         {
-            let dangling = NonNull::slice_from_raw_parts( NonNull::dangling(), size as usize);
+            let dangling = NonNull::slice_from_raw_parts( NonNull::dangling(), size.as_usize());
             return Buff { _Ptr: dangling };
         }
 
         // Calculate layout for an array of T with length `size`
-        let     layout = Layout::array::<T>( size as usize).expect( "Layout calculation failed");
+        let     layout = Layout::array::<T>( size.as_usize()).expect( "Layout calculation failed");
 
         unsafe
         {
@@ -247,15 +247,15 @@ impl<T> Buff<T>
 
             let mut guard = RawAllocationGuard { _Ptr: rawPtr, _Layout: layout, _InitCount: 0 };
 
-            for i in 0..size                             // Initialize each element in the contiguous memory block
+            for i in 0..size.as_usize()                             // Initialize each element in the contiguous memory block
             {
-                std::ptr::write( rawPtr.add( i as usize), dispenser( i));
+                std::ptr::write( rawPtr.add( i), dispenser( U32( i as u32)));
                 guard._InitCount += 1;
             }
             _ = std::mem::ManuallyDrop::new( guard);                           // Defuse the guard so memory/elements aren't cleaned up when exiting the block
 
             let nonNullPtr = NonNull::new_unchecked( rawPtr);
-            let slicePtr = NonNull::slice_from_raw_parts( nonNullPtr, size as usize);
+            let slicePtr = NonNull::slice_from_raw_parts( nonNullPtr, size.as_usize());
             Buff { _Ptr: slicePtr }
         }
     }
@@ -265,7 +265,7 @@ impl<T> Buff<T>
         where T :Clone
     {
         let sz = size.into();
-        Buff::Create(sz.as_u32(), |_| { initialValue.clone() })
+        Buff::Create(sz, |_| { initialValue.clone() })
     }
 }
 

@@ -3,7 +3,7 @@
 use crate::silo::stk::Stk;
 use crate::silo::uint::{U32, U16};
 use crate::silo::stash::Stash;
-use crate::silo::atm::SpinLock;
+use crate::silo::atm::Spinlock;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 /// Trait to abstract Atelier
@@ -27,9 +27,28 @@ struct Maven
     _CurSuccId: U16,
     _SzProcessed : U32,
     _RunQueue : Stash< U16>,
-    _RunQlock : SpinLock,
+    _RunQlock : Spinlock,
     _JobCache : Stash< U16>,
     _TJobSilo : Stash< U16>,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl  Maven
+{
+    pub fn New( _sz: U32) -> Self
+    {
+        Self
+        {
+            _Index: U16::_X,
+            _CurSuccId: U16::_0,
+            _SzProcessed: U32::_0,
+            _RunQueue: Stash::<U16>::New( U32::from( 1024)),
+            _RunQlock: Spinlock::New(),
+            _JobCache: Stash::<U16>::New( U32::from( 64)),
+            _TJobSilo: Stash::<U16>::New( U32::from( 1024)),
+        }
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
