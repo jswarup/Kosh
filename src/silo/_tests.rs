@@ -327,7 +327,7 @@ fn UIntBasicOps()
 fn  StackExportImportOps()
 {
 
-    let mut srcStash = Stash::< U32>::Create( U32::from( 10));
+    let mut srcStash = Stash::< U32>::New( U32::from( 10));
     let mut srcStk = srcStash.Stk();
     for i in 1..=5u32 {
         let mut val = U32::from( i);
@@ -336,25 +336,24 @@ fn  StackExportImportOps()
     assert_eq!(srcStk.Size(), U32::from(5));
 
     // Destination stack initially empty
-    let mut dst_buff = Buff::Create(10, |_| U32::from(0));
-    let mut dst_atm = Atm::New(U32::from(0));
-    let dst_arr = dst_buff.AsMutArr();
-    let mut dst_stack = Stk::Create(&mut dst_atm, dst_arr);
-    assert_eq!(dst_stack.Size(), 0);
+    let mut dstStash = Stash::< U32>::New( U32::from( 10));
+    let mut dstStk = dstStash.Stk();
+
+    assert_eq!(dstStk.Size(), 0);
 
     // Export from source to destination (move all 5 elements)
-    let moved = srcStk.Export(&mut dst_stack, U32::from(5));
+    let moved = srcStk.Export(&mut dstStk, U32::from(5));
     assert_eq!(moved, U32::from(5));
     assert_eq!(srcStk.Size(), U32::from(0));
-    assert_eq!(dst_stack.Size(), U32::from(5));
+    assert_eq!(dstStk.Size(), U32::from(5));
 
     // Verify order in destination stack (should be LIFO 5..=1)
     for expected in (1..=5u32).rev() {
         let mut out =  U32::from( 0);
-        assert!(dst_stack.Pop(&mut out));
+        assert!(dstStk.Pop(&mut out));
         assert_eq!(out, expected);
     }
-    assert_eq!(dst_stack.Size(), 0);
+    assert_eq!(dstStk.Size(), 0);
 
     // Refill source stack for Import test
     for i in 10..=14u32 {
@@ -364,18 +363,18 @@ fn  StackExportImportOps()
     assert_eq!(srcStk.Size(), 5);
 
     // Import from source into destination (move all 5 elements)
-    let imported = dst_stack.Import(&mut srcStk, U32::from(5));
+    let imported = dstStk.Import(&mut srcStk, U32::from(5));
     // Import uses a mutable reference, srcStk remains usable.
     assert_eq!(imported, U32::from(5));
-    assert_eq!(dst_stack.Size(), U32::from(5));
+    assert_eq!(dstStk.Size(), U32::from(5));
 
     // Verify imported order (LIFO, should be 14..=10)
     for expected in (10..=14u32).rev() {
         let mut out = U32::from( 0);
-        assert!(dst_stack.Pop(&mut out));
+        assert!(dstStk.Pop(&mut out));
         assert_eq!(out, U32::from( expected));
     }
-    assert_eq!(dst_stack.Size(), 0);
+    assert_eq!(dstStk.Size(), 0);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
