@@ -251,9 +251,9 @@ fn  StackBasicOps()
     // Atomic counter for size tracking
     let mut atm = Atm::New(U32::from(0));
     // Obtain a mutable Arr view over the buffer
-    let mut arr = buff.AsMutArr();
+    let arr = buff.AsMutArr();
     // Create the stack
-    let mut stack = Stk::Create(&mut atm, &mut arr);
+    let mut stack = Stk::Create(&mut atm, arr);
 
     // Stack should start empty
     assert_eq!(stack.Size(), U32::from(0));
@@ -328,8 +328,8 @@ fn  StackExportImportOps()
     // Source stack with initial values 1..=5
     let mut src_buff = Buff::Create(10, |_| U32::from(0));
     let mut src_atm = Atm::New(U32::from(0));
-    let mut src_arr = src_buff.AsMutArr();
-    let mut src_stack = Stk::Create(&mut src_atm, &mut src_arr);
+    let src_arr = src_buff.AsMutArr();
+    let mut src_stack = Stk::Create(&mut src_atm, src_arr);
     for i in 1..=5u32 {
         let mut val = U32::from( i);
         assert!(src_stack.Push(&mut val));
@@ -339,8 +339,8 @@ fn  StackExportImportOps()
     // Destination stack initially empty
     let mut dst_buff = Buff::Create(10, |_| U32::from(0));
     let mut dst_atm = Atm::New(U32::from(0));
-    let mut dst_arr = dst_buff.AsMutArr();
-    let mut dst_stack = Stk::Create(&mut dst_atm, &mut dst_arr);
+    let dst_arr = dst_buff.AsMutArr();
+    let mut dst_stack = Stk::Create(&mut dst_atm, dst_arr);
     assert_eq!(dst_stack.Size(), 0);
 
     // Export from source to destination (move all 5 elements)

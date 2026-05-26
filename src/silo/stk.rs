@@ -10,14 +10,14 @@ use crate::silo::useg::USeg;
 pub struct Stk<'a, 'b, T>
 {
     _Size: &'a mut Atm<U32>,
-    _Arr: &'b mut Arr<'b, T>,
+    _Arr: Arr<'b, T>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl<'a, 'b, T> Stk<'a, 'b, T>
 {
-    pub fn Create(_Size: &'a mut Atm<U32>, _Arr: &'b mut Arr<'b, T>) -> Self
+    pub fn Create(_Size: &'a mut Atm<U32>, _Arr: Arr<'b, T>) -> Self
     {
         Self { _Size, _Arr }
     }
