@@ -11,9 +11,16 @@ pub struct Atelier {
 
 impl Atelier {
     pub fn New() -> Self {
-        Self {
-            _Mavens: Buff::Create(U32::from(16), |_i| Maven::New(U32::_0)),
+        let mut atelier = Self {
+            _Mavens: Buff::Create(U32::from(16), |_i| Maven::New(std::ptr::null_mut::<Atelier>() as *mut dyn AtelierT)),
+        };
+
+        let atelier_ptr = &mut atelier as *mut Atelier as *mut dyn AtelierT;
+        for i in 0..16 {
+            atelier._Mavens[i as usize].SetAtelier(atelier_ptr);
         }
+
+        atelier
     }
 }
 
