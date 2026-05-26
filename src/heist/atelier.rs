@@ -5,6 +5,7 @@ use crate::silo::buff::Buff;
 use crate::silo::uint::{ U16, U32};
 use crate::silo::stash::Stash;
 use crate::silo::atm::{ Atm, Spinlock};
+use std::sync::atomic::Ordering;
 use crate::heist::maven::{AtelierT, Maven};
 
 pub struct Atelier {
@@ -46,28 +47,46 @@ impl Atelier {
 }
 
 impl AtelierT for Atelier {
-    fn IncrPredAt(&mut self, _jobId: U16, _inc: U16) -> U16 {
-        U16::_0
+
+    fn IncrSzSchedJob(&mut self, inc: U32) -> U32 {
+        self._SzSchedJob.FetchAdd( inc, Ordering::SeqCst)
     }
 
-    fn GrabJob(&mut self) -> U16 {
-        U16::_0
+    fn IncrPredAt(&mut self, jobId: U16, inc: U16) -> U16 {
+        let idx = U32::from_U16(jobId);
+        let arr = self._SzPreds.AsMutArr();
+        let old = *arr.At(idx);
+        let new = old + inc;
+        arr.SetAt(idx, &new);
+        old
     }
 
     fn AllocJob(&mut self) -> U16 {
-        U16::_0
+        let mut     stk = self._JobSilo.Stk();
+        let mut     jobId = U16( 0);
+        if stk.Size() != 0 &&  stk.Pop( &mut jobId) { jobId } else { jobId }
     }
 
-    fn AllocJobs(&mut self, _stk: &mut Stk<U16>) -> U32 {
-        U32::_0
+    fn AllocJobs(&mut self, stk: &mut Stk<U16>) -> U32 {
+        let mut     freeJobs = self._JobSilo.Stk();
+        freeJobs.Export( stk, U32::_X)
     }
 
-    fn FreeJobs(&mut self, _stk: &mut Stk<U16>) -> U32 {
-        U32::_0
+    fn FreeJobs(&mut self, stk: &mut Stk<U16>) -> U32 {
+        let mut     freeJobs = self._JobSilo.Stk();
+        freeJobs.Import( stk, U32::_X)
     }
 
-    fn IncrSzSchedJob(&mut self, _inc: U32) -> U32 {
-        U32::_0
+    fn GrabJob(&mut self) -> U16 {
+        let mut     jobId = U16( 0);
+        for maven in self._Mavens.iter_mut()
+        {
+            jobId = maven.PopJob();
+            if jobId != 0 {
+                return jobId;
+            }
+        }
+        return jobId;
     }
 
     fn ExecuteJob(&mut self, _mavenInd: U16, _jobId: U16) {

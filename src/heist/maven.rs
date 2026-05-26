@@ -11,12 +11,12 @@ use crate::silo::atm::Spinlock;
 #[allow(dead_code)]
 pub trait AtelierT
 {
+    fn  IncrSzSchedJob( &mut self,  inc : U32) -> U32;
     fn  IncrPredAt( &mut self, jobId: U16, inc : U16) -> U16;
-    fn  GrabJob( &mut self) -> U16 ;
     fn  AllocJob( &mut self) -> U16 ;
     fn  AllocJobs( &mut self, stk: &mut Stk< U16>) -> U32;
     fn  FreeJobs( &mut self, stk: &mut Stk< U16>) -> U32;
-    fn  IncrSzSchedJob( &mut self,  inc : U32) -> U32;
+    fn  GrabJob( &mut self) -> U16 ;
     fn  ExecuteJob( &mut self,  mavenInd : U16,  jobId : U16);
 }
 

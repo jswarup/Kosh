@@ -28,6 +28,10 @@ impl U32 {
     pub const fn from_usize(v: usize) -> Self {
         U32(v as u32)
     }
+
+    pub const fn from_U16(v: U16) -> Self {
+        U32(v.0 as u32)
+    }
     /// Get the inner `u32` value.
     #[inline]
     pub const fn as_u32(self) -> u32 {
