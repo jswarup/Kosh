@@ -1,7 +1,7 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 #[warn(unused_imports)]
 
-use crate::silo::uint::U32;
+use crate::silo::uint::{U32, U16};
 use crate::silo::useg::USeg;
 use crate::silo::buff::Buff;
 use crate::silo::atm::Atm;
@@ -313,12 +313,46 @@ fn UIntTestNegNot()
     assert_eq!((!b), !5u32);
 }
 
+fn UInt16TestFrom()
+{
+    let _q = U16::from(0);
+    let a: U16 = 5u16.into();
+    assert_eq!(a, 5);
+    let b: U16 = (-3i32).into();
+    assert_eq!(b, (-3i32) as u16);
+    let c: U16 = (10usize).into();
+    assert_eq!(c, 10);
+}
+
+fn UInt16TestArith()
+{
+    let a = U16::from(10u16);
+    let b = U16::from(3u16);
+    assert_eq!((a + b) , 13);
+    assert_eq!((a - b), 7);
+    assert_eq!((a * b), 30);
+    assert_eq!((a / b), 3);
+    assert_eq!((a % b), 1);
+}
+
+fn UInt16TestNegNot()
+{
+    let a = U16::from(0u16);
+    assert_eq!((-a), 0);
+    let b = U16::from(5u16);
+    assert_eq!((-b), 0u16.wrapping_sub(5));
+    assert_eq!((!b), !5u16);
+}
+
 #[test]
 fn UIntBasicOps()
 {
     UIntTestFrom();
     UIntTestArith();
     UIntTestNegNot();
+    UInt16TestFrom();
+    UInt16TestArith();
+    UInt16TestNegNot();
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
