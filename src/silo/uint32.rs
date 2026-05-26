@@ -41,11 +41,11 @@ impl U32 {
 
     pub const fn Get(self) -> u32 {
         self.0
-    }  
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-// Implement common arithmetic operations between `U32` and any type that can be converted into `U32`. 
+// Implement common arithmetic operations between `U32` and any type that can be converted into `U32`.
 // This provides seamless usage like `a + b` where `a` and `b` may be `u32`, `i32`, or `usize`.
 
 macro_rules! impl_op {
@@ -65,7 +65,7 @@ macro_rules! impl_op {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl Add for U32 
+impl Add for U32
 {
     type Output = U32;
     fn add(self, rhs: U32) -> Self::Output {
@@ -73,14 +73,14 @@ impl Add for U32
     }
 }
 
-impl Sub for U32 
+impl Sub for U32
 {
     type Output = U32;
     fn sub(self, rhs: U32) -> Self::Output {
         U32(self.0.wrapping_sub( rhs.0))
     }
-} 
- 
+}
+
 impl_op!(Mul, mul, *);
 impl_op!(Div, div, /);
 impl_op!(Rem, rem, %);

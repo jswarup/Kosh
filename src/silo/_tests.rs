@@ -280,23 +280,64 @@ fn  StackBasicOps()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-//#[test]
+
+fn UIntTestFrom()
+{
+    let _q = U32::from(0);
+    let a: U32 = 5u32.into();
+    assert_eq!(a, 5);
+    let b: U32 = (-3i32).into();
+    assert_eq!(b, (-3i32) as u32);
+    let c: U32 = (10usize).into();
+    assert_eq!(c, 10);
+}
+
+fn UIntTestArith()
+{
+    let a = U32::from(10u32);
+    let b = U32::from(3u32);
+    assert_eq!((a + b) , 13);
+    assert_eq!((a - b), 7);
+    assert_eq!((a * b), 30);
+    assert_eq!((a / b), 3);
+    assert_eq!((a % b), 1);
+}
+
+fn UIntTestNegNot()
+{
+    let a = U32::from(0u32);
+    assert_eq!((-a), 0);
+    let b = U32::from(5u32);
+    assert_eq!((-b), 0u32.wrapping_sub(5));
+    assert_eq!((!b), !5u32);
+}
+
+#[test]
+fn UIntBasicOps()
+{
+    UIntTestFrom();
+    UIntTestArith();
+    UIntTestNegNot();
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+#[test]
 #[allow(dead_code)]
 fn  StackExportImportOps()
 {
     // Source stack with initial values 1..=5
-    let mut src_buff = Buff::Create(10, |_| 0);
+    let mut src_buff = Buff::Create(10, |_| U32::from(0));
     let mut src_atm = Atm::New(U32::from(0));
     let mut src_arr = src_buff.AsMutArr();
     let mut src_stack = Stk::Create(&mut src_atm, &mut src_arr);
     for i in 1..=5u32 {
-        let mut val = i;
+        let mut val = U32::from( i);
         assert!(src_stack.Push(&mut val));
     }
     assert_eq!(src_stack.Size(), U32::from(5));
 
     // Destination stack initially empty
-    let mut dst_buff = Buff::Create(10, |_| 0);
+    let mut dst_buff = Buff::Create(10, |_| U32::from(0));
     let mut dst_atm = Atm::New(U32::from(0));
     let mut dst_arr = dst_buff.AsMutArr();
     let mut dst_stack = Stk::Create(&mut dst_atm, &mut dst_arr);
@@ -310,7 +351,7 @@ fn  StackExportImportOps()
 
     // Verify order in destination stack (should be LIFO 5..=1)
     for expected in (1..=5u32).rev() {
-        let mut out = 0u32;
+        let mut out =  U32::from( 0);
         assert!(dst_stack.Pop(&mut out));
         assert_eq!(out, expected);
     }
@@ -318,7 +359,7 @@ fn  StackExportImportOps()
 
     // Refill source stack for Import test
     for i in 10..=14u32 {
-        let mut v = i;
+        let mut v = U32::from( i);
         assert!(src_stack.Push(&mut v));
     }
     assert_eq!(src_stack.Size(), 5);
@@ -331,52 +372,11 @@ fn  StackExportImportOps()
 
     // Verify imported order (LIFO, should be 14..=10)
     for expected in (10..=14u32).rev() {
-        let mut out = 0u32;
+        let mut out = U32::from( 0);
         assert!(dst_stack.Pop(&mut out));
-        assert_eq!(out, expected);
+        assert_eq!(out, U32::from( expected));
     }
     assert_eq!(dst_stack.Size(), 0);
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
- 
-fn UIntTestFrom() 
-{
-    let _q = U32::from(0);
-    let a: U32 = 5u32.into();
-    assert_eq!(a, 5);
-    let b: U32 = (-3i32).into();
-    assert_eq!(b, (-3i32) as u32);
-    let c: U32 = (10usize).into();
-    assert_eq!(c, 10);
-}
-
-fn UIntTestArith() 
-{
-    let a = U32::from(10u32);
-    let b = U32::from(3u32);
-    assert_eq!((a + b) , 13);
-    assert_eq!((a - b), 7);
-    assert_eq!((a * b), 30);
-    assert_eq!((a / b), 3);
-    assert_eq!((a % b), 1);
-}
-
-fn UIntTestNegNot() 
-{
-    let a = U32::from(0u32);
-    assert_eq!((-a), 0);
-    let b = U32::from(5u32);
-    assert_eq!((-b), 0u32.wrapping_sub(5));
-    assert_eq!((!b), !5u32);
-} 
-
-#[test]
-fn UIntBasicOps()
-{
-    UIntTestFrom();
-    UIntTestArith();
-    UIntTestNegNot();
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

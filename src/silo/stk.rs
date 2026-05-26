@@ -91,9 +91,11 @@ impl<'a, 'b, T> Stk<'a, 'b, T>
     pub fn Export(&mut self, stk: &mut Stk<'_, '_, T>, maxMov: U32) -> U32 where T: Clone
     {
         let szAlloc = loop {
-            let     sz = stk.Size();
-            let     szCacheVoid = stk._Arr.Size() - sz;
-            let mut szAlloc = if szCacheVoid < self.Size() { szCacheVoid } else { self.Size() };
+            let     szStk = stk.Size();
+            let     szStkVoid = stk._Arr.Size() - szStk;
+            let     sz = self.Size();
+
+            let mut szAlloc = if szStkVoid < sz { szStkVoid } else { sz };
             szAlloc = if szAlloc > maxMov { maxMov } else { szAlloc };
 
             if szAlloc == 0 ||
@@ -102,10 +104,10 @@ impl<'a, 'b, T> Stk<'a, 'b, T>
                 break szAlloc;
             }
         };
-        let stkSz = self.Size();
-        let sz = self._Size.FetchAdd( U32::from(0) - szAlloc, std::sync::atomic::Ordering::SeqCst) - szAlloc;
+        let     sz = self.Size();
+        let     szStk = stk._Size.FetchAdd( U32::from(0) +szAlloc, std::sync::atomic::Ordering::SeqCst);
         USeg::Create(U32::from(0), szAlloc).Span( | i| {
-            stk._Arr.SetAt( stkSz - szAlloc + i, self._Arr.At( sz + i));
+            stk._Arr.SetAt( szStk + i, self._Arr.At( sz + i));
             true
         });
         szAlloc
