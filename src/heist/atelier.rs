@@ -46,30 +46,30 @@ impl Atelier {
 }
 
 impl AtelierT for Atelier {
-    fn IncrPredAt(&mut self, _jobId: u16, _inc: u16) -> u16 {
-        0
+    fn IncrPredAt(&mut self, _jobId: U16, _inc: U16) -> U16 {
+        U16::_0
     }
 
-    fn GrabJob(&mut self) -> u16 {
-        0
+    fn GrabJob(&mut self) -> U16 {
+        U16::_0
     }
 
-    fn AllocJob(&mut self) -> u16 {
-        0
+    fn AllocJob(&mut self) -> U16 {
+        U16::_0
     }
 
-    fn AllocJobs(&mut self, _stk: &mut Stk<u16>) -> u32 {
-        0
+    fn AllocJobs(&mut self, _stk: &mut Stk<U16>) -> U32 {
+        U32::_0
     }
 
-    fn FreeJobs(&mut self, _stk: &mut Stk<u16>) -> u32 {
-        0
+    fn FreeJobs(&mut self, _stk: &mut Stk<U16>) -> U32 {
+        U32::_0
     }
 
-    fn IncrSzSchedJob(&mut self, _inc: u32) -> u32 {
-        0
+    fn IncrSzSchedJob(&mut self, _inc: U32) -> U32 {
+        U32::_0
     }
 
-    fn ExecuteJob(&mut self, _mavenInd: u16, _jobId: u16) {
+    fn ExecuteJob(&mut self, _mavenInd: U16, _jobId: U16) {
     }
 }

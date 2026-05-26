@@ -11,13 +11,13 @@ use crate::silo::atm::Spinlock;
 #[allow(dead_code)]
 pub trait AtelierT
 {
-    fn  IncrPredAt( &mut self, jobId: u16, inc : u16) -> u16;
-    fn  GrabJob( &mut self) -> u16 ;
-    fn  AllocJob( &mut self) -> u16 ;
-    fn  AllocJobs( &mut self, stk: &mut Stk< u16>) -> u32;
-    fn  FreeJobs( &mut self, stk: &mut Stk< u16>) -> u32;
-    fn  IncrSzSchedJob( &mut self,  inc : u32) -> u32;
-    fn  ExecuteJob( &mut self,  mavenInd : u16,  jobId : u16);
+    fn  IncrPredAt( &mut self, jobId: U16, inc : U16) -> U16;
+    fn  GrabJob( &mut self) -> U16 ;
+    fn  AllocJob( &mut self) -> U16 ;
+    fn  AllocJobs( &mut self, stk: &mut Stk< U16>) -> U32;
+    fn  FreeJobs( &mut self, stk: &mut Stk< U16>) -> U32;
+    fn  IncrSzSchedJob( &mut self,  inc : U32) -> U32;
+    fn  ExecuteJob( &mut self,  mavenInd : U16,  jobId : U16);
 }
 
 
@@ -62,6 +62,42 @@ impl  Maven
     pub fn Index( &self) ->U16 { self._Index}
 
     pub fn CurSuccId( &self) ->U16 { self._CurSuccId}
+
+    pub fn AllocJob( &mut self) -> U16
+    {
+        loop {
+            let mut     jobId = U16( 0);
+            let	mut     stk = self._JobCache.Stk();
+            if stk.Size() > 0 && stk.Pop( &mut jobId)
+            {
+                break jobId;
+            }
+            unsafe {
+                if (*self._Atelier).AllocJobs(&mut stk) == 0
+                {
+                    break jobId;
+                }
+            }
+        }
+    }
+
+    pub fn FreeJob( &mut self, jobId : &mut U16) -> bool
+    {
+        let mut     stk = self._JobCache.Stk();
+        loop {
+            if stk.SzVoid() != 0
+            {
+                stk.Push( jobId);
+                return true;
+            }
+            unsafe {
+                if (*self._Atelier).FreeJobs(&mut stk) == 0
+                {
+                    return false;
+                }
+            }
+        }
+    }
 
 }
 
