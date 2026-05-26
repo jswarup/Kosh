@@ -9,7 +9,7 @@ use crate::silo::stk::Stk;
 pub struct Stash<T>
 {
     _Buff: Buff< T>,
-    _Atm: Atm< U32>,
+    _Sz: Atm< U32>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -21,7 +21,7 @@ impl<T: Default> Stash<T>
         Self
         {
             _Buff: Buff::Create(sz , |_| T::default()),
-            _Atm: Atm::New(U32::from(0)),
+            _Sz: Atm::New(U32(0)),
         }
     }
 
@@ -32,15 +32,26 @@ impl<T: Default> Stash<T>
     {   Self
         {
             _Buff: Buff::Create(sz, dispenser),
-            _Atm: Atm::New( szStk)
+            _Sz: Atm::New( szStk)
         }
     }
 
-    pub fn Size( &self) -> U32 { self._Atm.Get() }
+    pub fn Size( &self) -> U32 { self._Sz.Get() }
 
     pub fn Stk( &mut self) -> Stk<'_, '_, T>
     {
-        Stk::Create(&mut self._Atm, self._Buff.AsMutArr())
+        Stk::Create(&mut self._Sz, self._Buff.AsMutArr())
+    }
+
+    pub fn DoIndexSetup( &mut self)
+    where T: From<usize> + Clone
+    {
+        let  arr = self._Buff.AsArr();
+        arr.USeg().Span( | i: U32 | {
+            arr.SetAt(i, &T::from(i.as_usize()));
+            true
+        });
+        self._Sz.Set( arr.Size());
     }
 }
 

@@ -48,10 +48,10 @@ impl  Maven
             _Index: U16::_X,
             _CurSuccId: U16::_0,
             _SzProcessed: U32::_0,
-            _RunQueue: Stash::<U16>::New( U32::from( 1024)),
+            _RunQueue: Stash::<U16>::New( U32( 1024)),
             _RunQlock: Spinlock::New(),
-            _JobCache: Stash::<U16>::New( U32::from( 64)),
-            _TJobSilo: Stash::<U16>::New( U32::from( 1024)),
+            _JobCache: Stash::<U16>::New( U32( 64)),
+            _TJobSilo: Stash::<U16>::New( U32( 1024)),
         }
     }
 

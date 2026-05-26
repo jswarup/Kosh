@@ -72,12 +72,12 @@ impl<'a, T> Arr<'a, T>
 
     pub fn IsEmpty( &self) -> bool
     {
-        self.Size() == U32::from(0)
+        self.Size() == U32(0)
     }
 
     pub fn  USeg( &self) ->USeg
     {
-        USeg::Create( U32::from(0), self.Size())
+        USeg::Create( U32(0), self.Size())
     }
 
     pub fn LSnip( &self, count: U32) -> Self
