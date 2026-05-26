@@ -99,11 +99,36 @@ impl  Maven
         }
     }
 
-    pub fn EnqueueJob( &mut self, jobId : &mut U16)
+    pub fn IncrSzSchedJob( &mut self, inc: U32) -> U32
     {
         unsafe {
-            (*self._Atelier).IncrSzSchedJob( U32(1));
+            return (*self._Atelier).IncrSzSchedJob( inc);
         }
+    }
+
+    pub fn IncrPredAt( &mut self, inc: U16) -> U16
+    {
+        unsafe {
+            return (*self._Atelier).IncrPredAt( self._CurSuccId, inc);
+        }
+    }
+
+    pub fn GrabJob( &mut self) -> U16
+    {
+        unsafe {
+            return (*self._Atelier).GrabJob();
+        }
+    }
+
+    pub fn ExecuteJob( &mut self, jobId: U16)
+    {
+        unsafe {
+            (*self._Atelier).ExecuteJob( self._Index, jobId);
+        }
+    }
+    pub fn EnqueueJob( &mut self, jobId : &mut U16)
+    {
+        self.IncrSzSchedJob( U32(1));
         let _guard = self._RunQlock.Lock();
         self._RunQueue.Stk().Push( jobId);
     }
@@ -123,6 +148,29 @@ impl  Maven
         return jobId;
     }
 
+
+    pub fn ExecuteLoop(  &mut self)
+    {
+        while self.IncrSzSchedJob( U32( 0) ) != 0
+        {
+            let mut szPred = U16( 0);
+            if self._CurSuccId != 0 {
+                szPred = self.IncrPredAt( U16::_0  - U16( 1) );
+            }
+            let mut jobId = if szPred == 0 { self._CurSuccId } else { U16( 0) };
+            if jobId == 0 {
+                jobId = self.PopJob();
+            }
+            if jobId == 0 {
+                jobId = self.GrabJob();
+            }
+            if jobId == 0 {
+                return;
+            }
+            self.ExecuteJob( jobId );
+        }
+        println!("{}: {} Done", self._Index, self._SzProcessed);
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
