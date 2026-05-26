@@ -49,6 +49,10 @@ impl  Maven
             _TJobSilo: Stash::<U16>::New( U32::from( 1024)),
         }
     }
+    pub fn Index( &self) ->U16 { self._Index}
+
+    pub fn CurSuccId( &self) ->U16 { self._CurSuccId}
+
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
