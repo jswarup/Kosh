@@ -99,6 +99,30 @@ impl  Maven
         }
     }
 
+    pub fn EnqueueJob( &mut self, jobId : &mut U16)
+    {
+        unsafe {
+            (*self._Atelier).IncrSzSchedJob( U32(1));
+        }
+        let _guard = self._RunQlock.Lock();
+        self._RunQueue.Stk().Push( jobId);
+    }
+
+    pub fn PopJob( &mut self)  -> U16
+    {
+        let mut xStk = self._RunQueue.Stk();
+        let mut jobId = U16( 0);
+        if xStk.Size() != 0
+        {
+            let _guard = self._RunQlock.Lock();
+            if xStk.Size() != 0 && xStk.Pop( &mut jobId)
+            {
+                return jobId;
+            }
+        }
+        return jobId;
+    }
+
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
