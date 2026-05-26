@@ -4,7 +4,7 @@ use std::alloc::{ alloc, dealloc, handle_alloc_error, Layout};
 use std::ops::{ Deref, DerefMut};
 use std::ptr::NonNull;
 use crate::silo::arr::Arr;
-use crate::silo::uint32::U32;
+use crate::silo::uint::U32;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 pub struct Buff<T>

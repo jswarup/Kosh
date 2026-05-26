@@ -5,7 +5,7 @@ use std::ops::{ Deref, DerefMut};
 use std::ptr::NonNull;
 
 use crate::silo::useg::USeg;
-use crate::silo::uint32::U32;
+use crate::silo::uint::U32;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 

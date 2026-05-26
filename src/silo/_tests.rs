@@ -1,7 +1,7 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 #[warn(unused_imports)]
 
-use crate::silo::uint32::U32;
+use crate::silo::uint::U32;
 use crate::silo::useg::USeg;
 use crate::silo::buff::Buff;
 use crate::silo::atm::Atm;
