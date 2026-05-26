@@ -6,6 +6,7 @@ use crate::silo::useg::USeg;
 use crate::silo::buff::Buff;
 use crate::silo::atm::Atm;
 use crate::silo::stk::Stk;
+use crate::silo::stash::Stash;
 use std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -325,16 +326,14 @@ fn UIntBasicOps()
 #[allow(dead_code)]
 fn  StackExportImportOps()
 {
-    // Source stack with initial values 1..=5
-    let mut src_buff = Buff::Create(10, |_| U32::from(0));
-    let mut src_atm = Atm::New(U32::from(0));
-    let src_arr = src_buff.AsMutArr();
-    let mut src_stack = Stk::Create(&mut src_atm, src_arr);
+
+    let mut srcStash = Stash::< U32>::Create( U32::from( 10));
+    let mut srcStk = srcStash.Stk();
     for i in 1..=5u32 {
         let mut val = U32::from( i);
-        assert!(src_stack.Push(&mut val));
+        assert!(srcStk.Push(&mut val));
     }
-    assert_eq!(src_stack.Size(), U32::from(5));
+    assert_eq!(srcStk.Size(), U32::from(5));
 
     // Destination stack initially empty
     let mut dst_buff = Buff::Create(10, |_| U32::from(0));
@@ -344,9 +343,9 @@ fn  StackExportImportOps()
     assert_eq!(dst_stack.Size(), 0);
 
     // Export from source to destination (move all 5 elements)
-    let moved = src_stack.Export(&mut dst_stack, U32::from(5));
+    let moved = srcStk.Export(&mut dst_stack, U32::from(5));
     assert_eq!(moved, U32::from(5));
-    assert_eq!(src_stack.Size(), U32::from(0));
+    assert_eq!(srcStk.Size(), U32::from(0));
     assert_eq!(dst_stack.Size(), U32::from(5));
 
     // Verify order in destination stack (should be LIFO 5..=1)
@@ -360,13 +359,13 @@ fn  StackExportImportOps()
     // Refill source stack for Import test
     for i in 10..=14u32 {
         let mut v = U32::from( i);
-        assert!(src_stack.Push(&mut v));
+        assert!(srcStk.Push(&mut v));
     }
-    assert_eq!(src_stack.Size(), 5);
+    assert_eq!(srcStk.Size(), 5);
 
     // Import from source into destination (move all 5 elements)
-    let imported = dst_stack.Import(&mut src_stack, U32::from(5));
-    // Import uses a mutable reference, src_stack remains usable.
+    let imported = dst_stack.Import(&mut srcStk, U32::from(5));
+    // Import uses a mutable reference, srcStk remains usable.
     assert_eq!(imported, U32::from(5));
     assert_eq!(dst_stack.Size(), U32::from(5));
 

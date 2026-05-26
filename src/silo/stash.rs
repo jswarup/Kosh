@@ -25,6 +25,11 @@ impl<T: Default> Stash<T>
         }
     }
 
+    pub fn Create( sz: U32) -> Self
+    {
+        Self::New( sz)
+    }
+
     pub fn Size( &self) -> U32 { self._Atm.Get() }
 
     pub fn Stk( &mut self) -> Stk<'_, '_, T>
