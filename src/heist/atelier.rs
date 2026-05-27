@@ -1,86 +1,99 @@
 //-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
 
-use crate::silo::stk::Stk;
-use crate::silo::buff::Buff;
-use crate::silo::uint::{ U16, U32};
-use crate::silo::stash::Stash;
-use crate::silo::atm::{ Atm, Spinlock};
-use std::sync::atomic::Ordering;
 use crate::heist::maven::{AtelierT, Maven};
+use crate::silo::atm::{Atm, Spinlock};
+use crate::silo::buff::Buff;
+use crate::silo::stash::Stash;
+use crate::silo::stk::Stk;
+use crate::silo::uint::{U16, U32};
+use std::sync::atomic::Ordering;
 
-pub struct Atelier {
-    _Mavens: Buff<Maven>,
-    _StartCount: U32,                           // Count of Processing Queue started, used for startup and shutdown
-    _SzSchedJob: Atm< U32>,                     // Count of cumulative scheduled jobs in Works and Queues
+pub struct Atelier
+{
+    _Mavens: Buff< Maven>,
+    _StartCount: U32, // Count of Processing Queue started, used for startup and shutdown
+    _SzSchedJob: Atm< U32>, // Count of cumulative scheduled jobs in Works and Queues
     _SzQueue: Atm< U32>,
     _Lock: Spinlock,
     _LockedMark: U32,
-    _JobSilo: Stash< U16>,                      // A Stack of free jobIds
+    _JobSilo: Stash< U16>, // A Stack of free jobIds
 
-    _SzPreds: Buff< U16>,                       // Count of predessors for job at the jobId
-    _SuccIds: Buff< U16>,                       // Successor job for the job at the jobId
-
+    _SzPreds: Buff< U16>, // Count of predessors for job at the jobId
+    _SuccIds: Buff< U16>, // Successor job for the job at the jobId
 }
 
-impl Atelier {
-    pub fn New() -> Self {
+impl Atelier
+{
+    pub fn	New() -> Self
+    {
         let mut atelier = Self {
-            _Mavens: Buff::Create(U32(16), |_i| Maven::New(std::ptr::null_mut::<Atelier>() as *mut dyn AtelierT)),
+            _Mavens: Buff::Create( U32( 16), |_i| {
+                Maven::New( std::ptr::null_mut::< Atelier>() as *mut dyn AtelierT)
+            }),
             _StartCount: U32::_0,
-            _SzSchedJob: Atm::New(U32::_0),
-            _SzQueue: Atm::New(U32::_0),
+            _SzSchedJob: Atm::New( U32::_0),
+            _SzQueue: Atm::New( U32::_0),
             _Lock: Spinlock::New(),
             _LockedMark: U32::_0,
-            _JobSilo: Stash::<U16>::New(U32(1024)),
-            _SzPreds: Buff::<U16>::New(U32(1024), U16::_0),
-            _SuccIds: Buff::<U16>::New(U32(1024), U16::_0),
+            _JobSilo: Stash::< U16>::New( U32( 1024)),
+            _SzPreds: Buff::< U16>::New( U32( 1024), U16::_0),
+            _SuccIds: Buff::< U16>::New( U32( 1024), U16::_0),
         };
 
         atelier._JobSilo.DoIndexSetup();
         let atelier_ptr = &mut atelier as *mut Atelier as *mut dyn AtelierT;
         for i in 0..16 {
-            atelier._Mavens[i as usize].SetAtelier(atelier_ptr);
+            atelier._Mavens[i as usize].SetAtelier( atelier_ptr);
         }
 
         atelier
     }
 }
 
-impl AtelierT for Atelier {
-
-    fn IncrSzSchedJob(&mut self, inc: U32) -> U32 {
+impl AtelierT for Atelier
+{
+    fn	IncrSzSchedJob( &mut self, inc: U32) -> U32
+    {
         self._SzSchedJob.FetchAdd( inc, Ordering::SeqCst)
     }
 
-    fn IncrPredAt(&mut self, jobId: U16, inc: U16) -> U16 {
-        let idx = U32::from_U16(jobId);
+    fn	IncrPredAt( &mut self, jobId: U16, inc: U16) -> U16
+    {
+        let idx = U32::from_U16( jobId);
         let arr = self._SzPreds.AsMutArr();
-        let old = *arr.At(idx);
+        let old = *arr.At( idx);
         let new = old + inc;
-        arr.SetAt(idx, &new);
+        arr.SetAt( idx, &new);
         old
     }
 
-    fn AllocJob(&mut self) -> U16 {
-        let mut     stk = self._JobSilo.Stk();
-        let mut     jobId = U16( 0);
-        if stk.Size() != 0 &&  stk.Pop( &mut jobId) { jobId } else { jobId }
+    fn	AllocJob( &mut self) -> U16
+    {
+        let mut stk = self._JobSilo.Stk();
+        let mut jobId = U16( 0);
+        if stk.Size() != 0 && stk.Pop( &mut jobId) {
+            jobId
+        } else {
+            jobId
+        }
     }
 
-    fn AllocJobs(&mut self, stk: &mut Stk<U16>) -> U32 {
-        let mut     freeJobs = self._JobSilo.Stk();
+    fn	AllocJobs( &mut self, stk: &mut Stk< U16>) -> U32
+    {
+        let mut freeJobs = self._JobSilo.Stk();
         freeJobs.Export( stk, U32::_X)
     }
 
-    fn FreeJobs(&mut self, stk: &mut Stk<U16>) -> U32 {
-        let mut     freeJobs = self._JobSilo.Stk();
+    fn	FreeJobs( &mut self, stk: &mut Stk< U16>) -> U32
+    {
+        let mut freeJobs = self._JobSilo.Stk();
         freeJobs.Import( stk, U32::_X)
     }
 
-    fn GrabJob(&mut self) -> U16 {
-        let mut     jobId = U16( 0);
-        for maven in self._Mavens.iter_mut()
-        {
+    fn	GrabJob( &mut self) -> U16
+    {
+        let mut jobId = U16( 0);
+        for maven in self._Mavens.iter_mut() {
             jobId = maven.PopJob();
             if jobId != 0 {
                 return jobId;
@@ -89,6 +102,5 @@ impl AtelierT for Atelier {
         return jobId;
     }
 
-    fn ExecuteJob(&mut self, _mavenInd: U16, _jobId: U16) {
-    }
+    fn	ExecuteJob( &mut self, _mavenInd: U16, _jobId: U16) {}
 }
