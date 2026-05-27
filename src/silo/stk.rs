@@ -59,7 +59,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         {
             return false;
         }
-        *val = self._Arr.At( sz - U32( 1)).clone();
+        *val = self._Arr.At( sz -1).clone();
         true
     }
 

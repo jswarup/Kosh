@@ -130,19 +130,25 @@ macro_rules! impl_op {
 
 macro_rules! impl_uint_traits {
     ( $type:ident, $prim:ty, $atomic:ty) => {
-        impl Add for $type {
+        impl< T> Add< T> for $type
+        where
+            T: Into< $type>,
+        {
             type Output = $type;
             #[inline]
-            fn	add( self, rhs: $type) -> Self::Output {
-                $type( self.0.wrapping_add( rhs.0))
+            fn	add( self, rhs: T) -> Self::Output {
+                $type( self.0.wrapping_add( rhs.into().0))
             }
         }
 
-        impl Sub for $type {
+        impl< T> Sub< T> for $type
+        where
+            T: Into< $type>,
+        {
             type Output = $type;
             #[inline]
-            fn	sub( self, rhs: $type) -> Self::Output {
-                $type( self.0.wrapping_sub( rhs.0))
+            fn	sub( self, rhs: T) -> Self::Output {
+                $type( self.0.wrapping_sub( rhs.into().0))
             }
         }
 

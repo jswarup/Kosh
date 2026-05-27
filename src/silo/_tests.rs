@@ -90,22 +90,22 @@ fn	ArrBasicOpsTest()
         arr[1] = 100;
 
         // Test At
-        assert_eq!( *arr.At( U32::from( 1)), 100);
+        assert_eq!( *arr.At(  1), 100);
 
         // Test SetAt
         arr.SetAt( U32::from( 2), &200u32);
-        assert_eq!( *arr.At( U32::from( 2)), 200);
+        assert_eq!( *arr.At(  2), 200);
 
         // Test MoveAt
         let mut val = 300;
         arr.MoveAt( U32::from( 0), &mut val);
-        assert_eq!( *arr.At( U32::from( 0)), 300);
+        assert_eq!( *arr.At( 0), 300);
         assert_eq!( val, 0); // 0 is i32 default
 
         // Test SwapAt
         arr.SwapAt( U32::from( 0), U32::from( 2));
-        assert_eq!( *arr.At( U32::from( 0)), 200);
-        assert_eq!( *arr.At( U32::from( 2)), 300);
+        assert_eq!( *arr.At( 0), 200);
+        assert_eq!( *arr.At( 2), 300);
     }
     assert_eq!( buff[0], 200);
     assert_eq!( buff[1], 100);
