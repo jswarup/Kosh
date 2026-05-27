@@ -36,8 +36,8 @@ impl Atelier
             _SzSchedJob: Atm::New( U32::_0),
             _SzQueue: Atm::New( U32::_0),
             _Lock: Spinlock::New(),
-            _Mavens: Buff::Create( szMaven, |_i| {
-                Maven::New( std::ptr::null_mut::< Atelier>() as *mut dyn AtelierT)
+            _Mavens: Buff::Create( szMaven, | i| {
+                Maven::New( std::ptr::null_mut::< Atelier>() as *mut dyn AtelierT, i)
             }),
             _LockedMark: U32::_0,
 
@@ -58,13 +58,23 @@ impl Atelier
         atelier
     }
 
-    pub fn  Maven< 'a>( &self, mavenInd : U16) -> &'a mut Maven
+    pub fn  Maven< 'a>( &self, mavenInd : U32) -> &'a mut Maven
     {
         self._Mavens.AsArr().At( mavenInd)
     }
 
     pub fn DoLaunch( &mut self)
     {
+        let  mavens = self._Mavens.AsArr();
+        std::thread::scope(|s| {
+            for mavenIdx in 1..mavens.len() {
+                let     maven = mavens.At( mavenIdx);
+                s.spawn(move || {
+                    maven.ExecuteLoop();
+                });
+            }
+        });
+        mavens.At( 0).ExecuteLoop();
         print!( "DoLaunch Over")
     }
 }
@@ -125,7 +135,7 @@ impl AtelierT for Atelier
         self._JobBuff[jobId.as_usize()] = job;
     }
 
-    fn	ExecuteJob( &mut self, mavenInd: U16, jId: U16)
+    fn	ExecuteJob( &mut self, mavenInd: U32, jId: U16)
     {
         let     maven = self.Maven( mavenInd);
         let mut jobId = jId;
@@ -135,12 +145,12 @@ impl AtelierT for Atelier
             }
             let succId;
             {
-                maven._CurSuccId = *self._SuccIds.AsArr().At( jobId);
+                maven.SetCurSuccId( *self._SuccIds.AsArr().At( jobId));
                 let     job = self._JobBuff.AsArr().At( jobId);
                 job( maven);
                 let     _res = maven.FreeJob( jobId);
-                succId = maven._CurSuccId;
-                maven._CurSuccId = U16::_0;
+                succId = maven.CurSuccId();
+                maven.SetCurSuccId( U16::_0);
             }
             let     szPred = self.IncrPredAt( succId, -U16(1));
             jobId = if  szPred == 0 { succId } else { U16::_0};
