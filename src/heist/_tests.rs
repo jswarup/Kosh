@@ -14,3 +14,31 @@ fn	BuffBasicAtelierTest()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+#[test]
+fn	TestThreadSharedInteger()
+{
+    use std::sync::{Arc, Mutex};
+    use std::thread;
+
+    let shared = Arc::new( Mutex::new( 0));
+    let mut handles = vec![];
+
+    for i in 0..4 {
+        let shared_clone = shared.clone();
+        let handle = thread::spawn( move || {
+            let mut val = shared_clone.lock().unwrap();
+            *val += 1;
+            println!( "Thread {} incremented shared integer to: {}", i, *val);
+        });
+        handles.push( handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    assert_eq!( *shared.lock().unwrap(), 4);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
