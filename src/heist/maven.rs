@@ -6,8 +6,9 @@ use crate::silo::stk::Stk;
 use crate::silo::uint::{U16, U32};
 
 //---------------------------------------------------------------------------------------------------------------------------------
-/// Trait to abstract Atelier
-///
+
+pub type  JobFn = dyn FnMut( &mut Maven) + Send + Sync;
+
 pub trait AtelierT
 {
     fn	IncrSzSchedJob( &mut self, inc: U32) -> U32;
@@ -16,7 +17,8 @@ pub trait AtelierT
     fn	AllocJobs( &mut self, stk: &mut Stk< U16>) -> U32;
     fn	FreeJobs( &mut self, stk: &mut Stk< U16>) -> U32;
     fn	GrabJob( &mut self) -> U16;
-    fn	ExecuteJob( &mut self, mavenInd: U16, jobId: U16);
+    fn  StoreJob( &mut self, jobId: U16, job: Box< JobFn>);
+    fn  ExecuteJob( &mut self, mavenInd: U16, jobId: U16);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -25,7 +27,7 @@ pub struct Maven
 {
     _Atelier: *mut dyn AtelierT,
     _Index: U16,
-    _CurSuccId: U16,
+    pub(crate) _CurSuccId: U16,
     _SzProcessed: U32,
     _RunQueue: Stash< U16>,
     _RunQlock: Spinlock,

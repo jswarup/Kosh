@@ -1,6 +1,6 @@
 //-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
 
-use crate::heist::maven::{AtelierT, Maven};
+use crate::heist::maven::{AtelierT, Maven, JobFn};
 use crate::silo::atm::{Atm, Spinlock};
 use crate::silo::buff::Buff;
 use crate::silo::stash::Stash;
@@ -20,14 +20,13 @@ pub struct Atelier
     _SzPreds: Buff< U16>, // Count of predessors for job at the jobId
     _SuccIds: Buff< U16>,
     _JobStash: Stash< U16>, // A Stack of free jobIds
-    _JobBuffs: Buff< Box< dyn FnMut( &mut Maven) + Send + Sync>>,
+    _JobBuff: Buff< Box< JobFn>>,
 }
 
 impl Atelier
 {
     pub fn	New() -> Self
     {
-        let    mx = U32( 1 << 16);
         let mut atelier = Self {
 
             _StartCount: U32::_0,
@@ -39,11 +38,11 @@ impl Atelier
             }),
             _LockedMark: U32::_0,
 
-            _SzPreds: Buff::< U16>::New( mx, U16::_0),
-            _SuccIds: Buff::< U16>::New( mx, U16::_0),
-            _JobStash: Stash::< U16>::New( mx),
-            _JobBuffs: Buff::Create( mx, |_i| {
-                let cb: Box< dyn FnMut( &mut Maven) + Send + Sync> = Box::new( |_m| {});
+            _SzPreds: Buff::< U16>::New( U32::_16S, U16::_0),
+            _SuccIds: Buff::< U16>::New( U32::_16S, U16::_0),
+            _JobStash: Stash::< U16>::New( U32::_16S),
+            _JobBuff: Buff::Create( U32::_16S, |_i| {
+                let cb: Box< JobFn> = Box::new( |_m| {});
                 cb
             }),
         };
@@ -110,14 +109,21 @@ impl AtelierT for Atelier
         return jobId;
     }
 
+    fn  StoreJob( &mut self, jobId: U16, job: Box< JobFn>)
+    {
+        self._JobBuff[jobId.as_usize()] = job;
+    }
+
     fn	ExecuteJob( &mut self, mavenInd: U16, jobId: U16)
     {
-        let     maven = self._Mavens.AsMutArr().At( U32::from_U16( mavenInd));
-        //let     jobArr = self._JobBuff.AsMutArr();
+        let     maven = &mut self._Mavens[mavenInd.as_usize()];
+        let     jobArr = self._JobBuff.AsMutArr();
         loop {
-            if jobId != 0 {
+            if jobId == 0 {
                 return;
             }
+            let     job  = jobArr.At( jobId);
+            maven._CurSuccId = *self._SuccIds.AsArr().At( jobId);
         };
     }
 }

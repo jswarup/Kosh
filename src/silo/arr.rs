@@ -44,9 +44,10 @@ impl< 'a, T> Arr< 'a, T>
         self.Size()
     }
 
-    pub fn	At( &self, k: U32) -> &T
+    pub fn	At< K: Into< U32>>( &self, k: K) -> &T
     {
-        unsafe { &*self._Ptr.as_ptr().add( k.as_u32() as usize) }
+        let idx = k.into();
+        unsafe { &*self._Ptr.as_ptr().add( idx.as_u32() as usize) }
     }
 
     pub fn	SetAt( &self, k: U32, a: &T)

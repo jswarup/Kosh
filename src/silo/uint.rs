@@ -12,9 +12,10 @@ pub struct U32( pub u32);
 
 impl U32
 {
-    pub const _X: Self = U32::from( u32::MAX);
-    pub const _0: Self = U32::from( 0u32);
-    pub const _1: Self = U32::from( 1u32);
+    pub const _X: Self = U32( u32::MAX);
+    pub const _0: Self = U32( 0u32);
+    pub const _1: Self = U32( 1u32);
+    pub const _16S : Self = U32( 1 << 16 );
 
     /// Create a `U32` from a primitive `u32` (inherent method).
     #[inline]
@@ -64,9 +65,9 @@ pub struct U16( pub u16);
 
 impl U16
 {
-    pub const _X: Self = U16::from( u16::MAX);
-    pub const _0: Self = U16::from( 0u16);
-    pub const _1: Self = U16::from( 1u16);
+    pub const _X: Self = U16( u16::MAX);
+    pub const _0: Self = U16( 0u16);
+    pub const _1: Self = U16( 1u16);
 
     /// Create a `U16` from a primitive `u16` (inherent method).
     #[inline]
@@ -252,3 +253,12 @@ macro_rules! impl_uint_traits {
 
 impl_uint_traits!( U32, u32, AtomicU32);
 impl_uint_traits!( U16, u16, AtomicU16);
+
+impl From< U16> for U32
+{
+    #[inline]
+    fn	from( v: U16) -> Self
+    {
+        U32( v.0 as u32)
+    }
+}
