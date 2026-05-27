@@ -58,6 +58,12 @@ impl Atelier
         atelier
     }
 
+    fn  Maven< 'a>( &self, mavenInd : U16) -> &'a mut Maven
+    {
+        let ptr = self._Mavens.as_ptr() as *mut Maven;
+        unsafe { &mut *ptr.add(mavenInd.as_usize()) }
+    }
+
     fn DoLaunch( &mut self)
     {
         print!( "DoLaunch Over")
@@ -129,7 +135,7 @@ impl AtelierT for Atelier
             }
             let succId;
             {
-                let     maven = &mut self._Mavens[mavenInd.as_usize()];
+                let     maven = self.Maven( mavenInd);
                 maven._CurSuccId = *self._SuccIds.AsArr().At( jobId);
                 let     job = &mut self._JobBuff[jobId.as_usize()];
                 job( maven);
