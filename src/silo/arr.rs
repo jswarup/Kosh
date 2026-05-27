@@ -46,38 +46,37 @@ impl< 'a, T> Arr< 'a, T>
 
     pub fn	At< K: Into< U32>>( &self, k: K) -> &T
     {
-        let idx = k.into();
-        unsafe { &*self._Ptr.as_ptr().add( idx.as_u32() as usize) }
+        unsafe { &*self._Ptr.as_ptr().add( k.into().as_usize()) }
     }
 
-    pub fn	SetAt< K: Into< U32>>( &self, k: K, a: &T)
+    pub fn	SetAt< K: Into< U32>>( &self, k: K, a: &T) -> &T
     where
         T: Clone,
     {
-        let idx = k.into();
         unsafe {
-            *self._Ptr.as_ptr().add( idx.as_u32() as usize) = a.clone();
+            let ptr = self._Ptr.as_ptr().add( k.into().as_usize());
+            *ptr = a.clone();
+            &*ptr
         }
     }
 
-    pub fn	MoveAt< K: Into< U32>>( &self, k: K, a: &mut T)
+    pub fn	MoveAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &T
     where
         T: Default,
     {
-        let idx = k.into();
         unsafe {
-            *self._Ptr.as_ptr().add( idx.as_u32() as usize) = std::mem::take( a);
+            let ptr = self._Ptr.as_ptr().add( k.into().as_usize());
+            *ptr = std::mem::take( a);
+            &*ptr
         }
     }
 
     pub fn	SwapAt< I: Into< U32>, J: Into< U32>>( &self, i: I, j: J)
     {
-        let idx_i = i.into();
-        let idx_j = j.into();
         unsafe {
             std::ptr::swap(
-                self._Ptr.add( idx_i.as_u32() as usize).as_ptr(),
-                self._Ptr.add( idx_j.as_u32() as usize).as_ptr(),
+                self._Ptr.add( i.into().as_usize()).as_ptr(),
+                self._Ptr.add( j.into().as_usize()).as_ptr(),
             );
         }
     }

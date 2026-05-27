@@ -8,6 +8,7 @@ use crate::silo::stk::Stk;
 use crate::silo::uint::{U16, U32};
 use std::sync::atomic::Ordering;
 
+//---------------------------------------------------------------------------------------------------------------------------------
 pub struct Atelier
 {
     _StartCount: U32, // Count of Processing Queue started, used for startup and shutdown
@@ -22,6 +23,8 @@ pub struct Atelier
     _JobStash: Stash< U16>, // A Stack of free jobIds
     _JobBuff: Buff< Box< JobFn>>,
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 impl Atelier
 {
@@ -57,6 +60,8 @@ impl Atelier
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl AtelierT for Atelier
 {
     fn	IncrSzSchedJob( &mut self, inc: U32) -> U32
@@ -78,10 +83,8 @@ impl AtelierT for Atelier
         let mut stk = self._JobStash.Stk();
         let mut jobId = U16( 0);
         if stk.Size() != 0 && stk.Pop( &mut jobId) {
-            jobId
-        } else {
-            jobId
         }
+        jobId
     }
 
     fn	AllocJobs( &mut self, stk: &mut Stk< U16>) -> U32
@@ -113,16 +116,28 @@ impl AtelierT for Atelier
         self._JobBuff[jobId.as_usize()] = job;
     }
 
-    fn	ExecuteJob( &mut self, mavenInd: U16, jobId: U16)
+    fn	ExecuteJob( &mut self, mavenInd: U16, jId: U16)
     {
-        let     maven = &mut self._Mavens[mavenInd.as_usize()];
-        let     jobArr = self._JobBuff.AsMutArr();
+        let mut jobId = jId;
         loop {
             if jobId == 0 {
                 return;
             }
-            let     job  = jobArr.At( jobId);
-            maven._CurSuccId = *self._SuccIds.AsArr().At( jobId);
+            let succId;
+            {
+                let     maven = &mut self._Mavens[mavenInd.as_usize()];
+                maven._CurSuccId = *self._SuccIds.AsArr().At( jobId);
+                let     job = &mut self._JobBuff[jobId.as_usize()];
+                job( maven);
+                let     _res = maven.FreeJob( jobId);
+                succId = maven._CurSuccId;
+                maven._CurSuccId = U16::_0;
+            }
+            let     szPred = self.IncrPredAt( succId, -U16(1));
+            jobId = if  szPred == 0 { succId } else { U16::_0};
+            self.IncrSzSchedJob( -U32(1));
         };
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------

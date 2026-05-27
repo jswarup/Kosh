@@ -87,12 +87,15 @@ impl Maven
         }
     }
 
-    pub fn	FreeJob( &mut self, jobId: &mut U16) -> bool
+    pub fn	FreeJob( &mut self, jobId: U16) -> bool
     {
+
+        self._SzProcessed = self._SzProcessed + 1;
         let mut stk = self._JobCache.Stk();
         loop {
+            let mut jId = jobId;
             if stk.SzVoid() != 0 {
-                stk.Push( jobId);
+                stk.Push( &mut jId);
                 return true;
             }
             unsafe {
