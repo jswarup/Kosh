@@ -25,11 +25,11 @@ unsafe impl< 'a, T: Sync> Sync for Arr< 'a, T> {}
 
 impl< 'a, T> Arr< 'a, T>
 {
-    pub fn	New( ptr: NonNull< T>, size: U32) -> Self
+    pub fn	New< S: Into< U32>>( ptr: NonNull< T>, size: S) -> Self
     {
         Arr {
             _Ptr: ptr,
-            _Size: size,
+            _Size: size.into(),
             _Marker: PhantomData,
         }
     }
@@ -50,30 +50,34 @@ impl< 'a, T> Arr< 'a, T>
         unsafe { &*self._Ptr.as_ptr().add( idx.as_u32() as usize) }
     }
 
-    pub fn	SetAt( &self, k: U32, a: &T)
+    pub fn	SetAt< K: Into< U32>>( &self, k: K, a: &T)
     where
         T: Clone,
     {
+        let idx = k.into();
         unsafe {
-            *self._Ptr.as_ptr().add( k.as_u32() as usize) = a.clone();
+            *self._Ptr.as_ptr().add( idx.as_u32() as usize) = a.clone();
         }
     }
 
-    pub fn	MoveAt( &self, k: U32, a: &mut T)
+    pub fn	MoveAt< K: Into< U32>>( &self, k: K, a: &mut T)
     where
         T: Default,
     {
+        let idx = k.into();
         unsafe {
-            *self._Ptr.as_ptr().add( k.as_u32() as usize) = std::mem::take( a);
+            *self._Ptr.as_ptr().add( idx.as_u32() as usize) = std::mem::take( a);
         }
     }
 
-    pub fn	SwapAt( &self, i: U32, j: U32)
+    pub fn	SwapAt< I: Into< U32>, J: Into< U32>>( &self, i: I, j: J)
     {
+        let idx_i = i.into();
+        let idx_j = j.into();
         unsafe {
             std::ptr::swap(
-                self._Ptr.add( i.as_u32() as usize).as_ptr(),
-                self._Ptr.add( j.as_u32() as usize).as_ptr(),
+                self._Ptr.add( idx_i.as_u32() as usize).as_ptr(),
+                self._Ptr.add( idx_j.as_u32() as usize).as_ptr(),
             );
         }
     }
@@ -88,17 +92,19 @@ impl< 'a, T> Arr< 'a, T>
         USeg::Create( U32( 0), self.Size())
     }
 
-    pub fn	LSnip( &self, count: U32) -> Self
+    pub fn	LSnip< C: Into< U32>>( &self, count: C) -> Self
     {
+        let cnt = count.into();
         Arr::New(
-            unsafe { self._Ptr.add( count.as_u32() as usize) },
-            self.Size() - count,
+            unsafe { self._Ptr.add( cnt.as_u32() as usize) },
+            self.Size() - cnt,
         )
     }
 
-    pub fn	RSnip( &self, count: U32) -> Self
+    pub fn	RSnip< C: Into< U32>>( &self, count: C) -> Self
     {
-        Arr::New( self._Ptr, self.Size() - count)
+        let cnt = count.into();
+        Arr::New( self._Ptr, self.Size() - cnt)
     }
 
     pub fn	Span< F>( &self, mut f: F) -> bool

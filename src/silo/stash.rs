@@ -16,7 +16,7 @@ pub struct Stash< T>
 
 impl< T: Default> Stash< T>
 {
-    pub fn	New( sz: U32) -> Self
+    pub fn	New< S: Into< U32>>( sz: S) -> Self
     {
         Self {
             _Buff: Buff::Create( sz, |_| T::default()),
@@ -24,13 +24,13 @@ impl< T: Default> Stash< T>
         }
     }
 
-    pub fn	Create< Dispenser>( sz: U32, szStk: U32, dispenser: Dispenser) -> Self
+    pub fn	Create< S1: Into< U32>, S2: Into< U32>, Dispenser>( sz: S1, szStk: S2, dispenser: Dispenser) -> Self
     where
         Dispenser: Fn( U32) -> T,
     {
         Self {
             _Buff: Buff::Create( sz, dispenser),
-            _Sz: Atm::New( szStk),
+            _Sz: Atm::New( szStk.into()),
         }
     }
 

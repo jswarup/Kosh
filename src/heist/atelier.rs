@@ -66,11 +66,10 @@ impl AtelierT for Atelier
 
     fn	IncrPredAt( &mut self, jobId: U16, inc: U16) -> U16
     {
-        let idx = U32::from_U16( jobId);
         let arr = self._SzPreds.AsMutArr();
-        let old = *arr.At( idx);
+        let old = *arr.At( jobId);
         let new = old + inc;
-        arr.SetAt( idx, &new);
+        arr.SetAt( jobId, &new);
         old
     }
 

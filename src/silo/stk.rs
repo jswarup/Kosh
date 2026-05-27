@@ -85,10 +85,11 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         true
     }
 
-    pub fn	Import( &mut self, stk: &mut Stk< '_, '_, T>, maxMov: U32) -> U32
+    pub fn	Import< M: Into< U32>>( &mut self, stk: &mut Stk< '_, '_, T>, maxMov: M) -> U32
     where
         T: Clone,
     {
+        let max_mov = maxMov.into();
         let szAlloc = loop {
             let sz = self.Size();
             let szCacheVoid = self._Arr.Size() - sz;
@@ -97,7 +98,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
             } else {
                 stk.Size()
             };
-            szAlloc = if szAlloc > maxMov { maxMov } else { szAlloc };
+            szAlloc = if szAlloc > max_mov { max_mov } else { szAlloc };
 
             if szAlloc == 0
                 || self
@@ -125,17 +126,18 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         szAlloc
     }
 
-    pub fn	Export( &mut self, stk: &mut Stk< '_, '_, T>, maxMov: U32) -> U32
+    pub fn	Export< M: Into< U32>>( &mut self, stk: &mut Stk< '_, '_, T>, maxMov: M) -> U32
     where
         T: Clone,
     {
+        let max_mov = maxMov.into();
         let szAlloc = loop {
             let szStk = stk.Size();
             let szStkVoid = stk._Arr.Size() - szStk;
             let sz = self.Size();
 
             let mut szAlloc = if szStkVoid < sz { szStkVoid } else { sz };
-            szAlloc = if szAlloc > maxMov { maxMov } else { szAlloc };
+            szAlloc = if szAlloc > max_mov { max_mov } else { szAlloc };
 
             if szAlloc == 0
                 || self
