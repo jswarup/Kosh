@@ -374,12 +374,12 @@ fn	StackExportImportOps()
 
     // Destination stack initially empty
     let dstStash = Stash::< U32>::New( 10);
-    let mut dstStk = dstStash.Stk();
+    let dstStk = dstStash.Stk();
 
     assert_eq!( dstStk.Size(), 0);
 
     // Export from source to destination (move all 5 elements)
-    let moved = srcStk.Export( &mut dstStk, 5);
+    let moved = srcStk.Export( &dstStk, 5);
     assert_eq!( moved, 5);
     assert_eq!( srcStk.Size(), 0);
     assert_eq!( dstStk.Size(), 5);
