@@ -60,8 +60,7 @@ impl Atelier
 
     fn  Maven< 'a>( &self, mavenInd : U16) -> &'a mut Maven
     {
-        let ptr = self._Mavens.as_ptr() as *mut Maven;
-        unsafe { &mut *ptr.add(mavenInd.as_usize()) }
+        self._Mavens.AsArr().At( mavenInd)
     }
 
     fn DoLaunch( &mut self)
@@ -81,7 +80,7 @@ impl AtelierT for Atelier
 
     fn	IncrPredAt( &mut self, jobId: U16, inc: U16) -> U16
     {
-        let arr = self._SzPreds.AsMutArr();
+        let arr = self._SzPreds.AsArr();
         let old = *arr.At( jobId);
         let new = old + inc;
         arr.SetAt( jobId, &new);

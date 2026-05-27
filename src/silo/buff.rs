@@ -276,15 +276,11 @@ impl< T: Clone> Buff< T> {}
 
 impl< T> Buff< T>
 {
-    pub fn	AsArr( &self) -> Arr< '_, T>
+    pub fn	AsArr< 'a>( &self) -> Arr< 'a, T>
     {
         Arr::New( self._Ptr.cast::< T>(), U32( self._Ptr.len() as u32))
     }
 
-    pub fn	AsMutArr( &mut self) -> Arr< '_, T>
-    {
-        Arr::New( self._Ptr.cast::< T>(), U32( self._Ptr.len() as u32))
-    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

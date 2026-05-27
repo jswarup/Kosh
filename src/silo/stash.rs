@@ -41,7 +41,7 @@ impl< T: Default> Stash< T>
 
     pub fn	Stk( &mut self) -> Stk< '_, '_, T>
     {
-        Stk::Create( &mut self._Sz, self._Buff.AsMutArr())
+        Stk::Create( &mut self._Sz, self._Buff.AsArr())
     }
 
     pub fn	DoIndexSetup( &mut self)

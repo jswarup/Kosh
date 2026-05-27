@@ -44,7 +44,7 @@ impl< 'a, T> Arr< 'a, T>
         self.Size()
     }
 
-    pub fn	At< K: Into< U32>>( &self, k: K) -> &mut T
+    pub fn	At< K: Into< U32>>( &self, k: K) -> &'a mut T
     {
         unsafe {
             let ptr = self._Ptr.as_ptr().add( k.into().as_usize());

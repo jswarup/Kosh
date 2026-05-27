@@ -82,9 +82,9 @@ fn	BuffSendSyncTest()
 #[test]
 fn	ArrBasicOpsTest()
 {
-    let mut buff = Buff::New( 3, 42);
+    let  buff = Buff::New( 3, 42);
     {
-        let mut arr = buff.AsMutArr();
+        let mut arr = buff.AsArr();
         assert_eq!( arr.len(), 3);
         assert_eq!( arr[0], 42);
         arr[1] = 100;
@@ -95,13 +95,13 @@ fn	ArrBasicOpsTest()
         // Test SetAt
         arr.SetAt( 2, &200u32);
         assert_eq!( *arr.At( 2), 200);
- 
+
         // Test MoveAt
         let mut val = 300;
         arr.MoveAt( 0, &mut val);
         assert_eq!( *arr.At( 0), 300);
         assert_eq!( val, 0); // 0 is i32 default
- 
+
         // Test SwapAt
         arr.SwapAt( 0, 2);
         assert_eq!( *arr.At( 0), 200);
@@ -129,35 +129,35 @@ fn	USegBasicOpsTest()
     assert_eq!( seg.Size(), 11);
     assert!( !seg.IsEmpty());
 }
- 
+
 //---------------------------------------------------------------------------------------------------------------------------------
- 
+
 #[test]
 fn	USegSnipTest()
 {
     let seg = USeg::Create( 10, 11);
- 
+
     // Test LSnip
     let lSnipped = seg.LSnip( 5);
     assert_eq!( lSnipped.First(), 15);
     assert_eq!( lSnipped.Last(), 20);
     assert_eq!( lSnipped.Size(), 6);
- 
+
     let lEmpty = seg.LSnip( 11);
     assert!( lEmpty.IsEmpty());
- 
+
     let lOverflow = seg.LSnip( 15);
     assert!( lOverflow.IsEmpty());
- 
+
     // Test RSnip
     let rSnipped = seg.RSnip( 4);
     assert_eq!( rSnipped.First(), 10);
     assert_eq!( rSnipped.Last(), 16);
     assert_eq!( rSnipped.Size(), 7);
- 
+
     let rEmpty = seg.RSnip( 11);
     assert!( rEmpty.IsEmpty());
- 
+
     let rUnderflow = seg.RSnip( 20);
     assert!( rUnderflow.IsEmpty());
 }
@@ -253,24 +253,24 @@ fn	TestAtmUsize()
 fn	StackBasicOps()
 {
     // Create a buffer of size 10 initialized with zeros
-    let mut buff = Buff::Create( U32( 10), |_| 0u32);
+    let     buff = Buff::Create( U32( 10), |_| 0u32);
     // Atomic counter for size tracking
     let mut atm = Atm::New( U32( 0));
     // Obtain a mutable Arr view over the buffer
-    let arr = buff.AsMutArr();
+    let arr = buff.AsArr();
     // Create the stack
     let mut stack = Stk::Create( &mut atm, arr);
- 
+
     // Stack should start empty
     assert_eq!( stack.Size(), 0);
- 
+
     // Push values 1..=5 onto the stack
     for i in 1..=5u32 {
         let mut val = i;
         assert!( stack.Push( &mut val), "push failed at {}", i);
     }
     assert_eq!( stack.Size(), 5);
- 
+
     // Pop values and verify LIFO order
     for expected in ( 1..=5u32).rev() {
         let mut out = 0u32;
@@ -316,7 +316,7 @@ fn	UIntNegNotTest()
     assert_eq!( ( -b), 0u32.wrapping_sub( 5));
     assert_eq!( ( !b), !5u32);
 }
- 
+
 fn	UInt16TestFrom()
 {
     let _q = U16( 0);
@@ -327,7 +327,7 @@ fn	UInt16TestFrom()
     let c: U16 = ( 10usize).into();
     assert_eq!( c, 10);
 }
- 
+
 fn	UInt16TestArith()
 {
     let a = U16( 10 );
@@ -338,7 +338,7 @@ fn	UInt16TestArith()
     assert_eq!( ( a / b), 3);
     assert_eq!( ( a % b), 1);
 }
- 
+
 fn	UInt16TestNegNot()
 {
     let a = U16( 0 );
@@ -371,19 +371,19 @@ fn	StackExportImportOps()
         assert!( srcStk.Push( &mut val));
     }
     assert_eq!( srcStk.Size(), 5);
- 
+
     // Destination stack initially empty
     let mut dstStash = Stash::< U32>::New( 10);
     let mut dstStk = dstStash.Stk();
- 
+
     assert_eq!( dstStk.Size(), 0);
- 
+
     // Export from source to destination (move all 5 elements)
     let moved = srcStk.Export( &mut dstStk, 5);
     assert_eq!( moved, 5);
     assert_eq!( srcStk.Size(), 0);
     assert_eq!( dstStk.Size(), 5);
- 
+
     // Verify order in destination stack (should be LIFO 5..=1)
     for expected in ( 1..=5u32).rev() {
         let mut out = U32( 0);
@@ -391,20 +391,20 @@ fn	StackExportImportOps()
         assert_eq!( out, expected);
     }
     assert_eq!( dstStk.Size(), 0);
- 
+
     // Refill source stack for Import test
     for i in 10..=14u32 {
         let mut v = U32( i);
         assert!( srcStk.Push( &mut v));
     }
     assert_eq!( srcStk.Size(), 5);
- 
+
     // Import from source into destination (move all 5 elements)
     let imported = dstStk.Import( &mut srcStk, 5);
     // Import uses a mutable reference, srcStk remains usable.
     assert_eq!( imported, 5);
     assert_eq!( dstStk.Size(), 5);
- 
+
     // Verify imported order (LIFO, should be 14..=10)
     for expected in ( 10..=14u32).rev() {
         let mut out = U32( 0);
