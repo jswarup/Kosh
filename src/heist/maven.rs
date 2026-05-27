@@ -120,14 +120,14 @@ impl Maven
         }
     }
 
-    pub fn	GrabJob( &mut self) -> U16
+    pub fn	GrabJob( &self) -> U16
     {
         unsafe {
             return ( *self._Atelier).GrabJob();
         }
     }
 
-    pub fn	ExecuteJob( &mut self, jobId: U16)
+    pub fn	ExecuteJob( &self, jobId: U16)
     {
         unsafe {
             ( *self._Atelier).ExecuteJob( self._Index, jobId);

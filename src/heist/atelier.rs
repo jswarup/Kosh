@@ -127,6 +127,7 @@ impl AtelierT for Atelier
 
     fn	ExecuteJob( &mut self, mavenInd: U16, jId: U16)
     {
+        let     maven = self.Maven( mavenInd);
         let mut jobId = jId;
         loop {
             if jobId == 0 {
@@ -134,9 +135,8 @@ impl AtelierT for Atelier
             }
             let succId;
             {
-                let     maven = self.Maven( mavenInd);
                 maven._CurSuccId = *self._SuccIds.AsArr().At( jobId);
-                let     job = &mut self._JobBuff[jobId.as_usize()];
+                let     job = self._JobBuff.AsArr().At( jobId);
                 job( maven);
                 let     _res = maven.FreeJob( jobId);
                 succId = maven._CurSuccId;
