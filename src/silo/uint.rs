@@ -15,7 +15,7 @@ impl U32
     pub const _X: Self = U32( u32::MAX);
     pub const _0: Self = U32( 0u32);
     pub const _1: Self = U32( 1u32);
-    pub const _16S : Self = U32( 1 << 16 );
+    pub const _16Sz : Self = U32( 1 << 16 );
 
     /// Create a `U32` from a primitive `u32` (inherent method).
     #[inline]

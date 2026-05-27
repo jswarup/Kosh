@@ -28,7 +28,7 @@ pub struct Atelier
 
 impl Atelier
 {
-    pub fn	New() -> Self
+    pub fn	New( szMaven: U32 ) -> Self
     {
         let mut atelier = Self {
 
@@ -36,27 +36,31 @@ impl Atelier
             _SzSchedJob: Atm::New( U32::_0),
             _SzQueue: Atm::New( U32::_0),
             _Lock: Spinlock::New(),
-            _Mavens: Buff::Create( U32( 16), |_i| {
+            _Mavens: Buff::Create( szMaven, |_i| {
                 Maven::New( std::ptr::null_mut::< Atelier>() as *mut dyn AtelierT)
             }),
             _LockedMark: U32::_0,
 
-            _SzPreds: Buff::< U16>::New( U32::_16S, U16::_0),
-            _SuccIds: Buff::< U16>::New( U32::_16S, U16::_0),
-            _JobStash: Stash::< U16>::New( U32::_16S),
-            _JobBuff: Buff::Create( U32::_16S, |_i| {
+            _SzPreds: Buff::< U16>::New( U32::_16Sz, U16::_0),
+            _SuccIds: Buff::< U16>::New( U32::_16Sz, U16::_0),
+            _JobStash: Stash::< U16>::New( U32::_16Sz),
+            _JobBuff: Buff::Create( U32::_16Sz, |_i| {
                 let cb: Box< JobFn> = Box::new( |_m| {});
                 cb
             }),
         };
 
         atelier._JobStash.DoIndexSetup();
-        let atelier_ptr = &mut atelier as *mut Atelier as *mut dyn AtelierT;
-        for i in 0..16 {
+        let atelier_ptr = &mut atelier as *mut dyn AtelierT;
+        for i in 0..szMaven.as_usize() {
             atelier._Mavens[i as usize].SetAtelier( atelier_ptr);
         }
-
         atelier
+    }
+
+    fn DoLaunch( &mut self)
+    {
+        print!( "DoLaunch Over")
     }
 }
 
@@ -138,6 +142,7 @@ impl AtelierT for Atelier
             self.IncrSzSchedJob( -U32(1));
         };
     }
+
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
