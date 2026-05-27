@@ -39,10 +39,6 @@ impl< 'a, T> Arr< 'a, T>
         self._Size
     }
 
-    pub fn	len( &self) -> U32
-    {
-        self.Size()
-    }
 
     pub fn	At< K: Into< U32>>( &self, k: K) -> &'a mut T
     {

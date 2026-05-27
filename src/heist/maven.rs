@@ -18,7 +18,7 @@ pub trait AtelierT
     fn	FreeJobs( &mut self, stk: &Stk< U16>) -> U32;
     fn	GrabJob( &self) -> U16;
     fn  StoreJob( &mut self, jobId: U16, job: Box< JobFn>);
-    fn  ExecuteJob( &mut self, mavenInd: U16, jobId: U16);
+    fn  ExecuteJob( &mut self, mavenInd: U32, jobId: U16);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -26,8 +26,8 @@ pub trait AtelierT
 pub struct Maven
 {
     _Atelier: *mut dyn AtelierT,
-    _Index: U16,
-    pub(crate) _CurSuccId: U16,
+    _Index: U32,
+    _CurSuccId: U16,
     _SzProcessed: U32,
     _RunQueue: Stash< U16>,
     _RunQlock: Spinlock,
@@ -42,11 +42,11 @@ unsafe impl Sync for Maven {}
 
 impl Maven
 {
-    pub fn	New( atelier: *mut dyn AtelierT) -> Self
+    pub fn	New( atelier: *mut dyn AtelierT, mavenInd : U32) -> Self
     {
         Self {
             _Atelier: atelier,
-            _Index: U16::_X,
+            _Index: mavenInd,
             _CurSuccId: U16::_0,
             _SzProcessed: U32::_0,
             _RunQueue: Stash::< U16>::New( U32( 1024)),
@@ -61,7 +61,7 @@ impl Maven
         self._Atelier = atelier;
     }
 
-    pub fn	Index( &self) -> U16
+    pub fn	Index( &self) -> U32
     {
         self._Index
     }
@@ -71,6 +71,10 @@ impl Maven
         self._CurSuccId
     }
 
+    pub fn	SetCurSuccId( &mut self, succId: U16)
+    {
+        self._CurSuccId = succId;
+    }
     pub fn	AllocJob( &self) -> U16
     {
         loop {
