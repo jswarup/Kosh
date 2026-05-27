@@ -14,9 +14,9 @@ pub trait AtelierT
     fn	IncrSzSchedJob( &mut self, inc: U32) -> U32;
     fn	IncrPredAt( &mut self, jobId: U16, inc: U16) -> U16;
     fn	AllocJob( &mut self) -> U16;
-    fn	AllocJobs( &mut self, stk: &mut Stk< U16>) -> U32;
-    fn	FreeJobs( &mut self, stk: &mut Stk< U16>) -> U32;
-    fn	GrabJob( &mut self) -> U16;
+    fn	AllocJobs( &mut self, stk: &Stk< U16>) -> U32;
+    fn	FreeJobs( &mut self, stk: &Stk< U16>) -> U32;
+    fn	GrabJob( &self) -> U16;
     fn  StoreJob( &mut self, jobId: U16, job: Box< JobFn>);
     fn  ExecuteJob( &mut self, mavenInd: U16, jobId: U16);
 }
@@ -71,16 +71,16 @@ impl Maven
         self._CurSuccId
     }
 
-    pub fn	AllocJob( &mut self) -> U16
+    pub fn	AllocJob( &self) -> U16
     {
         loop {
             let mut jobId = U16( 0);
-            let mut stk = self._JobCache.Stk();
+            let stk = self._JobCache.Stk();
             if stk.Size() > 0 && stk.Pop( &mut jobId) {
                 break jobId;
             }
             unsafe {
-                if ( *self._Atelier).AllocJobs( &mut stk) == 0 {
+                if ( *self._Atelier).AllocJobs( &stk) == 0 {
                     break jobId;
                 }
             }
@@ -91,7 +91,7 @@ impl Maven
     {
 
         self._SzProcessed = self._SzProcessed + 1;
-        let mut stk = self._JobCache.Stk();
+        let stk = self._JobCache.Stk();
         loop {
             let mut jId = jobId;
             if stk.SzVoid() != 0 {
@@ -99,7 +99,7 @@ impl Maven
                 return true;
             }
             unsafe {
-                if ( *self._Atelier).FreeJobs( &mut stk) == 0 {
+                if ( *self._Atelier).FreeJobs( &stk) == 0 {
                     return false;
                 }
             }
@@ -140,9 +140,9 @@ impl Maven
         self._RunQueue.Stk().Push( jobId);
     }
 
-    pub fn	PopJob( &mut self) -> U16
+    pub fn	PopJob( &self) -> U16
     {
-        let mut xStk = self._RunQueue.Stk();
+        let xStk = self._RunQueue.Stk();
         let mut jobId = U16( 0);
         if xStk.Size() != 0 {
             let _guard = self._RunQlock.Lock();

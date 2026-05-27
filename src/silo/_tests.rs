@@ -255,11 +255,11 @@ fn	StackBasicOps()
     // Create a buffer of size 10 initialized with zeros
     let     buff = Buff::Create( U32( 10), |_| 0u32);
     // Atomic counter for size tracking
-    let mut atm = Atm::New( U32( 0));
+    let atm = Atm::New( U32( 0));
     // Obtain a mutable Arr view over the buffer
     let arr = buff.AsArr();
     // Create the stack
-    let mut stack = Stk::Create( &mut atm, arr);
+    let     stack = Stk::Create( &atm, arr);
 
     // Stack should start empty
     assert_eq!( stack.Size(), 0);
@@ -364,8 +364,8 @@ fn	UIntBasicOps()
 #[allow( dead_code)]
 fn	StackExportImportOps()
 {
-    let mut srcStash = Stash::< U32>::New( 10);
-    let mut srcStk = srcStash.Stk();
+    let srcStash = Stash::< U32>::New( 10);
+    let srcStk = srcStash.Stk();
     for i in 1..=5u32 {
         let mut val = U32( i);
         assert!( srcStk.Push( &mut val));
@@ -373,7 +373,7 @@ fn	StackExportImportOps()
     assert_eq!( srcStk.Size(), 5);
 
     // Destination stack initially empty
-    let mut dstStash = Stash::< U32>::New( 10);
+    let dstStash = Stash::< U32>::New( 10);
     let mut dstStk = dstStash.Stk();
 
     assert_eq!( dstStk.Size(), 0);
@@ -400,7 +400,7 @@ fn	StackExportImportOps()
     assert_eq!( srcStk.Size(), 5);
 
     // Import from source into destination (move all 5 elements)
-    let imported = dstStk.Import( &mut srcStk, 5);
+    let imported = dstStk.Import( &srcStk, 5);
     // Import uses a mutable reference, srcStk remains usable.
     assert_eq!( imported, 5);
     assert_eq!( dstStk.Size(), 5);

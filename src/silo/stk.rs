@@ -9,7 +9,7 @@ use crate::silo::useg::USeg;
 
 pub struct Stk< 'a, 'b, T>
 {
-    _Size: &'a mut Atm< U32>,
+    _Size: &'a Atm< U32>,
     _Arr: Arr< 'b, T>,
 }
 
@@ -17,7 +17,7 @@ pub struct Stk< 'a, 'b, T>
 
 impl< 'a, 'b, T> Stk< 'a, 'b, T>
 {
-    pub fn	Create( _Size: &'a mut Atm< U32>, _Arr: Arr< 'b, T>) -> Self
+    pub fn	Create( _Size: &'a Atm< U32>, _Arr: Arr< 'b, T>) -> Self
     {
         Self { _Size, _Arr }
     }
@@ -41,7 +41,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         self._Arr.RSnip( self._Arr.Size() - self.Size())
     }
 
-    pub fn	Pop( &mut self, val: &mut T) -> bool
+    pub fn	Pop( &self, val: &mut T) -> bool
     where
         T: Default + Clone,
     {
@@ -63,7 +63,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         true
     }
 
-    pub fn	Push( &mut self, val: &mut T) -> bool
+    pub fn	Push( &self, val: &mut T) -> bool
     where
         T: Default,
     {
@@ -85,7 +85,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         true
     }
 
-    pub fn	Import< M: Into< U32>>( &mut self, stk: &mut Stk< '_, '_, T>, maxMov: M) -> U32
+    pub fn	Import< M: Into< U32>>( &self, stk: &Stk< '_, '_, T>, maxMov: M) -> U32
     where
         T: Clone,
     {
@@ -126,7 +126,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         szAlloc
     }
 
-    pub fn	Export< M: Into< U32>>( &mut self, stk: &mut Stk< '_, '_, T>, maxMov: M) -> U32
+    pub fn	Export< M: Into< U32>>( &self, stk: &Stk< '_, '_, T>, maxMov: M) -> U32
     where
         T: Clone,
     {

@@ -89,29 +89,29 @@ impl AtelierT for Atelier
 
     fn	AllocJob( &mut self) -> U16
     {
-        let mut stk = self._JobStash.Stk();
+        let stk = self._JobStash.Stk();
         let mut jobId = U16( 0);
         if stk.Size() != 0 && stk.Pop( &mut jobId) {
         }
         jobId
     }
 
-    fn	AllocJobs( &mut self, stk: &mut Stk< U16>) -> U32
+    fn	AllocJobs( &mut self, stk: &Stk< U16>) -> U32
     {
-        let mut freeJobs = self._JobStash.Stk();
+        let freeJobs = self._JobStash.Stk();
         freeJobs.Export( stk, U32::_X)
     }
 
-    fn	FreeJobs( &mut self, stk: &mut Stk< U16>) -> U32
+    fn	FreeJobs( &mut self, stk: &Stk< U16>) -> U32
     {
-        let mut freeJobs = self._JobStash.Stk();
+        let freeJobs = self._JobStash.Stk();
         freeJobs.Import( stk, U32::_X)
     }
 
-    fn	GrabJob( &mut self) -> U16
+    fn	GrabJob( &self) -> U16
     {
         let mut jobId = U16( 0);
-        for maven in self._Mavens.iter_mut() {
+        for maven in self._Mavens.iter() {
             jobId = maven.PopJob();
             if jobId != 0 {
                 return jobId;
