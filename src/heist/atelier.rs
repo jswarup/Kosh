@@ -58,12 +58,12 @@ impl Atelier
         atelier
     }
 
-    fn  Maven< 'a>( &self, mavenInd : U16) -> &'a mut Maven
+    pub fn  Maven< 'a>( &self, mavenInd : U16) -> &'a mut Maven
     {
         self._Mavens.AsArr().At( mavenInd)
     }
 
-    fn DoLaunch( &mut self)
+    pub fn DoLaunch( &mut self)
     {
         print!( "DoLaunch Over")
     }
