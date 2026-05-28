@@ -39,7 +39,6 @@ impl< 'a, T> Arr< 'a, T>
         self._Size
     }
 
-
     pub fn	At< K: Into< U32>>( &self, k: K) -> &'a mut T
     {
         unsafe {
@@ -48,14 +47,14 @@ impl< 'a, T> Arr< 'a, T>
         }
     }
 
-    pub fn	SetAt< K: Into< U32>>( &self, k: K, a: &T) -> &T
+    pub fn	SetAt< K: Into< U32>>( &self, k: K, a: &T) -> &'a mut T
     where
         T: Clone,
     {
         unsafe {
             let ptr = self._Ptr.as_ptr().add( k.into().as_usize());
             *ptr = a.clone();
-            &*ptr
+            &mut *ptr
         }
     }
 
