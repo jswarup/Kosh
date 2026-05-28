@@ -77,7 +77,7 @@ impl Atelier
 
     fn	FreeJob( &mut self, mavenInd: U32, mut jobId : U16) -> bool
     {
-        let     maven = self._Mavens.Arr().At( mavenInd);
+        let     maven = self._Mavens.Arr().MutAt( mavenInd);
         maven.IncrSzProcessed( 1);
         let freeJobs = self._JobStash.Stk();
         let  jobCacheStk = maven.JobCacheStk();
@@ -95,13 +95,13 @@ impl Atelier
         let  mavens = self._Mavens.Arr();
         std::thread::scope(|s| {
             for mavenIdx in 1..mavens.len() {
-                let     maven = mavens.At( mavenIdx);
+                let     maven = mavens.MutAt( mavenIdx);
                 s.spawn(move || {
                     maven.ExecuteLoop();
                 });
             }
         });
-        mavens.At( 0).ExecuteLoop();
+        mavens.MutAt( 0).ExecuteLoop();
         print!( "DoLaunch Over")
     }
 }
@@ -156,7 +156,7 @@ impl AtelierT for Atelier
 
     fn	ExecuteJob( &mut self, mavenInd: U32, jId: U16)
     {
-        let     maven = self.Mavens().At( mavenInd);
+        let     maven = self.Mavens().MutAt( mavenInd);
         let mut jobId = jId;
         loop {
             if jobId == 0 {
@@ -165,7 +165,7 @@ impl AtelierT for Atelier
             let succId;
             {
                 maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
-                let     job = self._JobBuff.Arr().At( jobId);
+                let     job = self._JobBuff.Arr().MutAt( jobId);
                 job( maven);
                 let     _res = maven.FreeJob( jobId);
                 succId = maven.CurSuccId();
