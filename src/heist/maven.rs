@@ -11,12 +11,8 @@ pub type  JobFn = dyn FnMut( &mut Maven) + Send + Sync;
 
 pub trait AtelierT
 {
-    fn	IncrSzSchedJob( &mut self, inc: U32) -> U32;
-    fn	IncrPredAt( &mut self, jobId: U16, inc: U16) -> U16;
     fn	AllocJobs( &mut self, stk: &Stk< U16>) -> U32;
     fn	FreeJobs( &mut self, stk: &Stk< U16>) -> U32;
-    fn	GrabJob( &self) -> U16;
-    fn  ExecuteJob( &mut self, mavenInd: U32, jobId: U16);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -93,10 +89,8 @@ impl Maven
         }
     }
 
-    pub fn	FreeJob( &mut self, jobId: U16) -> bool
+    pub fn	FreeJob( &self, jobId: U16) -> bool
     {
-
-        self._SzProcessed = self._SzProcessed + 1;
         let stk = self._JobCache.Stk();
         loop {
             let mut jId = jobId;
@@ -111,37 +105,14 @@ impl Maven
             }
         }
     }
+ 
 
-    pub fn	IncrSzSchedJob( &mut self, inc: U32) -> U32
-    {
-        unsafe {
-            return ( *self._Atelier).IncrSzSchedJob( inc);
-        }
-    }
-
-    pub fn	IncrPredAt( &mut self, inc: U16) -> U16
-    {
-        unsafe {
-            return ( *self._Atelier).IncrPredAt( self._CurSuccId, inc);
-        }
-    }
-
-    pub fn	GrabJob( &self) -> U16
-    {
-        unsafe {
-            return ( *self._Atelier).GrabJob();
-        }
-    }
 
     pub fn	ExecuteJob( &self, jobId: U16)
     {
-        unsafe {
-            ( *self._Atelier).ExecuteJob( self._Index, jobId);
-        }
     }
     pub fn	EnqueueJob( &mut self, jobId: &mut U16)
     {
-        self.IncrSzSchedJob( U32( 1));
         let _guard = self._RunQlock.Lock();
         self._RunQueue.Stk().Push( jobId);
     }
@@ -161,27 +132,6 @@ impl Maven
 
 
 
-    pub fn	ExecuteLoop( &mut self)
-    {
-        while self.IncrSzSchedJob( U32( 0)) != 0 {
-            let mut szPred = U16( 0);
-            if self._CurSuccId != 0 {
-                szPred = self.IncrPredAt( U16::_0 - U16( 1));
-            }
-            let mut jobId = if szPred == 0 { self._CurSuccId } else { U16( 0) };
-            if jobId == 0 {
-                jobId = self.PopJob();
-            }
-            if jobId == 0 {
-                jobId = self.GrabJob();
-            }
-            if jobId == 0 {
-                return;
-            }
-            self.ExecuteJob( jobId);
-        }
-        println!( "{}: {} Done", self._Index, self._SzProcessed);
-    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

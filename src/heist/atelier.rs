@@ -58,6 +58,11 @@ impl Atelier
     pub fn	Mavens< 'a>( &self) -> Arr< 'a, Maven> { self._Mavens.Arr() }
 
 
+    fn	IncrSzSchedJob( &self, inc: U32) -> U32
+    {
+        self._SzSchedJob.FetchAdd( inc, Ordering::SeqCst)
+    }
+
     fn	AllocJob( &self, mavenIdx: U32) -> U16
     {
         let  mavens = self._Mavens.Arr();
@@ -90,6 +95,16 @@ impl Atelier
         }
     }
 
+    fn	IncrPredAt( &self, jobId: U16, inc: U16) -> U16
+    {
+        let arr = self._SzPreds.Arr();
+        let old = *arr.At( jobId);
+        let new = old + inc;
+        arr.SetAt( jobId, &new);
+        old
+    }
+
+
 
     pub fn	ConstructJob<F>( &self, mavenIdx: U32, jobFn : F) -> U16
     where
@@ -104,95 +119,44 @@ impl Atelier
         return jobId;
     }
 
-    pub fn	EnqueueJob( &mut self, mavenIdx: U32, jobId: &mut U16)
+    pub fn	EnqueueJob( &self, mavenIdx: U32, jobId: &mut U16)
     {
+        self.IncrSzSchedJob( U32( 1));
         self._Mavens.Arr().MutAt( mavenIdx).EnqueueJob( jobId);
     }
 
-    pub fn  FetchJob( &mut self, mavenIdx: U32) -> U16
+    fn	GrabJob( &self, idx: U32) -> U16
+    {
+        let  mavens = self._Mavens.Arr();
+        for mIdx in 0..mavens.len() {
+            let     mavenIdx = ( idx + mIdx +1) % mavens.len();
+            let     maven = mavens.At( mavenIdx);
+            let     jobId = maven.PopJob();
+            if jobId != 0 {
+                return jobId;
+            }
+        }
+        return U16( 0);
+    }
+
+    pub fn  FetchJob( &self, mavenIdx: U32) -> U16
     {
         let     maven = self._Mavens.Arr().MutAt( mavenIdx);
-        let mut jobId = U16( 0);
-        let mut szPred = U16( 0);
         let     curSuccId = maven.CurSuccId();
         if curSuccId != 0 {
             if self.IncrPredAt( curSuccId, -U16(1)) == 0 {
                 return curSuccId;
             }
         }
-        jobId
-    }
 
-    pub fn	ExecuteLoop( &self, mavenIdx: U32)
-    {
-        let     maven = self._Mavens.Arr().MutAt( mavenIdx);
-        println!( "{}: {} Done", maven.Index(), maven.SzProcessed());
-    }
-
-    pub fn DoLaunch( &self)
-    {
-        let  mavens = self._Mavens.Arr();
-        let atelier_ptr = self as &dyn AtelierT as *const dyn AtelierT as *mut dyn AtelierT;
-        for i in 0..mavens.len() {
-            mavens.MutAt( i as u32).SetAtelier( atelier_ptr);
+        let     jobId = maven.PopJob();
+        if jobId != 0 {
+            return jobId;
         }
-
-        std::thread::scope(|s| {
-            for mavenIdx in 1..mavens.len() {
-                s.spawn(move || {
-                    self.ExecuteLoop( U32( mavenIdx as u32));
-                });
-            }
-        });
-        mavens.MutAt( 0).ExecuteLoop();
-        print!( "DoLaunch Over")
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl AtelierT for Atelier
-{
-    fn	IncrSzSchedJob( &mut self, inc: U32) -> U32
-    {
-        self._SzSchedJob.FetchAdd( inc, Ordering::SeqCst)
+        self.GrabJob( mavenIdx)
     }
 
-    fn	IncrPredAt( &mut self, jobId: U16, inc: U16) -> U16
-    {
-        let arr = self._SzPreds.Arr();
-        let old = *arr.At( jobId);
-        let new = old + inc;
-        arr.SetAt( jobId, &new);
-        old
-    }
-
-
-    fn	AllocJobs( &mut self, stk: &Stk< U16>) -> U32
-    {
-        let freeJobs = self._JobStash.Stk();
-        freeJobs.Export( stk, U32::_X)
-    }
-
-    fn	FreeJobs( &mut self, stk: &Stk< U16>) -> U32
-    {
-        let freeJobs = self._JobStash.Stk();
-        freeJobs.Import( stk, U32::_X)
-    }
-
-    fn	GrabJob( &self) -> U16
-    {
-        let mut jobId = U16( 0);
-        for maven in self._Mavens.iter() {
-            jobId = maven.PopJob();
-            if jobId != 0 {
-                return jobId;
-            }
-        }
-        return jobId;
-    }
-
-    fn	ExecuteJob( &mut self, mavenIdx: U32, jId: U16)
+    fn	ExecuteJob( &self, mavenIdx: U32, jId: U16)
     {
         let     maven = self.Mavens().MutAt( mavenIdx);
         let mut jobId = jId;
@@ -214,6 +178,55 @@ impl AtelierT for Atelier
             self.IncrSzSchedJob( -U32(1));
         };
     }
+    pub fn	ExecuteLoop( &self, mavenIdx: U32)
+    {
+        let     maven = self._Mavens.Arr().MutAt( mavenIdx);
+        while self.IncrSzSchedJob( U32( 0)) != 0 {
+            let jobId = self.FetchJob( mavenIdx);
+            if jobId != 0 {
+                self.ExecuteJob( mavenIdx, jobId);
+            }
+        }
+        println!( "{}: {} Done", mavenIdx, maven.SzProcessed());
+    }
+
+    pub fn DoLaunch( &self)
+    {
+        let  mavens = self._Mavens.Arr();
+        let atelier_ptr = self as &dyn AtelierT as *const dyn AtelierT as *mut dyn AtelierT;
+        for i in 0..mavens.len() {
+            mavens.MutAt( i as u32).SetAtelier( atelier_ptr);
+        }
+
+        std::thread::scope(|s| {
+            for mavenIdx in 1..mavens.len() {
+                s.spawn(move || {
+                    self.ExecuteLoop( U32( mavenIdx as u32));
+                });
+            }
+        });
+        self.ExecuteLoop( U32( 0));
+        print!( "DoLaunch Over")
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl AtelierT for Atelier
+{
+    fn	AllocJobs( &mut self, stk: &Stk< U16>) -> U32
+    {
+        let freeJobs = self._JobStash.Stk();
+        freeJobs.Export( stk, U32::_X)
+    }
+
+    fn	FreeJobs( &mut self, stk: &Stk< U16>) -> U32
+    {
+        let freeJobs = self._JobStash.Stk();
+        freeJobs.Import( stk, U32::_X)
+    }
+
+
 
 }
 
