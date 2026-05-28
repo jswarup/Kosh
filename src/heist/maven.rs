@@ -110,6 +110,16 @@ impl Maven
         }
     }
 
+    pub fn	ConstructJob<F>( &self, jobFn : F) -> U16
+    where
+        F: FnMut( &mut Maven) + Send + Sync + 'static,
+    {
+        let     jobId = self.AllocJob();
+        let     jobBox = Box::new( jobFn);
+
+        jobId
+    }
+
     pub fn	IncrSzSchedJob( &mut self, inc: U32) -> U32
     {
         unsafe {
