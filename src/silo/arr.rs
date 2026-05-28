@@ -66,13 +66,11 @@ impl< 'a, T> Arr< 'a, T>
         }
     }
 
-    pub fn	MoveAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &T
-    where
-        T: Default,
+    pub fn	MoveAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &'a T
     {
         unsafe {
             let ptr = self._Ptr.as_ptr().add( k.into().as_usize());
-            *ptr = std::mem::take( a);
+            std::ptr::swap( ptr, a);
             &*ptr
         }
     }

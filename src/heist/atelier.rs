@@ -58,10 +58,10 @@ impl Atelier
     pub fn	Mavens< 'a>( &self) -> Arr< 'a, Maven> { self._Mavens.Arr() }
 
 
-    fn	AllocJob( &self, mavenInd: U32) -> U16
+    fn	AllocJob( &self, mavenIdx: U32) -> U16
     {
         let  mavens = self._Mavens.Arr();
-        let  jobCacheStk = mavens.At( mavenInd).JobCacheStk();
+        let  jobCacheStk = mavens.At( mavenIdx).JobCacheStk();
 
         let mut jobId = U16( 0);
         if jobCacheStk.Size() > 0 && jobCacheStk.Pop( &mut jobId) && jobId != 0 {
@@ -75,9 +75,9 @@ impl Atelier
         jobId
     }
 
-    fn	FreeJob( &mut self, mavenInd: U32, mut jobId : U16) -> bool
+    fn	FreeJob( &mut self, mavenIdx: U32, mut jobId : U16) -> bool
     {
-        let     maven = self._Mavens.Arr().MutAt( mavenInd);
+        let     maven = self._Mavens.Arr().MutAt( mavenIdx);
         maven.IncrSzProcessed( 1);
         let freeJobs = self._JobStash.Stk();
         let  jobCacheStk = maven.JobCacheStk();
@@ -91,21 +91,36 @@ impl Atelier
     }
 
 
-    pub fn	ConstructJob<F>( &self, mavenInd: U32, jobFn : F) -> U16
+    pub fn	ConstructJob<F>( &self, mavenIdx: U32, jobFn : F) -> U16
     where
         F: FnMut( &mut Maven) + Send + Sync + 'static,
     {
-        let     jobId = self.AllocJob( mavenInd);
+        let     jobId = self.AllocJob( mavenIdx);
         if jobId == 0 {
             return jobId;
         }
-        *self._JobBuff.Arr().MutAt( jobId) = Box::new( jobFn);
+        let mut jobBox: Box<JobFn> = Box::new( jobFn);
+        self._JobBuff.Arr().MoveAt( jobId, &mut jobBox);
         return jobId;
     }
 
-    pub fn	EnqueueJob( &mut self, mavenInd: U32, jobId: &mut U16)
+    pub fn	EnqueueJob( &mut self, mavenIdx: U32, jobId: &mut U16)
     {
-        self._Mavens.Arr().MutAt( mavenInd).EnqueueJob( jobId);
+        self._Mavens.Arr().MutAt( mavenIdx).EnqueueJob( jobId);
+    }
+
+    pub fn  FetchJob( &mut self, mavenIdx: U32) -> U16
+    {
+        let     maven = self._Mavens.Arr().MutAt( mavenIdx);
+        let mut jobId = U16( 0);
+        let mut szPred = U16( 0);
+        let     curSuccId = maven.CurSuccId();
+        if curSuccId != 0 {
+            if self.IncrPredAt( curSuccId, -U16(1)) == 0 {
+                return curSuccId;
+            }
+        }
+        jobId
     }
 
     pub fn DoLaunch( &self)
@@ -167,9 +182,9 @@ impl AtelierT for Atelier
         return jobId;
     }
 
-    fn	ExecuteJob( &mut self, mavenInd: U32, jId: U16)
+    fn	ExecuteJob( &mut self, mavenIdx: U32, jId: U16)
     {
-        let     maven = self.Mavens().MutAt( mavenInd);
+        let     maven = self.Mavens().MutAt( mavenIdx);
         let mut jobId = jId;
         loop {
             if jobId == 0 {

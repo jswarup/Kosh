@@ -100,7 +100,6 @@ fn	ArrBasicOpsTest()
         let mut val = 300;
         arr.MoveAt( 0, &mut val);
         assert_eq!( *arr.At( 0), 300);
-        assert_eq!( val, 0); // 0 is i32 default
 
         // Test SwapAt
         arr.SwapAt( 0, 2);
