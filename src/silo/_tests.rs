@@ -84,7 +84,7 @@ fn	ArrBasicOpsTest()
 {
     let  buff = Buff::New( 3, 42);
     {
-        let mut arr = buff.AsArr();
+        let mut arr = buff.Arr();
         assert_eq!( arr.len(), 3);
         assert_eq!( arr[0], 42);
         arr[1] = 100;
@@ -111,7 +111,7 @@ fn	ArrBasicOpsTest()
     assert_eq!( buff[1], 100);
     assert_eq!( buff[2], 300);
 
-    let arr2 = buff.AsArr();
+    let arr2 = buff.Arr();
     assert_eq!( arr2[1], 100);
 
     // Test Debug trait
@@ -196,7 +196,7 @@ fn	QSortTest()
     let buff = Buff::Create( U32( 256), |_| rand::random::< f64>());
     //let     buff =  Buff::New( 5, | i| i);
 
-    let arr = buff.AsArr();
+    let arr = buff.Arr();
     arr.USeg()
         .QSort( &|i, j| arr.At( i) > arr.At( j), &mut |i, j| {
             arr.SwapAt( i, j);
@@ -257,7 +257,7 @@ fn	StackBasicOps()
     // Atomic counter for size tracking
     let atm = Atm::New( U32( 0));
     // Obtain a mutable Arr view over the buffer
-    let arr = buff.AsArr();
+    let arr = buff.Arr();
     // Create the stack
     let     stack = Stk::Create( &atm, arr);
 

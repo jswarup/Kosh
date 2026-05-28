@@ -276,7 +276,7 @@ impl< T: Clone> Buff< T> {}
 
 impl< T> Buff< T>
 {
-    pub fn	AsArr< 'a>( &self) -> Arr< 'a, T>
+    pub fn	Arr< 'a>( &self) -> Arr< 'a, T>
     {
         Arr::New( self._Ptr.cast::< T>(), U32( self._Ptr.len() as u32))
     }

@@ -9,7 +9,8 @@ use crate::{
 #[test]
 fn	BuffBasicAtelierTest()
 {
-    let  mut   atelier = Atelier::New( U32( 4));
+    let atelier = Atelier::New( U32( 4));
+    let maven = atelier.Mavens().At( 0);
     atelier.DoLaunch();
 }
 

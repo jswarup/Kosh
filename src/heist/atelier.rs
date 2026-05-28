@@ -2,10 +2,7 @@
 
 use crate::heist::maven::{AtelierT, Maven, JobFn};
 use crate::silo::atm::{Atm, Spinlock};
-use crate::silo::buff::Buff;
-use crate::silo::stash::Stash;
-use crate::silo::stk::Stk;
-use crate::silo::uint::{U16, U32};
+use crate::silo::{ buff::Buff, arr::Arr, stk::Stk, stash::Stash, uint::{U16, U32}};
 use std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -58,14 +55,11 @@ impl Atelier
         atelier
     }
 
-    pub fn  Maven< 'a>( &self, mavenInd : U32) -> &'a mut Maven
-    {
-        self._Mavens.AsArr().At( mavenInd)
-    }
+    pub fn	Mavens< 'a>( &self) -> Arr< 'a, Maven> { self._Mavens.Arr() }
 
-    pub fn DoLaunch( &mut self)
+    pub fn DoLaunch( &self)
     {
-        let  mavens = self._Mavens.AsArr();
+        let  mavens = self._Mavens.Arr();
         std::thread::scope(|s| {
             for mavenIdx in 1..mavens.len() {
                 let     maven = mavens.At( mavenIdx);
@@ -90,7 +84,7 @@ impl AtelierT for Atelier
 
     fn	IncrPredAt( &mut self, jobId: U16, inc: U16) -> U16
     {
-        let arr = self._SzPreds.AsArr();
+        let arr = self._SzPreds.Arr();
         let old = *arr.At( jobId);
         let new = old + inc;
         arr.SetAt( jobId, &new);
@@ -137,7 +131,7 @@ impl AtelierT for Atelier
 
     fn	ExecuteJob( &mut self, mavenInd: U32, jId: U16)
     {
-        let     maven = self.Maven( mavenInd);
+        let     maven = self.Mavens().At( mavenInd);
         let mut jobId = jId;
         loop {
             if jobId == 0 {
@@ -145,8 +139,8 @@ impl AtelierT for Atelier
             }
             let succId;
             {
-                maven.SetCurSuccId( *self._SuccIds.AsArr().At( jobId));
-                let     job = self._JobBuff.AsArr().At( jobId);
+                maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
+                let     job = self._JobBuff.Arr().At( jobId);
                 job( maven);
                 let     _res = maven.FreeJob( jobId);
                 succId = maven.CurSuccId();

@@ -41,14 +41,14 @@ impl< T: Default> Stash< T>
 
     pub fn	Stk( &self) -> Stk< '_, '_, T>
     {
-        Stk::Create( &self._Sz, self._Buff.AsArr())
+        Stk::Create( &self._Sz, self._Buff.Arr())
     }
 
     pub fn	DoIndexSetup( &mut self)
     where
         T: From< usize> + Clone,
     {
-        let arr = self._Buff.AsArr();
+        let arr = self._Buff.Arr();
         arr.USeg().Span( |i: U32| {
             arr.SetAt( i, &T::from( i.as_usize()));
             true
