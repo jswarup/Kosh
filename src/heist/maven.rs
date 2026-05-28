@@ -59,25 +59,18 @@ impl Maven
         self._Atelier = atelier;
     }
 
-    pub fn	Index( &self) -> U32
-    {
-        self._Index
-    }
+    pub fn	Index( &self) -> U32 { self._Index }
 
-    pub fn	CurSuccId( &self) -> U16
-    {
-        self._CurSuccId
-    }
+    pub fn	CurSuccId( &self) -> U16 { self._CurSuccId }
 
-    pub fn	SetCurSuccId( &mut self, succId: U16)
-    {
-        self._CurSuccId = succId;
-    }
+    pub fn	SetCurSuccId( &mut self, succId: U16) { self._CurSuccId = succId; }
 
     pub fn	JobCacheStk( &self) -> Stk< '_, '_, U16>
     {
         self._JobCache.Stk()
     }
+
+    pub fn	SzProcessed( &self) -> U32 { self._SzProcessed }
 
     pub fn	IncrSzProcessed< K: Into< U32>>( &mut self, k: K)
     {
@@ -166,7 +159,7 @@ impl Maven
         return jobId;
     }
 
-   
+
 
     pub fn	ExecuteLoop( &mut self)
     {

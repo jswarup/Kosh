@@ -123,14 +123,24 @@ impl Atelier
         jobId
     }
 
+    pub fn	ExecuteLoop( &self, mavenIdx: U32)
+    {
+        let     maven = self._Mavens.Arr().MutAt( mavenIdx);
+        println!( "{}: {} Done", maven.Index(), maven.SzProcessed());
+    }
+
     pub fn DoLaunch( &self)
     {
         let  mavens = self._Mavens.Arr();
+        let atelier_ptr = self as &dyn AtelierT as *const dyn AtelierT as *mut dyn AtelierT;
+        for i in 0..mavens.len() {
+            mavens.MutAt( i as u32).SetAtelier( atelier_ptr);
+        }
+
         std::thread::scope(|s| {
             for mavenIdx in 1..mavens.len() {
-                let     maven = mavens.MutAt( mavenIdx);
                 s.spawn(move || {
-                    maven.ExecuteLoop();
+                    self.ExecuteLoop( U32( mavenIdx as u32));
                 });
             }
         });
