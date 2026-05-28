@@ -13,7 +13,6 @@ pub trait AtelierT
 {
     fn	IncrSzSchedJob( &mut self, inc: U32) -> U32;
     fn	IncrPredAt( &mut self, jobId: U16, inc: U16) -> U16;
-    fn	AllocJob( &mut self) -> U16;
     fn	AllocJobs( &mut self, stk: &Stk< U16>) -> U32;
     fn	FreeJobs( &mut self, stk: &Stk< U16>) -> U32;
     fn	GrabJob( &self) -> U16;
@@ -75,6 +74,17 @@ impl Maven
     {
         self._CurSuccId = succId;
     }
+
+    pub fn	JobCacheStk( &self) -> Stk< '_, '_, U16>
+    {
+        self._JobCache.Stk()
+    }
+
+    pub fn	IncrSzProcessed< K: Into< U32>>( &mut self, k: K)
+    {
+        self._SzProcessed = self._SzProcessed + k.into();
+    }
+
     pub fn	AllocJob( &self) -> U16
     {
         loop {

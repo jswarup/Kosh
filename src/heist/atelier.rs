@@ -57,6 +57,23 @@ impl Atelier
 
     pub fn	Mavens< 'a>( &self) -> Arr< 'a, Maven> { self._Mavens.Arr() }
 
+
+    fn	AllocJob( &mut self, mavenInd: U32) -> U16
+    {
+        let  mavens = self._Mavens.Arr();
+        let  jobCacheStk = mavens.At( mavenInd).JobCacheStk();
+
+        let mut jobId = U16( 0);
+        if jobCacheStk.Size() > 0 && jobCacheStk.Pop( &mut jobId) && jobId != 0 {
+            return jobId
+        }
+        let freeStk = self._JobStash.Stk();
+
+        if freeStk.Size() != 0 && freeStk.Export( &jobCacheStk, U32::_X) != 0 &&
+                        jobCacheStk.Pop( &mut jobId) && jobId != 0 {
+        }
+        jobId
+    }
     pub fn DoLaunch( &self)
     {
         let  mavens = self._Mavens.Arr();
@@ -91,14 +108,6 @@ impl AtelierT for Atelier
         old
     }
 
-    fn	AllocJob( &mut self) -> U16
-    {
-        let stk = self._JobStash.Stk();
-        let mut jobId = U16( 0);
-        if stk.Size() != 0 && stk.Pop( &mut jobId) {
-        }
-        jobId
-    }
 
     fn	AllocJobs( &mut self, stk: &Stk< U16>) -> U32
     {

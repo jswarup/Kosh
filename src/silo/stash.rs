@@ -44,7 +44,7 @@ impl< T: Default> Stash< T>
         Stk::Create( &self._Sz, self._Buff.Arr())
     }
 
-    pub fn	DoIndexSetup( &mut self)
+    pub fn	DoIndexSetup( &self)
     where
         T: From< usize> + Clone,
     {
