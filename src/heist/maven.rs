@@ -125,7 +125,7 @@ impl Maven
         F: FnMut( &mut Maven) + Send + Sync + 'static,
     {
         let     jobId = self.AllocJob();
-        let     jobBox = Box::new( jobFn);
+        let     _jobBox = Box::new( jobFn);
 
         jobId
     }

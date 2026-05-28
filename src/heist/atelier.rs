@@ -74,6 +74,22 @@ impl Atelier
         }
         jobId
     }
+
+    fn	FreeJob( &mut self, mavenInd: U32, mut jobId : U16) -> bool
+    {
+        let     maven = self._Mavens.Arr().At( mavenInd);
+        maven.IncrSzProcessed( 1);
+        let freeJobs = self._JobStash.Stk();
+        let  jobCacheStk = maven.JobCacheStk();
+        loop {
+            if jobCacheStk.SzVoid() != 0 {
+                jobCacheStk.Push( &mut jobId);
+                return true;
+            }
+            freeJobs.Import( & jobCacheStk, U32::_X);
+        }
+    }
+
     pub fn DoLaunch( &self)
     {
         let  mavens = self._Mavens.Arr();
