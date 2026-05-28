@@ -58,7 +58,7 @@ impl Atelier
     pub fn	Mavens< 'a>( &self) -> Arr< 'a, Maven> { self._Mavens.Arr() }
 
 
-    fn	AllocJob( &mut self, mavenInd: U32) -> U16
+    fn	AllocJob( &self, mavenInd: U32) -> U16
     {
         let  mavens = self._Mavens.Arr();
         let  jobCacheStk = mavens.At( mavenInd).JobCacheStk();
@@ -88,6 +88,24 @@ impl Atelier
             }
             freeJobs.Import( & jobCacheStk, U32::_X);
         }
+    }
+
+
+    pub fn	ConstructJob<F>( &self, mavenInd: U32, jobFn : F) -> U16
+    where
+        F: FnMut( &mut Maven) + Send + Sync + 'static,
+    {
+        let     jobId = self.AllocJob( mavenInd);
+        if jobId == 0 {
+            return jobId;
+        }
+        *self._JobBuff.Arr().MutAt( jobId) = Box::new( jobFn);
+        return jobId;
+    }
+
+    pub fn	EnqueueJob( &mut self, mavenInd: U32, jobId: &mut U16)
+    {
+        self._Mavens.Arr().MutAt( mavenInd).EnqueueJob( jobId);
     }
 
     pub fn DoLaunch( &self)
@@ -147,11 +165,6 @@ impl AtelierT for Atelier
             }
         }
         return jobId;
-    }
-
-    fn  StoreJob( &mut self, jobId: U16, job: Box< JobFn>)
-    {
-        self._JobBuff[jobId.as_usize()] = job;
     }
 
     fn	ExecuteJob( &mut self, mavenInd: U32, jId: U16)

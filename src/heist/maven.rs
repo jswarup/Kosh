@@ -16,7 +16,6 @@ pub trait AtelierT
     fn	AllocJobs( &mut self, stk: &Stk< U16>) -> U32;
     fn	FreeJobs( &mut self, stk: &Stk< U16>) -> U32;
     fn	GrabJob( &self) -> U16;
-    fn  StoreJob( &mut self, jobId: U16, job: Box< JobFn>);
     fn  ExecuteJob( &mut self, mavenInd: U32, jobId: U16);
 }
 
@@ -118,16 +117,6 @@ impl Maven
                 }
             }
         }
-    }
-
-    pub fn	ConstructJob<F>( &self, jobFn : F) -> U16
-    where
-        F: FnMut( &mut Maven) + Send + Sync + 'static,
-    {
-        let     jobId = self.AllocJob();
-        let     _jobBox = Box::new( jobFn);
-
-        jobId
     }
 
     pub fn	IncrSzSchedJob( &mut self, inc: U32) -> U32
