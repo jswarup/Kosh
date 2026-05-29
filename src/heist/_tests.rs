@@ -16,9 +16,9 @@ fn	BuffBasicAtelierTest()
     {
         println!( "Trial {}", m.Index());
     }
-    let mut atelier = Atelier::New( U32( 4));
+    let atelier = Atelier::New( U32( 4));
     let     maven = atelier.Mavens().At( 0);
-    let mut jobId = atelier.ConstructJob( maven.Index(), trialJob);
+    let     mut jobId = atelier.ConstructJob( maven.Index(), trialJob);
     atelier.EnqueueJob( maven.Index(), &mut jobId);
     atelier.DoLaunch();
 }

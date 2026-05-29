@@ -1,23 +1,25 @@
 //-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
 
-use crate::heist::maven::{AtelierT, Maven, JobFn};
+use crate::heist::maven::{ Maven, JobFn};
 use crate::silo::atm::{Atm, Spinlock};
-use crate::silo::{ buff::Buff, arr::Arr, stk::Stk, stash::Stash, uint::{U16, U32}};
+use crate::silo::{ buff::Buff, arr::Arr, stash::Stash, uint::{U16, U32}};
 use std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 pub struct Atelier
 {
-    _StartCount: U32, // Count of Processing Queue started, used for startup and shutdown
-    _SzSchedJob: Atm< U32>, // Count of cumulative scheduled jobs in Works and Queues
-    _SzQueue: Atm< U32>,
-    _Lock: Spinlock,
+    _StartCount: U32,               // Count of Processing Queue started, used for startup and shutdown
+    _SzSchedJob: Atm< U32>,         // Count of cumulative jobs in flight
+
     _LockedMark: U32,
 
     _Mavens: Buff< Maven>,
-    _SzPreds: Buff< U16>, // Count of predessors for job at the jobId
+    _SzPreds: Buff< U16>,       // Count of predessors for job at the jobId
     _SuccIds: Buff< U16>,
-    _JobStash: Stash< U16>, // A Stack of free jobIds
+
+    _FreeJobLock: Spinlock,
+    _FreeJobStash: Stash< U16>, // A Stack of free jobIds
+
     _JobBuff: Buff< Box< JobFn>>,
 }
 
@@ -27,31 +29,26 @@ impl Atelier
 {
     pub fn	New( szMaven: U32 ) -> Self
     {
-        let mut atelier = Self {
+        let atelier = Self {
 
             _StartCount: U32::_0,
             _SzSchedJob: Atm::New( U32::_0),
-            _SzQueue: Atm::New( U32::_0),
-            _Lock: Spinlock::New(),
             _Mavens: Buff::Create( szMaven, | i| {
-                Maven::New( std::ptr::null_mut::< Atelier>() as *mut dyn AtelierT, i)
+                Maven::New( i)
             }),
             _LockedMark: U32::_0,
 
             _SzPreds: Buff::< U16>::New( U32::_16Sz, U16::_0),
             _SuccIds: Buff::< U16>::New( U32::_16Sz, U16::_0),
-            _JobStash: Stash::< U16>::New( U32::_16Sz),
+            _FreeJobLock: Spinlock::New(),
+            _FreeJobStash: Stash::< U16>::New( U32::_16Sz),
             _JobBuff: Buff::Create( U32::_16Sz, |_i| {
                 let cb: Box< JobFn> = Box::new( |_m| {});
                 cb
             }),
         };
 
-        atelier._JobStash.DoIndexSetup();
-        let atelier_ptr = &mut atelier as *mut dyn AtelierT;
-        for i in 0..szMaven.as_usize() {
-            atelier._Mavens[i as usize].SetAtelier( atelier_ptr);
-        }
+        atelier._FreeJobStash.DoIndexSetup();
         atelier
     }
 
@@ -65,33 +62,29 @@ impl Atelier
 
     fn	AllocJob( &self, mavenIdx: U32) -> U16
     {
-        let  mavens = self._Mavens.Arr();
-        let  jobCacheStk = mavens.At( mavenIdx).JobCacheStk();
+        let     mavens = self._Mavens.Arr();
+        let     jobCacheStk = mavens.At( mavenIdx).JobCacheStk();
 
-        let mut jobId = U16( 0);
-        if jobCacheStk.Size() > 0 && jobCacheStk.Pop( &mut jobId) && jobId != 0 {
-            return jobId
+        if jobCacheStk.Size() == 0  && self._FreeJobStash.Size()!= 0 {
+            let _guard = self._FreeJobLock.Lock();
+            self._FreeJobStash.Stk().Export( &jobCacheStk, U32::_X);
         }
-        let freeStk = self._JobStash.Stk();
-
-        if freeStk.Size() != 0 && freeStk.Export( &jobCacheStk, U32::_X) != 0 &&
-                        jobCacheStk.Pop( &mut jobId) && jobId != 0 {
+        let mut     jobId = U16( 0);
+        if jobCacheStk.Pop( &mut jobId) {
         }
         jobId
     }
 
-    fn	FreeJob( &mut self, mavenIdx: U32, mut jobId : U16) -> bool
+    fn	FreeJob( &self, mavenIdx: U32, mut jobId : U16) -> bool
     {
         let     maven = self._Mavens.Arr().MutAt( mavenIdx);
-        maven.IncrSzProcessed( 1);
-        let freeJobs = self._JobStash.Stk();
-        let  jobCacheStk = maven.JobCacheStk();
+        let     jobCacheStk = maven.JobCacheStk();
         loop {
             if jobCacheStk.SzVoid() != 0 {
                 jobCacheStk.Push( &mut jobId);
                 return true;
             }
-            freeJobs.Import( & jobCacheStk, U32::_X);
+            self._FreeJobStash.Stk().Import( & jobCacheStk, U32::_X);
         }
     }
 
@@ -160,16 +153,13 @@ impl Atelier
     {
         let     maven = self.Mavens().MutAt( mavenIdx);
         let mut jobId = jId;
-        loop {
-            if jobId == 0 {
-                return;
-            }
+        while jobId != 0 {
             let succId;
             {
-                maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
-                let     job = self._JobBuff.Arr().MutAt( jobId);
-                job( maven);
-                let     _res = maven.FreeJob( jobId);
+                maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));       // for user-jobs
+                self._JobBuff.Arr().MutAt( jobId)( maven);                          // Run job
+                maven.IncrSzProcessed( 1);
+                let     _res = self.FreeJob( mavenIdx, jobId);
                 succId = maven.CurSuccId();
                 maven.SetCurSuccId( U16::_0);
             }
@@ -192,11 +182,7 @@ impl Atelier
 
     pub fn DoLaunch( &self)
     {
-        let  mavens = self._Mavens.Arr();
-        let atelier_ptr = self as &dyn AtelierT as *const dyn AtelierT as *mut dyn AtelierT;
-        for i in 0..mavens.len() {
-            mavens.MutAt( i as u32).SetAtelier( atelier_ptr);
-        }
+        let  mavens = self._Mavens.Arr(); 
 
         std::thread::scope(|s| {
             for mavenIdx in 1..mavens.len() {
@@ -208,26 +194,6 @@ impl Atelier
         self.ExecuteLoop( U32( 0));
         print!( "DoLaunch Over")
     }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl AtelierT for Atelier
-{
-    fn	AllocJobs( &mut self, stk: &Stk< U16>) -> U32
-    {
-        let freeJobs = self._JobStash.Stk();
-        freeJobs.Export( stk, U32::_X)
-    }
-
-    fn	FreeJobs( &mut self, stk: &Stk< U16>) -> U32
-    {
-        let freeJobs = self._JobStash.Stk();
-        freeJobs.Import( stk, U32::_X)
-    }
-
-
-
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
