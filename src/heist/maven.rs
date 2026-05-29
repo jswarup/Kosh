@@ -9,7 +9,6 @@ use	crate::silo::uint::{ U16, U32 };
 pub struct Maven
 {
     _Index: U32,
-    _CurSuccId: U16,
     _SzProcessed: U32,
     _JobCache: Stash< U16>,
     _RunQueue: Stash< U16>,
@@ -27,7 +26,6 @@ impl Maven
     {
         Self {
             _Index: mavenInd,
-            _CurSuccId: U16::_0,
             _SzProcessed: U32::_0,
             _JobCache: Stash::<U16>::New( U32( 256)),
             _RunQueue: Stash::<U16>::New( U32( 1024)),
@@ -40,20 +38,6 @@ impl Maven
     pub fn	Index( &self) -> U32
     {
         self._Index
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	CurSuccId( &self) -> U16
-    {
-        self._CurSuccId
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	SetCurSuccId( &mut self, succId: U16)
-    {
-        self._CurSuccId = succId;
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

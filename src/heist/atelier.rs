@@ -157,14 +157,13 @@ impl Atelier
     {
 		let  	maven = self._Mavens.Arr().MutAt( mavenIdx);
 		let  	mut jobId = U16( 0);
-		let  	maestro = Maestro::New( self, mavenIdx);
         while self.IncrSzSchedJob( U32( 0)) != 0 {
             while jobId != 0 {
-                maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));  // for user-jobs
+				let  	succId = *self._SuccIds.Arr().At( jobId);
+				let  	maestro = Maestro::New( self, mavenIdx, succId);
                 self._JobBuff.Arr().MutAt( jobId)( &maestro);          // Run job
                 maven.IncrSzProcessed( 1);
 				let  	_res = self.FreeJob( mavenIdx, jobId);
-				let  	succId = maven.CurSuccId();
                 if succId != U16( 0) {
 					let  	szPred = self.IncrPredAt( succId, -U16( 1));
                     if szPred == U16( 1) {
@@ -176,7 +175,6 @@ impl Atelier
                 } else {
                     jobId = U16::_0;
                 }
-                maven.SetCurSuccId( U16::_0);
                 self.IncrSzSchedJob( -U32( 1));
             }
             jobId = maven.PopJob();

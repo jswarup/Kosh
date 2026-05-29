@@ -98,6 +98,6 @@ fn	TestConcurrentDAG()
 fn	TestMaestroBasicOps()
 {
 	let  	atelier = Atelier::New( U32( 4));
-	let  	maestro = Maestro::New( &atelier, U32( 2));
+	let  	maestro = Maestro::New( &atelier, U32( 2), U16( 0));
     assert_eq!( maestro.MavenIndex(), U32( 2));
 }
