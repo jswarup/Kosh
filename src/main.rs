@@ -22,7 +22,7 @@ struct Args
 
 fn	setup_logging( verbose: bool) -> Result< ()>
 {
-	let filter = if verbose {
+	let  	filter = if verbose {
         EnvFilter::builder()
             .with_default_directive( LevelFilter::DEBUG.into())
             .from_env_lossy()
@@ -43,7 +43,7 @@ fn	setup_logging( verbose: bool) -> Result< ()>
 
 fn	main() -> Result< ()>
 {
-	let args = Args::parse();                                          // Parse command line arguments
+	let  	args = Args::parse();                                          // Parse command line arguments
     setup_logging( args.verbose).context( "Setting up logging framework failed")?; // Initialize logging based on verbosity flag
     info!( "Initialized a new Buff of integers with len: {}", 4);
     println!( 

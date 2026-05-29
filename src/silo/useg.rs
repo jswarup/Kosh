@@ -16,8 +16,8 @@ impl USeg
 {
     pub fn	Create< F: Into< U32>, S: Into< U32>>( first: F, sz: S) -> Self
     {
-		let fst = first.into();
-		let size = sz.into();
+		let  	fst = first.into();
+		let  	size = sz.into();
         USeg {
             _First: fst,
             _Last: ( fst + size) - 1,
@@ -43,8 +43,8 @@ impl USeg
     pub fn	Mid( &self) -> U32
     {
         // Compute mid as U32 using inner u32 arithmetic
-		let sum = self._First.as_u32() + self._Last.as_u32();
-		let mid = sum / 2;
+		let  	sum = self._First.as_u32() + self._Last.as_u32();
+		let  	mid = sum / 2;
         U32( mid)
     }
 
@@ -67,7 +67,7 @@ impl USeg
 
     pub fn	LSnip< C: Into< U32>>( &self, count: C) -> Self
     {
-		let cnt = count.into();
+		let  	cnt = count.into();
         if self.Size() < cnt {
             USeg::Create( U32::_X, 0)
         } else {
@@ -79,7 +79,7 @@ impl USeg
 
     pub fn	RSnip< C: Into< U32>>( &self, count: C) -> Self
     {
-		let cnt = count.into();
+		let  	cnt = count.into();
         if self.Size() < cnt {
             USeg::Create( U32::_X, 0)
         } else {
@@ -111,11 +111,11 @@ impl USeg
         LessAt: Fn( U32, U32) -> bool,
         SwapAt: FnMut( U32, U32),
     {
-		let mid = self.Mid();
+		let  	mid = self.Mid();
         if lessAt( self._First, mid) {
             swapAt( self._First, mid);
         }
-		let mut pivot = self._First;
+		let  	mut pivot = self._First;
         self.LSnip( 1).Span( &mut |i| {
             if lessAt( i, self._First) {
                 pivot = pivot + 1;
@@ -139,12 +139,12 @@ impl USeg
         if self.Size() <= 1 {
             return;
         }
-		let pivot = self.Partition( lessAt, swapAt);
-		let useg1 = USeg::Create( self._First, pivot - self._First);
+		let  	pivot = self.Partition( lessAt, swapAt);
+		let  	useg1 = USeg::Create( self._First, pivot - self._First);
         if useg1.Size() > 1 {
             useg1.QSort( lessAt, swapAt);
         }
-		let useg2 = USeg::Create( pivot + 1, self._Last - pivot);
+		let  	useg2 = USeg::Create( pivot + 1, self._Last - pivot);
         if useg2.Size() > 1 {
             useg2.QSort( lessAt, swapAt);
         }

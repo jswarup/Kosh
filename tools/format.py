@@ -449,20 +449,13 @@ def format_braces(line):
     return line
 
 def format_line_code(line):
-    # 1. Handle let statement indentation first
-    stripped = line.lstrip()
-    if stripped.startswith("let ") or stripped.startswith("let\t") or stripped.startswith("let\n") or stripped == "let":
-        indent_chars = line[:len(line) - len(stripped)]
-        spaces = indent_chars.count(' ')
-        tabs = indent_chars.count('\t')
-        levels = tabs + (spaces // 4)
-        line = ('\t' * levels) + stripped
-
-    # 2. Chunk line to only format CODE parts
+    # 1. Chunk line to format CODE parts
     chunks = chunk_line(line)
     formatted_line = ""
     for type, val in chunks:
         if type == "CODE":
+            # Let keyword followed by 2 spaces and a tab
+            val = re.sub(r'\blet\s+', 'let  \t', val)
             # Tab after fn keyword
             val = re.sub(r'\bfn\s+', 'fn\t', val)
             # Space after open parenthesis unless followed by space or close parenthesis

@@ -15,7 +15,7 @@ All Rust source files (`.rs`) in this project must adhere to the following forma
 - **Fn Keyword**: The `fn` keyword in all function declarations must be immediately followed by a tab character (`\t`) instead of a space (e.g., `fn\tfoo(...)` or `pub fn\tbar(...)`).
 
 ## 4. Local Variable Declarations
-- **Indentation**: All local variable declarations (`let` statements) must be preceded by a tab character (`\t`) for indentation, rather than spaces (e.g., `\tlet foo = ...`).
+- **Let Keyword**: The `let` keyword in all local variable declarations must be immediately followed by exactly two spaces and a tab character (`\t`) (e.g., `let  \tfoo = ...`).
 
 ## 5. Separator Lines
 - **Blank Lines**: An empty line must always precede and succeed every separator line (e.g., `//---------------------------------------------------------------------------------------------------------------------------------`).

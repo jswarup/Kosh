@@ -63,7 +63,7 @@ impl< T: Default> Stash< T>
     where
         T: From< usize> + Clone,
     {
-		let arr = self._Buff.Arr();
+		let  	arr = self._Buff.Arr();
         arr.USeg().Span( |i: U32| {
             arr.SetAt( i, &T::from( i.as_usize()));
             true

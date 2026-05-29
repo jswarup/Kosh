@@ -58,7 +58,7 @@ impl< 'a, T> Arr<'a, T>
 
     pub fn	At< K: Into< U32>>( &self, k: K) -> &'a T {
         unsafe {
-			let ptr = self._Ptr.as_ptr().add( k.into().as_usize());
+			let  	ptr = self._Ptr.as_ptr().add( k.into().as_usize());
             &*ptr
         }
     }
@@ -67,7 +67,7 @@ impl< 'a, T> Arr<'a, T>
 
     pub fn	MutAt< K: Into< U32>>( &self, k: K) -> &'a mut T {
         unsafe {
-			let ptr = self._Ptr.as_ptr().add( k.into().as_usize());
+			let  	ptr = self._Ptr.as_ptr().add( k.into().as_usize());
             &mut *ptr
         }
     }
@@ -79,7 +79,7 @@ impl< 'a, T> Arr<'a, T>
         T: Clone,
     {
         unsafe {
-			let ptr = self._Ptr.as_ptr().add( k.into().as_usize());
+			let  	ptr = self._Ptr.as_ptr().add( k.into().as_usize());
             *ptr = a.clone();
             &*ptr
         }
@@ -89,7 +89,7 @@ impl< 'a, T> Arr<'a, T>
 
     pub fn	MoveAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &'a T {
         unsafe {
-			let ptr = self._Ptr.as_ptr().add( k.into().as_usize());
+			let  	ptr = self._Ptr.as_ptr().add( k.into().as_usize());
             std::ptr::swap( ptr, a);
             &*ptr
         }
@@ -111,7 +111,7 @@ impl< 'a, T> Arr<'a, T>
 
     pub fn	LSnip< C: Into< U32>>( &self, count: C) -> Self
     {
-		let cnt = count.into();
+		let  	cnt = count.into();
         Arr::New( 
             unsafe
             { self._Ptr.add( cnt.as_u32() as usize) },
@@ -123,7 +123,7 @@ impl< 'a, T> Arr<'a, T>
 
     pub fn	RSnip< C: Into< U32>>( &self, count: C) -> Self
     {
-		let cnt = count.into();
+		let  	cnt = count.into();
         Arr::New( self._Ptr, self.Size() - cnt)
     }
 

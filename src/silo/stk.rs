@@ -55,7 +55,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
     where
         T: Default + Clone,
     {
-		let sz = self.Size();
+		let  	sz = self.Size();
         if ( sz == U32( 0))
             || ( self
                 ._Size
@@ -78,7 +78,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
     where
         T: Default,
     {
-		let sz = self.Size();
+		let  	sz = self.Size();
         if ( sz >= self._Arr.Size())
             || self
                 ._Size
@@ -101,11 +101,11 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
     where
         T: Clone,
     {
-		let max_mov = maxMov.into();
-		let ( szAlloc, oldSz) = loop {
-			let sz = self.Size();
-			let szCacheVoid = self._Arr.Size() - sz;
-			let mut szAlloc = if szCacheVoid < stk.Size() {
+		let  	max_mov = maxMov.into();
+		let  	( szAlloc, oldSz) = loop {
+			let  	sz = self.Size();
+			let  	szCacheVoid = self._Arr.Size() - sz;
+			let  	mut szAlloc = if szCacheVoid < stk.Size() {
                 szCacheVoid
             } else {
                 stk.Size()
@@ -131,7 +131,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         if szAlloc == U32( 0) {
             return U32( 0);
         }
-		let stkSz = stk
+		let  	stkSz = stk
             ._Size
             .FetchAdd( U32( 0) - szAlloc, std::sync::atomic::Ordering::SeqCst)
             - szAlloc;
@@ -148,12 +148,12 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
     where
         T: Clone,
     {
-		let max_mov = maxMov.into();
-		let ( szAlloc, oldSz) = loop {
-			let szStk = stk.Size();
-			let szStkVoid = stk._Arr.Size() - szStk;
-			let sz = self.Size();
-			let mut szAlloc = if szStkVoid < sz
+		let  	max_mov = maxMov.into();
+		let  	( szAlloc, oldSz) = loop {
+			let  	szStk = stk.Size();
+			let  	szStkVoid = stk._Arr.Size() - szStk;
+			let  	sz = self.Size();
+			let  	mut szAlloc = if szStkVoid < sz
 			{ szStkVoid } else
             { sz };
             szAlloc = if szAlloc > max_mov
@@ -177,7 +177,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         if szAlloc == U32( 0) {
             return U32( 0);
         }
-		let szStk = stk
+		let  	szStk = stk
             ._Size
             .FetchAdd( U32( 0) + szAlloc, std::sync::atomic::Ordering::SeqCst);
         USeg::Create( U32( 0), szAlloc).Span( |i| {
