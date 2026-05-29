@@ -1,19 +1,19 @@
 //-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
-use crate::heist::maven::
-{ JobFn, Maven};
-use crate::silo::atm::
-{ Atm, Spinlock};
+
+use std::sync::atomic::Ordering;
+use crate::heist::maven::Maven;
+use crate::silo::atm::{ Atm, Spinlock};
 use crate::silo::
 {
     arr::Arr,
     buff::Buff,
     stash::Stash,
-    uint::
-    { U16, U32},
+    uint::{ U16, U32},
 };
-use std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+type JobFn = dyn FnMut( &Atelier) + Send + Sync;
 
 pub struct Atelier
 {
@@ -32,7 +32,6 @@ pub struct Atelier
 
 impl Atelier
 {
-
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	New( szMaven: U32) -> Self
@@ -49,8 +48,7 @@ impl Atelier
             _FreeJobStash: Stash::<U16>::New( U32::_16Sz),
             _JobBuff: Buff::Create( U32::_16Sz, |_i|
             {
-				let cb: Box< JobFn> = Box::new( |_m|
-                { });
+				let cb: Box< JobFn> = Box::new( |_m| { });
                 cb
             }),
         };
@@ -124,7 +122,7 @@ impl Atelier
 
     pub fn	ConstructJob< F>( &self, mavenIdx: U32, jobFn: F) -> U16
     where
-        F: FnMut( &mut Maven) + Send + Sync + 'static,
+        F: FnMut( &Atelier) + Send + Sync + 'static,
     {
 		let jobId = self.AllocJob( mavenIdx);
         if jobId == 0
@@ -173,7 +171,7 @@ impl Atelier
             while jobId != 0
             {
                 maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId)); // for user-jobs
-                self._JobBuff.Arr().MutAt( jobId)( maven); // Run job
+                self._JobBuff.Arr().MutAt( jobId)( self); // Run job
                 maven.IncrSzProcessed( 1);
 				let _res = self.FreeJob( mavenIdx, jobId);
 				let succId = maven.CurSuccId();

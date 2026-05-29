@@ -5,9 +5,6 @@ use crate::silo::stk::Stk;
 use crate::silo::uint::
 { U16, U32};
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-pub type JobFn = dyn FnMut( &mut Maven) + Send + Sync;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -16,14 +13,10 @@ pub struct Maven
     _Index: U32,
     _CurSuccId: U16,
     _SzProcessed: U32,
+    _JobCache: Stash< U16>,
     _RunQueue: Stash< U16>,
     _RunQlock: Spinlock,
-    _JobCache: Stash< U16>,
 }
-unsafe impl Send for Maven
-{ }
-unsafe impl Sync for Maven
-{ }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -35,13 +28,13 @@ impl Maven
     pub fn	New( mavenInd: U32) -> Self
     {
         Self
-        {
+        { 
             _Index: mavenInd,
             _CurSuccId: U16::_0,
             _SzProcessed: U32::_0,
+            _JobCache: Stash::<U16>::New( U32( 256)),
             _RunQueue: Stash::<U16>::New( U32( 1024)),
             _RunQlock: Spinlock::New(),
-            _JobCache: Stash::<U16>::New( U32( 256)),
         }
     }
 

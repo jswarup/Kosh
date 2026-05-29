@@ -1,8 +1,7 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 use crate::
 {
-    heist::
-    { atelier::Atelier, maven::Maven},
+    heist:: { atelier::Atelier},
     silo::uint::
     { U16, U32},
 };
@@ -12,9 +11,9 @@ use crate::
 #[test]
 fn	BuffBasicAtelierTest()
 {
-    fn	trialJob( m: &mut Maven)
+    fn	trialJob( m: &Atelier)
     {
-        println!( "Trial {}", m.Index());
+        println!( "Trial {}", 0);
     }
 	let atelier = Atelier::New( U32( 4));
 	let maven = atelier.Mavens().At( 0);
