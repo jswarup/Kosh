@@ -15,14 +15,14 @@ use	crate::silo::{
 type JobFn = dyn FnMut( &Atelier) + Send + Sync;
 pub struct Atelier
 {
-    _StartCount: U32, // Count of Processing Queue started, used for startup and shutdown
-    _SzSchedJob: Atm< U32>, // Count of cumulative jobs in flight
+    _StartCount: U32,                                                  // Count of Processing Queue started, used for startup and shutdown
+    _SzSchedJob: Atm< U32>,                                            // Count of cumulative jobs in flight
     _LockedMark: U32,
     _Mavens: Buff< Maven>,
-    pub( crate) _SzPreds: Buff< Atm< U16>>, // Count of predessors for job at the jobId
+    pub( crate) _SzPreds: Buff< Atm< U16>>,                            // Count of predessors for job at the jobId
     pub( crate) _SuccIds: Buff< U16>,
     _FreeJobLock: Spinlock,
-    _FreeJobStash: Stash< U16>, // A Stack of free jobIds
+    _FreeJobStash: Stash< U16>,                                        // A Stack of free jobIds
     _JobBuff: Buff< Box< JobFn>>,
 }
 
@@ -158,8 +158,8 @@ impl Atelier
 		let  	mut jobId = U16( 0);
         while self.IncrSzSchedJob( U32( 0)) != 0 {
             while jobId != 0 {
-                maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId)); // for user-jobs
-                self._JobBuff.Arr().MutAt( jobId)( self); // Run job
+                maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));  // for user-jobs
+                self._JobBuff.Arr().MutAt( jobId)( self);              // Run job
                 maven.IncrSzProcessed( 1);
 				let  	_res = self.FreeJob( mavenIdx, jobId);
 				let  	succId = maven.CurSuccId();

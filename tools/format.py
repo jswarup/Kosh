@@ -448,6 +448,37 @@ def format_braces(line):
                 return line_before + "\n" + line_brace + "\n"
     return line
 
+def align_inline_comment(line):
+    chunks = chunk_line(line)
+    if not chunks:
+        return line
+    comment_idx = -1
+    for idx, (t, val) in enumerate(chunks):
+        if t == "COMMENT":
+            comment_idx = idx
+            break
+    if comment_idx == -1:
+        return line
+    before_chunks = chunks[:comment_idx]
+    code_before = "".join(v for t, v in before_chunks)
+    if not code_before.strip():
+        return line
+    comment_text = chunks[comment_idx][1]
+    if re.search(r'^//[-=]{5,}', comment_text.strip()):
+        return line
+    code_before_stripped = code_before.rstrip()
+    col = 0
+    for char in code_before_stripped:
+        if char == '\t':
+            col = ((col + 4) // 4) * 4
+        else:
+            col += 1
+    if col < 71:
+        padding = " " * (71 - col)
+    else:
+        padding = " "
+    return code_before_stripped + padding + comment_text
+
 def format_line_code(line):
     # 1. Chunk line to format CODE parts
     chunks = chunk_line(line)
@@ -463,7 +494,7 @@ def format_line_code(line):
             # Space after open generic bracket
             val = re.sub(r'([a-zA-Z0-9_]+)<(?![ \>])', r'\1< ', val)
         formatted_line += val
-    return formatted_line
+    return align_inline_comment(formatted_line)
 
 def format_file(file_path):
     with open(file_path, "r", encoding="utf-8") as f:

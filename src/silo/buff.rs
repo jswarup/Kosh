@@ -198,7 +198,7 @@ impl< T> Buff< T>
         // Calculate layout for an array of T with length `size`
 		let  	layout = Layout::array::<T>( size.as_usize()).expect( "Layout calculation failed");
         unsafe {
-			let  	rawPtr = alloc( layout) as *mut T;                     // Allocate memory
+			let  	rawPtr = alloc( layout) as *mut T;                 // Allocate memory
             if rawPtr.is_null() {
                 handle_alloc_error( layout);
             }
