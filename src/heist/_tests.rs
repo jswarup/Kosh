@@ -1,7 +1,7 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 use crate::
 {
-    heist:: { atelier::Atelier},
+    heist:: { atelier::Atelier, maestro::Maestro},
     silo::uint::
     { U16, U32},
 };
@@ -99,3 +99,14 @@ fn	TestConcurrentDAG()
     // Total should be exactly 102.
     assert_eq!( counter.load( Ordering::SeqCst), 102);
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestMaestroBasicOps()
+{
+	let atelier = Atelier::New( U32( 4));
+	let maestro = Maestro::New( &atelier, U32( 2));
+    assert_eq!( maestro.MavenIndex(), U32( 2));
+}
+
