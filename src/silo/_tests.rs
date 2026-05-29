@@ -65,8 +65,7 @@ fn	BufZSTTest()
 fn	BuffSendSyncTest()
 {
 	let buff = Buff::Create( 5, |_| 42);
-	let handle = std::thread::spawn( move ||
-    {
+	let handle = std::thread::spawn( move || {
         assert_eq!( buff.len(), 5);
         assert_eq!( buff[0], 42);
     });
@@ -153,8 +152,7 @@ fn	USegSpanTest()
 	let seg = USeg::Create( 10, 6);
     // Case 1: All values return true
 	let mut visited = Vec::new();
-	let result = seg.Span( |val|
-    {
+	let result = seg.Span( |val| {
         visited.push( val);
         true
     });
@@ -162,8 +160,7 @@ fn	USegSpanTest()
     assert_eq!( visited, vec![10, 11, 12, 13, 14, 15]);
     // Case 2: One value returns false (early termination)
 	let mut visited2 = Vec::new();
-	let result2 = seg.Span( |val|
-    {
+	let result2 = seg.Span( |val| {
         visited2.push( val);
         val < 13
     });
@@ -180,8 +177,7 @@ fn	QSortTest()
     //let     buff =  Buff::New( 5, | i| i);
 	let arr = buff.Arr();
     arr.USeg()
-        .QSort( &|i, j| arr.At( i) > arr.At( j), &mut |i, j|
-        {
+        .QSort( &|i, j| arr.At( i) > arr.At( j), &mut |i, j| {
             arr.SwapAt( i, j);
         });
     print! { "{:?}\n", arr};
@@ -239,15 +235,13 @@ fn	StackBasicOps()
     // Stack should start empty
     assert_eq!( stack.Size(), 0);
     // Push values 1..=5 onto the stack
-    for i in 1..=5u32
-    {
+    for i in 1..=5u32 {
 		let mut val = i;
         assert!( stack.Push( &mut val), "push failed at {}", i);
     }
     assert_eq!( stack.Size(), 5);
     // Pop values and verify LIFO order
-    for expected in ( 1..=5u32).rev()
-    {
+    for expected in ( 1..=5u32).rev() {
 		let mut out = 0u32;
         assert!( stack.Pop( &mut out), "pop failed at {}", expected);
         assert_eq!( out, expected);
@@ -335,8 +329,7 @@ fn	StackExportImportOps()
 {
 	let srcStash = Stash::<U32>::New( 10);
 	let srcStk = srcStash.Stk();
-    for i in 1..=5u32
-    {
+    for i in 1..=5u32 {
 		let mut val = U32( i);
         assert!( srcStk.Push( &mut val));
     }
@@ -351,16 +344,14 @@ fn	StackExportImportOps()
     assert_eq!( srcStk.Size(), 0);
     assert_eq!( dstStk.Size(), 5);
     // Verify order in destination stack (should be LIFO 5..=1)
-    for expected in ( 1..=5u32).rev()
-    {
+    for expected in ( 1..=5u32).rev() {
 		let mut out = U32( 0);
         assert!( dstStk.Pop( &mut out));
         assert_eq!( out, expected);
     }
     assert_eq!( dstStk.Size(), 0);
     // Refill source stack for Import test
-    for i in 10..=14u32
-    {
+    for i in 10..=14u32 {
 		let mut v = U32( i);
         assert!( srcStk.Push( &mut v));
     }
@@ -371,8 +362,7 @@ fn	StackExportImportOps()
     assert_eq!( imported, 5);
     assert_eq!( dstStk.Size(), 5);
     // Verify imported order (LIFO, should be 14..=10)
-    for expected in ( 10..=14u32).rev()
-    {
+    for expected in ( 10..=14u32).rev() {
 		let mut out = U32( 0);
         assert!( dstStk.Pop( &mut out));
         assert_eq!( out, expected);
@@ -390,8 +380,7 @@ fn	TestQSortBoundaries()
 	let arr_empty = buff_empty.Arr();
     arr_empty
         .USeg()
-        .QSort( &|i, j| arr_empty.At( i) > arr_empty.At( j), &mut |i, j|
-        {
+        .QSort( &|i, j| arr_empty.At( i) > arr_empty.At( j), &mut |i, j| {
             arr_empty.SwapAt( i, j);
         });
     assert_eq!( arr_empty.len(), 0);
@@ -400,8 +389,7 @@ fn	TestQSortBoundaries()
 	let arr_one = buff_one.Arr();
     arr_one
         .USeg()
-        .QSort( &|i, j| arr_one.At( i) > arr_one.At( j), &mut |i, j|
-        {
+        .QSort( &|i, j| arr_one.At( i) > arr_one.At( j), &mut |i, j| {
             arr_one.SwapAt( i, j);
         });
     assert_eq!( arr_one[0], 42);
@@ -417,16 +405,13 @@ fn	TestConcurrentStackOps()
     // Create a shared destination stack of size 1000
 	let dstStash = Arc::new( Stash::<U32>::New( 1000));
 	let mut handles = vec![];
-    for t in 0..10
-    {
+    for t in 0..10 {
 		let dstStk_clone = dstStash.clone();
-		let handle = thread::spawn( move ||
-        {
+		let handle = thread::spawn( move || {
             // Create a thread-local source stack
 			let srcStash = Stash::<U32>::New( 10);
 			let srcStk = srcStash.Stk();
-            for i in 0..10
-            {
+            for i in 0..10 {
 				let mut v = U32( t * 10 + i);
                 srcStk.Push( &mut v);
             }
@@ -435,8 +420,7 @@ fn	TestConcurrentStackOps()
         });
         handles.push( handle);
     }
-    for handle in handles
-    {
+    for handle in handles {
         handle.join().unwrap();
     }
     // Since 10 threads imported 10 elements each, dstStk size must be exactly 100
@@ -445,14 +429,12 @@ fn	TestConcurrentStackOps()
 	let mut values = vec![];
 	let dstStk = dstStash.Stk();
 	let mut out = U32( 0);
-    while dstStk.Pop( &mut out)
-    {
+    while dstStk.Pop( &mut out) {
         values.push( out.0);
     }
     assert_eq!( values.len(), 100);
     values.sort();
-    for i in 0..100
-    {
+    for i in 0..100 {
         assert_eq!( values[i], i as u32);
     }
 }

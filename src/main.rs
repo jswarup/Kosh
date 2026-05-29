@@ -22,13 +22,11 @@ struct Args
 
 fn	setup_logging( verbose: bool) -> Result< ()>
 {
-	let filter = if verbose
-    {
+	let filter = if verbose {
         EnvFilter::builder()
             .with_default_directive( LevelFilter::DEBUG.into())
             .from_env_lossy()
-    } else
-    {
+    } else {
         EnvFilter::builder()
             .with_default_directive( LevelFilter::INFO.into())
             .from_env_lossy()

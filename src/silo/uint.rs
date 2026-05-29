@@ -141,10 +141,8 @@ impl U16
 
 // Implement common arithmetic operations between the wrapper and any type that can be converted into the wrapper.
 // This provides seamless usage like `a + b` where `a` and `b` may be primitives or wrappers.
-macro_rules! impl_op
-{
-    ( $type:ident, $trait:ident, $method:ident, $op:tt) =>
-    {
+macro_rules! impl_op {
+    ( $type:ident, $trait:ident, $method:ident, $op:tt) => {
         impl< T> $trait< T> for $type
         where
             T: Into< $type>,
@@ -161,10 +159,8 @@ macro_rules! impl_op
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-macro_rules! impl_uint_traits
-{
-    ( $type:ident, $prim:ty, $atomic:ty) =>
-    {
+macro_rules! impl_uint_traits {
+    ( $type:ident, $prim:ty, $atomic:ty) => {
         impl< T> Add< T> for $type
         where
             T: Into< $type>,

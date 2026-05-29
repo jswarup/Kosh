@@ -5,6 +5,7 @@ All Rust source files (`.rs`) in this project must adhere to the following forma
 ## 1. File & Block Structure
 - **Indentation**: 4 spaces (`tab_spaces = 4` in `.rustfmt.toml`).
 - **Line Endings**: Unix line endings (`newline_style = "Unix"` / LF).
+- **Opening Braces**: Opening braces `{` must be placed on a newline *only* for `struct`, `impl`, and `fn` statements. For all other control flow and block statements (such as `if`, `else`, `match`, `while`, `loop`, closures), the opening brace `{` must remain on the same line.
 
 ## 2. Spacing in Parentheses & Brackets
 - **Open Parenthesis**: An open parenthesis `(` must always be followed by a space, unless it encloses nothing (e.g., `( value)` or `( value )`, but `()` remains `()`).

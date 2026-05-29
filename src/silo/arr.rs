@@ -26,8 +26,7 @@ impl< 'a, T> Arr<'a, T>
 {
     pub fn	New< S: Into< U32>>( ptr: NonNull< T>, size: S) -> Self
     {
-        Arr
-        {
+        Arr {
             _Ptr: ptr,
             _Size: size.into(),
             _Marker: PhantomData,
@@ -58,8 +57,7 @@ impl< 'a, T> Arr<'a, T>
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	At< K: Into< U32>>( &self, k: K) -> &'a T {
-        unsafe
-        {
+        unsafe {
 			let ptr = self._Ptr.as_ptr().add( k.into().as_usize());
             &*ptr
         }
@@ -68,8 +66,7 @@ impl< 'a, T> Arr<'a, T>
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	MutAt< K: Into< U32>>( &self, k: K) -> &'a mut T {
-        unsafe
-        {
+        unsafe {
 			let ptr = self._Ptr.as_ptr().add( k.into().as_usize());
             &mut *ptr
         }
@@ -81,8 +78,7 @@ impl< 'a, T> Arr<'a, T>
     where
         T: Clone,
     {
-        unsafe
-        {
+        unsafe {
 			let ptr = self._Ptr.as_ptr().add( k.into().as_usize());
             *ptr = a.clone();
             &*ptr
@@ -92,8 +88,7 @@ impl< 'a, T> Arr<'a, T>
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	MoveAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &'a T {
-        unsafe
-        {
+        unsafe {
 			let ptr = self._Ptr.as_ptr().add( k.into().as_usize());
             std::ptr::swap( ptr, a);
             &*ptr
@@ -104,8 +99,7 @@ impl< 'a, T> Arr<'a, T>
 
     pub fn	SwapAt< I: Into< U32>, J: Into< U32>>( &self, i: I, j: J)
     {
-        unsafe
-        {
+        unsafe {
             std::ptr::swap( 
                 self._Ptr.add( i.into().as_usize()).as_ptr(),
                 self._Ptr.add( j.into().as_usize()).as_ptr(),
@@ -139,8 +133,7 @@ impl< 'a, T> Arr<'a, T>
     where
         F: FnMut( &T) -> bool,
     {
-        if self.IsEmpty()
-        {
+        if self.IsEmpty() {
             return true;
         }
         self.USeg().Span( |k| f( self.At( k)))

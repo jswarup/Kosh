@@ -35,8 +35,7 @@ impl Atelier
 
     pub fn	New( szMaven: U32) -> Self
     {
-		let atelier = Self
-        {
+		let atelier = Self {
             _StartCount: U32::_0,
             _SzSchedJob: Atm::New( U32::_0),
             _Mavens: Buff::Create( szMaven, |i| Maven::New( i)),
@@ -45,8 +44,7 @@ impl Atelier
             _SuccIds: Buff::<U16>::New( U32::_16Sz, U16::_0),
             _FreeJobLock: Spinlock::New(),
             _FreeJobStash: Stash::<U16>::New( U32::_16Sz),
-            _JobBuff: Buff::Create( U32::_16Sz, |_i|
-            {
+            _JobBuff: Buff::Create( U32::_16Sz, |_i| {
 				let cb: Box< JobFn> = Box::new( |_m|
 				{ });
                 cb
@@ -76,15 +74,12 @@ impl Atelier
     {
 		let maven = self._Mavens.Arr().At( mavenIdx);
 		let jobCacheStk = maven.JobCacheStk();
-        loop
-        {
+        loop {
 			let mut jobId = U16( 0);
-            if jobCacheStk.Size() != 0 && jobCacheStk.Pop( &mut jobId)
-            {
+            if jobCacheStk.Size() != 0 && jobCacheStk.Pop( &mut jobId) {
                 return jobId;
             }
-            if self._FreeJobStash.Size() == 0
-            {
+            if self._FreeJobStash.Size() == 0 {
                 std::hint::spin_loop();
                 continue;
             }
@@ -99,10 +94,8 @@ impl Atelier
     {
 		let maven = self._Mavens.Arr().At( mavenIdx);
 		let jobCacheStk = maven.JobCacheStk();
-        loop
-        {
-            if jobCacheStk.SzVoid() != 0 && jobCacheStk.Push( &mut jobId)
-            {
+        loop {
+            if jobCacheStk.SzVoid() != 0 && jobCacheStk.Push( &mut jobId) {
                 return true;
             }
 			let _guard = self._FreeJobLock.Lock();
@@ -125,8 +118,7 @@ impl Atelier
         F: FnMut( &Atelier) + Send + Sync + 'static,
     {
 		let jobId = self.AllocJob( mavenIdx);
-        if jobId == 0
-        {
+        if jobId == 0 {
             return jobId;
         }
 		let mut jobBox: Box< JobFn> = Box::new( jobFn);
@@ -147,13 +139,11 @@ impl Atelier
     fn	GrabJob( &self, idx: U32) -> U16
     {
 		let mavens = self._Mavens.Arr();
-        for mIdx in 0..mavens.len()
-        {
+        for mIdx in 0..mavens.len() {
 			let mavenIdx = ( idx + mIdx + 1) % mavens.len();
 			let maven = mavens.At( mavenIdx);
 			let jobId = maven.PopJob();
-            if jobId != 0
-            {
+            if jobId != 0 {
                 return jobId;
             }
         }
@@ -166,40 +156,32 @@ impl Atelier
     {
 		let maven = self._Mavens.Arr().MutAt( mavenIdx);
 		let mut jobId = U16( 0);
-        while self.IncrSzSchedJob( U32( 0)) != 0
-        {
-            while jobId != 0
-            {
+        while self.IncrSzSchedJob( U32( 0)) != 0 {
+            while jobId != 0 {
                 maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId)); // for user-jobs
                 self._JobBuff.Arr().MutAt( jobId)( self); // Run job
                 maven.IncrSzProcessed( 1);
 				let _res = self.FreeJob( mavenIdx, jobId);
 				let succId = maven.CurSuccId();
-                if succId != U16( 0)
-                {
+                if succId != U16( 0) {
 					let szPred = self.IncrPredAt( succId, -U16( 1));
-                    if szPred == U16( 1)
-                    {
+                    if szPred == U16( 1) {
                         jobId = succId;
                         self.IncrSzSchedJob( U32( 1));
-                    } else
-                    {
+                    } else {
                         jobId = U16::_0;
                     }
-                } else
-                {
+                } else {
                     jobId = U16::_0;
                 }
                 maven.SetCurSuccId( U16::_0);
                 self.IncrSzSchedJob( -U32( 1));
             }
             jobId = maven.PopJob();
-            if jobId == 0
-            {
+            if jobId == 0 {
                 jobId = self.GrabJob( mavenIdx);
             }
-            if jobId == 0
-            {
+            if jobId == 0 {
                 std::hint::spin_loop();
             }
         }
@@ -211,12 +193,9 @@ impl Atelier
     pub fn	DoLaunch( &self)
     {
 		let mavens = self._Mavens.Arr();
-        std::thread::scope( |s|
-        {
-            for mavenIdx in 1..mavens.len()
-            {
-                s.spawn( move ||
-                {
+        std::thread::scope( |s| {
+            for mavenIdx in 1..mavens.len() {
+                s.spawn( move || {
                     self.ExecuteLoop( U32( mavenIdx as u32));
                 });
             }

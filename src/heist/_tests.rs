@@ -31,19 +31,16 @@ fn	TestThreadSharedInteger()
     use	std::thread;
 	let shared = Arc::new( Mutex::new( 0));
 	let mut handles = vec![];
-    for i in 0..4
-    {
+    for i in 0..4 {
 		let shared_clone = shared.clone();
-		let handle = thread::spawn( move ||
-        {
+		let handle = thread::spawn( move || {
 			let mut val = shared_clone.lock().unwrap();
             *val += 1;
             println!( "Thread {} incremented shared integer to: {}", i, *val);
         });
         handles.push( handle);
     }
-    for handle in handles
-    {
+    for handle in handles {
         handle.join().unwrap();
     }
     assert_eq!( *shared.lock().unwrap(), 4);
@@ -64,20 +61,17 @@ fn	TestConcurrentDAG()
 	let atelier = Atelier::New( U32( 4));
     // Construct Job 3 (which waits for Job 1 and Job 2)
 	let counter_clone3 = counter.clone();
-	let job3 = atelier.ConstructJob( U32( 0), move |_m|
-    {
+	let job3 = atelier.ConstructJob( U32( 0), move |_m| {
         counter_clone3.fetch_add( 100, Ordering::SeqCst);
     });
     // Construct Job 1
 	let counter_clone1 = counter.clone();
-	let job1 = atelier.ConstructJob( U32( 0), move |_m|
-    {
+	let job1 = atelier.ConstructJob( U32( 0), move |_m| {
         counter_clone1.fetch_add( 1, Ordering::SeqCst);
     });
     // Construct Job 2
 	let counter_clone2 = counter.clone();
-	let job2 = atelier.ConstructJob( U32( 0), move |_m|
-    {
+	let job2 = atelier.ConstructJob( U32( 0), move |_m| {
         counter_clone2.fetch_add( 1, Ordering::SeqCst);
     });
     // Set dependencies:

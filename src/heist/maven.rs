@@ -25,8 +25,7 @@ impl Maven
 
     pub fn	New( mavenInd: U32) -> Self
     {
-        Self
-        { 
+        Self {
             _Index: mavenInd,
             _CurSuccId: U16::_0,
             _SzProcessed: U32::_0,
@@ -90,11 +89,9 @@ impl Maven
     {
 		let xStk = self._RunQueue.Stk();
 		let mut jobId = U16( 0);
-        if xStk.Size() != 0
-        {
+        if xStk.Size() != 0 {
 			let _guard = self._RunQlock.Lock();
-            if xStk.Size() != 0 && xStk.Pop( &mut jobId)
-            {
+            if xStk.Size() != 0 && xStk.Pop( &mut jobId) {
                 return jobId;
             }
         }

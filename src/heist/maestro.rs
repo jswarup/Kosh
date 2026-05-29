@@ -19,8 +19,7 @@ impl< 'a> Maestro< 'a>
 
     pub fn	New( atelier: &'a Atelier, mavenIdx: U32) -> Self
     {
-        Self
-        {
+        Self {
             _Atelier: atelier,
             _MavenIndex: mavenIdx,
         }

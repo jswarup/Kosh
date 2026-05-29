@@ -426,7 +426,8 @@ def format_braces(line):
         after_chunks = chunks[brace_chunk_idx+1:]
 
         code_before = "".join(c[1] for c in before_chunks if c[0] == "CODE") + before_brace_in_chunk
-        if code_before.strip():
+        is_struct_impl_fn = bool(re.search(r'\b(struct|impl|fn)\b', code_before))
+        if is_struct_impl_fn and code_before.strip():
             line_before = ""
             for t, v in before_chunks:
                 line_before += v
@@ -476,10 +477,30 @@ def format_file(file_path):
         content = f.read()
 
     lines = content.splitlines()
+    pulled_lines = []
+    for line in lines:
+        if line.strip() == "{":
+            prev_idx = len(pulled_lines) - 1
+            while prev_idx >= 0 and not pulled_lines[prev_idx].strip():
+                prev_idx -= 1
+            
+            if prev_idx >= 0:
+                prev_line = pulled_lines[prev_idx]
+                prev_stripped = prev_line.strip()
+                is_comment = prev_stripped.startswith("//") or prev_stripped.startswith("/*")
+                ends_with_no_comma_or_semi = not (prev_stripped.endswith(";") or prev_stripped.endswith("{") or prev_stripped.endswith("}") or prev_stripped.endswith(","))
+                
+                is_struct_impl_fn = bool(re.search(r'\b(struct|impl|fn)\b', prev_line))
+                
+                if not is_comment and ends_with_no_comma_or_semi and not is_struct_impl_fn:
+                    pulled_lines[prev_idx] = prev_line.rstrip() + " {"
+                    continue
+                    
+        pulled_lines.append(line)
+
     formatted_lines = []
     
-    for line in lines:
-        # Format braces first (may split line into two)
+    for line in pulled_lines:
         braced = format_braces(line)
         sub_lines = braced.splitlines()
         for sub_line in sub_lines:

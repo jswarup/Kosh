@@ -4,8 +4,7 @@ use	std::sync::atomic::*;
 //---------------------------------------------------------------------------------------------------------------------------------
 
 /// Trait to abstract over standard atomic integer types
-pub trait AtomicInt: Sized
-{
+pub trait AtomicInt: Sized {
     type AtomicType;
     fn	IntoAtomic( self) -> Self::AtomicType;
     fn	Get( a: &Self::AtomicType, order: Ordering) -> Self;
@@ -24,10 +23,8 @@ pub trait AtomicInt: Sized
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-macro_rules! impl_atomic_int
-{
-    ( $prim:ty, $atomic:ty) =>
-    {
+macro_rules! impl_atomic_int {
+    ( $prim:ty, $atomic:ty) => {
         impl AtomicInt for $prim
         {
             type AtomicType = $atomic;
@@ -53,8 +50,7 @@ macro_rules! impl_atomic_int
                 newVal: Self,
                 success: Ordering,
                 failure: Ordering,
-            ) -> Result< Self, Self>
-            {
+            ) -> Result< Self, Self> {
                 a.compare_exchange( current, newVal, success, failure)
             }
         }
@@ -89,8 +85,7 @@ impl< T: AtomicInt> Atm< T>
     /// Creates a new `Atm` with the given initial value.
     pub fn	New( v: T) -> Self
     {
-        Self
-        {
+        Self {
             _Val: v.IntoAtomic(),
         }
     }
@@ -126,8 +121,7 @@ impl< T: AtomicInt> Atm< T>
         newVal: T,
         success: Ordering,
         failure: Ordering,
-    ) -> Result< T, T>
-    {
+    ) -> Result< T, T> {
         T::CompareExchange( &self._Val, current, newVal, success, failure)
     }
 }
@@ -150,8 +144,7 @@ impl Spinlock
     /// Creates a new unlocked spinlock.
     pub const fn	New() -> Self
     {
-        Self
-        {
+        Self {
             _Locked: AtomicBool::new( false),
         }
     }
@@ -164,10 +157,8 @@ impl Spinlock
         while self
             ._Locked
             .compare_exchange_weak( false, true, Ordering::Acquire, Ordering::Relaxed)
-            .is_err()
-        {
-            while self._Locked.load( Ordering::Relaxed)
-            {
+            .is_err() {
+            while self._Locked.load( Ordering::Relaxed) {
                 std::hint::spin_loop();
             }
         }

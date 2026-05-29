@@ -21,8 +21,7 @@ impl< T: Default> Stash< T>
 
     pub fn	New< S: Into< U32>>( sz: S) -> Self
     {
-        Self
-        {
+        Self {
             _Buff: Buff::Create( sz, |_| T::default()),
             _Sz: Atm::New( U32( 0)),
         }
@@ -38,8 +37,7 @@ impl< T: Default> Stash< T>
     where
         Dispenser: Fn( U32) -> T,
     {
-        Self
-        {
+        Self {
             _Buff: Buff::Create( sz, dispenser),
             _Sz: Atm::New( szStk.into()),
         }
@@ -66,8 +64,7 @@ impl< T: Default> Stash< T>
         T: From< usize> + Clone,
     {
 		let arr = self._Buff.Arr();
-        arr.USeg().Span( |i: U32|
-        {
+        arr.USeg().Span( |i: U32| {
             arr.SetAt( i, &T::from( i.as_usize()));
             true
         });
