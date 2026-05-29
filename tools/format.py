@@ -127,8 +127,28 @@ def format_file(file_path):
         sub_lines = braced.splitlines()
         for sub_line in sub_lines:
             formatted_lines.append(format_line_code(sub_line))
+
+    # Pass 2: Ensure empty lines around separator lines
+    final_lines = []
+    i = 0
+    while i < len(formatted_lines):
+        line = formatted_lines[i]
+        is_separator = bool(re.match(r'^\s*//[-]+\s*$', line))
+        if is_separator:
+            # Ensure preceding line is empty (if not already empty and not at start of file)
+            if final_lines and final_lines[-1].strip():
+                final_lines.append("")
             
-    new_content = "\n".join(formatted_lines)
+            final_lines.append(line)
+            
+            # Ensure succeeding line is empty (if not already empty and not at end of file)
+            if i + 1 < len(formatted_lines) and formatted_lines[i+1].strip():
+                final_lines.append("")
+        else:
+            final_lines.append(line)
+        i += 1
+            
+    new_content = "\n".join(final_lines)
     # Ensure trailing newline if original had it
     if content.endswith("\n") and not new_content.endswith("\n"):
         new_content += "\n"

@@ -7,7 +7,9 @@ use colored::Colorize;
 use tracing::
 { debug, info, level_filters::LevelFilter};
 use tracing_subscriber::EnvFilter;
+
 //---------------------------------------------------------------------------------------------------------------------------------
+
 /// Kosh:
 #[derive( Parser, Debug)]
 #[command( author, version, about, long_about = None)]
@@ -17,7 +19,9 @@ struct Args
     #[arg( short, long)]
     verbose: bool,
 }
+
 //---------------------------------------------------------------------------------------------------------------------------------
+
 fn	setup_logging( verbose: bool) -> Result< ()>
 {
 	let filter = if verbose
@@ -38,7 +42,9 @@ fn	setup_logging( verbose: bool) -> Result< ()>
         .map_err( |e| anyhow::anyhow!( "Failed to initialize logging: {}", e))?;
     Ok( ())
 }
+
 //---------------------------------------------------------------------------------------------------------------------------------
+
 fn	main() -> Result< ()>
 {
 	let args = Args::parse(); // Parse command line arguments
@@ -52,4 +58,5 @@ fn	main() -> Result< ()>
     debug!( "Kosh CLI execution finished successfully");
     Ok( ())
 }
+
 //---------------------------------------------------------------------------------------------------------------------------------

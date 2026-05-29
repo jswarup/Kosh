@@ -3,13 +3,17 @@ use crate::silo::arr::Arr;
 use crate::silo::atm::Atm;
 use crate::silo::uint::U32;
 use crate::silo::useg::USeg;
+
 //---------------------------------------------------------------------------------------------------------------------------------
+
 pub struct Stk< 'a, 'b, T>
 {
     _Size: &'a Atm<U32>,
     _Arr: Arr< 'b, T>,
 }
+
 //---------------------------------------------------------------------------------------------------------------------------------
+
 impl< 'a, 'b, T> Stk< 'a, 'b, T>
 {
     pub fn	Create( _Size: &'a Atm<U32>, _Arr: Arr<'b, T>) -> Self
@@ -17,26 +21,36 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         Self
         { _Size, _Arr }
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	Size( &self) -> U32
     {
         self._Size.Get()
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	SzVoid( &self) -> U32
     {
         self._Arr.Size() - self.Size()
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	USeg( &self) -> USeg
     {
         USeg::Create( U32( 0), self.Size())
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	Arr( &self) -> Arr< 'b, T> {
         self._Arr.RSnip( self._Arr.Size() - self.Size())
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	Pop( &self, val: &mut T) -> bool
     where
         T: Default + Clone,
@@ -58,7 +72,9 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         *val = self._Arr.At( sz - 1).clone();
         true
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	Push( &self, val: &mut T) -> bool
     where
         T: Default,
@@ -80,7 +96,9 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         self._Arr.MoveAt( sz, val);
         true
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	Import< M: Into< U32>>( &self, stk: &Stk< '_, '_, T>, maxMov: M) -> U32
     where
         T: Clone,
@@ -97,7 +115,8 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
             {
                 stk.Size()
             };
-            szAlloc = if szAlloc > max_mov { max_mov } else
+            szAlloc = if szAlloc > max_mov
+            { max_mov } else
             { szAlloc };
             if szAlloc == U32( 0)
             {
@@ -131,7 +150,9 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         });
         szAlloc
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	Export< M: Into< U32>>( &self, stk: &Stk< '_, '_, T>, maxMov: M) -> U32
     where
         T: Clone,
@@ -142,9 +163,11 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
 			let szStk = stk.Size();
 			let szStkVoid = stk._Arr.Size() - szStk;
 			let sz = self.Size();
-			let mut szAlloc = if szStkVoid < sz { szStkVoid } else
+			let mut szAlloc = if szStkVoid < sz
+			{ szStkVoid } else
             { sz };
-            szAlloc = if szAlloc > max_mov { max_mov } else
+            szAlloc = if szAlloc > max_mov
+            { max_mov } else
             { szAlloc };
             if szAlloc == U32( 0)
             {
@@ -178,4 +201,5 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         szAlloc
     }
 }
+
 //---------------------------------------------------------------------------------------------------------------------------------

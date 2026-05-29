@@ -16,3 +16,7 @@ All Rust source files (`.rs`) in this project must adhere to the following forma
 ## 4. Local Variable Declarations
 - **Indentation**: All local variable declarations (`let` statements) must be preceded by a tab character (`\t`) for indentation, rather than spaces (e.g., `\tlet foo = ...`).
 
+## 5. Separator Lines
+- **Blank Lines**: An empty line must always precede and succeed every separator line (e.g., `//---------------------------------------------------------------------------------------------------------------------------------`).
+
+

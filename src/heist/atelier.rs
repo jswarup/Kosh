@@ -12,7 +12,9 @@ use crate::silo::
     { U16, U32},
 };
 use std::sync::atomic::Ordering;
+
 //---------------------------------------------------------------------------------------------------------------------------------
+
 pub struct Atelier
 {
     _StartCount: U32, // Count of Processing Queue started, used for startup and shutdown
@@ -25,10 +27,14 @@ pub struct Atelier
     _FreeJobStash: Stash< U16>, // A Stack of free jobIds
     _JobBuff: Buff< Box< JobFn>>,
 }
+
 //---------------------------------------------------------------------------------------------------------------------------------
+
 impl Atelier
 {
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	New( szMaven: U32) -> Self
     {
 		let atelier = Self
@@ -51,17 +57,23 @@ impl Atelier
         atelier._FreeJobStash.DoIndexSetup();
         atelier
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	Mavens< 'a>(&self) -> Arr<'a, Maven>
     {
         self._Mavens.Arr()
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     fn	IncrSzSchedJob( &self, inc: U32) -> U32
     {
         self._SzSchedJob.FetchAdd( inc, Ordering::SeqCst)
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     fn	AllocJob( &self, mavenIdx: U32) -> U16
     {
 		let maven = self._Mavens.Arr().At( mavenIdx);
@@ -82,7 +94,9 @@ impl Atelier
             self._FreeJobStash.Stk().Export( &jobCacheStk, U32::_X);
         }
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     fn	FreeJob( &self, mavenIdx: U32, mut jobId: U16) -> bool
     {
 		let maven = self._Mavens.Arr().At( mavenIdx);
@@ -97,13 +111,17 @@ impl Atelier
             self._FreeJobStash.Stk().Import( &jobCacheStk, U32::_X);
         }
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     fn	IncrPredAt( &self, jobId: U16, inc: U16) -> U16
     {
 		let arr = self._SzPreds.Arr();
         arr.At( jobId).FetchAdd( inc, Ordering::SeqCst)
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	ConstructJob< F>( &self, mavenIdx: U32, jobFn: F) -> U16
     where
         F: FnMut( &mut Maven) + Send + Sync + 'static,
@@ -117,13 +135,17 @@ impl Atelier
         self._JobBuff.Arr().MoveAt( jobId, &mut jobBox);
         return jobId;
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	EnqueueJob( &self, mavenIdx: U32, jobId: &mut U16)
     {
         self.IncrSzSchedJob( U32( 1));
         self._Mavens.Arr().At( mavenIdx).EnqueueJob( jobId);
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     fn	GrabJob( &self, idx: U32) -> U16
     {
 		let mavens = self._Mavens.Arr();
@@ -139,7 +161,9 @@ impl Atelier
         }
         return U16( 0);
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	ExecuteLoop( &self, mavenIdx: U32)
     {
 		let maven = self._Mavens.Arr().MutAt( mavenIdx);
@@ -183,7 +207,9 @@ impl Atelier
         }
         println!( "{}: {} Done", mavenIdx, maven.SzProcessed());
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	DoLaunch( &self)
     {
 		let mavens = self._Mavens.Arr();
@@ -200,6 +226,9 @@ impl Atelier
         self.ExecuteLoop( U32( 0));
         print!( "DoLaunch Over")
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
 }
+
 //---------------------------------------------------------------------------------------------------------------------------------

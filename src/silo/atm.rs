@@ -1,6 +1,8 @@
 //-- atm.rs -----------------------------------------------------------------------------------------------------------------------
 use std::sync::atomic::*;
+
 //---------------------------------------------------------------------------------------------------------------------------------
+
 /// Trait to abstract over standard atomic integer types
 pub trait AtomicInt: Sized
 {
@@ -19,7 +21,9 @@ pub trait AtomicInt: Sized
     where
         Self: Sized;
 }
+
 //---------------------------------------------------------------------------------------------------------------------------------
+
 macro_rules! impl_atomic_int
 {
     ( $prim:ty, $atomic:ty) =>
@@ -56,7 +60,9 @@ macro_rules! impl_atomic_int
         }
     };
 }
+
 //---------------------------------------------------------------------------------------------------------------------------------
+
 impl_atomic_int!( usize, AtomicUsize);
 impl_atomic_int!( isize, AtomicIsize);
 impl_atomic_int!( u32, AtomicU32);
@@ -67,13 +73,17 @@ impl_atomic_int!( u8, AtomicU8);
 impl_atomic_int!( i8, AtomicI8);
 impl_atomic_int!( u16, AtomicU16);
 impl_atomic_int!( i16, AtomicI16);
+
 //---------------------------------------------------------------------------------------------------------------------------------
+
 /// A generic wrapper that encapsulates an atomic variable.
 pub struct Atm< T: AtomicInt>
 {
     _Val: T::AtomicType,
 }
+
 //---------------------------------------------------------------------------------------------------------------------------------
+
 impl< T: AtomicInt> Atm< T>
 {
     /// Creates a new `Atm` with the given initial value.
@@ -121,16 +131,22 @@ impl< T: AtomicInt> Atm< T>
         T::CompareExchange( &self._Val, current, newVal, success, failure)
     }
 }
+
 //---------------------------------------------------------------------------------------------------------------------------------
+
 /// A simple spinlock.
 pub struct Spinlock
 {
     _Locked: AtomicBool,
 }
+
 //---------------------------------------------------------------------------------------------------------------------------------
+
 impl Spinlock
 {
+
     //------------------------------------------------------------------------------------------------------------------------------
+
     /// Creates a new unlocked spinlock.
     pub const fn	New() -> Self
     {
@@ -139,7 +155,9 @@ impl Spinlock
             _Locked: AtomicBool::new( false),
         }
     }
+
     //------------------------------------------------------------------------------------------------------------------------------
+
     /// Acquires the spinlock, blocking the current thread until it is able to do so.
     pub fn	Acquire( &self)
     {
@@ -154,21 +172,27 @@ impl Spinlock
             }
         }
     }
+
     //------------------------------------------------------------------------------------------------------------------------------
+
     /// Acquires the spinlock and returns a guard that releases the lock when dropped.
     pub fn	Lock( &self) -> SpinLockGuard< '_> {
         self.Acquire();
         SpinLockGuard
         { _Lock: self }
     }
+
     //------------------------------------------------------------------------------------------------------------------------------
+
     /// Releases the spinlock.
     pub fn	Release( &self)
     {
         self._Locked.store( false, Ordering::Release);
     }
 }
+
 //---------------------------------------------------------------------------------------------------------------------------------
+
 /// An RAII implementation of a "scoped lock" of a spinlock.
 pub struct SpinLockGuard< 'a> {
     _Lock: &'a Spinlock,
@@ -180,4 +204,5 @@ impl< 'a> Drop for SpinLockGuard<'a>
         self._Lock.Release();
     }
 }
+
 //---------------------------------------------------------------------------------------------------------------------------------
