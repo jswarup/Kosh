@@ -2,7 +2,7 @@
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-use crate::silo::uint::U32;
+use	crate::silo::uint::U32;
 #[derive( Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct USeg
 {

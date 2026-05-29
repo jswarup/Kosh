@@ -1,10 +1,8 @@
 //-- maven.rs -----------------------------------------------------------------------------------------------------------------------
-use crate::silo::atm::Spinlock;
-use crate::silo::stash::Stash;
-use crate::silo::stk::Stk;
-use crate::silo::uint::
-{ U16, U32};
-
+use	crate::silo::atm::Spinlock;
+use	crate::silo::stash::Stash;
+use	crate::silo::stk::Stk;
+use	crate::silo::uint::{ U16, U32 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 

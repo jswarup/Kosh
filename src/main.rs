@@ -1,12 +1,10 @@
 //-- main.rs ----------------------------------------------------------------------------------------------------------------------
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
-use anyhow::
-{ Context, Result};
-use clap::Parser;
-use colored::Colorize;
-use tracing::
-{ debug, info, level_filters::LevelFilter};
-use tracing_subscriber::EnvFilter;
+use	anyhow::{ Context, Result };
+use	clap::Parser;
+use	colored::Colorize;
+use	tracing::{ debug, info, level_filters::LevelFilter };
+use	tracing_subscriber::EnvFilter;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -47,7 +45,7 @@ fn	setup_logging( verbose: bool) -> Result< ()>
 
 fn	main() -> Result< ()>
 {
-	let args = Args::parse(); // Parse command line arguments
+	let args = Args::parse();                                          // Parse command line arguments
     setup_logging( args.verbose).context( "Setting up logging framework failed")?; // Initialize logging based on verbosity flag
     info!( "Initialized a new Buff of integers with len: {}", 4);
     println!( 

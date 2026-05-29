@@ -1,9 +1,9 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use crate::
-{
-    heist:: { atelier::Atelier, maestro::Maestro},
+use	crate::{
+    heist::
+    { atelier::Atelier, maestro::Maestro },
     silo::uint::
-    { U16, U32},
+    { U16, U32 },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -27,9 +27,8 @@ fn	BuffBasicAtelierTest()
 #[test]
 fn	TestThreadSharedInteger()
 {
-    use std::sync::
-    { Arc, Mutex};
-    use std::thread;
+    use	std::sync::{ Arc, Mutex };
+    use	std::thread;
 	let shared = Arc::new( Mutex::new( 0));
 	let mut handles = vec![];
     for i in 0..4
@@ -55,9 +54,8 @@ fn	TestThreadSharedInteger()
 #[test]
 fn	TestConcurrentDAG()
 {
-    use std::sync::Arc;
-    use std::sync::atomic::
-    { AtomicU32, Ordering};
+    use	std::sync::Arc;
+    use	std::sync::atomic::{ AtomicU32, Ordering };
     // A test DAG:
     // Job 1 (starts) -> Job 3 (successor)
     // Job 2 (starts) -> Job 3 (successor)
@@ -109,4 +107,3 @@ fn	TestMaestroBasicOps()
 	let maestro = Maestro::New( &atelier, U32( 2));
     assert_eq!( maestro.MavenIndex(), U32( 2));
 }
-

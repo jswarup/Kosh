@@ -1,13 +1,12 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use crate::silo::atm::Atm;
-use crate::silo::buff::Buff;
-use crate::silo::stash::Stash;
-use crate::silo::stk::Stk;
+use	crate::silo::atm::Atm;
+use	crate::silo::buff::Buff;
+use	crate::silo::stash::Stash;
+use	crate::silo::stk::Stk;
 #[warn( unused_imports)]
-use crate::silo::uint::
-{ U16, U32};
-use crate::silo::useg::USeg;
-use std::sync::atomic::Ordering;
+use	crate::silo::uint::{ U16, U32 };
+use	crate::silo::useg::USeg;
+use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -413,8 +412,8 @@ fn	TestQSortBoundaries()
 #[test]
 fn	TestConcurrentStackOps()
 {
-    use std::sync::Arc;
-    use std::thread;
+    use	std::sync::Arc;
+    use	std::thread;
     // Create a shared destination stack of size 1000
 	let dstStash = Arc::new( Stash::<U32>::New( 1000));
 	let mut handles = vec![];

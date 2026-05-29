@@ -1,11 +1,9 @@
 //-- buff.rs ----------------------------------------------------------------------------------------------------------------------
-use crate::silo::arr::Arr;
-use crate::silo::uint::U32;
-use std::alloc::
-{ Layout, alloc, dealloc, handle_alloc_error};
-use std::ops::
-{ Deref, DerefMut};
-use std::ptr::NonNull;
+use	crate::silo::arr::Arr;
+use	crate::silo::uint::U32;
+use	std::alloc::{ Layout, alloc, dealloc, handle_alloc_error };
+use	std::ops::{ Deref, DerefMut };
+use	std::ptr::NonNull;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -222,7 +220,7 @@ impl< T> Buff< T>
 		let layout = Layout::array::<T>( size.as_usize()).expect( "Layout calculation failed");
         unsafe
         {
-			let rawPtr = alloc( layout) as *mut T; // Allocate memory
+			let rawPtr = alloc( layout) as *mut T;                     // Allocate memory
             if rawPtr.is_null()
             {
                 handle_alloc_error( layout);
@@ -244,9 +242,9 @@ impl< T> Buff< T>
                         {
 							let slicePtr =
                                 std::ptr::slice_from_raw_parts_mut( self._Ptr, self._InitCount);
-                            std::ptr::drop_in_place( slicePtr); // Drop already initialized elements
+                            std::ptr::drop_in_place( slicePtr);        // Drop already initialized elements
                         }
-                        dealloc( self._Ptr as *mut u8, self._Layout); // Deallocate the contiguous chunk of raw memory
+                        dealloc( self._Ptr as *mut u8, self._Layout);  // Deallocate the contiguous chunk of raw memory
                     }
                 }
             }
@@ -262,7 +260,7 @@ impl< T> Buff< T>
                 std::ptr::write( rawPtr.add( i), dispenser( U32( i as u32)));
                 guard._InitCount += 1;
             }
-            _ = std::mem::ManuallyDrop::new( guard); // Defuse the guard so memory/elements aren't cleaned up when exiting the block
+            _ = std::mem::ManuallyDrop::new( guard);                   // Defuse the guard so memory/elements aren't cleaned up when exiting the block
 			let nonNullPtr = NonNull::new_unchecked( rawPtr);
 			let slicePtr = NonNull::slice_from_raw_parts( nonNullPtr, size.as_usize());
             Buff

@@ -1,10 +1,9 @@
 //-- arr.rs -----------------------------------------------------------------------------------------------------------------------
-use std::marker::PhantomData;
-use std::ops::
-{ Deref, DerefMut};
-use std::ptr::NonNull;
-use crate::silo::uint::U32;
-use crate::silo::useg::USeg;
+use	std::marker::PhantomData;
+use	std::ops::{ Deref, DerefMut };
+use	std::ptr::NonNull;
+use	crate::silo::uint::U32;
+use	crate::silo::useg::USeg;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 

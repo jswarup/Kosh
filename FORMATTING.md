@@ -19,4 +19,11 @@ All Rust source files (`.rs`) in this project must adhere to the following forma
 ## 5. Separator Lines
 - **Blank Lines**: An empty line must always precede and succeed every separator line (e.g., `//---------------------------------------------------------------------------------------------------------------------------------`).
 
+## 6. In-line Comments
+- **Alignment**: All trailing/in-line comments (comments sharing a line with code, excluding full-line comments and separator lines) must be formatted to begin at column 72 onwards.
+
+## 7. Use Statements
+- **Indentation**: The `use` keyword must be immediately followed by a tab character (`\t`) instead of a space.
+- **Braces**: The outer-most opening brace `{` following `use` must remain on the same line as the `use` path/keyword. Nested braces must have a newline before their opening brace `{` only if they do not contain any sub-braces inside them.
+
 

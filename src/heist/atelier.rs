@@ -1,20 +1,18 @@
 //-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
-
-use std::sync::atomic::Ordering;
-use crate::heist::maven::Maven;
-use crate::silo::atm::{ Atm, Spinlock};
-use crate::silo::
-{
+use	std::sync::atomic::Ordering;
+use	crate::heist::maven::Maven;
+use	crate::silo::atm::{ Atm, Spinlock };
+use	crate::silo::{
     arr::Arr,
     buff::Buff,
     stash::Stash,
-    uint::{ U16, U32},
+    uint::
+    { U16, U32 },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 type JobFn = dyn FnMut( &Atelier) + Send + Sync;
-
 pub struct Atelier
 {
     _StartCount: U32, // Count of Processing Queue started, used for startup and shutdown
@@ -32,6 +30,7 @@ pub struct Atelier
 
 impl Atelier
 {
+
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	New( szMaven: U32) -> Self
@@ -48,7 +47,8 @@ impl Atelier
             _FreeJobStash: Stash::<U16>::New( U32::_16Sz),
             _JobBuff: Buff::Create( U32::_16Sz, |_i|
             {
-				let cb: Box< JobFn> = Box::new( |_m| { });
+				let cb: Box< JobFn> = Box::new( |_m|
+				{ });
                 cb
             }),
         };

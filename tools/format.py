@@ -1,6 +1,363 @@
 import os
 import re
 
+def parse_block_content(text):
+    parts = []
+    buf = []
+    brace_level = 0
+    state = "CODE"
+    i = 0
+    while i < len(text):
+        c = text[i]
+        if state == "LINE_COMMENT":
+            buf.append(c)
+            if c == '\n':
+                state = "CODE"
+            i += 1
+            continue
+        elif state == "BLOCK_COMMENT":
+            buf.append(c)
+            if c == '*' and i + 1 < len(text) and text[i+1] == '/':
+                buf.append('/')
+                state = "CODE"
+                i += 2
+            else:
+                i += 1
+            continue
+        elif state == "STRING":
+            buf.append(c)
+            if c == '"' and text[i-1] != '\\':
+                state = "CODE"
+            i += 1
+            continue
+        elif state == "CHAR":
+            buf.append(c)
+            if c == "'" and text[i-1] != '\\':
+                state = "CODE"
+            i += 1
+            continue
+            
+        if c == '/' and i + 1 < len(text) and text[i+1] == '/':
+            state = "LINE_COMMENT"
+            buf.append("//")
+            i += 2
+            continue
+        elif c == '/' and i + 1 < len(text) and text[i+1] == '*':
+            state = "BLOCK_COMMENT"
+            buf.append("/*")
+            i += 2
+            continue
+        elif c == '"':
+            state = "STRING"
+            buf.append(c)
+            i += 1
+            continue
+        elif c == "'":
+            state = "CHAR"
+            buf.append(c)
+            i += 1
+            continue
+            
+        if c == '{':
+            brace_level += 1
+        elif c == '}':
+            brace_level -= 1
+        elif c == ',' and brace_level == 0:
+            parts.append("".join(buf))
+            buf = []
+            i += 1
+            continue
+            
+        buf.append(c)
+        i += 1
+        
+    if buf:
+        parts.append("".join(buf))
+        
+    return [p for p in parts if p.strip()]
+
+def format_use_part(part_text, depth, indent):
+    part_text = part_text.strip()
+    if not part_text:
+        return ""
+        
+    brace_idx = -1
+    state = "CODE"
+    k = 0
+    while k < len(part_text):
+        c = part_text[k]
+        if state == "LINE_COMMENT":
+            if c == '\n':
+                state = "CODE"
+        elif state == "BLOCK_COMMENT":
+            if c == '*' and k + 1 < len(part_text) and part_text[k+1] == '/':
+                state = "CODE"
+                k += 1
+        elif state == "STRING":
+            if c == '"' and part_text[k-1] != '\\':
+                state = "CODE"
+        elif state == "CHAR":
+            if c == "'" and part_text[k-1] != '\\':
+                state = "CODE"
+        else:
+            if c == '/' and k + 1 < len(part_text) and part_text[k+1] == '/':
+                state = "LINE_COMMENT"
+                k += 1
+            elif c == '/' and k + 1 < len(part_text) and part_text[k+1] == '*':
+                state = "BLOCK_COMMENT"
+                k += 1
+            elif c == '"':
+                state = "STRING"
+            elif c == "'":
+                state = "CHAR"
+            elif c == '{':
+                brace_idx = k
+                break
+        k += 1
+        
+    if brace_idx == -1:
+        if depth == 1:
+            if part_text.startswith("use"):
+                rest = part_text[3:].lstrip()
+                return "use\t" + rest
+        return indent + part_text
+        
+    path = part_text[:brace_idx].strip()
+    if depth == 1:
+        if path.startswith("use"):
+            rest = path[3:].lstrip()
+            path = "use\t" + rest
+            
+    nested_text = part_text[brace_idx+1:].rstrip()
+    if nested_text.endswith("}"):
+        nested_text = nested_text[:-1].rstrip()
+        
+    has_subs = False
+    state = "CODE"
+    k = 0
+    while k < len(nested_text):
+        c = nested_text[k]
+        if state == "LINE_COMMENT":
+            if c == '\n':
+                state = "CODE"
+        elif state == "BLOCK_COMMENT":
+            if c == '*' and k + 1 < len(nested_text) and nested_text[k+1] == '/':
+                state = "CODE"
+                k += 1
+        elif state == "STRING":
+            if c == '"' and nested_text[k-1] != '\\':
+                state = "CODE"
+        elif state == "CHAR":
+            if c == "'" and nested_text[k-1] != '\\':
+                state = "CODE"
+        else:
+            if c == '/' and k + 1 < len(nested_text) and nested_text[k+1] == '/':
+                state = "LINE_COMMENT"
+                k += 1
+            elif c == '/' and k + 1 < len(nested_text) and nested_text[k+1] == '*':
+                state = "BLOCK_COMMENT"
+                k += 1
+            elif c == '"':
+                state = "STRING"
+            elif c == "'":
+                state = "CHAR"
+            elif c == '{':
+                has_subs = True
+                break
+        k += 1
+        
+    if not has_subs:
+        siblings = parse_block_content(nested_text)
+        cleaned_siblings = [s.strip() for s in siblings if s.strip()]
+        body = ", ".join(cleaned_siblings)
+        if body:
+            body = " " + body + " "
+            
+        if depth == 1:
+            header = path + "{"
+        else:
+            header = indent + path + "\n" + indent + "{"
+            
+        return header + body + "}"
+    else:
+        siblings = parse_block_content(nested_text)
+        next_indent = indent + "    "
+        child_lines = []
+        for sib in siblings:
+            formatted_sib = format_use_part(sib, depth + 1, next_indent)
+            if formatted_sib.strip():
+                child_lines.append(formatted_sib)
+                
+        body_parts = []
+        for line in child_lines:
+            stripped = line.rstrip()
+            if not stripped.endswith(","):
+                line = stripped + ","
+            body_parts.append(line)
+            
+        body = "\n".join(body_parts)
+        
+        if depth == 1:
+            header = path + "{"
+        else:
+            header = indent + path + "{"
+            
+        closing = "\n" + indent + "}"
+        return header + "\n" + body + closing
+
+def do_format_use(use_stmt):
+    use_stmt = use_stmt.strip()
+    has_semi = use_stmt.endswith(";")
+    if has_semi:
+        use_stmt = use_stmt[:-1].strip()
+    formatted = format_use_part(use_stmt, 1, "")
+    if has_semi:
+        formatted = formatted.rstrip() + ";"
+    return formatted
+
+def format_use_statements(content):
+    i = 0
+    result = []
+    state = "CODE"
+    
+    while i < len(content):
+        char = content[i]
+        
+        if state == "LINE_COMMENT":
+            if char == '\n':
+                state = "CODE"
+            result.append(char)
+            i += 1
+            continue
+        elif state == "BLOCK_COMMENT":
+            if char == '*' and i + 1 < len(content) and content[i+1] == '/':
+                result.append("*/")
+                state = "CODE"
+                i += 2
+            else:
+                result.append(char)
+                i += 1
+            continue
+        elif state == "STRING":
+            result.append(char)
+            i += 1
+            if char == '"' and content[i-2] != '\\':
+                state = "CODE"
+            continue
+        elif state == "CHAR":
+            result.append(char)
+            i += 1
+            if char == "'" and content[i-2] != '\\':
+                state = "CODE"
+            continue
+            
+        if char == '/' and i + 1 < len(content) and content[i+1] == '/':
+            state = "LINE_COMMENT"
+            result.append("//")
+            i += 2
+            continue
+        elif char == '/' and i + 1 < len(content) and content[i+1] == '*':
+            state = "BLOCK_COMMENT"
+            result.append("/*")
+            i += 2
+            continue
+        elif char == '"':
+            state = "STRING"
+            result.append(char)
+            i += 1
+            continue
+        elif char == "'":
+            state = "CHAR"
+            result.append(char)
+            i += 1
+            continue
+            
+        is_use = False
+        if content[i:i+3] == "use":
+            is_start_boundary = (i == 0 or not content[i-1].isalnum() and content[i-1] != '_')
+            is_end_boundary = (i + 3 < len(content) and not content[i+3].isalnum() and content[i+3] != '_')
+            if is_start_boundary and is_end_boundary:
+                is_use = True
+                
+        if is_use:
+            use_chars = []
+            j = i
+            brace_level = 0
+            use_state = "CODE"
+            
+            while j < len(content):
+                c = content[j]
+                if use_state == "LINE_COMMENT":
+                    use_chars.append(c)
+                    j += 1
+                    if c == '\n':
+                        use_state = "CODE"
+                    continue
+                elif use_state == "BLOCK_COMMENT":
+                    use_chars.append(c)
+                    if c == '*' and j + 1 < len(content) and content[j+1] == '/':
+                        use_chars.append('/')
+                        j += 2
+                        use_state = "CODE"
+                    else:
+                        j += 1
+                    continue
+                elif use_state == "STRING":
+                    use_chars.append(c)
+                    j += 1
+                    if c == '"' and content[j-2] != '\\':
+                        use_state = "CODE"
+                    continue
+                elif use_state == "CHAR":
+                    use_chars.append(c)
+                    j += 1
+                    if c == "'" and content[j-2] != '\\':
+                        use_state = "CODE"
+                    continue
+                    
+                if c == '/' and j + 1 < len(content) and content[j+1] == '/':
+                    use_state = "LINE_COMMENT"
+                    use_chars.append("//")
+                    j += 2
+                    continue
+                elif c == '/' and j + 1 < len(content) and content[j+1] == '*':
+                    use_state = "BLOCK_COMMENT"
+                    use_chars.append("/*")
+                    j += 2
+                    continue
+                elif c == '"':
+                    use_state = "STRING"
+                    use_chars.append(c)
+                    j += 1
+                    continue
+                elif c == "'":
+                    use_state = "CHAR"
+                    use_chars.append(c)
+                    j += 1
+                    continue
+                
+                use_chars.append(c)
+                if c == '{':
+                    brace_level += 1
+                elif c == '}':
+                    brace_level -= 1
+                elif c == ';':
+                    if brace_level == 0:
+                        j += 1
+                        break
+                j += 1
+                
+            use_stmt = "".join(use_chars)
+            formatted_use = do_format_use(use_stmt)
+            result.append(formatted_use)
+            i = j
+        else:
+            result.append(char)
+            i += 1
+            
+    return "".join(result)
+
+
 def chunk_line(line):
     chunks = []
     current = ""
@@ -152,6 +509,9 @@ def format_file(file_path):
     # Ensure trailing newline if original had it
     if content.endswith("\n") and not new_content.endswith("\n"):
         new_content += "\n"
+
+    # Enforce use formatting as the final step
+    new_content = format_use_statements(new_content)
 
     if content != new_content:
         with open(file_path, "w", encoding="utf-8") as f:

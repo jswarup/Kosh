@@ -1,10 +1,8 @@
 //-- uint.rs -------------------------------------------------------------------------------------------------------------------------
 //!  thin wrappers around `u32` and `u16` providing seamless integer operations.
-use crate::silo::atm::AtomicInt;
-use std::ops::
-{ Add, BitAnd, BitOr, BitXor, Deref, Div, Mul, Neg, Not, Rem, Shl, Shr, Sub};
-use std::sync::atomic::
-{ AtomicU16, AtomicU32, Ordering};
+use	crate::silo::atm::AtomicInt;
+use	std::ops::{ Add, BitAnd, BitOr, BitXor, Deref, Div, Mul, Neg, Not, Rem, Shl, Shr, Sub };
+use	std::sync::atomic::{ AtomicU16, AtomicU32, Ordering };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
