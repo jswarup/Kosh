@@ -118,6 +118,9 @@ impl USeg
         LessAt: Fn( U32, U32) -> bool,
         SwapAt: FnMut( U32, U32),
     {
+        if self.Size() <= 1 {
+            return;
+        }
         let pivot = self.Partition( lessAt, swapAt);
         let useg1 = USeg::Create( self._First, pivot - self._First);
         if useg1.Size() > 1 {

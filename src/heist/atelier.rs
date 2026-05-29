@@ -62,29 +62,30 @@ impl Atelier
 
     fn	AllocJob( &self, mavenIdx: U32) -> U16
     {
-        let     mavens = self._Mavens.Arr();
-        let     jobCacheStk = mavens.At( mavenIdx).JobCacheStk();
+        let     maven = self._Mavens.Arr().At( mavenIdx);
+        let     jobCacheStk = maven.JobCacheStk(); 
 
-        if jobCacheStk.Size() == 0  && self._FreeJobStash.Size()!= 0 {
+        loop {
+            let mut     jobId = U16( 0);
+            if jobCacheStk.Size() != 0 && jobCacheStk.Pop( &mut jobId) {
+                return jobId;
+            } 
             let _guard = self._FreeJobLock.Lock();
-            self._FreeJobStash.Stk().Export( &jobCacheStk, U32::_X);
+            self._FreeJobStash.Stk().Export( &jobCacheStk, U32::_X); 
         }
-        let mut     jobId = U16( 0);
-        if jobCacheStk.Pop( &mut jobId) {
-        }
-        jobId
     }
 
     fn	FreeJob( &self, mavenIdx: U32, mut jobId : U16) -> bool
     {
-        let     maven = self._Mavens.Arr().MutAt( mavenIdx);
-        let     jobCacheStk = maven.JobCacheStk();
-        loop {
-            if jobCacheStk.SzVoid() != 0 {
-                jobCacheStk.Push( &mut jobId);
+        let     maven = self._Mavens.Arr().At( mavenIdx);
+        let     jobCacheStk = maven.JobCacheStk(); 
+        
+        loop { 
+            if jobCacheStk.SzVoid() != 0 && jobCacheStk.Push( &mut jobId) {
                 return true;
             }
-            self._FreeJobStash.Stk().Import( & jobCacheStk, U32::_X);
+            let _guard = self._FreeJobLock.Lock();
+            self._FreeJobStash.Stk().Import( &jobCacheStk, U32::_X);
         }
     }
 
@@ -115,7 +116,7 @@ impl Atelier
     pub fn	EnqueueJob( &self, mavenIdx: U32, jobId: &mut U16)
     {
         self.IncrSzSchedJob( U32( 1));
-        self._Mavens.Arr().MutAt( mavenIdx).EnqueueJob( jobId);
+        self._Mavens.Arr().At( mavenIdx).EnqueueJob( jobId);
     }
 
     fn	GrabJob( &self, idx: U32) -> U16

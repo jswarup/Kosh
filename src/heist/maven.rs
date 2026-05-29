@@ -58,7 +58,7 @@ impl Maven
         self._SzProcessed = self._SzProcessed + k.into();
     }
 
-    pub fn	EnqueueJob( &mut self, jobId: &mut U16)
+    pub fn	EnqueueJob( &self, jobId: &mut U16)
     {
         let _guard = self._RunQlock.Lock();
         self._RunQueue.Stk().Push( jobId);

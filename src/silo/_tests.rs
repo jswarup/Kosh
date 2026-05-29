@@ -414,3 +414,72 @@ fn	StackExportImportOps()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+#[test]
+fn	TestQSortBoundaries()
+{
+    // Test QSort with empty segment
+    let buff_empty = Buff::Create( U32( 0), |_| 0);
+    let arr_empty = buff_empty.Arr();
+    arr_empty.USeg().QSort( &|i, j| arr_empty.At( i) > arr_empty.At( j), &mut |i, j| {
+        arr_empty.SwapAt( i, j);
+    });
+    assert_eq!( arr_empty.len(), 0);
+
+    // Test QSort with size 1
+    let buff_one = Buff::Create( U32( 1), |_| 42);
+    let arr_one = buff_one.Arr();
+    arr_one.USeg().QSort( &|i, j| arr_one.At( i) > arr_one.At( j), &mut |i, j| {
+        arr_one.SwapAt( i, j);
+    });
+    assert_eq!( arr_one[0], 42);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+#[test]
+fn	TestConcurrentStackOps()
+{
+    use std::sync::Arc;
+    use std::thread;
+
+    // Create a shared destination stack of size 1000
+    let dstStash = Arc::new( Stash::< U32 >::New( 1000));
+    let mut handles = vec![];
+
+    for t in 0..10 {
+        let dstStk_clone = dstStash.clone();
+        let handle = thread::spawn( move || {
+            // Create a thread-local source stack
+            let srcStash = Stash::< U32 >::New( 10);
+            let srcStk = srcStash.Stk();
+            for i in 0..10 {
+                let mut v = U32( t * 10 + i);
+                srcStk.Push( &mut v);
+            }
+            // Import elements from local srcStk to shared dstStk
+            dstStk_clone.Stk().Import( &srcStk, 10);
+        });
+        handles.push( handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    // Since 10 threads imported 10 elements each, dstStk size must be exactly 100
+    assert_eq!( dstStash.Size(), 100);
+
+    // Collect all elements and verify they are exactly 0..100 (in some order)
+    let mut values = vec![];
+    let dstStk = dstStash.Stk();
+    let mut out = U32( 0);
+    while dstStk.Pop( &mut out) {
+        values.push( out.0);
+    }
+
+    assert_eq!( values.len(), 100);
+    values.sort();
+    for i in 0..100 {
+        assert_eq!( values[i], i as u32);
+    }
+}
+
