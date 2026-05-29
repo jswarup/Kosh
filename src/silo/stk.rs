@@ -1,55 +1,51 @@
 //-- stk.rs -------------------------------------------------------------------------------------------------------------------------
-
 use crate::silo::arr::Arr;
 use crate::silo::atm::Atm;
 use crate::silo::uint::U32;
 use crate::silo::useg::USeg;
-
 //---------------------------------------------------------------------------------------------------------------------------------
-
 pub struct Stk< 'a, 'b, T>
 {
-    _Size: &'a Atm< U32>,
+    _Size: &'a Atm<U32>,
     _Arr: Arr< 'b, T>,
 }
-
 //---------------------------------------------------------------------------------------------------------------------------------
-
 impl< 'a, 'b, T> Stk< 'a, 'b, T>
 {
-    pub fn	Create( _Size: &'a Atm< U32>, _Arr: Arr< 'b, T>) -> Self
+    pub fn	Create( _Size: &'a Atm<U32>, _Arr: Arr<'b, T>) -> Self
     {
-        Self { _Size, _Arr }
+        Self
+        { _Size, _Arr }
     }
-
+    //-----------------------------------------------------------------------------------------------------------------------------
     pub fn	Size( &self) -> U32
     {
         self._Size.Get()
     }
+    //-----------------------------------------------------------------------------------------------------------------------------
     pub fn	SzVoid( &self) -> U32
     {
         self._Arr.Size() - self.Size()
     }
-
+    //-----------------------------------------------------------------------------------------------------------------------------
     pub fn	USeg( &self) -> USeg
     {
         USeg::Create( U32( 0), self.Size())
     }
-
-    pub fn	Arr( &self) -> Arr< 'b, T>
-    {
+    //-----------------------------------------------------------------------------------------------------------------------------
+    pub fn	Arr( &self) -> Arr< 'b, T> {
         self._Arr.RSnip( self._Arr.Size() - self.Size())
     }
-
+    //-----------------------------------------------------------------------------------------------------------------------------
     pub fn	Pop( &self, val: &mut T) -> bool
     where
         T: Default + Clone,
     {
-        let sz = self.Size();
+		let sz = self.Size();
         if ( sz == U32( 0))
             || ( self
                 ._Size
-                .CompareExchange(
+                .CompareExchange( 
                     sz,
                     sz - U32( 1),
                     std::sync::atomic::Ordering::SeqCst,
@@ -59,19 +55,19 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         {
             return false;
         }
-        *val = self._Arr.At( sz -1).clone();
+        *val = self._Arr.At( sz - 1).clone();
         true
     }
-
+    //-----------------------------------------------------------------------------------------------------------------------------
     pub fn	Push( &self, val: &mut T) -> bool
     where
         T: Default,
     {
-        let sz = self.Size();
+		let sz = self.Size();
         if ( sz >= self._Arr.Size())
             || self
                 ._Size
-                .CompareExchange(
+                .CompareExchange( 
                     sz,
                     sz + U32( 1),
                     std::sync::atomic::Ordering::SeqCst,
@@ -84,28 +80,32 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         self._Arr.MoveAt( sz, val);
         true
     }
-
+    //-----------------------------------------------------------------------------------------------------------------------------
     pub fn	Import< M: Into< U32>>( &self, stk: &Stk< '_, '_, T>, maxMov: M) -> U32
     where
         T: Clone,
     {
-        let max_mov = maxMov.into();
-        let (szAlloc, oldSz) = loop {
-            let sz = self.Size();
-            let szCacheVoid = self._Arr.Size() - sz;
-            let mut szAlloc = if szCacheVoid < stk.Size() {
+		let max_mov = maxMov.into();
+		let ( szAlloc, oldSz) = loop
+        {
+			let sz = self.Size();
+			let szCacheVoid = self._Arr.Size() - sz;
+			let mut szAlloc = if szCacheVoid < stk.Size()
+            {
                 szCacheVoid
-            } else {
+            } else
+            {
                 stk.Size()
             };
-            szAlloc = if szAlloc > max_mov { max_mov } else { szAlloc };
-
-            if szAlloc == U32( 0 ) {
-                break (U32( 0 ), sz);
+            szAlloc = if szAlloc > max_mov { max_mov } else
+            { szAlloc };
+            if szAlloc == U32( 0)
+            {
+                break ( U32( 0), sz);
             }
             if self
                 ._Size
-                .CompareExchange(
+                .CompareExchange( 
                     sz,
                     sz + szAlloc,
                     std::sync::atomic::Ordering::SeqCst,
@@ -113,42 +113,46 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
                 )
                 .is_ok()
             {
-                break (szAlloc, sz);
+                break ( szAlloc, sz);
             }
         };
-        if szAlloc == U32( 0 ) {
-            return U32( 0 );
+        if szAlloc == U32( 0)
+        {
+            return U32( 0);
         }
-        let stkSz = stk
+		let stkSz = stk
             ._Size
             .FetchAdd( U32( 0) - szAlloc, std::sync::atomic::Ordering::SeqCst)
             - szAlloc;
-        USeg::Create( U32( 0), szAlloc).Span( |i| {
+        USeg::Create( U32( 0), szAlloc).Span( |i|
+        {
             self._Arr.SetAt( oldSz + i, stk._Arr.At( stkSz + i));
             true
         });
         szAlloc
     }
-
+    //-----------------------------------------------------------------------------------------------------------------------------
     pub fn	Export< M: Into< U32>>( &self, stk: &Stk< '_, '_, T>, maxMov: M) -> U32
     where
         T: Clone,
     {
-        let max_mov = maxMov.into();
-        let (szAlloc, oldSz) = loop {
-            let szStk = stk.Size();
-            let szStkVoid = stk._Arr.Size() - szStk;
-            let sz = self.Size();
-
-            let mut szAlloc = if szStkVoid < sz { szStkVoid } else { sz };
-            szAlloc = if szAlloc > max_mov { max_mov } else { szAlloc };
-
-            if szAlloc == U32( 0 ) {
-                break (U32( 0 ), sz);
+		let max_mov = maxMov.into();
+		let ( szAlloc, oldSz) = loop
+        {
+			let szStk = stk.Size();
+			let szStkVoid = stk._Arr.Size() - szStk;
+			let sz = self.Size();
+			let mut szAlloc = if szStkVoid < sz { szStkVoid } else
+            { sz };
+            szAlloc = if szAlloc > max_mov { max_mov } else
+            { szAlloc };
+            if szAlloc == U32( 0)
+            {
+                break ( U32( 0), sz);
             }
             if self
                 ._Size
-                .CompareExchange(
+                .CompareExchange( 
                     sz,
                     sz - szAlloc,
                     std::sync::atomic::Ordering::SeqCst,
@@ -156,21 +160,22 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
                 )
                 .is_ok()
             {
-                break (szAlloc, sz);
+                break ( szAlloc, sz);
             }
         };
-        if szAlloc == U32( 0 ) {
-            return U32( 0 );
+        if szAlloc == U32( 0)
+        {
+            return U32( 0);
         }
-        let szStk = stk
+		let szStk = stk
             ._Size
             .FetchAdd( U32( 0) + szAlloc, std::sync::atomic::Ordering::SeqCst);
-        USeg::Create( U32( 0), szAlloc).Span( |i| {
+        USeg::Create( U32( 0), szAlloc).Span( |i|
+        {
             stk._Arr.SetAt( szStk + i, self._Arr.At( oldSz - szAlloc + i));
             true
         });
         szAlloc
     }
 }
-
 //---------------------------------------------------------------------------------------------------------------------------------

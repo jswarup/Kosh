@@ -5,7 +5,6 @@ All Rust source files (`.rs`) in this project must adhere to the following forma
 ## 1. File & Block Structure
 - **Indentation**: 4 spaces (`tab_spaces = 4` in `.rustfmt.toml`).
 - **Line Endings**: Unix line endings (`newline_style = "Unix"` / LF).
-- **Opening Braces**: Braces must always appear on a new line (`brace_style = "AlwaysNextLine"` in `.rustfmt.toml`).
 
 ## 2. Spacing in Parentheses & Brackets
 - **Open Parenthesis**: An open parenthesis `(` must always be followed by a space, unless it encloses nothing (e.g., `( value)` or `( value )`, but `()` remains `()`).
@@ -13,3 +12,7 @@ All Rust source files (`.rs`) in this project must adhere to the following forma
 
 ## 3. Function Declarations
 - **Fn Keyword**: The `fn` keyword in all function declarations must be immediately followed by a tab character (`\t`) instead of a space (e.g., `fn\tfoo(...)` or `pub fn\tbar(...)`).
+
+## 4. Local Variable Declarations
+- **Indentation**: All local variable declarations (`let` statements) must be preceded by a tab character (`\t`) for indentation, rather than spaces (e.g., `\tlet foo = ...`).
+

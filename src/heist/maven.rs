@@ -1,16 +1,12 @@
 //-- maven.rs -----------------------------------------------------------------------------------------------------------------------
-
 use crate::silo::atm::Spinlock;
 use crate::silo::stash::Stash;
 use crate::silo::stk::Stk;
-use crate::silo::uint::{U16, U32};
-
+use crate::silo::uint::
+{ U16, U32};
 //---------------------------------------------------------------------------------------------------------------------------------
-
-pub type  JobFn = dyn FnMut( &mut Maven) + Send + Sync;
-
+pub type JobFn = dyn FnMut( &mut Maven) + Send + Sync;
 //---------------------------------------------------------------------------------------------------------------------------------
-
 pub struct Maven
 {
     _Index: U32,
@@ -20,65 +16,77 @@ pub struct Maven
     _RunQlock: Spinlock,
     _JobCache: Stash< U16>,
 }
-
-unsafe impl Send for Maven {}
-unsafe impl Sync for Maven {}
-
+unsafe impl Send for Maven
+{ }
+unsafe impl Sync for Maven
+{ }
 //---------------------------------------------------------------------------------------------------------------------------------
-
 impl Maven
 {
-    pub fn	New(   mavenInd : U32) -> Self
+    //-----------------------------------------------------------------------------------------------------------------------------
+    pub fn	New( mavenInd: U32) -> Self
     {
-        Self {
+        Self
+        {
             _Index: mavenInd,
             _CurSuccId: U16::_0,
             _SzProcessed: U32::_0,
-            _RunQueue: Stash::< U16>::New( U32( 1024)),
+            _RunQueue: Stash::<U16>::New( U32( 1024)),
             _RunQlock: Spinlock::New(),
-            _JobCache: Stash::< U16>::New( U32( 256)),
+            _JobCache: Stash::<U16>::New( U32( 256)),
         }
     }
-
-
-    pub fn	Index( &self) -> U32 { self._Index }
-
-    pub fn	CurSuccId( &self) -> U16 { self._CurSuccId }
-
-    pub fn	SetCurSuccId( &mut self, succId: U16) { self._CurSuccId = succId; }
-
-    pub fn	JobCacheStk( &self) -> Stk< '_, '_, U16> {
+    //-----------------------------------------------------------------------------------------------------------------------------
+    pub fn	Index( &self) -> U32
+    {
+        self._Index
+    }
+    //-----------------------------------------------------------------------------------------------------------------------------
+    pub fn	CurSuccId( &self) -> U16
+    {
+        self._CurSuccId
+    }
+    //-----------------------------------------------------------------------------------------------------------------------------
+    pub fn	SetCurSuccId( &mut self, succId: U16)
+    {
+        self._CurSuccId = succId;
+    }
+    //-----------------------------------------------------------------------------------------------------------------------------
+    pub fn	JobCacheStk( &self) -> Stk< '_, '_, U16>
+    {
         self._JobCache.Stk()
     }
-
-    pub fn	SzProcessed( &self) -> U32 { self._SzProcessed }
-
-    pub fn	IncrSzProcessed< K: Into< U32>>( &mut self, k: K)
+    //-----------------------------------------------------------------------------------------------------------------------------
+    pub fn	SzProcessed( &self) -> U32
+    {
+        self._SzProcessed
+    }
+    pub//-----------------------------------------------------------------------------------------------------------------------------
+    fn	IncrSzProcessed< K: Into< U32>>( &mut self, k: K)
     {
         self._SzProcessed = self._SzProcessed + k.into();
     }
-
+    //-----------------------------------------------------------------------------------------------------------------------------
     pub fn	EnqueueJob( &self, jobId: &mut U16)
     {
-        let _guard = self._RunQlock.Lock();
+		let _guard = self._RunQlock.Lock();
         self._RunQueue.Stk().Push( jobId);
     }
-
+    //-----------------------------------------------------------------------------------------------------------------------------
     pub fn	PopJob( &self) -> U16
     {
-        let xStk = self._RunQueue.Stk();
-        let mut jobId = U16( 0);
-        if xStk.Size() != 0 {
-            let _guard = self._RunQlock.Lock();
-            if xStk.Size() != 0 && xStk.Pop( &mut jobId) {
+		let xStk = self._RunQueue.Stk();
+		let mut jobId = U16( 0);
+        if xStk.Size() != 0
+        {
+			let _guard = self._RunQlock.Lock();
+            if xStk.Size() != 0 && xStk.Pop( &mut jobId)
+            {
                 return jobId;
             }
         }
         return jobId;
     }
-
-
-
+    //-----------------------------------------------------------------------------------------------------------------------------
 }
-
 //---------------------------------------------------------------------------------------------------------------------------------
