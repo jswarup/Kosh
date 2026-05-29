@@ -14,8 +14,8 @@ pub struct Atelier
     _LockedMark: U32,
 
     _Mavens: Buff< Maven>,
-    _SzPreds: Buff< U16>,       // Count of predessors for job at the jobId
-    _SuccIds: Buff< U16>,
+    pub(crate) _SzPreds: Buff< Atm< U16>>,       // Count of predessors for job at the jobId
+    pub(crate) _SuccIds: Buff< U16>,
 
     _FreeJobLock: Spinlock,
     _FreeJobStash: Stash< U16>, // A Stack of free jobIds
@@ -38,7 +38,7 @@ impl Atelier
             }),
             _LockedMark: U32::_0,
 
-            _SzPreds: Buff::< U16>::New( U32::_16Sz, U16::_0),
+            _SzPreds: Buff::Create( U32::_16Sz, |_i| Atm::New( U16::_0)),
             _SuccIds: Buff::< U16>::New( U32::_16Sz, U16::_0),
             _FreeJobLock: Spinlock::New(),
             _FreeJobStash: Stash::< U16>::New( U32::_16Sz),
@@ -63,24 +63,28 @@ impl Atelier
     fn	AllocJob( &self, mavenIdx: U32) -> U16
     {
         let     maven = self._Mavens.Arr().At( mavenIdx);
-        let     jobCacheStk = maven.JobCacheStk(); 
+        let     jobCacheStk = maven.JobCacheStk();
 
         loop {
             let mut     jobId = U16( 0);
             if jobCacheStk.Size() != 0 && jobCacheStk.Pop( &mut jobId) {
                 return jobId;
-            } 
+            }
+            if self._FreeJobStash.Size() == 0 {
+                std::hint::spin_loop();
+                continue;
+            }
             let _guard = self._FreeJobLock.Lock();
-            self._FreeJobStash.Stk().Export( &jobCacheStk, U32::_X); 
+            self._FreeJobStash.Stk().Export( &jobCacheStk, U32::_X);
         }
     }
 
     fn	FreeJob( &self, mavenIdx: U32, mut jobId : U16) -> bool
     {
         let     maven = self._Mavens.Arr().At( mavenIdx);
-        let     jobCacheStk = maven.JobCacheStk(); 
-        
-        loop { 
+        let     jobCacheStk = maven.JobCacheStk();
+
+        loop {
             if jobCacheStk.SzVoid() != 0 && jobCacheStk.Push( &mut jobId) {
                 return true;
             }
@@ -92,13 +96,8 @@ impl Atelier
     fn	IncrPredAt( &self, jobId: U16, inc: U16) -> U16
     {
         let arr = self._SzPreds.Arr();
-        let old = *arr.At( jobId);
-        let new = old + inc;
-        arr.SetAt( jobId, &new);
-        old
+        arr.At( jobId).FetchAdd( inc, Ordering::SeqCst)
     }
-
-
 
     pub fn	ConstructJob<F>( &self, mavenIdx: U32, jobFn : F) -> U16
     where
@@ -133,49 +132,37 @@ impl Atelier
         return U16( 0);
     }
 
-    pub fn  FetchJob( &self, mavenIdx: U32) -> U16
-    {
-        let     maven = self._Mavens.Arr().MutAt( mavenIdx);
-        let     curSuccId = maven.CurSuccId();
-        if curSuccId != 0 {
-            if self.IncrPredAt( curSuccId, -U16(1)) == 0 {
-                return curSuccId;
-            }
-        }
-
-        let     jobId = maven.PopJob();
-        if jobId != 0 {
-            return jobId;
-        }
-        self.GrabJob( mavenIdx)
-    }
-
-    fn	ExecuteJob( &self, mavenIdx: U32, jId: U16)
-    {
-        let     maven = self.Mavens().MutAt( mavenIdx);
-        let mut jobId = jId;
-        while jobId != 0 {
-            let succId;
-            {
-                maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));       // for user-jobs
-                self._JobBuff.Arr().MutAt( jobId)( maven);                          // Run job
-                maven.IncrSzProcessed( 1);
-                let     _res = self.FreeJob( mavenIdx, jobId);
-                succId = maven.CurSuccId();
-                maven.SetCurSuccId( U16::_0);
-            }
-            let     szPred = self.IncrPredAt( succId, -U16(1));
-            jobId = if  szPred == 0 { succId } else { U16::_0};
-            self.IncrSzSchedJob( -U32(1));
-        };
-    }
     pub fn	ExecuteLoop( &self, mavenIdx: U32)
     {
         let     maven = self._Mavens.Arr().MutAt( mavenIdx);
+        let mut jobId = U16( 0);
         while self.IncrSzSchedJob( U32( 0)) != 0 {
-            let jobId = self.FetchJob( mavenIdx);
-            if jobId != 0 {
-                self.ExecuteJob( mavenIdx, jobId);
+            while jobId != 0 {
+                maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));       // for user-jobs
+                self._JobBuff.Arr().MutAt( jobId)( maven);                  // Run job
+                maven.IncrSzProcessed( 1);
+                let     _res = self.FreeJob( mavenIdx, jobId);
+                let     succId = maven.CurSuccId();
+                if succId != U16( 0) {
+                    let     szPred = self.IncrPredAt( succId, -U16( 1));
+                    if szPred == U16( 1) {
+                        jobId = succId;
+                        self.IncrSzSchedJob( U32( 1));
+                    } else {
+                        jobId = U16::_0;
+                    }
+                } else {
+                    jobId = U16::_0;
+                }
+                maven.SetCurSuccId( U16::_0);
+                self.IncrSzSchedJob( -U32( 1));
+            }
+            jobId = maven.PopJob();
+            if jobId == 0 {
+                jobId = self.GrabJob( mavenIdx);
+            }
+            if jobId == 0 {
+                std::hint::spin_loop();
             }
         }
         println!( "{}: {} Done", mavenIdx, maven.SzProcessed());
@@ -183,7 +170,7 @@ impl Atelier
 
     pub fn DoLaunch( &self)
     {
-        let  mavens = self._Mavens.Arr(); 
+        let  mavens = self._Mavens.Arr();
 
         std::thread::scope(|s| {
             for mavenIdx in 1..mavens.len() {
