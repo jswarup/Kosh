@@ -11,7 +11,7 @@ use	crate::{
 #[test]
 fn	BuffBasicAtelierTest()
 {
-    fn	trialJob( m: &Atelier)
+    fn	trialJob( m: &Maestro< '_>)
     {
         println!( "Trial {}", 0);
     }

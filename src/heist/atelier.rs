@@ -1,5 +1,6 @@
 //-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
 use	std::sync::atomic::Ordering;
+use	crate::heist::maestro::Maestro;
 use	crate::heist::maven::Maven;
 use	crate::silo::atm::{ Atm, Spinlock };
 use	crate::silo::{
@@ -12,7 +13,7 @@ use	crate::silo::{
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-type JobFn = dyn FnMut( &Atelier) + Send + Sync;
+type JobFn = dyn FnMut( &Maestro< '_>) + Send + Sync;
 pub struct Atelier
 {
     _StartCount: U32,                                                  // Count of Processing Queue started, used for startup and shutdown
@@ -115,7 +116,7 @@ impl Atelier
 
     pub fn	ConstructJob< F>( &self, mavenIdx: U32, jobFn: F) -> U16
     where
-        F: FnMut( &Atelier) + Send + Sync + 'static,
+        F: FnMut( &Maestro< '_>) + Send + Sync + 'static,
     {
 		let  	jobId = self.AllocJob( mavenIdx);
         if jobId == 0 {
@@ -156,10 +157,11 @@ impl Atelier
     {
 		let  	maven = self._Mavens.Arr().MutAt( mavenIdx);
 		let  	mut jobId = U16( 0);
+		let  	maestro = Maestro::New( self, mavenIdx);
         while self.IncrSzSchedJob( U32( 0)) != 0 {
             while jobId != 0 {
                 maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));  // for user-jobs
-                self._JobBuff.Arr().MutAt( jobId)( self);              // Run job
+                self._JobBuff.Arr().MutAt( jobId)( &maestro);          // Run job
                 maven.IncrSzProcessed( 1);
 				let  	_res = self.FreeJob( mavenIdx, jobId);
 				let  	succId = maven.CurSuccId();
