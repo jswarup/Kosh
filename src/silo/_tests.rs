@@ -174,24 +174,13 @@ fn	USegSpanTest()
 #[test]
 fn	QSortTest()
 {
-    use crate::stalks::work::{ IWorker, Worker, WorkFn };
-
 	let  	buff = Buff::Create( U32( 256), |_| rand::random::<f64>());
+    //let     buff =  Buff::New( 5, | i| i);
 	let  	arr = buff.Arr();
-
-	let  	sort_job: Box< WorkFn<'_>> = Box::new( move |_worker| {
-        arr.USeg()
-            .QSort( &|i, j| arr.At( i) > arr.At( j), &mut |i, j| {
-                arr.SwapAt( i, j);
-            });
-    });
-
-	let  	mut jobs = vec![ sort_job ];
-	let  	jobs_arr = Arr::from( &mut jobs[..] );
-
-	let  	worker = Worker::New();
-    worker.Post( jobs_arr );
-
+    arr.USeg()
+        .QSort( &|i, j| arr.At( i) > arr.At( j), &mut |i, j| {
+            arr.SwapAt( i, j);
+        });
     print! { "{:?}\n", arr};
 	let  	res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
     assert!( res);
