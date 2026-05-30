@@ -31,7 +31,6 @@ pub struct Atelier
 
 impl Atelier
 {
-
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	New( szMaven: U32) -> Self
@@ -57,7 +56,14 @@ impl Atelier
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Mavens< 'a>(&self) -> Arr<'a, Maven>
+    pub fn	MainMaestro( &self) -> Maestro< '_>
+    {
+        Maestro::New( self, U32( 0))
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	Mavens< 'a>( &self) -> Arr<'a, Maven>
     {
         self._Mavens.Arr()
     }
@@ -67,6 +73,13 @@ impl Atelier
     fn	IncrSzSchedJob( &self, inc: U32) -> U32
     {
         self._SzSchedJob.FetchAdd( inc, Ordering::SeqCst)
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	IncrPredAt< K: Into< U16>>( &self, jobId: U16, inc: K) -> U16
+    {
+        self._SzPreds.Arr().At( jobId).FetchAdd( inc, Ordering::SeqCst)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -106,15 +119,7 @@ impl Atelier
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	IncrPredAt< K: Into< U16>>( &self, jobId: U16, inc: K) -> U16
-    {
-		let  	arr = self._SzPreds.Arr();
-        arr.At( jobId).FetchAdd( inc, Ordering::SeqCst)
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	ConstructJob< F>( &self, mavenIdx: U32, jobFn: F) -> U16
+    pub fn	ConstructJob< F>( &self, mavenIdx: U32, succId: U16, jobFn: F) -> U16
     where
         F: FnMut( &Maestro< '_>) + Send + Sync + 'static,
     {
@@ -124,25 +129,19 @@ impl Atelier
         }
 		let  	mut jobBox: Box< JobFn> = Box::new( jobFn);
         self._JobBuff.Arr().MoveAt( jobId, &mut jobBox);
+
+        self._SuccIds.Arr().SetAt( jobId, &succId);
+        self.IncrPredAt( succId, 1);
         return jobId;
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	PostJob( &self, mavenIdx: U32, alongSuccFlg: bool, jobId: &mut U16)
+    pub fn	EnqueueJob( &self, mavenIdx: U32, jobId: &mut U16)
     {
         self.IncrSzSchedJob( U32( 1));
         let     maven = self._Mavens.Arr().At( mavenIdx);
-        if alongSuccFlg {
-            maven.EnqueueJob( jobId);
-            return;
-        }
-        /*
-        self.IncrPredAt( jobId, 1);
-        let     curSuccId = maven.CurSuccId();
-        _ = self._Atelier[].IncrPredAt( maven.CurSuccId(), 1);
-        maven.SetCurrSucc( jobId, self._CurSuccId);
-        */
+        maven.EnqueueJob( jobId);
         return;
     }
 
@@ -170,14 +169,15 @@ impl Atelier
 		let  	mut jobId = U16( 0);
         while self.IncrSzSchedJob( U32( 0)) != 0 {
             while jobId != 0 {
-				let  	succId = *self._SuccIds.Arr().At( jobId);
-                maven.SetCurSuccId( succId);
+                maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
 				let  	maestro = Maestro::New( self, mavenIdx);
                 self._JobBuff.Arr().MutAt( jobId)( &maestro);          // Run job
                 maven.IncrSzProcessed( 1);
 				let  	_res = self.FreeJob( mavenIdx, jobId);
+
+				let  	succId = maven.CurSuccId();
                 if succId != U16( 0) {
-					let  	szPred = self.IncrPredAt( succId, -U16( 1));
+					let  	szPred: U16 = self.IncrPredAt( succId, -U16( 1));
                     if szPred == U16( 1) {
                         jobId = succId;
                         self.IncrSzSchedJob( U32( 1));

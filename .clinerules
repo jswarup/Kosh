@@ -1,0 +1,3 @@
+# Custom Rules for AI Coding Assistant
+
+- **Git Commits & Pushes**: Do not run `git commit` or `git push` commands (or any commands that commit code) unless the user has explicitly requested a commit or push in their current request.

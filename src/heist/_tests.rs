@@ -11,14 +11,23 @@ use	crate::{
 #[test]
 fn	BuffBasicAtelierTest()
 {
-    fn	trialJob( m: &Maestro< '_>)
+    fn	trialJob( maestro: &Maestro< '_>)
     {
-        println!( "Trial {}", 0);
+        let     mut jobId = maestro.CurSuccId();
+        jobId =  maestro.ConstructJob(  jobId,    |m1| {
+            println!( "Trial1 {}", m1.MavenIndex());
+        });
+
+        jobId =  maestro.ConstructJob(  jobId,    |m2| {
+            println!( "Trial2 {}", m2.MavenIndex());
+        });
+        maestro.EnqueueJob( &mut jobId);
+        println!( "Trial {}", maestro.MavenIndex());
     }
 	let  	atelier = Atelier::New( U32( 4));
-	let  	maven = atelier.Mavens().At( 0);
-	let  	mut jobId = atelier.ConstructJob( maven.Index(), trialJob);
-    atelier.PostJob( maven.Index(), true, &mut jobId);
+	let  	mainMaestro = atelier.MainMaestro();
+	let  	mut jobId = mainMaestro.ConstructJob(  U16( 0), trialJob);
+    mainMaestro.EnqueueJob( &mut jobId);
     atelier.DoLaunch();
 }
 
@@ -61,17 +70,17 @@ fn	TestConcurrentDAG()
 	let  	atelier = Atelier::New( U32( 4));
     // Construct Job 3 (which waits for Job 1 and Job 2)
 	let  	counter_clone3 = counter.clone();
-	let  	job3 = atelier.ConstructJob( U32( 0), move |_m| {
+	let  	job3 = atelier.ConstructJob( U32( 0), U16( 0), move |_m| {
         counter_clone3.fetch_add( 100, Ordering::SeqCst);
     });
     // Construct Job 1
 	let  	counter_clone1 = counter.clone();
-	let  	job1 = atelier.ConstructJob( U32( 0), move |_m| {
+	let  	job1 = atelier.ConstructJob( U32( 0), U16( 0), move |_m| {
         counter_clone1.fetch_add( 1, Ordering::SeqCst);
     });
     // Construct Job 2
 	let  	counter_clone2 = counter.clone();
-	let  	job2 = atelier.ConstructJob( U32( 0), move |_m| {
+	let  	job2 = atelier.ConstructJob( U32( 0), U16( 0), move |_m| {
         counter_clone2.fetch_add( 1, Ordering::SeqCst);
     });
     // Set dependencies:
@@ -83,8 +92,8 @@ fn	TestConcurrentDAG()
     // Enqueue the starting jobs (Job 1 and Job 2)
 	let  	mut j1 = job1;
 	let  	mut j2 = job2;
-    atelier.PostJob( U32( 0), true, &mut j1);
-    atelier.PostJob( U32( 1), true, &mut j2);
+    atelier.EnqueueJob( U32( 0), &mut j1);
+    atelier.EnqueueJob( U32( 1), &mut j2);
     // Launch the processing queues
     atelier.DoLaunch();
     // Verify: Job 1 (+1), Job 2 (+1), and Job 3 (+100) must all run!

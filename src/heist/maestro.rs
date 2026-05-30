@@ -1,6 +1,6 @@
 //-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::atelier::Atelier;
-use	crate::silo::uint::{ U16, U32 };
+use	crate::silo::uint::{ U16, U32};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -43,7 +43,24 @@ impl< 'a> Maestro< 'a>
 
     pub fn	CurSuccId( &self) -> U16
     {
-        self._Atelier.Mavens().At( self._MavenIndex).CurSuccId()
+        let     maven = self._Atelier.Mavens().At( self._MavenIndex);
+        maven.CurSuccId()
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	ConstructJob< F>( &self,  succId: U16, jobFn: F) -> U16
+    where
+        F: FnMut( &Maestro< '_>) + Send + Sync + 'static,
+    {
+        self._Atelier.ConstructJob( self._MavenIndex, succId, jobFn)
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	EnqueueJob( &self, jobId: &mut U16)
+    {
+        self._Atelier.EnqueueJob( self._MavenIndex, jobId)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
