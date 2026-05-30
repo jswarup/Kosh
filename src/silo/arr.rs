@@ -203,3 +203,45 @@ impl< 'a, T: Eq> Eq for Arr<'a, T>
 { }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, T, const N: usize> From< &'a [T; N]> for Arr<'a, T>
+{
+    fn	from( arr: &'a [T; N]) -> Self
+    {
+        unsafe {
+            Arr::New( NonNull::new_unchecked( arr.as_ptr() as *mut T), N)
+        }
+    }
+}
+
+impl< 'a, T, const N: usize> From< &'a mut [T; N]> for Arr<'a, T>
+{
+    fn	from( arr: &'a mut [T; N]) -> Self
+    {
+        unsafe {
+            Arr::New( NonNull::new_unchecked( arr.as_mut_ptr()), N)
+        }
+    }
+}
+
+impl< 'a, T> From< &'a [T]> for Arr<'a, T>
+{
+    fn	from( slice: &'a [T]) -> Self
+    {
+        unsafe {
+            Arr::New( NonNull::new_unchecked( slice.as_ptr() as *mut T), slice.len())
+        }
+    }
+}
+
+impl< 'a, T> From< &'a mut [T]> for Arr<'a, T>
+{
+    fn	from( slice: &'a mut [T]) -> Self
+    {
+        unsafe {
+            Arr::New( NonNull::new_unchecked( slice.as_mut_ptr()), slice.len())
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------

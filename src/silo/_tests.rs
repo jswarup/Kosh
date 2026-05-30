@@ -1,5 +1,6 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::stalks::atm::Atm;
+use	crate::silo::arr::Arr;
 use	crate::silo::buff::Buff;
 use	crate::silo::stash::Stash;
 use	crate::silo::stk::Stk;
@@ -437,4 +438,32 @@ fn	TestConcurrentStackOps()
     for i in 0..100 {
         assert_eq!( values[i], i as u32);
     }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestArrFromArr()
+{
+    // Test creating an Arr from an array reference
+	let  	arrData = [10u32, 20u32, 30u32];
+	let  	arr = Arr::from( &arrData);
+    assert_eq!( arr.Size(), 3);
+    assert_eq!( *arr.At( 0), 10);
+    assert_eq!( *arr.At( 1), 20);
+    assert_eq!( *arr.At( 2), 30);
+
+    // Test creating a mutable Arr from a mutable array reference
+	let  	mut arrDataMut = [100u32, 200u32, 300u32];
+	let  	arrMut = Arr::from( &mut arrDataMut);
+    assert_eq!( arrMut.len(), 3);
+    arrMut.SetAt( 1, &250u32);
+    assert_eq!( *arrMut.At( 1), 250);
+    assert_eq!( arrDataMut[1], 250);
+
+    // Test creating an Arr from a slice
+	let  	sliceData: &[u32] = &[1, 2, 3, 4];
+	let  	arrSlice = Arr::from( sliceData);
+    assert_eq!( arrSlice.len(), 4);
+    assert_eq!( *arrSlice.At( 3), 4);
 }
