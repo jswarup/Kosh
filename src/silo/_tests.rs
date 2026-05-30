@@ -214,7 +214,7 @@ fn	TestAtmBasicOps()
 #[test]
 fn	TestAtmUsize()
 {
-	let  	atmVar = Atm::New( 0usize);
+	let  	atmVar: Atm<U32> = Atm::New( U32( 0));
     atmVar.FetchAdd( 1, Ordering::SeqCst);
     assert_eq!( atmVar.Get(), 1);
 }

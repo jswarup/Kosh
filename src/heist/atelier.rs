@@ -106,7 +106,7 @@ impl Atelier
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	IncrPredAt( &self, jobId: U16, inc: U16) -> U16
+    fn	IncrPredAt< K: Into< U16>>( &self, jobId: U16, inc: K) -> U16
     {
 		let  	arr = self._SzPreds.Arr();
         arr.At( jobId).FetchAdd( inc, Ordering::SeqCst)
@@ -129,10 +129,21 @@ impl Atelier
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	EnqueueJob( &self, mavenIdx: U32, jobId: &mut U16)
+    pub fn	PostJob( &self, mavenIdx: U32, alongSuccFlg: bool, jobId: &mut U16)
     {
         self.IncrSzSchedJob( U32( 1));
-        self._Mavens.Arr().At( mavenIdx).EnqueueJob( jobId);
+        let     maven = self._Mavens.Arr().At( mavenIdx);
+        if alongSuccFlg {
+            maven.EnqueueJob( jobId);
+            return;
+        }
+        /*
+        self.IncrPredAt( jobId, 1);
+        let     curSuccId = maven.CurSuccId();
+        _ = self._Atelier[].IncrPredAt( maven.CurSuccId(), 1);
+        maven.SetCurrSucc( jobId, self._CurSuccId);
+        */
+        return;
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

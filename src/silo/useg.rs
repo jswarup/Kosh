@@ -89,7 +89,7 @@ impl USeg
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Span< F>( &self, mut f: F) -> bool
+    pub fn	Span< F>( &self, mut lambda: F) -> bool
     where
         F: FnMut( U32) -> bool,
     {
@@ -97,7 +97,7 @@ impl USeg
             return true;
         }
         for i in self._First.as_u32()..=self._Last.as_u32() {
-            if !f( U32( i)) {
+            if !lambda( U32( i)) {
                 return false;
             }
         }

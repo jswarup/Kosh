@@ -10,7 +10,7 @@ pub trait AtomicInt: Sized {
     fn	Get( a: &Self::AtomicType, order: Ordering) -> Self;
     fn	Set( a: &Self::AtomicType, val: Self, order: Ordering);
     fn	FetchAdd( a: &Self::AtomicType, val: Self, order: Ordering) -> Self;
-    fn	CompareExchange( 
+    fn	CompareExchange(
         a: &Self::AtomicType,
         current: Self,
         newVal: Self,
@@ -44,7 +44,7 @@ macro_rules! impl_atomic_int {
             {
                 a.fetch_add( val, order)
             }
-            fn	CompareExchange( 
+            fn	CompareExchange(
                 a: &Self::AtomicType,
                 current: Self,
                 newVal: Self,
@@ -95,9 +95,9 @@ impl< T: AtomicInt> Atm< T>
         T::Get( &self._Val, order)
     }
     /// Stores a value using the provided ordering.
-    pub fn	Store( &self, v: T, order: Ordering)
+    pub fn	Store< K: Into< T>>( &self, v: K, order: Ordering)
     {
-        T::Set( &self._Val, v, order);
+        T::Set( &self._Val, v.into(), order);
     }
     /// Convenience for sequential consistency load.
     pub fn	Get( &self) -> T
@@ -105,24 +105,24 @@ impl< T: AtomicInt> Atm< T>
         self.Load( Ordering::SeqCst)
     }
     /// Convenience for sequential consistency store.
-    pub fn	Set( &self, v: T)
+    pub fn	Set< K: Into< T>>( &self, v: K)
     {
         self.Store( v, Ordering::SeqCst);
     }
     /// Adds to the current value, returning the previous value.
-    pub fn	FetchAdd( &self, v: T, order: Ordering) -> T
+    pub fn	FetchAdd< K: Into< T>>( &self, v: K, order: Ordering) -> T
     {
-        T::FetchAdd( &self._Val, v, order)
+        T::FetchAdd( &self._Val, v.into(), order)
     }
     /// Stores a value into the atomic integer if the current value is the same as the `current` value.
-    pub fn	CompareExchange( 
+    pub fn	CompareExchange< K: Into< T>>(
         &self,
-        current: T,
-        newVal: T,
+        current: K,
+        newVal: K,
         success: Ordering,
         failure: Ordering,
     ) -> Result< T, T> {
-        T::CompareExchange( &self._Val, current, newVal, success, failure)
+        T::CompareExchange( &self._Val, current.into(), newVal.into(), success, failure)
     }
 }
 

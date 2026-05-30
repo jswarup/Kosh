@@ -18,7 +18,7 @@ fn	BuffBasicAtelierTest()
 	let  	atelier = Atelier::New( U32( 4));
 	let  	maven = atelier.Mavens().At( 0);
 	let  	mut jobId = atelier.ConstructJob( maven.Index(), trialJob);
-    atelier.EnqueueJob( maven.Index(), &mut jobId);
+    atelier.PostJob( maven.Index(), true, &mut jobId);
     atelier.DoLaunch();
 }
 
@@ -83,8 +83,8 @@ fn	TestConcurrentDAG()
     // Enqueue the starting jobs (Job 1 and Job 2)
 	let  	mut j1 = job1;
 	let  	mut j2 = job2;
-    atelier.EnqueueJob( U32( 0), &mut j1);
-    atelier.EnqueueJob( U32( 1), &mut j2);
+    atelier.PostJob( U32( 0), true, &mut j1);
+    atelier.PostJob( U32( 1), true, &mut j2);
     // Launch the processing queues
     atelier.DoLaunch();
     // Verify: Job 1 (+1), Job 2 (+1), and Job 3 (+100) must all run!
@@ -101,3 +101,5 @@ fn	TestMaestroBasicOps()
 	let  	maestro = Maestro::New( &atelier, U32( 2), U16( 0));
     assert_eq!( maestro.MavenIndex(), U32( 2));
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
