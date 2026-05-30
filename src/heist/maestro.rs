@@ -8,7 +8,6 @@ pub struct Maestro< 'a>
 {
     _Atelier: &'a Atelier,
     _MavenIndex: U32,
-    _CurSuccId: U16,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -18,12 +17,11 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	New( atelier: &'a Atelier, mavenIdx: U32, curSuccId: U16) -> Self
+    pub fn	New( atelier: &'a Atelier, mavenIdx: U32) -> Self
     {
         Self {
             _Atelier: atelier,
             _MavenIndex: mavenIdx,
-            _CurSuccId: curSuccId,
         }
     }
 
@@ -45,7 +43,7 @@ impl< 'a> Maestro< 'a>
 
     pub fn	CurSuccId( &self) -> U16
     {
-        self._CurSuccId
+        self._Atelier.Mavens().At( self._MavenIndex).CurSuccId()
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

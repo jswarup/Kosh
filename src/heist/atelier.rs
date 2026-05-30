@@ -171,7 +171,8 @@ impl Atelier
         while self.IncrSzSchedJob( U32( 0)) != 0 {
             while jobId != 0 {
 				let  	succId = *self._SuccIds.Arr().At( jobId);
-				let  	maestro = Maestro::New( self, mavenIdx, succId);
+                maven.SetCurSuccId( succId);
+				let  	maestro = Maestro::New( self, mavenIdx);
                 self._JobBuff.Arr().MutAt( jobId)( &maestro);          // Run job
                 maven.IncrSzProcessed( 1);
 				let  	_res = self.FreeJob( mavenIdx, jobId);
