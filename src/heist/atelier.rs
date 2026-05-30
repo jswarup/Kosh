@@ -2,7 +2,7 @@
 use	std::sync::atomic::Ordering;
 use	crate::heist::maestro::Maestro;
 use	crate::heist::maven::Maven;
-use	crate::silo::atm::{ Atm, Spinlock };
+use	crate::stalks::atm::{ Atm, Spinlock };
 use	crate::silo::{
     arr::Arr,
     buff::Buff,

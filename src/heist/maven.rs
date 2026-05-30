@@ -1,5 +1,5 @@
 //-- maven.rs -----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::atm::{ Atm, Spinlock };
+use	crate::stalks::atm::{ Atm, Spinlock };
 use	crate::silo::stash::Stash;
 use	crate::silo::stk::Stk;
 use	crate::silo::uint::{ U16, U32 };

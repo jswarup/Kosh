@@ -1,6 +1,6 @@
 //-- stk.rs -------------------------------------------------------------------------------------------------------------------------
 use	crate::silo::arr::Arr;
-use	crate::silo::atm::Atm;
+use	crate::stalks::atm::Atm;
 use	crate::silo::uint::U32;
 use	crate::silo::useg::USeg;
 

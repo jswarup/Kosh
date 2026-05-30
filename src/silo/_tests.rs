@@ -1,5 +1,5 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::atm::Atm;
+use	crate::stalks::atm::Atm;
 use	crate::silo::buff::Buff;
 use	crate::silo::stash::Stash;
 use	crate::silo::stk::Stk;
