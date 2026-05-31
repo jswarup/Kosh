@@ -75,8 +75,8 @@ impl< 'a> IWorker for Maestro< 'a>
 {
     fn	PostJob( &self, job: Box< WorkFn< '_>>)
     {
-        let     mut jobId = self.CurSuccId();
-        let     jobStatic: Box< WorkFn< 'static>> = unsafe { std::mem::transmute( job) };
+        let  	mut jobId = self.CurSuccId();
+        let  	jobStatic: Box< WorkFn< 'static>> = unsafe { std::mem::transmute( job) };
         jobId =  self.ConstructJob(  jobId, jobStatic);
         self.EnqueueJob( &mut jobId);
     }
