@@ -381,8 +381,6 @@ fn	TestConcurrentStackOps()
     }
 }
 
-
-
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
@@ -442,6 +440,11 @@ fn	TestDoQSort()
     });
 
 	let  	res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
+
+    arr.USeg().Span( |i| {
+        print!( "{} ", arr.At( i));
+        true
+    });
     assert!( res);
 }
 

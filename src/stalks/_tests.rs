@@ -1,7 +1,7 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::silo::arr::Arr;
 use	crate::silo::uint::U32;
-use	crate::stalks::work::{ IWorker, Worker };
+use	crate::stalks::work::{ IWorker, WorkFn, Worker };
 use	std::sync::Arc;
 use	std::sync::atomic::{ AtomicBool, Ordering };
 use	crate::stalks::atm::Atm;
@@ -44,11 +44,11 @@ fn	TestWorkerPost()
 	let  	run1C = run1.clone();
 	let  	run2C = run2.clone();
 
-	let  	job1: Box< dyn FnMut( &dyn IWorker) + Send + Sync> = Box::new( move |_worker| {
+	let  	job1: Box< WorkFn< '_>> = Box::new( move |_worker| {
         run1C.store( true, Ordering::SeqCst);
     });
 
-	let  	job2: Box< dyn FnMut( &dyn IWorker) + Send + Sync> = Box::new( move |_worker| {
+	let  	job2: Box< WorkFn< '_>> = Box::new( move |_worker| {
         run2C.store( true, Ordering::SeqCst);
     });
 

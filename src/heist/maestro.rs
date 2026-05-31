@@ -52,7 +52,7 @@ impl< 'a> Maestro< 'a>
 
     pub fn	ConstructJob< F>( &self,  succId: U16, jobFn: F) -> U16
     where
-        F: FnMut( &Maestro< '_>) + Send + Sync + 'static,
+        F: FnMut( &dyn IWorker) + Send + Sync + 'static,
     {
         self._Atelier.ConstructJob( self._MavenIndex, succId, jobFn)
     }
@@ -83,6 +83,11 @@ impl< 'a> IWorker for Maestro< 'a>
         for job in jobs.iter_mut() {
             job( self);
         }
+    }
+
+    fn	AsMaestro( &self) -> Option< &Maestro< '_>>
+    {
+        Some( self)
     }
 }
 

@@ -3,6 +3,7 @@ use	std::sync::atomic::Ordering;
 use	crate::heist::maestro::Maestro;
 use	crate::heist::maven::Maven;
 use	crate::stalks::atm::{ Atm, Spinlock };
+use	crate::stalks::work::{ IWorker, WorkFn };
 use	crate::silo::{
     arr::Arr,
     buff::Buff,
@@ -13,7 +14,7 @@ use	crate::silo::{
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-type JobFn = dyn FnMut( &Maestro< '_>) + Send + Sync;
+type JobFn = WorkFn< 'static>;
 pub struct Atelier
 {
     _StartCount: U32,                                                  // Count of Processing Queue started, used for startup and shutdown
@@ -121,7 +122,7 @@ impl Atelier
 
     pub fn	ConstructJob< F>( &self, mavenIdx: U32, succId: U16, jobFn: F) -> U16
     where
-        F: FnMut( &Maestro< '_>) + Send + Sync + 'static,
+        F: FnMut( &dyn IWorker) + Send + Sync + 'static,
     {
 		let  	jobId = self.AllocJob( mavenIdx);
         if jobId == 0 {

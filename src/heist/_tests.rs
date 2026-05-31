@@ -1,9 +1,11 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::{
-    heist::
-    { atelier::Atelier, maestro::Maestro },
-    silo::uint::
-    { U16, U32 },
+    heist:: { atelier::Atelier, maestro::Maestro },
+    silo:: {
+        uint:: { U16, U32},
+        buff::Buff,
+    },
+    stalks::work::{ IWorker, WorkFn }
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -11,15 +13,16 @@ use	crate::{
 #[test]
 fn	BuffBasicAtelierTest()
 {
-    fn	trialJob( maestro: &Maestro< '_>)
+    fn	trialJob( worker: &dyn IWorker)
     {
-        let     mut jobId = maestro.CurSuccId();
-        jobId =  maestro.ConstructJob(  jobId,    |m1| {
-            println!( "Trial1 {}", m1.MavenIndex());
+		let  	maestro = worker.AsMaestro().unwrap();
+		let  	mut jobId = maestro.CurSuccId();
+        jobId =  maestro.ConstructJob(  jobId, |w1| {
+            println!( "Trial1 {}", w1.AsMaestro().unwrap().MavenIndex());
         });
 
-        jobId =  maestro.ConstructJob(  jobId,    |m2| {
-            println!( "Trial2 {}", m2.MavenIndex());
+        jobId =  maestro.ConstructJob(  jobId, |w2| {
+            println!( "Trial2 {}", w2.AsMaestro().unwrap().MavenIndex());
         });
         maestro.EnqueueJob( &mut jobId);
         println!( "Trial {}", maestro.MavenIndex());
@@ -41,9 +44,9 @@ fn	TestThreadSharedInteger()
 	let  	shared = Arc::new( Mutex::new( 0));
 	let  	mut handles = vec![];
     for i in 0..4 {
-		let  	shared_clone = shared.clone();
+		let  	sharedClone = shared.clone();
 		let  	handle = thread::spawn( move || {
-			let  	mut val = shared_clone.lock().unwrap();
+			let  	mut val = sharedClone.lock().unwrap();
             *val += 1;
             println!( "Thread {} incremented shared integer to: {}", i, *val);
         });
@@ -69,19 +72,19 @@ fn	TestConcurrentDAG()
 	let  	counter = Arc::new( AtomicU32::new( 0));
 	let  	atelier = Atelier::New( U32( 4));
     // Construct Job 3 (which waits for Job 1 and Job 2)
-	let  	counter_clone3 = counter.clone();
+	let  	counterClone3 = counter.clone();
 	let  	job3 = atelier.ConstructJob( U32( 0), U16( 0), move |_m| {
-        counter_clone3.fetch_add( 100, Ordering::SeqCst);
+        counterClone3.fetch_add( 100, Ordering::SeqCst);
     });
     // Construct Job 1
-	let  	counter_clone1 = counter.clone();
+	let  	counterClone1 = counter.clone();
 	let  	job1 = atelier.ConstructJob( U32( 0), U16( 0), move |_m| {
-        counter_clone1.fetch_add( 1, Ordering::SeqCst);
+        counterClone1.fetch_add( 1, Ordering::SeqCst);
     });
     // Construct Job 2
-	let  	counter_clone2 = counter.clone();
+	let  	counterClone2 = counter.clone();
 	let  	job2 = atelier.ConstructJob( U32( 0), U16( 0), move |_m| {
-        counter_clone2.fetch_add( 1, Ordering::SeqCst);
+        counterClone2.fetch_add( 1, Ordering::SeqCst);
     });
     // Set dependencies:
     // Job 3 has 2 predecessors
@@ -112,5 +115,39 @@ fn	TestMaestroBasicOps()
     assert_eq!( maestro.MavenIndex(), U32( 2));
     assert_eq!( maestro.CurSuccId(), U16( 42));
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestDoQSort()
+{
+	let  	buff = Buff::Create( U32( 100), |_| rand::random::<f64>());
+	let  	arr = buff.Arr();
+
+	let  	atelier = Atelier::New( U32( 4));
+	let  	mainMaestro = atelier.MainMaestro();
+
+	let  	arrC = arr;
+	let  	jobBox: Box< WorkFn< '_>> = Box::new( move |worker| {
+        arrC.USeg().DoQSort( worker, &|i, j| arrC.At( i) > arrC.At( j), &mut |i, j| {
+            arrC.SwapAt( i, j);
+        });
+    });
+	let  	jobBoxStatic: Box< WorkFn< 'static>> = unsafe { std::mem::transmute( jobBox) };
+
+	let  	mut jobId = mainMaestro.ConstructJob(  U16( 0), jobBoxStatic);
+    mainMaestro.EnqueueJob( &mut jobId);
+
+    atelier.DoLaunch();
+
+	let  	res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
+
+    arr.USeg().Span( |i| {
+        print!( "{} ", arr.At( i));
+        true
+    });
+    assert!( res);
+}
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
