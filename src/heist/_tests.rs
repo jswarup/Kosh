@@ -121,7 +121,7 @@ fn	TestMaestroBasicOps()
 #[test]
 fn	TestDoQSort()
 {
-	let  	buff = Buff::Create( U32( 100), |_| rand::random::<f64>());
+	let  	buff = Buff::Create( U32( 1000), |_| rand::random::<f64>());
 	let  	arr = buff.Arr();
 
 	let  	atelier = Atelier::New( U32( 4));

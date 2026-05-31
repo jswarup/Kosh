@@ -103,7 +103,7 @@ impl< 'a> IWorker for Maestro< 'a>
             arr.USeg().Span( | i| {
                 let  	mut job = Box::new( |_w: &dyn IWorker| {}) as Box< WorkFn< '_>>;
                 arr.MoveAt( i, &mut job);
-                let  	mut jobId = self.ConstructJob( succId, job);
+                let  	mut jobId = maestro.ConstructJob( succId, job);
                 maestro.EnqueueJob( &mut jobId);
                 true
             });
