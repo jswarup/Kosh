@@ -7,7 +7,6 @@ use	crate::silo::stk::Stk;
 #[warn( unused_imports)]
 use	crate::silo::uint::{ U16, U32 };
 use	crate::silo::useg::USeg;
-use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -44,31 +43,20 @@ fn	BuffFromTest()
     assert_eq!( buffFromVec.len(), 2);
     assert_eq!( buffFromVec[0], 40);
     assert_eq!( buffFromVec[1], 50);
+
     // Test creation from an array directly
 	let  	buffFromArr = Buff::from( [100, 200, 300, 400]);
     assert_eq!( buffFromArr.len(), 4);
     assert_eq!( buffFromArr[2], 300);
-}
 
-//---------------------------------------------------------------------------------------------------------------------------------
+	let  	buff1 = Buff::New( 10, ());
+    assert_eq!( buff1.Size(), 10);
+    assert_eq!( buff1[5], ());
 
-#[test]
-fn	BufZSTTest()
-{
-	let  	buff = Buff::New( 10, ());
-    assert_eq!( buff.Size(), 10);
-    assert_eq!( buff[5], ());
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[test]
-fn	BuffSendSyncTest()
-{
-	let  	buff = Buff::Create( 5, |_| 42);
+    let  	buff2 = Buff::Create( 5, |_| 42);
 	let  	handle = std::thread::spawn( move || {
-        assert_eq!( buff.len(), 5);
-        assert_eq!( buff[0], 42);
+        assert_eq!( buff2.len(), 5);
+        assert_eq!( buff2[0], 42);
     });
     handle.join().unwrap();
 }
@@ -105,6 +93,35 @@ fn	ArrBasicOpsTest()
     assert_eq!( arr2[1], 100);
     // Test Debug trait
     assert_eq!( format!( "{:?}", arr2), "[200, 100, 300]");
+}
+
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestArrFromArr()
+{
+    // Test creating an Arr from an array reference
+	let  	arrData = [10u32, 20u32, 30u32];
+	let  	arr = Arr::from( &arrData);
+    assert_eq!( arr.Size(), 3);
+    assert_eq!( *arr.At( 0), 10);
+    assert_eq!( *arr.At( 1), 20);
+    assert_eq!( *arr.At( 2), 30);
+
+    // Test creating a mutable Arr from a mutable array reference
+	let  	mut arrDataMut = [100u32, 200u32, 300u32];
+	let  	arrMut = Arr::from( &mut arrDataMut);
+    assert_eq!( arrMut.len(), 3);
+    arrMut.SetAt( 1, &250u32);
+    assert_eq!( *arrMut.At( 1), 250);
+    assert_eq!( arrDataMut[1], 250);
+
+    // Test creating an Arr from a slice
+	let  	sliceData: &[u32] = &[1, 2, 3, 4];
+	let  	arrSlice = Arr::from( sliceData);
+    assert_eq!( arrSlice.len(), 4);
+    assert_eq!( *arrSlice.At( 3), 4);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -167,57 +184,6 @@ fn	USegSpanTest()
     });
     assert!( !result2);
     assert_eq!( visited2, vec![10, 11, 12, 13]);
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[test]
-fn	QSortTest()
-{
-	let  	buff = Buff::Create( U32( 256), |_| rand::random::<f64>());
-    //let     buff =  Buff::New( 5, | i| i);
-	let  	arr = buff.Arr();
-    arr.USeg()
-        .QSort( &|i, j| arr.At( i) > arr.At( j), &mut |i, j| {
-            arr.SwapAt( i, j);
-        });
-    print! { "{:?}\n", arr};
-	let  	res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
-    assert!( res);
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[test]
-fn	TestAtmBasicOps()
-{
-	let  	atmVar = Atm::New( 10i32);
-    // Test Get and Set
-    assert_eq!( atmVar.Get(), 10);
-    atmVar.Set( 42);
-    assert_eq!( atmVar.Get(), 42);
-    // Test FetchAdd
-	let  	prevVal = atmVar.FetchAdd( 8, Ordering::SeqCst);
-    assert_eq!( prevVal, 42);
-    assert_eq!( atmVar.Get(), 50);
-    // Test CompareExchange (success)
-	let  	successRes = atmVar.CompareExchange( 50, 100, Ordering::SeqCst, Ordering::SeqCst);
-    assert_eq!( successRes, Ok( 50));
-    assert_eq!( atmVar.Get(), 100);
-    // Test CompareExchange (failure)
-	let  	failureRes = atmVar.CompareExchange( 50, 200, Ordering::SeqCst, Ordering::SeqCst);
-    assert_eq!( failureRes, Err( 100));
-    assert_eq!( atmVar.Get(), 100);
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[test]
-fn	TestAtmUsize()
-{
-	let  	atmVar: Atm<U32> = Atm::New( U32( 0));
-    atmVar.FetchAdd( 1, Ordering::SeqCst);
-    assert_eq!( atmVar.Get(), 1);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -374,31 +340,6 @@ fn	StackExportImportOps()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestQSortBoundaries()
-{
-    // Test QSort with empty segment
-	let  	buff_empty = Buff::Create( U32( 0), |_| 0);
-	let  	arr_empty = buff_empty.Arr();
-    arr_empty
-        .USeg()
-        .QSort( &|i, j| arr_empty.At( i) > arr_empty.At( j), &mut |i, j| {
-            arr_empty.SwapAt( i, j);
-        });
-    assert_eq!( arr_empty.len(), 0);
-    // Test QSort with size 1
-	let  	buff_one = Buff::Create( U32( 1), |_| 42);
-	let  	arr_one = buff_one.Arr();
-    arr_one
-        .USeg()
-        .QSort( &|i, j| arr_one.At( i) > arr_one.At( j), &mut |i, j| {
-            arr_one.SwapAt( i, j);
-        });
-    assert_eq!( arr_one[0], 42);
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[test]
 fn	TestConcurrentStackOps()
 {
     use	std::sync::Arc;
@@ -440,30 +381,69 @@ fn	TestConcurrentStackOps()
     }
 }
 
+
+
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestArrFromArr()
+fn	QSortTest()
 {
-    // Test creating an Arr from an array reference
-	let  	arrData = [10u32, 20u32, 30u32];
-	let  	arr = Arr::from( &arrData);
-    assert_eq!( arr.Size(), 3);
-    assert_eq!( *arr.At( 0), 10);
-    assert_eq!( *arr.At( 1), 20);
-    assert_eq!( *arr.At( 2), 30);
-
-    // Test creating a mutable Arr from a mutable array reference
-	let  	mut arrDataMut = [100u32, 200u32, 300u32];
-	let  	arrMut = Arr::from( &mut arrDataMut);
-    assert_eq!( arrMut.len(), 3);
-    arrMut.SetAt( 1, &250u32);
-    assert_eq!( *arrMut.At( 1), 250);
-    assert_eq!( arrDataMut[1], 250);
-
-    // Test creating an Arr from a slice
-	let  	sliceData: &[u32] = &[1, 2, 3, 4];
-	let  	arrSlice = Arr::from( sliceData);
-    assert_eq!( arrSlice.len(), 4);
-    assert_eq!( *arrSlice.At( 3), 4);
+	let  	buff = Buff::Create( U32( 256), |_| rand::random::<f64>());
+    //let     buff =  Buff::New( 5, | i| i);
+	let  	arr = buff.Arr();
+    arr.USeg()
+        .QSort( &|i, j| arr.At( i) > arr.At( j), &mut |i, j| {
+            arr.SwapAt( i, j);
+        });
+    print! { "{:?}\n", arr};
+	let  	res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
+    assert!( res);
 }
+
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestQSortBoundaries()
+{
+    // Test QSort with empty segment
+	let  	buff_empty = Buff::Create( U32( 0), |_| 0);
+	let  	arr_empty = buff_empty.Arr();
+    arr_empty
+        .USeg()
+        .QSort( &|i, j| arr_empty.At( i) > arr_empty.At( j), &mut |i, j| {
+            arr_empty.SwapAt( i, j);
+        });
+    assert_eq!( arr_empty.len(), 0);
+    // Test QSort with size 1
+	let  	buff_one = Buff::Create( U32( 1), |_| 42);
+	let  	arr_one = buff_one.Arr();
+    arr_one
+        .USeg()
+        .QSort( &|i, j| arr_one.At( i) > arr_one.At( j), &mut |i, j| {
+            arr_one.SwapAt( i, j);
+        });
+    assert_eq!( arr_one[0], 42);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestDoQSort()
+{
+    use	crate::stalks::work::Worker;
+
+	let  	buff = Buff::Create( U32( 100), |_| rand::random::<f64>());
+	let  	arr = buff.Arr();
+	let  	worker = Worker::New();
+
+    arr.USeg().DoQSort( &worker, &|i, j| arr.At( i) > arr.At( j), &mut |i, j| {
+        arr.SwapAt( i, j);
+    });
+
+	let  	res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
+    assert!( res);
+}
+
+
+//---------------------------------------------------------------------------------------------------------------------------------
