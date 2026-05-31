@@ -1,26 +1,12 @@
 //-- silo/useg.rs ---------------------------------------------------------------------------------------------------------------------
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
 use	crate::silo::uint::U32;
 use crate::silo::arr::Arr;
-use crate::stalks::work::{ IWorker, WorkFn };
+use crate::stalks::work::{ IWorker, WorkFn, RawPtr };
 
-struct SendPtr<T>(*mut T);
-unsafe impl<T> Send for SendPtr<T> {}
-unsafe impl<T> Sync for SendPtr<T> {}
-impl<T> Clone for SendPtr<T> {
-    fn clone(&self) -> Self { *self }
-}
-impl<T> Copy for SendPtr<T> {}
-impl<T> SendPtr<T> {
-    unsafe fn as_mut(&self) -> &mut T {
-        unsafe { &mut *self.0 }
-    }
-    unsafe fn as_ref(&self) -> &T {
-        unsafe { &*self.0 }
-    }
-}
+//---------------------------------------------------------------------------------------------------------------------------------
+
+
 #[derive( Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct USeg
 {
@@ -184,16 +170,16 @@ impl USeg
         let  	mut sz = 0;
         let  	mut chunkWorks: [Box<WorkFn<'_>>; 2] = [ Box::new(|_| {}), Box::new(|_| {}), ];
 
-        let     lessAtPtr = SendPtr(lessAt as *const LessAt as *mut LessAt);
-        let     swapAtPtr = SendPtr(swapAt as *mut SwapAt);
+        let     lessAtPtr = RawPtr(lessAt as *const LessAt as *mut LessAt);
+        let     swapAtPtr = RawPtr(swapAt as *mut SwapAt);
 
 		let  	useg1 = USeg::Create( self._First, pivot - self._First);
         if useg1.Size() > 1 {
-            let less_ptr = lessAtPtr;
-            let swap_ptr = swapAtPtr;
+            let lessPtr = lessAtPtr;
+            let swapPtr = swapAtPtr;
             chunkWorks[sz] = Box::new( move |w| {
                 unsafe {
-                    useg1.DoQSort(w, less_ptr.as_ref(), swap_ptr.as_mut());
+                    useg1.DoQSort(w, lessPtr.as_ref(), swapPtr.as_mut());
                 }
             });
             sz += 1;
@@ -201,11 +187,11 @@ impl USeg
 
 		let  	useg2 = USeg::Create( pivot + 1, self._Last - pivot);
         if useg2.Size() > 1 {
-            let less_ptr = lessAtPtr;
-            let swap_ptr = swapAtPtr;
+            let lessPtr = lessAtPtr;
+            let swapPtr = swapAtPtr;
             chunkWorks[sz] = Box::new( move |w| {
                 unsafe {
-                    useg2.DoQSort(w, less_ptr.as_ref(), swap_ptr.as_mut());
+                    useg2.DoQSort(w, lessPtr.as_ref(), swapPtr.as_mut());
                 }
             });
             sz += 1;

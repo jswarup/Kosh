@@ -16,6 +16,7 @@ All Rust source files (`.rs`) in this project must adhere to the following forma
 
 ## 4. Local Variable Declarations
 - **Let Keyword**: The `let` keyword in all local variable declarations must be immediately followed by exactly two spaces and a tab character (`\t`) (e.g., `let  \tfoo = ...`).
+- **Naming Convention**: All local variables must be named using camelCase (e.g., `let  \tmyLocalVar = ...`).
 
 ## 5. Separator Lines
 - **Blank Lines**: An empty line must always precede and succeed every separator line (e.g., `//---------------------------------------------------------------------------------------------------------------------------------`).
