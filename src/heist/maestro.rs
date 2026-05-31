@@ -73,14 +73,19 @@ impl< 'a> Maestro< 'a>
 
 impl< 'a> IWorker for Maestro< 'a>
 {
-    fn	PostJob( &self, mut job: Box< WorkFn< '_>>)
+    fn	PostJob( &self, job: Box< WorkFn< '_>>)
     {
-        job( self);
+        let     mut jobId = self.CurSuccId();
+        let     jobStatic: Box< WorkFn< 'static>> = unsafe { std::mem::transmute( job) };
+        jobId =  self.ConstructJob(  jobId, jobStatic);
+        self.EnqueueJob( &mut jobId);
     }
 
-    fn	PostJobs( &self, mut jobs: Arr< '_, Box< WorkFn< '_>>>)
+    fn	PostJobs( &self, jobs: Arr< '_, Box< WorkFn< '_>>>)
     {
-        for job in jobs.iter_mut() {
+        for i in 0..jobs.len() {
+			let  	mut job = Box::new( |_w: &dyn IWorker| {}) as Box< WorkFn< '_>>;
+            jobs.MoveAt( i, &mut job);
             job( self);
         }
     }

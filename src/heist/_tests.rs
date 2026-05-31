@@ -2,10 +2,11 @@
 use	crate::{
     heist:: { atelier::Atelier, maestro::Maestro },
     silo:: {
+        arr::Arr,
         uint:: { U16, U32},
         buff::Buff,
     },
-    stalks::work::{ IWorker, WorkFn }
+    stalks::work::IWorker
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -127,15 +128,14 @@ fn	TestDoQSort()
 	let  	atelier = Atelier::New( U32( 4));
 	let  	mainMaestro = atelier.MainMaestro();
 
-	let  	arrC = arr;
-	let  	jobBox: Box< WorkFn< '_>> = Box::new( move |worker| {
-        arrC.USeg().DoQSort( worker, &|i, j| arrC.At( i) > arrC.At( j), &mut |i, j| {
-            arrC.SwapAt( i, j);
+	let  	arrStatic: Arr< 'static, f64> = unsafe { std::mem::transmute( arr) };
+	let  	mut jobId = mainMaestro.ConstructJob(  U16( 0), move |worker| {
+		let  	arrC1 = arrStatic;
+		let  	arrC2 = arrStatic;
+        arrStatic.USeg().DoQSort( worker, &move |i, j| arrC1.At( i) > arrC1.At( j), &mut move |i, j| {
+            arrC2.SwapAt( i, j);
         });
     });
-	let  	jobBoxStatic: Box< WorkFn< 'static>> = unsafe { std::mem::transmute( jobBox) };
-
-	let  	mut jobId = mainMaestro.ConstructJob(  U16( 0), jobBoxStatic);
     mainMaestro.EnqueueJob( &mut jobId);
 
     atelier.DoLaunch();

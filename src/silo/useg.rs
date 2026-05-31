@@ -157,7 +157,7 @@ impl USeg
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	DoQSort< W, LessAt, SwapAt>( &self, worker: &W, lessAt: &LessAt, swapAt: &mut SwapAt)
+    pub fn	    DoQSort< W, LessAt, SwapAt>( &self, worker: &W, lessAt: &LessAt, swapAt: &mut SwapAt)
     where
         W: IWorker + ?Sized,
         LessAt: Fn( U32, U32) -> bool,

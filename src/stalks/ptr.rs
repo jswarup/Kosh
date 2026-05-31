@@ -30,6 +30,7 @@ impl< T> Copy for RawPtr< T>
 
 impl< T> RawPtr< T>
 {
+    #[allow(clippy::mut_from_ref)]
     pub unsafe fn	as_mut( &self) -> &mut T
     {
         unsafe
