@@ -2,7 +2,8 @@
 
 use	crate::silo::uint::U32;
 use crate::silo::arr::Arr;
-use crate::stalks::work::{ IWorker, WorkFn, RawPtr };
+use crate::stalks::work::{ IWorker, WorkFn };
+use crate::stalks::ptr::RawPtr;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
