@@ -86,7 +86,7 @@ impl< 'a> IWorker for Maestro< 'a>
         for i in 0..jobs.len() {
 			let  	mut job = Box::new( |_w: &dyn IWorker| {}) as Box< WorkFn< '_>>;
             jobs.MoveAt( i, &mut job);
-            job( self);
+            self.PostJob( job);
         }
     }
 
