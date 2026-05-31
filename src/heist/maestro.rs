@@ -97,11 +97,14 @@ impl< 'a> IWorker for Maestro< 'a>
             job
         });
         let  	branchJob: Box< WorkFn< '_>> = Box::new( move | worker| {
+            let  	maestro = worker.AsMaestro().unwrap();
             let  	arr = buff.Arr();
+            let  	succId = maestro.CurSuccId();
             arr.USeg().Span( | i| {
                 let  	mut job = Box::new( |_w: &dyn IWorker| {}) as Box< WorkFn< '_>>;
                 arr.MoveAt( i, &mut job);
-                worker.PostJob( job);
+                let  	mut jobId = self.ConstructJob( succId, job);
+                maestro.EnqueueJob( &mut jobId);
                 true
             });
         });

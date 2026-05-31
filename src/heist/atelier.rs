@@ -78,7 +78,7 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	IncrPredAt< K: Into< U16>>( &self, jobId: U16, inc: K) -> U16
+    pub fn	IncrPredAt< K: Into< U16>>( &self, jobId: U16, inc: K) -> U16
     {
         self._SzPreds.Arr().At( jobId).FetchAdd( inc, Ordering::SeqCst)
     }
