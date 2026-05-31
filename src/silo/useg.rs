@@ -198,8 +198,8 @@ impl USeg
             sz += 1;
         }
 
-        let  	arrWorks = Arr::from(&mut chunkWorks[..sz]);
-        worker.Post( arrWorks);
+        let  	arrWorks = Arr::from( &mut chunkWorks[..sz]);
+        worker.PostJobs( arrWorks);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
