@@ -39,7 +39,7 @@ impl< 'a> Atelier< 'a>
 		let  	atelier = Self {
             _StartCount: U32::_0,
             _SzSchedJob: Atm::New( U32::_0),
-            _Mavens: Buff::Create( szMaven, |i| Maven::New( i)),
+            _Mavens: Buff::Create( szMaven, Maven::New),
             _LockedMark: U32::_0,
             _SzPreds: Buff::Create( U32::_16Sz, |_i| Atm::New( U16::_0)),
             _SuccIds: Buff::<U16>::New( U32::_16Sz, U16::_0),
@@ -133,7 +133,7 @@ impl< 'a> Atelier< 'a>
 
         self._SuccIds.Arr().SetAt( jobId, &succId);
         self.IncrPredAt( succId, 1);
-        return jobId;
+        jobId
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -143,7 +143,6 @@ impl< 'a> Atelier< 'a>
         self.IncrSzSchedJob( U32( 1));
         let     maven = self._Mavens.Arr().At( mavenIdx);
         maven.EnqueueJob( jobId);
-        return;
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -159,7 +158,7 @@ impl< 'a> Atelier< 'a>
                 return jobId;
             }
         }
-        return U16( 0);
+        U16( 0)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

@@ -409,6 +409,7 @@ impl< T: Clone> From< &[T]> for Buff< T>
                 _Layout: layout,
                 _InitCount: 0,
             };
+            #[allow( clippy::needless_range_loop)]
             for i in 0..size {
                 std::ptr::write( rawPtr.add( i), slice[i].clone());
                 guard._InitCount += 1;

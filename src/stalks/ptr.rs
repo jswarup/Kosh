@@ -30,12 +30,16 @@ impl< T> Copy for RawPtr< T>
 
 impl< T> RawPtr< T>
 {
+    /// # Safety
+    /// Pointer must be non-null and valid for the lifetime of the returned reference.
     #[allow(clippy::mut_from_ref)]
     pub unsafe fn	as_mut( &self) -> &mut T
     {
         unsafe
         { &mut *self.0 }
     }
+    /// # Safety
+    /// Pointer must be non-null and valid for the lifetime of the returned reference.
     pub unsafe fn	as_ref( &self) -> &T
     {
         unsafe
