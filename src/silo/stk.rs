@@ -51,6 +51,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    /// CAS-decrement _Size (Acquire), then read. Pairs with Push's Release.
     pub fn	Pop( &self, val: &mut T) -> bool
     where
         T: Default + Clone,
@@ -59,11 +60,11 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         if ( sz == U32( 0))
             || ( self
                 ._Size
-                .CompareExchange( 
+                .CompareExchange(
                     sz,
                     sz - U32( 1),
-                    std::sync::atomic::Ordering::SeqCst,
-                    std::sync::atomic::Ordering::SeqCst,
+                    std::sync::atomic::Ordering::Acquire,
+                    std::sync::atomic::Ordering::Relaxed,
                 )
                 .is_err()) {
             return false;
@@ -73,25 +74,30 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
+    /// Write-then-publish: MoveAt data first, CAS-increment _Size (Release).
+    /// On CAS failure, MoveAt rolls back the speculative write.
 
     pub fn	Push( &self, val: &mut T) -> bool
     where
         T: Default,
     {
 		let  	sz = self.Size();
-        if ( sz >= self._Arr.Size())
-            || self
-                ._Size
-                .CompareExchange( 
-                    sz,
-                    sz + U32( 1),
-                    std::sync::atomic::Ordering::SeqCst,
-                    std::sync::atomic::Ordering::SeqCst,
-                )
-                .is_err() {
+        if sz >= self._Arr.Size() {
             return false;
         }
-        self._Arr.MoveAt( sz, val);
+        self._Arr.MoveAt( sz, val);                                     // Write data BEFORE publishing
+        if self
+            ._Size
+            .CompareExchange(
+                sz,
+                sz + U32( 1),
+                std::sync::atomic::Ordering::Release,
+                std::sync::atomic::Ordering::Relaxed,
+            )
+            .is_err() {
+            self._Arr.MoveAt( sz, val);                                 // Rollback: swap original value back
+            return false;
+        }
         true
     }
 
@@ -118,7 +124,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
             }
             if self
                 ._Size
-                .CompareExchange( 
+                .CompareExchange(
                     sz,
                     sz + szAlloc,
                     std::sync::atomic::Ordering::SeqCst,
@@ -164,7 +170,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
             }
             if self
                 ._Size
-                .CompareExchange( 
+                .CompareExchange(
                     sz,
                     sz - szAlloc,
                     std::sync::atomic::Ordering::SeqCst,
