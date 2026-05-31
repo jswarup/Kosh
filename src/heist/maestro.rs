@@ -8,7 +8,7 @@ use	crate::stalks::work::{ IWorker, WorkFn };
 
 pub struct Maestro< 'a>
 {
-    _Atelier: &'a Atelier,
+    _Atelier: &'a Atelier< 'a>,
     _MavenIndex: U32,
 }
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -18,7 +18,7 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	New( atelier: &'a Atelier, mavenIdx: U32) -> Self
+    pub fn	New( atelier: &'a Atelier< 'a>, mavenIdx: U32) -> Self
     {
         Self {
             _Atelier: atelier,
@@ -28,7 +28,7 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Atelier( &self) -> &'a Atelier
+    pub fn	Atelier( &self) -> &'a Atelier< 'a>
     {
         self._Atelier
     }
@@ -52,7 +52,7 @@ impl< 'a> Maestro< 'a>
 
     pub fn	ConstructJob< F>( &self,  succId: U16, jobFn: F) -> U16
     where
-        F: FnMut( &dyn IWorker) + Send + Sync + 'static,
+        F: FnMut( &dyn IWorker) + Send + Sync + 'a,
     {
         self._Atelier.ConstructJob( self._MavenIndex, succId, jobFn)
     }
@@ -76,8 +76,7 @@ impl< 'a> IWorker for Maestro< 'a>
     fn	PostJob( &self, job: Box< WorkFn< '_>>)
     {
         let  	mut jobId = self.CurSuccId();
-        let  	jobStatic: Box< WorkFn< 'static>> = unsafe { std::mem::transmute( job) };
-        jobId =  self.ConstructJob(  jobId, jobStatic);
+        jobId =  self.ConstructJob(  jobId, job);
         self.EnqueueJob( &mut jobId);
     }
 
@@ -90,7 +89,7 @@ impl< 'a> IWorker for Maestro< 'a>
         }
     }
 
-    fn	AsMaestro( &self) -> Option< &Maestro< '_>>
+    fn	AsMaestro( &self) -> Option< &Maestro< 'a>>
     {
         Some( self)
     }

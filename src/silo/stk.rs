@@ -50,8 +50,8 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-
     /// CAS-decrement _Size (Acquire), then read. Pairs with Push's Release.
+
     pub fn	Pop( &self, val: &mut T) -> bool
     where
         T: Default + Clone,

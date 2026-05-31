@@ -14,8 +14,8 @@ use	crate::silo::{
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-type JobFn = WorkFn< 'static>;
-pub struct Atelier
+type JobFn< 'a> = WorkFn< 'a>;
+pub struct Atelier< 'a>
 {
     _StartCount: U32,                                                  // Count of Processing Queue started, used for startup and shutdown
     _SzSchedJob: Atm< U32>,                                            // Count of cumulative jobs in flight
@@ -25,16 +25,16 @@ pub struct Atelier
     pub( crate) _SuccIds: Buff< U16>,
     _FreeJobLock: Spinlock,
     _FreeJobStash: Stash< U16>,                                        // A Stack of free jobIds
-    _JobBuff: Buff< Box< JobFn>>,
+    _JobBuff: Buff< Box< JobFn< 'a>>>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl Atelier
+impl< 'a> Atelier< 'a>
 {
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	New( szMaven: U32) -> Self
+    pub fn	New( szMaven: U32) -> Atelier< 'a>
     {
 		let  	atelier = Self {
             _StartCount: U32::_0,
@@ -46,7 +46,7 @@ impl Atelier
             _FreeJobLock: Spinlock::New(),
             _FreeJobStash: Stash::<U16>::New( U32::_16Sz),
             _JobBuff: Buff::Create( U32::_16Sz, |_i| {
-				let  	cb: Box< JobFn> = Box::new( |_m|
+			let  	cb: Box< JobFn< 'static>> = Box::new( |_m|
 				{ });
                 cb
             }),
@@ -64,7 +64,7 @@ impl Atelier
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Mavens< 'a>( &self) -> Arr<'a, Maven>
+    pub fn	Mavens( &self) -> Arr<'a, Maven>
     {
         self._Mavens.Arr()
     }
@@ -122,13 +122,13 @@ impl Atelier
 
     pub fn	ConstructJob< F>( &self, mavenIdx: U32, succId: U16, jobFn: F) -> U16
     where
-        F: FnMut( &dyn IWorker) + Send + Sync + 'static,
+        F: FnMut( &dyn IWorker) + Send + Sync + 'a,
     {
-		let  	jobId = self.AllocJob( mavenIdx);
+        let   jobId = self.AllocJob( mavenIdx);
         if jobId == 0 {
             return jobId;
         }
-		let  	mut jobBox: Box< JobFn> = Box::new( jobFn);
+        let   mut jobBox: Box< JobFn< 'a>> = Box::new( jobFn);
         self._JobBuff.Arr().MoveAt( jobId, &mut jobBox);
 
         self._SuccIds.Arr().SetAt( jobId, &succId);
