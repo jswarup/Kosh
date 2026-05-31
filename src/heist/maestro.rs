@@ -1,6 +1,6 @@
 //-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::atelier::Atelier;
-use	crate::silo::arr::Arr;
+use	crate::silo::{ arr::Arr, buff::Buff};
 use	crate::silo::uint::{ U16, U32};
 use	crate::stalks::work::{ IWorker, WorkFn };
 
@@ -82,11 +82,30 @@ impl< 'a> IWorker for Maestro< 'a>
 
     fn	PostJobs( &self, jobs: Arr< '_, Box< WorkFn< '_>>>)
     {
-        for i in 0..jobs.len() {
-			let  	mut job = Box::new( |_w: &dyn IWorker| {}) as Box< WorkFn< '_>>;
-            jobs.MoveAt( i, &mut job);
-            self.PostJob( job);
+        if jobs.IsEmpty() {
+            return;
         }
+        if jobs.len() == 1 {
+            let  	mut job = Box::new( |_w: &dyn IWorker| {}) as Box< WorkFn< '_>>;
+            jobs.MoveAt( 0, &mut job);
+            self.PostJob( job);
+            return;
+        }
+        let  	buff = Buff::Create( jobs.Size(), | i| {
+            let  	mut job = Box::new( |_w: &dyn IWorker| {}) as Box< WorkFn< '_>>;
+            jobs.MoveAt( i, &mut job);
+            job
+        });
+        let  	branchJob: Box< WorkFn< '_>> = Box::new( move | worker| {
+            let  	arr = buff.Arr();
+            arr.USeg().Span( | i| {
+                let  	mut job = Box::new( |_w: &dyn IWorker| {}) as Box< WorkFn< '_>>;
+                arr.MoveAt( i, &mut job);
+                worker.PostJob( job);
+                true
+            });
+        });
+        self.PostJob( branchJob);
     }
 
     fn	AsMaestro( &self) -> Option< &Maestro< 'a>>
