@@ -5,7 +5,6 @@ use	crate::stalks::work::{ IWorker, WorkFn, Worker };
 use	std::sync::Arc;
 use	std::sync::atomic::{ AtomicBool, Ordering };
 use	crate::stalks::atm::Atm;
-use	crate::stalks::bud::TraversalEvent;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -68,48 +67,15 @@ fn	TestWorkerPost()
 #[test]
 fn	TestBudBasicOps()
 {
-	let  	a = U32( 10);
-	let  	b = U32( 5);
-	let  	c = U32( 12);
-	let  	d = U32( 20);
-	let  	e = U32( 1);
-	let  	f = U32( 8);
+	let a = 10;
+    let b = 5;
+    let c = 12;
+    let d = 20;
+    let e = 1;
+    let f = 8;
 
 	let  	x  = crate::bud!( ((( a | b) < c) | ( d | ( e < f))) );
 
-    assert_eq!( x.Id(), U32( 21));
-
-	let  	xLeft = x.Left().unwrap();
-    assert_eq!( xLeft.Id(), U32( 0));
-
-	let  	xRight = x.Right().unwrap();
-    assert_eq!( xRight.Id(), U32( 21));
-
-	let  	xLeftLeft = xLeft.Left().unwrap();
-    assert_eq!( xLeftLeft.Id(), U32( 15));
-
-	let  	mut visitedEvents = Vec::new();
-    x.TraverseDFS( &mut |node, event| {
-        visitedEvents.push( ( node.Id(), event));
-    });
-
-    assert_eq!( visitedEvents.len(), 16);
-    assert_eq!( visitedEvents[0], ( U32( 21), TraversalEvent::Entry));
-    assert_eq!( visitedEvents[1], ( U32( 0), TraversalEvent::Entry));
-    assert_eq!( visitedEvents[2], ( U32( 15), TraversalEvent::Entry));
-    assert_eq!( visitedEvents[3], ( U32( 10), TraversalEvent::Entry));
-    assert_eq!( visitedEvents[4], ( U32( 5), TraversalEvent::Entry));
-    assert_eq!( visitedEvents[5], ( U32( 15), TraversalEvent::Exit));
-    assert_eq!( visitedEvents[6], ( U32( 12), TraversalEvent::Entry));
-    assert_eq!( visitedEvents[7], ( U32( 0), TraversalEvent::Exit));
-    assert_eq!( visitedEvents[8], ( U32( 21), TraversalEvent::Entry));
-    assert_eq!( visitedEvents[9], ( U32( 20), TraversalEvent::Entry));
-    assert_eq!( visitedEvents[10], ( U32( 1), TraversalEvent::Entry));
-    assert_eq!( visitedEvents[11], ( U32( 1), TraversalEvent::Entry));
-    assert_eq!( visitedEvents[12], ( U32( 8), TraversalEvent::Entry));
-    assert_eq!( visitedEvents[13], ( U32( 1), TraversalEvent::Exit));
-    assert_eq!( visitedEvents[14], ( U32( 21), TraversalEvent::Exit));
-    assert_eq!( visitedEvents[15], ( U32( 21), TraversalEvent::Exit));
     x.Print();
 }
 

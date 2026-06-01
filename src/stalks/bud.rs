@@ -1,15 +1,14 @@
 //-- bud.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::silo::uint::U32;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait Bud
+pub trait Bud<T>
 {
-    fn	Id( &self) -> U32;
+    fn	Val( &self) -> T;
 
-    fn	Left( &self) -> Option< &dyn Bud>;
+    fn	Left( &self) -> Option< &dyn Bud<T>>;
 
-    fn	Right( &self) -> Option< &dyn Bud>;
+    fn	Right( &self) -> Option< &dyn Bud<T>>;
 
     fn	Op( &self) -> &str
     {
@@ -28,9 +27,9 @@ pub enum TraversalEvent
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl dyn Bud + '_
+impl< T> dyn Bud<T>+ '_
 {
-    pub fn	TraverseDFS( &self, f: &mut dyn FnMut( &dyn Bud, TraversalEvent))
+    pub fn	TraverseDFS( &self, f: &mut dyn FnMut( &dyn Bud<T>, TraversalEvent))
     {
         let  	isLeaf = self.Left().is_none() && self.Right().is_none();
         f( self, TraversalEvent::Entry);
@@ -46,9 +45,12 @@ impl dyn Bud + '_
             f( self, TraversalEvent::Exit);
         }
     }
+}
 
-    //---------------------------------------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 
+impl< T: std::fmt::Display> dyn Bud<T>+ '_
+{
     pub fn	Print( &self)
     {
         let  	mut childCounts = Vec::new();
@@ -65,7 +67,7 @@ impl dyn Bud + '_
                         print!( "[{} ", node.Op());
                         childCounts.push( 0);
                     } else {
-                        print!( "{}", node.Id());
+                        print!( "{}", node.Val());
                     }
                 }
                 TraversalEvent::Exit => {
@@ -83,8 +85,8 @@ impl dyn Bud + '_
 pub enum BudType< T>
 {
     Val( T),
-    Par( Box< dyn Bud>, Box< dyn Bud>),
-    Seq( Box< dyn Bud>, Box< dyn Bud>),
+    Par( Box< dyn Bud<T>>, Box< dyn Bud<T>>),
+    Seq( Box< dyn Bud<T>>, Box< dyn Bud<T>>),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -105,14 +107,14 @@ impl< T> BudNode< T>
         }
     }
 
-    pub fn	NewPar( left: Box< dyn Bud>, right: Box< dyn Bud>) -> Self
+    pub fn	NewPar( left: Box< dyn Bud<T>>, right: Box< dyn Bud<T>>) -> Self
     {
         Self {
             _Type: BudType::Par( left, right),
         }
     }
 
-    pub fn	NewSeq( left: Box< dyn Bud>, right: Box< dyn Bud>) -> Self
+    pub fn	NewSeq( left: Box< dyn Bud<T>>, right: Box< dyn Bud<T>>) -> Self
     {
         Self {
             _Type: BudType::Seq( left, right),
@@ -122,39 +124,26 @@ impl< T> BudNode< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T: Into< U32> + Clone> BudNode< T>
+impl< T> Bud<T> for BudNode< T>
+where
+    T: Clone + std::ops::BitOr< Output = T> + PartialOrd + From< u32>,
 {
-    pub fn	TraverseDFS( &self, f: &mut dyn FnMut( &dyn Bud, TraversalEvent))
-    {
-        ( self as &dyn Bud).TraverseDFS( f);
-    }
-
-    pub fn	Print( &self)
-    {
-        ( self as &dyn Bud).Print();
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< T: Into< U32> + Clone> Bud for BudNode< T>
-{
-    fn	Id( &self) -> U32
+    fn	Val( &self) -> T
     {
         match &self._Type {
-            BudType::Val( id) => id.clone().into(),
-            BudType::Par( left, right) => left.Id() | right.Id(),
+            BudType::Val( val) => val.clone(),
+            BudType::Par( left, right) => left.Val() | right.Val(),
             BudType::Seq( left, right) => {
-                if left.Id() < right.Id() {
-                    U32( 1)
+                if left.Val() < right.Val() {
+                    T::from( 1u32)
                 } else {
-                    U32( 0)
+                    T::from( 0u32)
                 }
             }
         }
     }
 
-    fn	Left( &self) -> Option< &dyn Bud>
+    fn	Left( &self) -> Option< &dyn Bud<T>>
     {
         match &self._Type {
             BudType::Val( _) => None,
@@ -163,7 +152,7 @@ impl< T: Into< U32> + Clone> Bud for BudNode< T>
         }
     }
 
-    fn	Right( &self) -> Option< &dyn Bud>
+    fn	Right( &self) -> Option< &dyn Bud<T>>
     {
         match &self._Type {
             BudType::Val( _) => None,
@@ -184,26 +173,27 @@ impl< T: Into< U32> + Clone> Bud for BudNode< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IntoBud
+pub trait IntoBud<T>
 {
-    fn	IntoBud( self) -> Box< dyn Bud>;
+    fn	IntoBud( self) -> Box< dyn Bud<T>>;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IntoBud for Box< dyn Bud>
+impl< T> IntoBud<T> for Box< dyn Bud<T>>
 {
-    fn	IntoBud( self) -> Box< dyn Bud>
+    fn	IntoBud( self) -> Box< dyn Bud<T>>
     {
         self
     }
 }
+ 
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IntoBud for U32
+impl IntoBud< u32> for u32
 {
-    fn	IntoBud( self) -> Box< dyn Bud>
+    fn	IntoBud( self) -> Box< dyn Bud< u32>>
     {
         Box::new( BudNode::NewVal( self))
     }
@@ -211,19 +201,11 @@ impl IntoBud for U32
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IntoBud for u32
+impl< T> IntoBud<T> for BudNode< T>
+where
+    T: Clone + std::ops::BitOr< Output = T> + PartialOrd + From< u32> + 'static,
 {
-    fn	IntoBud( self) -> Box< dyn Bud>
-    {
-        Box::new( BudNode::NewVal( U32( self)))
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< T: Into< U32> + Clone + 'static> IntoBud for BudNode< T>
-{
-    fn	IntoBud( self) -> Box< dyn Bud>
+    fn	IntoBud( self) -> Box< dyn Bud<T>>
     {
         Box::new( self)
     }
@@ -237,16 +219,16 @@ macro_rules! bud {
         $crate::bud!( $($inner)+ )
     };
     ( ( $($lhs:tt)+ ) < $($rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::< $crate::silo::uint::U32>::NewSeq( $crate::bud!( $($lhs)+ ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud>
+        Box::new( $crate::stalks::bud::BudNode::NewSeq( $crate::bud!( $($lhs)+ ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
     };
     ( ( $($lhs:tt)+ ) | $($rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::< $crate::silo::uint::U32>::NewPar( $crate::bud!( $($lhs)+ ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud>
+        Box::new( $crate::stalks::bud::BudNode::NewPar( $crate::bud!( $($lhs)+ ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
     };
     ( $lhs:ident < $($rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::< $crate::silo::uint::U32>::NewSeq( $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud>
+        Box::new( $crate::stalks::bud::BudNode::NewSeq( $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
     };
     ( $lhs:ident | $($rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::< $crate::silo::uint::U32>::NewPar( $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud>
+        Box::new( $crate::stalks::bud::BudNode::NewPar( $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
     };
     ( $leaf:ident ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $leaf )
