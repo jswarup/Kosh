@@ -17,8 +17,8 @@ pub trait Bud
 pub enum BudType< T>
 {
     Val( T),
-    Or( Box< dyn Bud>, Box< dyn Bud>),
-    Less( Box< dyn Bud>, Box< dyn Bud>),
+    Par( Box< dyn Bud>, Box< dyn Bud>),
+    Seq( Box< dyn Bud>, Box< dyn Bud>),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -39,17 +39,17 @@ impl< T> BudNode< T>
         }
     }
 
-    pub fn	NewOr( left: Box< dyn Bud>, right: Box< dyn Bud>) -> Self
+    pub fn	NewPar( left: Box< dyn Bud>, right: Box< dyn Bud>) -> Self
     {
         Self {
-            _Type: BudType::Or( left, right),
+            _Type: BudType::Par( left, right),
         }
     }
 
-    pub fn	NewLess( left: Box< dyn Bud>, right: Box< dyn Bud>) -> Self
+    pub fn	NewSeq( left: Box< dyn Bud>, right: Box< dyn Bud>) -> Self
     {
         Self {
-            _Type: BudType::Less( left, right),
+            _Type: BudType::Seq( left, right),
         }
     }
 }
@@ -62,8 +62,8 @@ impl< T: Into< U32> + Clone> Bud for BudNode< T>
     {
         match &self._Type {
             BudType::Val( id) => id.clone().into(),
-            BudType::Or( left, right) => left.Id() | right.Id(),
-            BudType::Less( left, right) => {
+            BudType::Par( left, right) => left.Id() | right.Id(),
+            BudType::Seq( left, right) => {
                 if left.Id() < right.Id() {
                     U32( 1)
                 } else {
@@ -77,8 +77,8 @@ impl< T: Into< U32> + Clone> Bud for BudNode< T>
     {
         match &self._Type {
             BudType::Val( _) => None,
-            BudType::Or( left, _) => Some( &**left),
-            BudType::Less( left, _) => Some( &**left),
+            BudType::Par( left, _) => Some( &**left),
+            BudType::Seq( left, _) => Some( &**left),
         }
     }
 
@@ -86,8 +86,8 @@ impl< T: Into< U32> + Clone> Bud for BudNode< T>
     {
         match &self._Type {
             BudType::Val( _) => None,
-            BudType::Or( _, right) => Some( &**right),
-            BudType::Less( _, right) => Some( &**right),
+            BudType::Par( _, right) => Some( &**right),
+            BudType::Seq( _, right) => Some( &**right),
         }
     }
 }
@@ -147,16 +147,16 @@ macro_rules! bud {
         $crate::bud!( $($inner)+ )
     };
     ( ( $($lhs:tt)+ ) < $($rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::< $crate::silo::uint::U32>::NewLess( $crate::bud!( $($lhs)+ ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud>
+        Box::new( $crate::stalks::bud::BudNode::< $crate::silo::uint::U32>::NewSeq( $crate::bud!( $($lhs)+ ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud>
     };
     ( ( $($lhs:tt)+ ) | $($rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::< $crate::silo::uint::U32>::NewOr( $crate::bud!( $($lhs)+ ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud>
+        Box::new( $crate::stalks::bud::BudNode::< $crate::silo::uint::U32>::NewPar( $crate::bud!( $($lhs)+ ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud>
     };
     ( $lhs:ident < $($rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::< $crate::silo::uint::U32>::NewLess( $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud>
+        Box::new( $crate::stalks::bud::BudNode::< $crate::silo::uint::U32>::NewSeq( $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud>
     };
     ( $lhs:ident | $($rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::< $crate::silo::uint::U32>::NewOr( $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud>
+        Box::new( $crate::stalks::bud::BudNode::< $crate::silo::uint::U32>::NewPar( $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud>
     };
     ( $leaf:ident ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $leaf )

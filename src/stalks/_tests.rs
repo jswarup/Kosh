@@ -4,7 +4,7 @@ use	crate::silo::uint::U32;
 use	crate::stalks::work::{ IWorker, WorkFn, Worker };
 use	std::sync::Arc;
 use	std::sync::atomic::{ AtomicBool, Ordering };
-use	crate::stalks::atm::Atm; 
+use	crate::stalks::atm::Atm;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -74,7 +74,7 @@ fn	TestBudBasicOps()
 	let  	e = U32( 1);
 	let  	f = U32( 8);
 
-	let  	x = crate::bud!( ((( a | b) < c) | ( d | ( e < f))) );
+	let  	x  = crate::bud!( ((( a | b) < c) | ( d | ( e < f))) );
 
     assert_eq!( x.Id(), U32( 21));
 
