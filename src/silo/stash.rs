@@ -1,4 +1,5 @@
 //-- stash.rs -------------------------------------------------------------------------------------------------------------------------
+use	std::sync::atomic::Ordering;
 use	crate::stalks::atm::Atm;
 use	crate::silo::arr::Arr;
 use	crate::silo::buff::Buff;
@@ -48,7 +49,7 @@ impl< T: Default> Stash< T>
 
     pub fn	Size( &self) -> U32
     {
-        self._Sz.Get()
+        self._Sz.Load( Ordering::Acquire)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -69,7 +70,7 @@ impl< T: Default> Stash< T>
             arr.SetAt( i, &T::from( i.as_usize()));
             true
         });
-        self._Sz.Set( arr.Size());
+        self._Sz.Store( arr.Size(), Ordering::Release);
     }
 
     pub fn	Pushback( &mut self, val: &mut T)

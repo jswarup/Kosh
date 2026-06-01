@@ -1,4 +1,5 @@
 //-- maven.rs -----------------------------------------------------------------------------------------------------------------------
+use	std::sync::atomic::Ordering;
 use	crate::stalks::atm::{ Atm, Spinlock };
 use	crate::silo::stash::Stash;
 use	crate::silo::stk::Stk;
@@ -90,14 +91,14 @@ impl Maven
 
     pub fn	CurSuccId( &self) -> U16
     {
-        self._CurSuccId.Get()
+        self._CurSuccId.Load( Ordering::Acquire)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	SetCurSuccId< K: Into< U16>>( &self, val: K)
     {
-        self._CurSuccId.Set( val);
+        self._CurSuccId.Store( val, Ordering::Release);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

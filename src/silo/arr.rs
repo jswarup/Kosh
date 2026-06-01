@@ -109,6 +109,21 @@ impl< 'a, T> Arr<'a, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    pub fn	CopyFrom< S: Into< U32>, D: Into< U32>>( &self, dstStart: D, src: &Arr< '_, T>, srcStart: S, count: U32)
+    where
+        T: Copy,
+    {
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                src._Ptr.as_ptr().add( srcStart.into().as_usize()),
+                self._Ptr.as_ptr().add( dstStart.into().as_usize()),
+                count.as_usize(),
+            );
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	LSnip< C: Into< U32>>( &self, count: C) -> Self
     {
 		let  	cnt = count.into();

@@ -151,11 +151,14 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	GrabJob( &self, idx: U32) -> U16
+    fn	GrabJob( &self, idx: U32, stealSeed: &mut u32) -> U16
     {
 		let  	mavens = self._Mavens.Arr();
-        for mIdx in 0..mavens.len() {
-			let  	mavenIdx = ( idx + mIdx + 1) % mavens.len();
+		let  	sz = mavens.len() as u32;
+        *stealSeed = stealSeed.wrapping_mul( 2654435761).wrapping_add( 1);
+        for mIdx in 0..sz {
+			let  	mavenIdx = U32( ( *stealSeed + mIdx) % sz);
+            if mavenIdx == idx { continue; }
 			let  	maven = mavens.At( mavenIdx);
 			let  	jobId = maven.PopJob();
             if jobId != 0 {
@@ -171,6 +174,7 @@ impl< 'a> Atelier< 'a>
     {
 		let  	maven = self._Mavens.Arr().MutAt( mavenIdx);
 		let  	mut jobId = U16( 0);
+		let  	mut stealSeed = mavenIdx.as_u32();
         while self.SzSchedJob() != 0 {
             while jobId != 0 {
                 maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
@@ -195,7 +199,7 @@ impl< 'a> Atelier< 'a>
             }
             jobId = maven.PopJob();
             if jobId == 0 {
-                jobId = self.GrabJob( mavenIdx);
+                jobId = self.GrabJob( mavenIdx, &mut stealSeed);
             }
             if jobId == 0 {
                 std::thread::yield_now();
@@ -215,8 +219,8 @@ impl< 'a> Atelier< 'a>
                     self.ExecuteLoop( U32( mavenIdx as u32));
                 });
             }
+            self.ExecuteLoop( U32( 0));
         });
-        self.ExecuteLoop( U32( 0));
         print!( "DoLaunch Over")
     }
 
