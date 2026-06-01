@@ -110,6 +110,7 @@ fn	TestBudBasicOps()
     assert_eq!( visitedEvents[13], ( U32( 1), TraversalEvent::Exit));
     assert_eq!( visitedEvents[14], ( U32( 21), TraversalEvent::Exit));
     assert_eq!( visitedEvents[15], ( U32( 21), TraversalEvent::Exit));
+    x.Print();
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

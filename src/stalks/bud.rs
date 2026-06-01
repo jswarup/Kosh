@@ -10,6 +10,11 @@ pub trait Bud
     fn	Left( &self) -> Option< &dyn Bud>;
 
     fn	Right( &self) -> Option< &dyn Bud>;
+
+    fn	Op( &self) -> &str
+    {
+        ""
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -40,6 +45,36 @@ impl dyn Bud + '_
         if !isLeaf {
             f( self, TraversalEvent::Exit);
         }
+    }
+
+    //---------------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	Print( &self)
+    {
+        let  	mut childCounts = Vec::new();
+        self.TraverseDFS( &mut |node, event| {
+            match event {
+                TraversalEvent::Entry => {
+                    if let Some( count) = childCounts.last_mut() {
+                        if *count > 0 {
+                            print!( " ");
+                        }
+                        *count += 1;
+                    }
+                    if node.Left().is_some() || node.Right().is_some() {
+                        print!( "[{} ", node.Op());
+                        childCounts.push( 0);
+                    } else {
+                        print!( "{}", node.Id());
+                    }
+                }
+                TraversalEvent::Exit => {
+                    childCounts.pop();
+                    print!( "]");
+                }
+            }
+        });
+        println!();
     }
 }
 
@@ -93,6 +128,11 @@ impl< T: Into< U32> + Clone> BudNode< T>
     {
         ( self as &dyn Bud).TraverseDFS( f);
     }
+
+    pub fn	Print( &self)
+    {
+        ( self as &dyn Bud).Print();
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -129,6 +169,15 @@ impl< T: Into< U32> + Clone> Bud for BudNode< T>
             BudType::Val( _) => None,
             BudType::Par( _, right) => Some( &**right),
             BudType::Seq( _, right) => Some( &**right),
+        }
+    }
+
+    fn	Op( &self) -> &str
+    {
+        match &self._Type {
+            BudType::Val( _) => "",
+            BudType::Par( _, _) => "|",
+            BudType::Seq( _, _) => "<",
         }
     }
 }
