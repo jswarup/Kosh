@@ -127,13 +127,8 @@ fn	TestDoQSort()
 	let  	atelier = Atelier::New( U32( 4));
 	let  	mainMaestro = atelier.MainMaestro();
 
-	let  	lessAt = |i, j| arr.At( i) > arr.At( j);
-	let  	swapAt = |i, j| {
-        arr.SwapAt( i, j);
-    };
-
 	let  	mut jobId = mainMaestro.ConstructJob(  U16( 0), move |worker| {
-        arr.USeg().DoQSort( worker, lessAt, swapAt);
+        arr.USeg().DoQSort( worker, move |i, j| arr.At( i) > arr.At( j), move |i, j| { arr.SwapAt( i, j); });
     });
     mainMaestro.EnqueueJob( &mut jobId);
 
