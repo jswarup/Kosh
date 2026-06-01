@@ -448,5 +448,113 @@ fn	TestDoQSort()
     assert!( res);
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestStashDynamicPushback()
+{
+    // Test with initial size 2
+    let mut stash = Stash::<U32>::New(2);
+    assert_eq!( stash.Size(), 0);
+    assert_eq!( stash.Size() + stash.Stk().SzVoid(), 2);
+
+    // Push first element
+    let mut val1 = U32(10);
+    stash.Pushback( &mut val1);
+    assert_eq!( stash.Size(), 1);
+    assert_eq!( stash.Size() + stash.Stk().SzVoid(), 2);
+
+    // Push second element
+    let mut val2 = U32(20);
+    stash.Pushback( &mut val2);
+    assert_eq!( stash.Size(), 2);
+    assert_eq!( stash.Size() + stash.Stk().SzVoid(), 2);
+
+    // Push third element (should trigger resize to 4)
+    let mut val3 = U32(30);
+    stash.Pushback( &mut val3);
+    assert_eq!( stash.Size(), 3);
+    assert_eq!( stash.Size() + stash.Stk().SzVoid(), 4);
+
+    // Push fourth element
+    let mut val4 = U32(40);
+    stash.Pushback( &mut val4);
+    assert_eq!( stash.Size(), 4);
+    assert_eq!( stash.Size() + stash.Stk().SzVoid(), 4);
+
+    // Push fifth element (should trigger resize to 8)
+    let mut val5 = U32(50);
+    stash.Pushback( &mut val5);
+    assert_eq!( stash.Size(), 5);
+    assert_eq!( stash.Size() + stash.Stk().SzVoid(), 8);
+
+    // Pop and verify LIFO order and contents
+    let stk = stash.Stk();
+    let mut out = U32(0);
+    
+    assert!( stk.Pop( &mut out));
+    assert_eq!( out, 50);
+
+    assert!( stk.Pop( &mut out));
+    assert_eq!( out, 40);
+
+    assert!( stk.Pop( &mut out));
+    assert_eq!( out, 30);
+
+    assert!( stk.Pop( &mut out));
+    assert_eq!( out, 20);
+
+    assert!( stk.Pop( &mut out));
+    assert_eq!( out, 10);
+
+    assert!( !stk.Pop( &mut out));
+
+    // Test with initial size 0
+    let mut stash0 = Stash::<U32>::New(0);
+    assert_eq!( stash0.Size(), 0);
+    assert_eq!( stash0.Size() + stash0.Stk().SzVoid(), 0);
+
+    let mut v = U32(100);
+    stash0.Pushback( &mut v);
+    assert_eq!( stash0.Size(), 1);
+    assert_eq!( stash0.Size() + stash0.Stk().SzVoid(), 1);
+
+    let mut v2 = U32(200);
+    stash0.Pushback( &mut v2);
+    assert_eq!( stash0.Size(), 2);
+    assert_eq!( stash0.Size() + stash0.Stk().SzVoid(), 2);
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestStashAppend()
+{
+    // Test with initial size 2
+    let mut stash = Stash::<U32>::New(2);
+    
+    // Create an Arr of elements to append
+    let mut data = [U32(10), U32(20), U32(30)];
+    let arr = Arr::from(&mut data);
+    
+    stash.Append(arr);
+    assert_eq!( stash.Size(), 3);
+    // Buffer should resize to exactly 3 since neededSz (3) > current capacity (2)
+    assert_eq!( stash.Size() + stash.Stk().SzVoid(), 3);
+    
+    // Pop and verify elements (LIFO order: 30, 20, 10)
+    let stk = stash.Stk();
+    let mut out = U32(0);
+    
+    assert!( stk.Pop( &mut out));
+    assert_eq!( out, 30);
+
+    assert!( stk.Pop( &mut out));
+    assert_eq!( out, 20);
+
+    assert!( stk.Pop( &mut out));
+    assert_eq!( out, 10);
+
+    assert!( !stk.Pop( &mut out));
+}
+

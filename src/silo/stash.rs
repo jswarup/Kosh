@@ -1,5 +1,6 @@
 //-- stash.rs -------------------------------------------------------------------------------------------------------------------------
 use	crate::stalks::atm::Atm;
+use	crate::silo::arr::Arr;
 use	crate::silo::buff::Buff;
 use	crate::silo::stk::Stk;
 use	crate::silo::uint::U32;
@@ -29,7 +30,7 @@ impl< T: Default> Stash< T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Create< S1: Into< U32>, S2: Into< U32>, Dispenser>( 
+    pub fn	Create< S1: Into< U32>, S2: Into< U32>, Dispenser>(
         sz: S1,
         szStk: S2,
         dispenser: Dispenser,
@@ -71,7 +72,40 @@ impl< T: Default> Stash< T>
         self._Sz.Set( arr.Size());
     }
 
+    pub fn	Pushback( &mut self, val: &mut T)
+    {
+        while !self.Stk().Push( val) {
+            if self.Size() == self._Buff.Size() {
+                let newSz = if self._Buff.Size() == U32( 0) {
+                    U32( 1)
+                } else {
+                    self._Buff.Size() * U32( 2)
+                };
+                self._Buff.Resize( newSz);
+            }
+        }
+    }
+
     //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	Append( &mut self, arr: Arr< '_, T>)
+    {
+        let n = arr.Size();
+        if n == U32( 0) {
+            return;
+        }
+        let neededSz = self.Size() + n;
+        if neededSz > self._Buff.Size() {
+            self._Buff.Resize( neededSz);
+        }
+        
+        let startSz = self.Size();
+        let arrBuff = self._Buff.Arr();
+        for i in 0..usize::from( n) {
+            arrBuff.MoveAt( startSz + U32( i as u32), arr.MutAt( U32( i as u32)));
+        }
+        self._Sz.Set( startSz + n);
+    }
 
 }
 
