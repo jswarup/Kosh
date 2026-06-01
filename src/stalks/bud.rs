@@ -14,6 +14,37 @@ pub trait Bud
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+#[derive( Debug, PartialEq, Eq)]
+pub enum TraversalEvent
+{
+    Entry,
+    Exit,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl dyn Bud + '_
+{
+    pub fn	TraverseDFS( &self, f: &mut dyn FnMut( &dyn Bud, TraversalEvent))
+    {
+        let  	isLeaf = self.Left().is_none() && self.Right().is_none();
+        f( self, TraversalEvent::Entry);
+
+        if let Some( left) = self.Left() {
+            left.TraverseDFS( f);
+        }
+        if let Some( right) = self.Right() {
+            right.TraverseDFS( f);
+        }
+
+        if !isLeaf {
+            f( self, TraversalEvent::Exit);
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub enum BudType< T>
 {
     Val( T),
@@ -51,6 +82,16 @@ impl< T> BudNode< T>
         Self {
             _Type: BudType::Seq( left, right),
         }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T: Into< U32> + Clone> BudNode< T>
+{
+    pub fn	TraverseDFS( &self, f: &mut dyn FnMut( &dyn Bud, TraversalEvent))
+    {
+        ( self as &dyn Bud).TraverseDFS( f);
     }
 }
 
