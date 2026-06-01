@@ -3,7 +3,7 @@
 use	crate::silo::uint::U32;
 use crate::silo::arr::Arr;
 use crate::stalks::work::{ IWorker, WorkFn };
-use crate::stalks::ptr::RawPtr;
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -157,43 +157,32 @@ impl USeg
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	    DoQSort< W, LessAt, SwapAt>( &self, worker: &W, lessAt: &LessAt, swapAt: &mut SwapAt)
+    pub fn	    DoQSort<'a, W, LessAt, SwapAt>( &self, worker: &W, lessAt: &'a LessAt, swapAt: &'a SwapAt)
     where
         W: IWorker + ?Sized,
-        LessAt: Fn( U32, U32) -> bool,
-        SwapAt: FnMut( U32, U32),
+        LessAt: Fn( U32, U32) -> bool + Send + Sync + 'a,
+        SwapAt: Fn( U32, U32) + Send + Sync + 'a,
     {
         if self.Size() <= 1 {
             return;
         }
-		let  	pivot = self.Partition( lessAt, swapAt);
+		let  	pivot = self.Partition( lessAt, &mut |i, j| swapAt( i, j));
 
         let  	mut sz = 0;
-        let  	mut chunkWorks: [Box<WorkFn<'_>>; 2] = [ Box::new(|_| {}), Box::new(|_| {}), ];
-
-        let     lessAtPtr = RawPtr(lessAt as *const LessAt as *mut LessAt);
-        let     swapAtPtr = RawPtr(swapAt as *mut SwapAt);
+        let  	mut chunkWorks: [Box<WorkFn<'a>>; 2] = [ Box::new(|_| {}), Box::new(|_| {}), ];
 
 		let  	useg1 = USeg::Create( self._First, pivot - self._First);
         if useg1.Size() > 1 {
-            let lessPtr = lessAtPtr;
-            let swapPtr = swapAtPtr;
             chunkWorks[sz] = Box::new( move |w| {
-                unsafe {
-                    useg1.DoQSort(w, lessPtr.as_ref(), swapPtr.as_mut());
-                }
+                useg1.DoQSort(w, lessAt, swapAt);
             });
             sz += 1;
         }
 
 		let  	useg2 = USeg::Create( pivot + 1, self._Last - pivot);
         if useg2.Size() > 1 {
-            let lessPtr = lessAtPtr;
-            let swapPtr = swapAtPtr;
             chunkWorks[sz] = Box::new( move |w| {
-                unsafe {
-                    useg2.DoQSort(w, lessPtr.as_ref(), swapPtr.as_mut());
-                }
+                useg2.DoQSort(w, lessAt, swapAt);
             });
             sz += 1;
         }
