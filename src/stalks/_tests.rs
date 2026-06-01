@@ -4,7 +4,7 @@ use	crate::silo::uint::U32;
 use	crate::stalks::work::{ IWorker, WorkFn, Worker };
 use	std::sync::Arc;
 use	std::sync::atomic::{ AtomicBool, Ordering };
-use	crate::stalks::atm::Atm;
+use	crate::stalks::atm::Atm; 
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -63,3 +63,30 @@ fn	TestWorkerPost()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestBudBasicOps()
+{
+	let  	a = U32( 10);
+	let  	b = U32( 5);
+	let  	c = U32( 12);
+	let  	d = U32( 20);
+	let  	e = U32( 1);
+	let  	f = U32( 8);
+
+	let  	x = crate::bud!( ((( a | b) < c) | ( d | ( e < f))) );
+
+    assert_eq!( x.Id(), U32( 21));
+
+	let  	xLeft = x.Left().unwrap();
+    assert_eq!( xLeft.Id(), U32( 0));
+
+	let  	xRight = x.Right().unwrap();
+    assert_eq!( xRight.Id(), U32( 21));
+
+	let  	xLeftLeft = xLeft.Left().unwrap();
+    assert_eq!( xLeftLeft.Id(), U32( 15));
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
