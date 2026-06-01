@@ -5,7 +5,7 @@ use	crate::{
         uint:: { U16, U32},
         buff::Buff,
     },
-    stalks::work::{ IWorker, WorkFn }
+    stalks::work::IWorker
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -128,16 +128,13 @@ fn	TestDoQSort()
 	let  	mainMaestro = atelier.MainMaestro();
 
 	let  	lessAt = |i, j| arr.At( i) > arr.At( j);
-	let mut	swapAt = |i, j| {
+	let  	swapAt = |i, j| {
         arr.SwapAt( i, j);
     };
 
-	let  	jobBox: Box< WorkFn< '_>> = Box::new( |worker| {
-        arr.USeg().DoQSort( worker, &lessAt, &mut swapAt);
+	let  	mut jobId = mainMaestro.ConstructJob(  U16( 0), |worker| {
+        arr.USeg().DoQSort( worker, &lessAt, &swapAt);
     });
-
-
-	let  	mut jobId = mainMaestro.ConstructJob(  U16( 0), jobBox);
     mainMaestro.EnqueueJob( &mut jobId);
 
     atelier.DoLaunch();
