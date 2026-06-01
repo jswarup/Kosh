@@ -156,32 +156,36 @@ impl USeg
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	    DoQSort<'a, W, LessAt, SwapAt>( &self, worker: &W, lessAt: &'a LessAt, swapAt: &'a SwapAt)
+    pub fn	    DoQSort<'a, W, LessAt, SwapAt>( &self, worker: &W, lessAt: LessAt, swapAt: SwapAt)
     where
         W: IWorker + ?Sized,
-        LessAt: Fn( U32, U32) -> bool + Send + Sync + 'a,
-        SwapAt: Fn( U32, U32) + Send + Sync + 'a,
+        LessAt: Fn( U32, U32) -> bool + Send + Sync + Clone + 'a,
+        SwapAt: Fn( U32, U32) + Send + Sync + Clone + 'a,
     {
         if self.Size() <= 1 {
             return;
         }
-		let  	pivot = self.Partition( lessAt, &mut |i, j| swapAt( i, j));
+		let  	pivot = self.Partition( &lessAt, &mut |i, j| swapAt( i, j));
 
         let  	mut sz = 0;
         let  	mut chunkWorks: [Box<WorkFn<'a>>; 2] = [ Box::new(|_| {}), Box::new(|_| {}), ];
 
 		let  	useg1 = USeg::Create( self._First, pivot - self._First);
         if useg1.Size() > 1 {
+            let lessAtClone = lessAt.clone();
+            let swapAtClone = swapAt.clone();
             chunkWorks[sz] = Box::new( move |w| {
-                useg1.DoQSort(w, lessAt, swapAt);
+                useg1.DoQSort(w, lessAtClone.clone(), swapAtClone.clone());
             });
             sz += 1;
         }
 
 		let  	useg2 = USeg::Create( pivot + 1, self._Last - pivot);
         if useg2.Size() > 1 {
+            let lessAtClone = lessAt.clone();
+            let swapAtClone = swapAt.clone();
             chunkWorks[sz] = Box::new( move |w| {
-                useg2.DoQSort(w, lessAt, swapAt);
+                useg2.DoQSort(w, lessAtClone.clone(), swapAtClone.clone());
             });
             sz += 1;
         }

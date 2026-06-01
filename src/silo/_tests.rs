@@ -435,7 +435,7 @@ fn	TestDoQSort()
 	let  	arr = buff.Arr();
 	let  	worker = Worker::New();
 
-    arr.USeg().DoQSort( &worker, &|i, j| arr.At( i) > arr.At( j), &mut |i, j| {
+    arr.USeg().DoQSort( &worker, |i, j| arr.At( i) > arr.At( j), |i, j| {
         arr.SwapAt( i, j);
     });
 

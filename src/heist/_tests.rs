@@ -132,8 +132,8 @@ fn	TestDoQSort()
         arr.SwapAt( i, j);
     };
 
-	let  	mut jobId = mainMaestro.ConstructJob(  U16( 0), |worker| {
-        arr.USeg().DoQSort( worker, &lessAt, &swapAt);
+	let  	mut jobId = mainMaestro.ConstructJob(  U16( 0), move |worker| {
+        arr.USeg().DoQSort( worker, lessAt, swapAt);
     });
     mainMaestro.EnqueueJob( &mut jobId);
 
