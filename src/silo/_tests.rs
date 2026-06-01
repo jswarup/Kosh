@@ -558,3 +558,27 @@ fn	TestStashAppend()
     assert!( !stk.Pop( &mut out));
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[derive(Clone, PartialEq, Debug)]
+struct NonDefaultStruct {
+    value: i32,
+}
+
+#[test]
+fn	TestBuffResize()
+{
+    // Create a buffer of size 3 initialized with NonDefaultStruct
+    let mut buff = Buff::New(3, NonDefaultStruct { value: 42 });
+    assert_eq!( buff.len(), 3);
+    assert_eq!( buff[0].value, 42);
+
+    // Resize using Resize
+    buff.Resize(U32(5), |_| NonDefaultStruct { value: 100 });
+    assert_eq!( buff.len(), 5);
+    assert_eq!( buff[2].value, 42);
+    assert_eq!( buff[3].value, 100);
+    assert_eq!( buff[4].value, 100);
+}
+
+

@@ -40,79 +40,8 @@ impl< T> Buff< T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Resize( &mut self, newSize: U32)
-    where
-        T: Default,
-    {
-		let  	newSize_usize = usize::from( newSize);
-		let  	oldSize = self._Ptr.len();
-        if newSize_usize <= oldSize {
-            return;
-        }
-		let  	isZst = std::mem::size_of::<T>() == 0;
-        if isZst {
-            self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), newSize_usize);
-            return;
-        }
-        unsafe {
-			let  	oldLayout = Layout::array::<T>( oldSize).unwrap();
-			let  	newLayout = Layout::array::<T>( newSize_usize).unwrap();
-			let  	rawPtr = if oldSize == 0 {
-                alloc( newLayout)
-            } else {
-                std::alloc::realloc( self._Ptr.cast::<u8>().as_ptr(), oldLayout, newLayout.size())
-            };
-            if rawPtr.is_null() {
-                handle_alloc_error( newLayout);
-            }
-			let  	rawPtrT = rawPtr as *mut T;
-            // Defuse Buff::drop in case of panic during initialization
-            self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), 0);
-            struct ResizeGuard< T>
-            {
-                _RawPtr: *mut u8,
-                _NewLayout: Layout,
-                _OldSize: usize,
-                _InitCount: usize,
-                _Phantom: std::marker::PhantomData< T>,
-            }
-            impl< T> Drop for ResizeGuard< T>
-            {
-                fn	drop( &mut self)
-                {
-                    unsafe {
-						let  	totalValid = self._OldSize + self._InitCount;
-                        if totalValid > 0 {
-							let  	slicePtr = std::ptr::slice_from_raw_parts_mut( 
-                                self._RawPtr as *mut T,
-                                totalValid,
-                            );
-                            std::ptr::drop_in_place( slicePtr);
-                        }
-                        dealloc( self._RawPtr, self._NewLayout);
-                    }
-                }
-            }
-			let  	mut guard = ResizeGuard::<T> {
-                _RawPtr: rawPtr,
-                _NewLayout: newLayout,
-                _OldSize: oldSize,
-                _InitCount: 0,
-                _Phantom: std::marker::PhantomData,
-            };
-            for i in oldSize..newSize_usize {
-                std::ptr::write( rawPtrT.add( i), T::default());
-                guard._InitCount += 1;
-            }
-            std::mem::forget( guard);
-			let  	nonNullPtr = NonNull::new_unchecked( rawPtrT);
-            self._Ptr = NonNull::slice_from_raw_parts( nonNullPtr, newSize_usize);
-        }
-    }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	ResizeD< Dispenser>( &mut self, newSize: U32, dispenser: Dispenser)
+    pub fn	Resize< Dispenser>( &mut self, newSize: U32, dispenser: Dispenser)
     where
         Dispenser: Fn( U32) -> T,
     {

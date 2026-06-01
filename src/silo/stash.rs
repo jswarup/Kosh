@@ -81,7 +81,7 @@ impl< T: Default> Stash< T>
                 } else {
                     self._Buff.Size() * U32( 2)
                 };
-                self._Buff.Resize( newSz);
+                self._Buff.Resize( newSz, |_| T::default());
             }
         }
     }
@@ -96,7 +96,7 @@ impl< T: Default> Stash< T>
         }
         let neededSz = self.Size() + n;
         if neededSz > self._Buff.Size() {
-            self._Buff.Resize( neededSz);
+            self._Buff.Resize( neededSz, |_| T::default());
         }
         
         let startSz = self.Size();
