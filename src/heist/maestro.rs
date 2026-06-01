@@ -48,13 +48,9 @@ impl< 'a> Maestro< 'a>
         maven.CurSuccId()
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	ConstructJob< F>( &self,  succId: U16, jobFn: F) -> U16
-    where
-        F: FnMut( &dyn IWorker) + Send + Sync + 'a,
+    pub fn	ConstructJob( &self, succId: U16, jobBox: Box< WorkFn< 'a>>) -> U16
     {
-        self._Atelier.ConstructJob( self._MavenIndex, succId, jobFn)
+        self._Atelier.ConstructJob( self._MavenIndex, succId, jobBox)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

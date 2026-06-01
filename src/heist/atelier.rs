@@ -3,7 +3,7 @@ use	std::sync::atomic::Ordering;
 use	crate::heist::maestro::Maestro;
 use	crate::heist::maven::Maven;
 use	crate::stalks::atm::{ Atm, Spinlock };
-use	crate::stalks::work::{ IWorker, WorkFn };
+use	crate::stalks::work::WorkFn;
 use	crate::silo::{
     arr::Arr,
     buff::Buff,
@@ -78,6 +78,13 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    fn	SzSchedJob( &self) -> U32
+    {
+        self._SzSchedJob.Load( Ordering::Acquire)
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	IncrPredAt< K: Into< U16>>( &self, jobId: U16, inc: K) -> U16
     {
         self._SzPreds.Arr().At( jobId).FetchAdd( inc, Ordering::SeqCst)
@@ -95,7 +102,7 @@ impl< 'a> Atelier< 'a>
                 return jobId;
             }
             if self._FreeJobStash.Size() == 0 {
-                std::hint::spin_loop();
+                std::thread::yield_now();
                 continue;
             }
 			let  	_guard = self._FreeJobLock.Lock();
@@ -120,15 +127,12 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ConstructJob< F>( &self, mavenIdx: U32, succId: U16, jobFn: F) -> U16
-    where
-        F: FnMut( &dyn IWorker) + Send + Sync + 'a,
+    pub fn	ConstructJob( &self, mavenIdx: U32, succId: U16, mut jobBox: Box< JobFn< 'a>>) -> U16
     {
         let   jobId = self.AllocJob( mavenIdx);
         if jobId == 0 {
             return jobId;
         }
-        let   mut jobBox: Box< JobFn< 'a>> = Box::new( jobFn);
         self._JobBuff.Arr().MoveAt( jobId, &mut jobBox);
 
         self._SuccIds.Arr().SetAt( jobId, &succId);
@@ -167,7 +171,7 @@ impl< 'a> Atelier< 'a>
     {
 		let  	maven = self._Mavens.Arr().MutAt( mavenIdx);
 		let  	mut jobId = U16( 0);
-        while self.IncrSzSchedJob( U32( 0)) != 0 {
+        while self.SzSchedJob() != 0 {
             while jobId != 0 {
                 maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
 				let  	maestro = Maestro::New( self, mavenIdx);
@@ -194,7 +198,7 @@ impl< 'a> Atelier< 'a>
                 jobId = self.GrabJob( mavenIdx);
             }
             if jobId == 0 {
-                std::hint::spin_loop();
+                std::thread::yield_now();
             }
         }
         println!( "{}: {} Done", mavenIdx, maven.SzProcessed());
