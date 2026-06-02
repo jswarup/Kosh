@@ -2,6 +2,7 @@
 pub mod atelier;
 pub mod maestro;
 pub mod maven;
+pub mod chore;
 #[cfg( test)]
 mod _tests;
 

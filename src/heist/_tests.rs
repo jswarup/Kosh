@@ -148,20 +148,12 @@ fn	TestDoQSort()
 #[test]
 fn	TestChoreBuds()
 {
-    struct ChoreJob {
-        Ind: U32,
-    }
-
-    impl ChoreJob {
-        fn Execute( &mut self, _worker: &dyn IWorker) {
-            println!("{}", self.Ind);
-        }
-    }
+    use crate::heist::chore::Chore;
 
     let atelier = Atelier::New( U32( 4));
     let mainMaestro = atelier.MainMaestro();
-    let mut job = ChoreJob { Ind: U32( 42) };
-    let mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( move |worker| job.Execute( worker)));
+    let mut job = Chore::New( U32( 42) );
+    let mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( move |worker| job.execute( worker)));
     mainMaestro.EnqueueJob( &mut jobId);
     atelier.DoLaunch();
 }
