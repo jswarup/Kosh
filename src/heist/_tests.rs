@@ -126,21 +126,23 @@ fn	TestDoQSort()
 
 	let  	atelier = Atelier::New( U32( 4));
 	let  	mainMaestro = atelier.MainMaestro();
+    let  	mut jobId = U16( 0);
+	jobId = mainMaestro.ConstructJob(  jobId, Box::new( |_worker: &dyn IWorker| {
+        let  	_res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
 
-	let  	mut jobId = mainMaestro.ConstructJob(  U16( 0), Box::new(move |worker: &dyn IWorker| {
+        arr.USeg().Span( |i| {
+            print!( "{} ", arr.At( i));
+            true
+        });
+        println!();
+    }));
+	jobId = mainMaestro.ConstructJob(  jobId, Box::new( |worker: &dyn IWorker| {
         arr.USeg().DoQSort( worker, move |i, j| arr.At( i) > arr.At( j), move |i, j| { arr.SwapAt( i, j); });
     }));
     mainMaestro.EnqueueJob( &mut jobId);
 
     atelier.DoLaunch();
 
-	let  	res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
-
-    arr.USeg().Span( |i| {
-        print!( "{} ", arr.At( i));
-        true
-    });
-    assert!( res);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

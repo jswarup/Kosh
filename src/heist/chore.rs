@@ -25,7 +25,7 @@ impl Chore
 
 impl IWork for Chore
 {
-    fn	run( &mut self, _worker: &dyn IWorker)
+    fn	DoWork( &mut self, _worker: &dyn IWorker)
     {
         println!( "{}", self.Ind);
     }

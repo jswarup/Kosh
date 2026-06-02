@@ -179,7 +179,7 @@ impl< 'a> Atelier< 'a>
             while jobId != 0 {
                 maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
 				let  	maestro = Maestro::New( self, mavenIdx);
-                self._JobBuff.Arr().MutAt( jobId).run( &maestro);          // Run job
+                self._JobBuff.Arr().MutAt( jobId).DoWork( &maestro);          // Run job
                 maven.IncrSzProcessed( 1);
 				let  	_res = self.FreeJob( mavenIdx, jobId);
 

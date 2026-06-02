@@ -6,20 +6,24 @@ use	crate::silo::arr::Arr;
 
 pub trait IWork: Send + Sync
 {
-    fn	run( &mut self, worker: &dyn IWorker);
+    fn	DoWork( &mut self, worker: &dyn IWorker);
 }
 
 impl< F> IWork for F
 where
     F: for<'r> FnMut( &'r (dyn IWorker + 'r)) + Send + Sync,
 {
-    fn	run( &mut self, worker: &dyn IWorker)
+    fn	DoWork( &mut self, worker: &dyn IWorker)
     {
         self( worker);
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub type WorkFn< 'a> = dyn IWork + 'a;
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 pub trait IWorker
 {
@@ -51,13 +55,13 @@ impl IWorker for Worker
 {
     fn	PostJob( &self, mut job: Box< WorkFn< '_>>)
     {
-        job.run( self);
+        job.DoWork( self);
     }
 
     fn	PostJobs( &self, mut jobs: Arr< '_, Box< WorkFn< '_>>>)
     {
         for job in jobs.iter_mut() {
-            job.run( self);
+            job.DoWork( self);
         }
     }
 }
