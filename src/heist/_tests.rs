@@ -151,12 +151,39 @@ fn	TestDoQSort()
 fn	TestChoreBuds()
 {
     use crate::heist::chore::Chore;
+    use crate::stalks::bud::Bud;
 
-    let atelier = Atelier::New( U32( 4));
-    let mainMaestro = atelier.MainMaestro();
-    let mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( Chore::New( U32( 42))));
+    let  	chore = Chore::New( U32( 42));
+    assert_eq!( chore.Val(), chore);
+    assert!( chore.Left().is_none());
+    assert!( chore.Right().is_none());
+    assert_eq!( chore.Op(), "");
+
+    let  	aChore = Chore::New( U32( 10));
+    let  	bChore = Chore::New( U32( 20));
+    let  	cChore = Chore::New( U32( 30));
+    let  	budTree = crate::bud!( (aChore < bChore) | cChore );
+
+    assert_eq!( budTree.Op(), "|");
+    assert!( budTree.Left().is_some());
+    assert!( budTree.Right().is_some());
+
+    let  	leftNode = budTree.Left().unwrap();
+    assert_eq!( leftNode.Op(), "<");
+    assert_eq!( leftNode.Left().unwrap().Val(), aChore);
+    assert_eq!( leftNode.Right().unwrap().Val(), bChore);
+
+    let  	rightNode = budTree.Right().unwrap();
+    assert_eq!( rightNode.Val(), cChore);
+ 
+    budTree.Print();
+
+    let  	atelier = Atelier::New( U32( 4));
+    let  	mainMaestro = atelier.MainMaestro();
+    let  	mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( chore));
     mainMaestro.EnqueueJob( &mut jobId);
     atelier.DoLaunch();
 }
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
