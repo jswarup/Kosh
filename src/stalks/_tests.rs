@@ -67,12 +67,12 @@ fn	TestWorkerPost()
 #[test]
 fn	TestBudBasicOps()
 {
-	let a = 10;
-    let b = 5;
-    let c = 12;
-    let d = 20;
-    let e = 1;
-    let f = 8;
+	let a = 1.8;
+    let b = 5.7;
+    let c = 12.2;
+    let d = 20.7;
+    let e = 1.5;
+    let f = 8.1;
 
 	let  	x  = crate::bud!( ((( a | b) < c) | ( d | ( e < f))) );
 
