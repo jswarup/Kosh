@@ -92,7 +92,7 @@ impl< 'a> IWorker for Maestro< 'a>
             jobs.MoveAt( i, &mut job);
             job
         });
-        let  	branchJob: Box< WorkFn< '_>> = Box::new( move | worker| {
+        let  	branchJob: Box< WorkFn< '_>> = Box::new( move | worker: &dyn IWorker| {
             let  	maestro = worker.AsMaestro().unwrap();
             let  	arr = buff.Arr();
             let  	succId = maestro.CurSuccId();

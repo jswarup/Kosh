@@ -17,11 +17,11 @@ fn	BuffBasicAtelierTest()
     {
 		let  	maestro = worker.AsMaestro().unwrap();
 		let  	mut jobId = maestro.CurSuccId();
-        jobId =  maestro.ConstructJob(  jobId, Box::new(|w1| {
+        jobId =  maestro.ConstructJob(  jobId, Box::new(|w1: &dyn IWorker| {
             println!( "Trial1 {}", w1.AsMaestro().unwrap().MavenIndex());
         }));
 
-        jobId =  maestro.ConstructJob(  jobId, Box::new(|w2| {
+        jobId =  maestro.ConstructJob(  jobId, Box::new(|w2: &dyn IWorker| {
             println!( "Trial2 {}", w2.AsMaestro().unwrap().MavenIndex());
         }));
         maestro.EnqueueJob( &mut jobId);
@@ -73,17 +73,17 @@ fn	TestConcurrentDAG()
 	let  	atelier = Atelier::New( U32( 4));
     // Construct Job 3 (which waits for Job 1 and Job 2)
 	let  	counterClone3 = counter.clone();
-	let  	job3 = atelier.ConstructJob( U32( 0), U16( 0), Box::new(move |_m| {
+	let  	job3 = atelier.ConstructJob( U32( 0), U16( 0), Box::new(move |_m: &dyn IWorker| {
         counterClone3.fetch_add( 100, Ordering::SeqCst);
     }));
     // Construct Job 1
 	let  	counterClone1 = counter.clone();
-	let  	job1 = atelier.ConstructJob( U32( 0), U16( 0), Box::new(move |_m| {
+	let  	job1 = atelier.ConstructJob( U32( 0), U16( 0), Box::new(move |_m: &dyn IWorker| {
         counterClone1.fetch_add( 1, Ordering::SeqCst);
     }));
     // Construct Job 2
 	let  	counterClone2 = counter.clone();
-	let  	job2 = atelier.ConstructJob( U32( 0), U16( 0), Box::new(move |_m| {
+	let  	job2 = atelier.ConstructJob( U32( 0), U16( 0), Box::new(move |_m: &dyn IWorker| {
         counterClone2.fetch_add( 1, Ordering::SeqCst);
     }));
     // Set dependencies:
@@ -127,7 +127,7 @@ fn	TestDoQSort()
 	let  	atelier = Atelier::New( U32( 4));
 	let  	mainMaestro = atelier.MainMaestro();
 
-	let  	mut jobId = mainMaestro.ConstructJob(  U16( 0), Box::new(move |worker| {
+	let  	mut jobId = mainMaestro.ConstructJob(  U16( 0), Box::new(move |worker: &dyn IWorker| {
         arr.USeg().DoQSort( worker, move |i, j| arr.At( i) > arr.At( j), move |i, j| { arr.SwapAt( i, j); });
     }));
     mainMaestro.EnqueueJob( &mut jobId);
@@ -152,8 +152,7 @@ fn	TestChoreBuds()
 
     let atelier = Atelier::New( U32( 4));
     let mainMaestro = atelier.MainMaestro();
-    let mut job = Chore::New( U32( 42) );
-    let mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( move |worker| job.execute( worker)));
+    let mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( Chore::New( U32( 42))));
     mainMaestro.EnqueueJob( &mut jobId);
     atelier.DoLaunch();
 }

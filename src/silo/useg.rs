@@ -168,13 +168,13 @@ impl USeg
 		let  	pivot = self.Partition( &lessAt, &mut |i, j| swapAt( i, j));
 
         let  	mut sz = 0;
-        let  	mut chunkWorks: [Box<WorkFn<'a>>; 2] = [ Box::new(|_| {}), Box::new(|_| {}), ];
+        let  	mut chunkWorks: [Box<WorkFn<'a>>; 2] = [ Box::new(|_w: &dyn IWorker| {}), Box::new(|_w: &dyn IWorker| {}), ];
 
 		let  	useg1 = USeg::Create( self._First, pivot - self._First);
         if useg1.Size() > 1 {
             let lessAtClone = lessAt.clone();
             let swapAtClone = swapAt.clone();
-            chunkWorks[sz] = Box::new( move |w| {
+            chunkWorks[sz] = Box::new( move |w: &dyn IWorker| {
                 useg1.DoQSort(w, lessAtClone.clone(), swapAtClone.clone());
             });
             sz += 1;
@@ -184,7 +184,7 @@ impl USeg
         if useg2.Size() > 1 {
             let lessAtClone = lessAt.clone();
             let swapAtClone = swapAt.clone();
-            chunkWorks[sz] = Box::new( move |w| {
+            chunkWorks[sz] = Box::new( move |w: &dyn IWorker| {
                 useg2.DoQSort(w, lessAtClone.clone(), swapAtClone.clone());
             });
             sz += 1;

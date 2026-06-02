@@ -44,11 +44,11 @@ fn	TestWorkerPost()
 	let  	run1C = run1.clone();
 	let  	run2C = run2.clone();
 
-	let  	job1: Box< WorkFn< '_>> = Box::new( move |_worker| {
+	let  	job1: Box< WorkFn< '_>> = Box::new( move |_worker: &dyn IWorker| {
         run1C.store( true, Ordering::SeqCst);
     });
 
-	let  	job2: Box< WorkFn< '_>> = Box::new( move |_worker| {
+	let  	job2: Box< WorkFn< '_>> = Box::new( move |_worker: &dyn IWorker| {
         run2C.store( true, Ordering::SeqCst);
     });
 

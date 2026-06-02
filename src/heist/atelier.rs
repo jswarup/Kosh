@@ -3,7 +3,7 @@ use	std::sync::atomic::Ordering;
 use	crate::heist::maestro::Maestro;
 use	crate::heist::maven::Maven;
 use	crate::stalks::atm::{ Atm, Spinlock };
-use	crate::stalks::work::WorkFn;
+use	crate::stalks::work::{ IWorker, WorkFn };
 use	crate::silo::{
     arr::Arr,
     buff::Buff,
@@ -46,7 +46,7 @@ impl< 'a> Atelier< 'a>
             _FreeJobLock: Spinlock::New(),
             _FreeJobStash: Stash::<U16>::New( U32::_16Sz),
             _JobBuff: Buff::Create( U32::_16Sz, |_i| {
-			let  	cb: Box< JobFn< 'static>> = Box::new( |_m|
+			let  	cb: Box< JobFn< 'static>> = Box::new( |_m: &dyn IWorker|
 				{ });
                 cb
             }),
@@ -179,7 +179,7 @@ impl< 'a> Atelier< 'a>
             while jobId != 0 {
                 maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
 				let  	maestro = Maestro::New( self, mavenIdx);
-                self._JobBuff.Arr().MutAt( jobId)( &maestro);          // Run job
+                self._JobBuff.Arr().MutAt( jobId).run( &maestro);          // Run job
                 maven.IncrSzProcessed( 1);
 				let  	_res = self.FreeJob( mavenIdx, jobId);
 
