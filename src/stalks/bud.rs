@@ -194,21 +194,21 @@ where
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[macro_export]
-macro_rules! bud {
+macro_rules! BudTree {
     ( ( $($inner:tt)+ ) ) => {
-        $crate::bud!( $($inner)+ )
+        $crate::BudTree!( $($inner)+ )
     };
     ( ( $($lhs:tt)+ ) < $($rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::NewSeq( $crate::bud!( $($lhs)+ ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
+        Box::new( $crate::stalks::bud::BudNode::NewSeq( $crate::BudTree!( $($lhs)+ ), $crate::BudTree!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
     };
     ( ( $($lhs:tt)+ ) | $($rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::NewPar( $crate::bud!( $($lhs)+ ), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
+        Box::new( $crate::stalks::bud::BudNode::NewPar( $crate::BudTree!( $($lhs)+ ), $crate::BudTree!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
     };
     ( $lhs:ident < $($rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::NewSeq( Box::new( $crate::stalks::bud::BudNode::NewVal( $lhs )), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
+        Box::new( $crate::stalks::bud::BudNode::NewSeq( Box::new( $crate::stalks::bud::BudNode::NewVal( $lhs )), $crate::BudTree!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
     };
     ( $lhs:ident | $($rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::NewPar( Box::new( $crate::stalks::bud::BudNode::NewVal( $lhs)), $crate::bud!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
+        Box::new( $crate::stalks::bud::BudNode::NewPar( Box::new( $crate::stalks::bud::BudNode::NewVal( $lhs)), $crate::BudTree!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
     };
     ( $leaf:ident ) => {
         Box::new( $crate::stalks::bud::BudNode::NewVal( $leaf ))

@@ -74,7 +74,7 @@ fn	TestBudBasicOps()
     let e = 1.5;
     let f = 8.1;
 
-	let  	x  = crate::bud!( ((( a | b) < c) | ( d | ( e < f))) );
+	let  	x  = crate::BudTree!( ((( a | b) < c) | ( d | ( e < f))) );
 
     x.Print();
 }

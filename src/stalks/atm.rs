@@ -23,7 +23,7 @@ pub trait AtomicInt: Sized {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-macro_rules! impl_atomic_int {
+macro_rules! ImplAtomicInt {
     ( $prim:ty, $atomic:ty) => {
         impl AtomicInt for $prim
         {
@@ -59,16 +59,16 @@ macro_rules! impl_atomic_int {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl_atomic_int!( usize, AtomicUsize);
-impl_atomic_int!( isize, AtomicIsize);
-impl_atomic_int!( u32, AtomicU32);
-impl_atomic_int!( i32, AtomicI32);
-impl_atomic_int!( u64, AtomicU64);
-impl_atomic_int!( i64, AtomicI64);
-impl_atomic_int!( u8, AtomicU8);
-impl_atomic_int!( i8, AtomicI8);
-impl_atomic_int!( u16, AtomicU16);
-impl_atomic_int!( i16, AtomicI16);
+ImplAtomicInt!( usize, AtomicUsize);
+ImplAtomicInt!( isize, AtomicIsize);
+ImplAtomicInt!( u32, AtomicU32);
+ImplAtomicInt!( i32, AtomicI32);
+ImplAtomicInt!( u64, AtomicU64);
+ImplAtomicInt!( i64, AtomicI64);
+ImplAtomicInt!( u8, AtomicU8);
+ImplAtomicInt!( i8, AtomicI8);
+ImplAtomicInt!( u16, AtomicU16);
+ImplAtomicInt!( i16, AtomicI16);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 

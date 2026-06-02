@@ -141,7 +141,7 @@ impl U16
 
 // Implement common arithmetic operations between the wrapper and any type that can be converted into the wrapper.
 // This provides seamless usage like `a + b` where `a` and `b` may be primitives or wrappers.
-macro_rules! impl_op {
+macro_rules! ImplOp {
     ( $type:ident, $trait:ident, $method:ident, $op:tt) => {
         impl< T> $trait< T> for $type
         where
@@ -159,7 +159,7 @@ macro_rules! impl_op {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-macro_rules! impl_uint_traits {
+macro_rules! ImplUIntTraits {
     ( $type:ident, $prim:ty, $atomic:ty) => {
         impl< T> Add< T> for $type
         where
@@ -183,14 +183,14 @@ macro_rules! impl_uint_traits {
                 $type( self.0.wrapping_sub( rhs.into().0))
             }
         }
-        impl_op!( $type, Mul, mul, *);
-        impl_op!( $type, Div, div, /);
-        impl_op!( $type, Rem, rem, %);
-        impl_op!( $type, BitAnd, bitand, &);
-        impl_op!( $type, BitOr, bitor, |);
-        impl_op!( $type, BitXor, bitxor, ^);
-        impl_op!( $type, Shl, shl, << );
-        impl_op!( $type, Shr, shr, >>);
+        ImplOp!( $type, Mul, mul, *);
+        ImplOp!( $type, Div, div, /);
+        ImplOp!( $type, Rem, rem, %);
+        ImplOp!( $type, BitAnd, bitand, &);
+        ImplOp!( $type, BitOr, bitor, |);
+        ImplOp!( $type, BitXor, bitxor, ^);
+        ImplOp!( $type, Shl, shl, << );
+        ImplOp!( $type, Shr, shr, >>);
         // Unary `-` (negation) for unsigned values is defined as wrapping subtraction from zero.
         impl Neg for $type
         {
@@ -314,8 +314,8 @@ macro_rules! impl_uint_traits {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl_uint_traits!( U32, u32, AtomicU32);
-impl_uint_traits!( U16, u16, AtomicU16);
+ImplUIntTraits!( U32, u32, AtomicU32);
+ImplUIntTraits!( U16, u16, AtomicU16);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 

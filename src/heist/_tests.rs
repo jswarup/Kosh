@@ -162,7 +162,7 @@ fn	TestChoreBuds()
     let  	aChore = Chore::New( U32( 10));
     let  	bChore = Chore::New( U32( 20));
     let  	cChore = Chore::New( U32( 30));
-    let  	budTree = crate::bud!( (aChore < bChore) | cChore );
+    let  	budTree = crate::BudTree!( (aChore < bChore) | cChore );
 
     assert_eq!( budTree.Op(), "|");
     assert!( budTree.Left().is_some());
@@ -175,7 +175,7 @@ fn	TestChoreBuds()
 
     let  	rightNode = budTree.Right().unwrap();
     assert_eq!( rightNode.Val(), cChore);
- 
+
     budTree.Print();
 
     let  	atelier = Atelier::New( U32( 4));
