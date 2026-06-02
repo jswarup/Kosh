@@ -143,5 +143,27 @@ fn	TestDoQSort()
     assert!( res);
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestChoreBuds()
+{
+    struct ChoreJob {
+        Ind: U32,
+    }
+
+    impl ChoreJob {
+        fn Execute( &mut self, _worker: &dyn IWorker) {
+            println!("{}", self.Ind);
+        }
+    }
+
+    let atelier = Atelier::New( U32( 4));
+    let mainMaestro = atelier.MainMaestro();
+    let mut job = ChoreJob { Ind: U32( 42) };
+    let mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( move |worker| job.Execute( worker)));
+    mainMaestro.EnqueueJob( &mut jobId);
+    atelier.DoLaunch();
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
