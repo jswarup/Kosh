@@ -1,7 +1,7 @@
 //-- chore.rs -------------------------------------------------------------------------------------------------------------------------
 use	crate::silo::uint::U32;
 use	crate::stalks::work::{ IWorker, IWork };
-use	crate::stalks::bud::{ Bud, IntoBud };
+use	crate::stalks::bud::{ Bud, IntoBud, TraversalEvent };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -75,6 +75,40 @@ impl std::fmt::Display for Chore
     fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
         write!( f, "{}", self.Ind)
+    }
+}
+
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl dyn Bud<Chore>+ '_
+{
+    pub fn	Post( &self, worker:  &dyn IWorker )
+    {
+        let  	mut childCounts = Vec::new();
+        self.TraverseDFS( &mut |node, event| {
+            match event {
+                TraversalEvent::Entry => {
+                    if let Some( count) = childCounts.last_mut() {
+                        if *count > 0 {
+                            print!( " ");
+                        }
+                        *count += 1;
+                    }
+                    if node.Left().is_some() || node.Right().is_some() {
+                        print!( "[{} ", node.Op());
+                        childCounts.push( 0);
+                    } else {
+                        print!( "{}", node.Val());
+                    }
+                }
+                TraversalEvent::Exit => {
+                    childCounts.pop();
+                    print!( "]");
+                }
+            }
+        });
+        println!();
     }
 }
 
