@@ -90,56 +90,6 @@ impl dyn Bud<Chore>+ '_
     {
         let  	maestro: &Maestro<'_> = worker.AsMaestro().unwrap();
 
-        struct ForkJob
-        {
-            _RStarts: Stash< U16>,
-        }
-
-        impl IWork for ForkJob
-        {
-            fn	DoWork( &mut self, worker: &dyn IWorker)
-            {
-                let  	maestro = worker.AsMaestro().unwrap();
-                for rStart in &mut *self._RStarts.Stk().Arr() {
-                    maestro.EnqueueJob( rStart);
-                }
-            }
-        }
-
-        fn	Compile( node: &dyn Bud< Chore>, maestro: &Maestro< '_>, succId: U16) -> Stash< U16>
-        {
-            if node.Left().is_none() && node.Right().is_none() {
-                let  	choreJob: Box< dyn IWork> = Box::new( node.Val());
-                let  	mut jobId = maestro.ConstructJob( succId, choreJob);
-                let  	mut stash = Stash::New( 1);
-                stash.Pushback( &mut jobId);
-                stash
-            } else if node.Op() == "|" {
-                let  	mut startsL = Compile( node.Left().unwrap(), maestro, succId);
-                let  	startsR = Compile( node.Right().unwrap(), maestro, succId);
-                startsL.Append( startsR.Stk().Arr());
-                startsL
-            } else if node.Op() == "<" {
-                let  	rStarts = Compile( node.Right().unwrap(), maestro, succId);
-                if rStarts.Size() == 1 {
-                    Compile( node.Left().unwrap(), maestro, *rStarts.Stk().Arr().At( 0))
-                } else {
-                    let  	forkJob = Box::new( ForkJob { _RStarts: rStarts }) as Box< dyn IWork>;
-                    let  	forkJobId = maestro.ConstructJob( U16( 0), forkJob);
-                    Compile( node.Left().unwrap(), maestro, forkJobId)
-                }
-            } else {
-                Stash::New( 4)
-            }
-        }
-
-        let  	succId = maestro.CurSuccId();
-        let  	starts = Compile( self, maestro, succId);
-        for startId in &mut *starts.Stk().Arr() {
-            maestro.EnqueueJob( startId);
-        }
-
-        #[allow(dead_code)]
         struct JobStash
         {
             _JobStash: Stash< U16>,
@@ -200,11 +150,17 @@ impl dyn Bud<Chore>+ '_
             }
 
         }
+
         let  	succId = maestro.CurSuccId();
-        let  	starts = Compile( self, maestro, succId);
-        for startId in &mut *starts.Stk().Arr() {
-            maestro.EnqueueJob( startId);
-        }
+        let  	mut jobStash = JobStash { _JobStash: Stash::New( 0) };
+
+        jobStash.Process( self, maestro, succId);
+        let     jobArr = jobStash._JobStash.Stk().Arr();
+        jobArr.USeg().Span( |i| {
+            maestro.EnqueueJob( jobArr.MutAt( i));
+            true
+        });
+        return;
     }
 }
 

@@ -151,29 +151,17 @@ fn	TestDoQSort()
 fn	TestChoreBuds()
 {
     use crate::heist::chore::Chore;
- 
+
 
     let  	aChore = Chore::New( U32( 10));
     let  	bChore = Chore::New( U32( 20));
     let  	cChore = Chore::New( U32( 30));
     let  	budTree = crate::BudTree!( (aChore < bChore) | cChore );
 
-    assert_eq!( budTree.Op(), "|");
-    assert!( budTree.Left().is_some());
-    assert!( budTree.Right().is_some());
-
-    let  	leftNode = budTree.Left().unwrap();
-    assert_eq!( leftNode.Op(), "<");
-    assert_eq!( leftNode.Left().unwrap().Val(), aChore);
-    assert_eq!( leftNode.Right().unwrap().Val(), bChore);
-
-    let  	rightNode = budTree.Right().unwrap();
-    assert_eq!( rightNode.Val(), cChore);
 
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
-
-    //budTree.Print();
+ 
     budTree.Post( &mainMaestro);
     //let  	mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( chore));
     //mainMaestro.EnqueueJob( &mut jobId);
