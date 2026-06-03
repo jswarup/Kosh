@@ -51,8 +51,8 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-
     /// CAS-decrement _Size (Acquire), then read. Pairs with Push's Release.
+
     pub fn	Pop( &self, val: &mut T) -> bool
     where
         T: Default + Clone,
@@ -66,8 +66,20 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
                 .is_err()) {
             return false;
         }
-        *val = self._Arr.At( sz - 1).clone();
+        self._Arr.MoveAt( sz - 1, val);
         true
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+    /// CAS-decrement _Size (Acquire), then read. Pairs with Push's Release.
+
+    pub fn	Popback( &self) -> T
+    where
+        T: Default + Clone,
+    {
+        let mut     val = T::default();
+        self.Pop( &mut val);
+        return val;
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -133,7 +145,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
             return U32( 0);
         }
 		let  	stkSz = stk._Size.FetchAdd( U32( 0) - szAlloc, Ordering::SeqCst) - szAlloc;
-        self._Arr.CopyFrom( oldSz, &stk._Arr, stkSz, szAlloc);
+        self._Arr.SwapFrom( oldSz, &stk._Arr, stkSz, szAlloc);
         szAlloc
     }
 
@@ -171,7 +183,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
             return U32( 0);
         }
 		let  	szStk = stk._Size.FetchAdd( U32( 0) + szAlloc, Ordering::SeqCst);
-        stk._Arr.CopyFrom( szStk, &self._Arr, oldSz - szAlloc, szAlloc);
+        stk._Arr.SwapFrom( szStk, &self._Arr, oldSz - szAlloc, szAlloc);
         szAlloc
     }
 }

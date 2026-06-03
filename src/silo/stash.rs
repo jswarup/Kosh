@@ -61,6 +61,19 @@ impl< T: Default> Stash< T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    pub fn	BuffOut( &mut self) -> Buff< T>
+    where
+        T: Clone,
+    {
+        let mut buff = Buff::New( 0, T::default());
+        self._Buff.Swap( &mut buff);
+
+        buff
+    }
+
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	DoIndexSetup( &self)
     where
         T: From< usize> + Clone,
@@ -99,7 +112,7 @@ impl< T: Default> Stash< T>
         if neededSz > self._Buff.Size() {
             self._Buff.Resize( neededSz, |_| T::default());
         }
-        
+
         let startSz = self.Size();
         let arrBuff = self._Buff.Arr();
         for i in 0..usize::from( n) {

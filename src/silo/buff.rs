@@ -2,6 +2,7 @@
 use	crate::silo::arr::Arr;
 use	crate::silo::uint::U32;
 use	std::alloc::{ Layout, alloc, dealloc, handle_alloc_error };
+use std::mem::swap;
 use	std::ops::{ Deref, DerefMut };
 use	std::ptr::NonNull;
 
@@ -84,7 +85,7 @@ impl< T> Buff< T>
                     unsafe {
 						let  	totalValid = self._OldSize + self._InitCount;
                         if totalValid > 0 {
-							let  	slicePtr = std::ptr::slice_from_raw_parts_mut( 
+							let  	slicePtr = std::ptr::slice_from_raw_parts_mut(
                                 self._RawPtr as *mut T,
                                 totalValid,
                             );
@@ -170,12 +171,18 @@ impl< T> Buff< T>
             { _Ptr: slicePtr }
         }
     }
+
     pub fn	New< S: Into< U32>>( sz: S, initialValue: T) -> Self
     where
         T: Clone,
     {
 		let  	sz = sz.into();
         Buff::Create( sz, |_| initialValue.clone())
+    }
+
+    pub fn  Swap( &mut self, buff: &mut Buff< T>)
+    {
+        swap(self, buff);
     }
 }
 

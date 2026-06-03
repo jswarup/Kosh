@@ -100,7 +100,7 @@ impl< 'a, T> Arr<'a, T>
     pub fn	SwapAt< I: Into< U32>, J: Into< U32>>( &self, i: I, j: J)
     {
         unsafe {
-            std::ptr::swap( 
+            std::ptr::swap(
                 self._Ptr.add( i.into().as_usize()).as_ptr(),
                 self._Ptr.add( j.into().as_usize()).as_ptr(),
             );
@@ -109,12 +109,12 @@ impl< 'a, T> Arr<'a, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	CopyFrom< S: Into< U32>, D: Into< U32>>( &self, dstStart: D, src: &Arr< '_, T>, srcStart: S, count: U32)
+    pub fn	SwapFrom< S: Into< U32>, D: Into< U32>>( &self, dstStart: D, src: &Arr< '_, T>, srcStart: S, count: U32)
     where
         T: Copy,
     {
         unsafe {
-            std::ptr::copy_nonoverlapping(
+            std::ptr::swap_nonoverlapping(
                 src._Ptr.as_ptr().add( srcStart.into().as_usize()),
                 self._Ptr.as_ptr().add( dstStart.into().as_usize()),
                 count.as_usize(),
@@ -127,7 +127,7 @@ impl< 'a, T> Arr<'a, T>
     pub fn	LSnip< C: Into< U32>>( &self, count: C) -> Self
     {
 		let  	cnt = count.into();
-        Arr::New( 
+        Arr::New(
             unsafe
             { self._Ptr.add( cnt.as_u32() as usize) },
             self.Size() - cnt,
