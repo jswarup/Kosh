@@ -209,10 +209,29 @@ impl_into_bud_for_primitives!(f64, f32, i32, i64, u32, u64, String, &'static str
 
 #[macro_export]
 macro_rules! BudTree {
+    ( $type:ident, ( $($inner:tt)+ ) ) => {
+        $crate::BudTree!( $type, $($inner)+ )
+    };
+    ( $type:ident,  ( $($lhs:tt)+ ) < $($rhs:tt)+ ) => {
+        Box::new( $crate::stalks::bud::BudNode::NewSeq( $crate::BudTree!( $type, $($lhs)+ ), $crate::BudTree!( $type,$($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud<$type>>
+    };
+    ( $type:ident, ( $($lhs:tt)+ ) | $($rhs:tt)+ ) => {
+        Box::new( $crate::stalks::bud::BudNode::NewPar( $crate::BudTree!( $type,$($lhs)+ ), $crate::BudTree!( $type,$($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud<$type>>
+    };
+    ( $type:ident, $lhs:ident < $($rhs:tt)+ ) => {
+        Box::new( $crate::stalks::bud::BudNode::NewSeq( $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $type, $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud<$type>>
+    };
+    ( $type:ident, $lhs:ident | $($rhs:tt)+ ) => {
+        Box::new( $crate::stalks::bud::BudNode::NewPar( $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $type, $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud<$type>>
+    };
+    ( $type:ident, $leaf:expr ) => {
+        $crate::stalks::bud::IntoBud::IntoBud( $leaf )
+    };
+
     ( ( $($inner:tt)+ ) ) => {
         $crate::BudTree!( $($inner)+ )
     };
-    ( ( $($lhs:tt)+ ) < $($rhs:tt)+ ) => {
+    (  ( $($lhs:tt)+ ) < $($rhs:tt)+ ) => {
         Box::new( $crate::stalks::bud::BudNode::NewSeq( $crate::BudTree!( $($lhs)+ ), $crate::BudTree!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
     };
     ( ( $($lhs:tt)+ ) | $($rhs:tt)+ ) => {
