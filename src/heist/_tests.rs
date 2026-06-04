@@ -156,12 +156,12 @@ fn	TestChoreBuds()
     let  	aChore = Chore::New( U32( 10));
     let  	bChore = Chore::New( U32( 20));
     let  	cChore = Chore::New( U32( 30));
-    let  	budTree = crate::BudTree!( (aChore < bChore) | cChore );
+    let  	budTree = crate::BudTree!( (aChore < bChore) | ( cChore ));
 
 
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
- 
+
     budTree.Post( &mainMaestro);
     //let  	mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( chore));
     //mainMaestro.EnqueueJob( &mut jobId);

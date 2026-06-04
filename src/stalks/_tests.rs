@@ -77,6 +77,11 @@ fn	TestBudBasicOps()
 	let  	x  = crate::BudTree!( ((( a | b) < c) | ( d | ( e < f))) );
 
     x.Print();
+
+    let left = crate::BudTree!( a | b );
+    let right = crate::BudTree!( c | d );
+    let combined = crate::BudTree!( left | right );
+    combined.Print();
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

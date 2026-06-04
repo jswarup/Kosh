@@ -4,7 +4,7 @@ use	crate::silo::uint::{ U16, U32 };
 use	crate::silo::{ stash::Stash};
 use	crate::heist::maestro::Maestro;
 use	crate::stalks::work::{ IWorker, IWork };
-use	crate::stalks::bud::{ Bud, IntoBud };
+use	crate::stalks::bud::Bud;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -18,10 +18,10 @@ pub struct Chore
 
 impl Chore
 {
-    pub fn	New( ind: U32) -> Self
+    pub fn	New< S: Into< U32>>( ind: S) -> Self
     {
         Self {
-            Ind: ind,
+            Ind: ind.into(),
         }
     }
 }
@@ -36,40 +36,6 @@ impl IWork for Chore
     }
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl Bud< Chore> for Chore
-{
-    fn	Val( &self) -> Chore
-    {
-        *self
-    }
-
-    fn	Left( &self) -> Option< &dyn Bud< Chore>>
-    {
-        None
-    }
-
-    fn	Right( &self) -> Option< &dyn Bud< Chore>>
-    {
-        None
-    }
-
-    fn	Op( &self) -> &str
-    {
-        ""
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IntoBud< Chore> for Chore
-{
-    fn	IntoBud( self) -> Box< dyn Bud< Chore>>
-    {
-        Box::new( self)
-    }
-}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
