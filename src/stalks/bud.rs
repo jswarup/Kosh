@@ -181,15 +181,29 @@ impl< T> IntoBud<T> for Box< dyn Bud<T>>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T> IntoBud< T> for T
-where
-    T: Clone + Default + 'static,
+impl< T: Bud< T> + 'static> IntoBud< T> for T
 {
     fn	IntoBud( self) -> Box< dyn Bud<T>>
     {
-        Box::new( BudNode::NewVal( self ) )
+        Box::new( self )
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+macro_rules! impl_into_bud_for_primitives {
+    ($($t:ty),*) => {
+        $(
+            impl IntoBud<$t> for $t {
+                fn IntoBud(self) -> Box<dyn Bud<$t>> {
+                    Box::new(BudNode::NewVal(self))
+                }
+            }
+        )*
+    };
+}
+
+impl_into_bud_for_primitives!(f64, f32, i32, i64, u32, u64, String, &'static str);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 

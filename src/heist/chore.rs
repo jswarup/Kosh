@@ -39,6 +39,31 @@ impl IWork for Chore
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl Bud< Chore> for Chore
+{
+    fn	Val( &self) -> Chore
+    {
+        *self
+    }
+
+    fn	Left( &self) -> Option< &dyn Bud< Chore>>
+    {
+        None
+    }
+
+    fn	Right( &self) -> Option< &dyn Bud< Chore>>
+    {
+        None
+    }
+
+    fn	Op( &self) -> &str
+    {
+        ""
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl std::fmt::Display for Chore
 {
     fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
