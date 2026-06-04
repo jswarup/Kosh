@@ -86,17 +86,6 @@ impl dyn Bud<Chore>+ '_
             _JobStash: Stash< U16>,
         }
 
-        impl IWork for JobStash
-        {
-            fn	DoWork( &mut self, worker: &dyn IWorker)
-            {
-                let  	maestro = worker.AsMaestro().unwrap();
-                for headJob in &mut *self._JobStash.Stk().Arr() {
-                    maestro.EnqueueJob( headJob);
-                }
-            }
-        }
-        #[allow(dead_code)]
         impl  JobStash
         {
             fn	Process( &mut self, node: &dyn Bud< Chore>, maestro: &Maestro< '_>, succId: U16) -> U16
@@ -133,7 +122,8 @@ impl dyn Bud<Chore>+ '_
                         });
                     });
                     let  	branchId = maestro.ConstructJob( succId, branchJob);
-                    return branchId;
+                    let  	succL = self.Process( node.Left().unwrap(), maestro, branchId);
+                    return succL;
                 } else {
                     assert!( false);
                     return U16( 0);
