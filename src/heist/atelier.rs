@@ -17,15 +17,15 @@ use	crate::silo::{
 type JobFn< 'a> = WorkFn< 'a>;
 pub struct Atelier< 'a>
 {
-    _StartCount: U32,                                                  // Count of Processing Queue started, used for startup and shutdown
-    _SzSchedJob: Atm< U32>,                                            // Count of cumulative jobs in flight
-    _LockedMark: U32,
-    _Mavens: Buff< Maven>,
-    pub( crate) _SzPreds: Buff< Atm< U16>>,                            // Count of predessors for job at the jobId
-    pub( crate) _SuccIds: Buff< U16>,
-    _FreeJobLock: Spinlock,
-    _FreeJobStash: Stash< U16>,                                        // A Stack of free jobIds
-    _JobBuff: Buff< Box< JobFn< 'a>>>,
+    _StartCount:    U32,                                                    // Count of Processing Queue started, used for startup and shutdown
+    _SzSchedJob:    Atm< U32>,                                              // Count of cumulative jobs in flight
+    _LockedMark:    U32,
+    _Mavens:        Buff< Maven>,
+    _SzPreds:       Buff< Atm< U16>>,                                       // Count of predessors for job at the jobId
+    _SuccIds:       Buff< U16>,
+    _FreeJobLock:   Spinlock,
+    _FreeJobStash:  Stash< U16>,                                            // A Stack of free jobIds
+    _JobBuff:       Buff< Box< JobFn< 'a>>>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
