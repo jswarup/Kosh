@@ -224,9 +224,6 @@ macro_rules! BudTree {
     ( $lhs:ident | $($rhs:tt)+ ) => {
         Box::new( $crate::stalks::bud::BudNode::NewPar( $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
     };
-    ( $leaf:ident ) => {
-        $crate::stalks::bud::IntoBud::IntoBud( $leaf )
-    };
     ( $leaf:expr ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $leaf )
     };

@@ -153,18 +153,18 @@ fn	TestChoreBuds()
     use crate::heist::chore::Chore;
 
 
-    let  	aChore = Chore::New( U32( 10));
+    let  	aChore: Chore = Chore::New( U32( 10));
     let  	bChore = Chore::New( U32( 20));
     let  	cChore = Chore::New( U32( 30));
-    let  	budTree = crate::BudTree!( (aChore < bChore) | ( cChore ));
-
+    let  	budTree = crate::BudTree!( ( cChore < ( aChore |bChore) ) );
+    budTree.Print();
 
     let  	atelier = Atelier::New( U32( 4));
-    let  	mainMaestro = atelier.MainMaestro();
+    let  	_mainMaestro = atelier.MainMaestro();
 
-    budTree.Post( &mainMaestro);
-    //let  	mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( chore));
-    //mainMaestro.EnqueueJob( &mut jobId);
+    //budTree.Post( &_mainMaestro);
+    //let  	mut jobId = _mainMaestro.ConstructJob( U16( 0), Box::new( chore));
+    //_mainMaestro.EnqueueJob( &mut jobId);
     atelier.DoLaunch();
 }
 
