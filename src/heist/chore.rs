@@ -70,7 +70,9 @@ impl std::fmt::Display for Chore
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl dyn Bud<Chore>+ '_
+impl< T> dyn Bud< T> + '_
+where
+    T: IWork + Clone + Default + 'static,
 {
     pub fn	Post( &self, worker:  &dyn IWorker )
     {
@@ -83,7 +85,9 @@ impl dyn Bud<Chore>+ '_
 
         impl  JobStash
         {
-            fn	Process( &mut self, node: &dyn Bud< Chore>, maestro: &Maestro< '_>, succId: U16) -> U16
+            fn	Process< T>( &mut self, node: &dyn Bud< T>, maestro: &Maestro< '_>, succId: U16) -> U16
+            where
+                T: IWork + Clone + Default + 'static,
             {
                 if node.Left().is_none() && node.Right().is_none() {
                     let  	choreJob: Box< dyn IWork> = Box::new( node.Val());
