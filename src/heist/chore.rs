@@ -9,20 +9,15 @@ use	crate::stalks::bud::Bud;
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Copy, Clone, Debug, PartialEq, Eq, Default)]
-pub struct Chore
-{
-    pub Ind: U32,
-}
+pub struct Chore;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl Chore
 {
-    pub fn	New< S: Into< U32>>( ind: S) -> Self
+    pub fn	New() -> Self
     {
-        Self {
-            Ind: ind.into(),
-        }
+        Self
     }
 }
 
@@ -32,7 +27,7 @@ impl IWork for Chore
 {
     fn	DoWork( &mut self, _worker: &dyn IWorker)
     {
-        println!( "{}", self.Ind);
+        println!( "Chore");
     }
 }
 
@@ -68,7 +63,7 @@ impl std::fmt::Display for Chore
 {
     fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
-        write!( f, "{}", self.Ind)
+        write!( f, "Chore")
     }
 }
 
