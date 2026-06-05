@@ -6,11 +6,20 @@ pub trait Bud<T>
 {
     fn	Val( &self) -> T;
 
-    fn	Left( &self) -> Option< &dyn Bud<T>>;
+    fn	Left( &self) -> Option< &dyn Bud<T>>
+    {
+        None
+    }
 
-    fn	Right( &self) -> Option< &dyn Bud<T>>;
+    fn	Right( &self) -> Option< &dyn Bud<T>>
+    {
+        None
+    }
 
-    fn	Op( &self) -> &str;
+    fn	Op( &self) -> &str
+    {
+        ""
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

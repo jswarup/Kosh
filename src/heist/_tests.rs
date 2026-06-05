@@ -107,9 +107,9 @@ fn	TestChoreBuds()
     use crate::heist::chore::Chore;
 
 
-    let  	aChore = Chore::New();
-    let  	bChore = Chore::New();
-    let  	cChore = Chore::New();
+    let  	aChore = Chore::New(|_m| { print!( "{} ", 10); });
+    let  	bChore = Chore::New(|_m| { print!( "{} ", 20); });
+    let  	cChore = Chore::New(|_m| { print!( "{} ", 40); });
     let  	budTree = crate::BudTree!( ( cChore < ( bChore | aChore ) ));
     budTree.Print();
 

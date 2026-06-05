@@ -205,6 +205,7 @@ impl< 'a> Atelier< 'a>
                 std::thread::yield_now();
             }
         }
+         println!();
         println!( "{}: {} Done", mavenIdx, maven.SzProcessed());
     }
 

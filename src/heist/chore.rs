@@ -8,16 +8,30 @@ use	crate::stalks::bud::Bud;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Copy, Clone, Debug, PartialEq, Eq, Default)]
-pub struct Chore;
+#[derive( Copy, Clone, Debug)]
+pub struct Chore {
+    _Closure: fn(&dyn IWorker),
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl Default for Chore {
+    fn default() -> Self {
+        Self {
+            _Closure: |_| {},
+        }
+    }
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl Chore
 {
-    pub fn	New() -> Self
+    pub fn	New( f: fn( &dyn IWorker ) ) -> Self
     {
-        Self
+        Self {
+            _Closure: f,
+        }
     }
 }
 
@@ -25,9 +39,9 @@ impl Chore
 
 impl IWork for Chore
 {
-    fn	DoWork( &mut self, _worker: &dyn IWorker)
+    fn	DoWork( &mut self, worker: &dyn IWorker)
     {
-        println!( "Chore");
+        (self._Closure)(worker);
     }
 }
 
@@ -39,21 +53,6 @@ impl Bud< Chore> for Chore
     fn	Val( &self) -> Chore
     {
         *self
-    }
-
-    fn	Left( &self) -> Option< &dyn Bud< Chore>>
-    {
-        None
-    }
-
-    fn	Right( &self) -> Option< &dyn Bud< Chore>>
-    {
-        None
-    }
-
-    fn	Op( &self) -> &str
-    {
-        ""
     }
 }
 
