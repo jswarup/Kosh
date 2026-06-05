@@ -15,14 +15,14 @@ fn	BuffBasicAtelierTest()
 {
     fn	trialJob( worker: &dyn IWorker)
     {
-		let  	maestro = worker.AsMaestro().unwrap();
+		let  	maestro = Maestro::FromWorker( worker);
 		let  	mut jobId = maestro.CurSuccId();
         jobId =  maestro.ConstructJob(  jobId, Box::new(|w1: &dyn IWorker| {
-            println!( "Trial1 {}", w1.AsMaestro().unwrap().MavenIndex());
+            println!( "Trial1 {}", Maestro::FromWorker( w1).MavenIndex());
         }));
 
         jobId =  maestro.ConstructJob(  jobId, Box::new(|w2: &dyn IWorker| {
-            println!( "Trial2 {}", w2.AsMaestro().unwrap().MavenIndex());
+            println!( "Trial2 {}", Maestro::FromWorker( w2).MavenIndex());
         }));
         maestro.EnqueueJob( &mut jobId);
         println!( "Trial {}", maestro.MavenIndex());

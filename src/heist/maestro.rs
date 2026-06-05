@@ -1,6 +1,6 @@
 //-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::atelier::Atelier;
-use	crate::silo::{ arr::Arr, buff::Buff, stash::Stash};
+use	crate::silo::{ buff::Buff, stash::Stash};
 use	crate::silo::uint::{ U16, U32};
 use	crate::stalks::work::{ IWorker, WorkFn };
 
@@ -44,6 +44,15 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    pub fn	FromWorker( worker: &dyn IWorker) -> &Self
+    {
+        let ptr = worker.AsRaw();
+        assert!( !ptr.is_null());
+        unsafe { &*(ptr as *const Self) }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	CurSuccId( &self) -> U16
     {
         let     maven = self._Atelier.Mavens().At( self._MavenIndex);
@@ -67,7 +76,7 @@ impl< 'a> Maestro< 'a>
     pub fn	ConstructEnqueueBulk( &self, succId: U16, buff : Buff< U16>) ->  U16
     {
          return self.ConstructJob( succId, Box::new( move | worker: &dyn IWorker| {
-            let  	maestro = worker.AsMaestro().unwrap();
+            let  	maestro = Maestro::FromWorker( worker);
             let  	arr = buff.Arr();
             arr.USeg().Traverse( | i| {
                 maestro._Atelier.EnqueueJob( self._MavenIndex, arr.MutAt( i));
@@ -91,40 +100,9 @@ impl< 'a> IWorker for Maestro< 'a>
         self.EnqueueJob( &mut jobId);
     }
 
-    fn	PostJobs( &self, jobs: Arr< '_, Box< WorkFn< '_>>>)
+    fn	AsRaw( &self) -> *const ()
     {
-        if jobs.IsEmpty() {
-            return;
-        }
-        if jobs.len() == 1 {
-            let  	mut job = Box::new( |_w: &dyn IWorker| {}) as Box< WorkFn< '_>>;
-            jobs.MoveAt( 0, &mut job);
-            self.PostJob( job);
-            return;
-        }
-        let  	buff = Buff::Create( jobs.Size(), | i| {
-            let  	mut job = Box::new( |_w: &dyn IWorker| {}) as Box< WorkFn< '_>>;
-            jobs.MoveAt( i, &mut job);
-            job
-        });
-        let  	branchJob = Box::new( move | worker: &dyn IWorker| {
-            let  	maestro = worker.AsMaestro().unwrap();
-            let  	arr = buff.Arr();
-            let  	succId = maestro.CurSuccId();
-            arr.USeg().Span( | i| {
-                let  	mut job = Box::new( |_w: &dyn IWorker| {}) as Box< WorkFn< '_>>;
-                arr.MoveAt( i, &mut job);
-                let  	mut jobId = maestro.ConstructJob( succId, job);
-                maestro.EnqueueJob( &mut jobId);
-                true
-            });
-        });
-        self.PostJob( branchJob);
-    }
-
-    fn	AsMaestro( &self) -> Option< &Maestro< 'a>>
-    {
-        Some( self)
+        self as *const Self as *const ()
     }
 }
 

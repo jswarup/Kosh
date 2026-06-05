@@ -79,7 +79,7 @@ where
 {
     pub fn	Post( &self, worker:  &dyn IWorker )
     {
-        let  	maestro: &Maestro<'_> = worker.AsMaestro().unwrap();
+        let  	maestro: &Maestro<'_> = Maestro::FromWorker( worker);
 
         struct JobStash
         {

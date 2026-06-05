@@ -1,6 +1,4 @@
 //-- work.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::heist::maestro::Maestro;
-use	crate::silo::arr::Arr;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -29,11 +27,9 @@ pub trait IWorker
 {
     fn	PostJob( &self, job: Box< WorkFn< '_>>);
 
-    fn	PostJobs( &self, jobs: Arr< '_, Box< WorkFn< '_>>>);
-
-    fn	AsMaestro( &self) -> Option< &Maestro< '_>>
+    fn	AsRaw( &self) -> *const ()
     {
-        None
+        std::ptr::null()
     }
 }
 
@@ -58,11 +54,9 @@ impl IWorker for Worker
         job.DoWork( self);
     }
 
-    fn	PostJobs( &self, mut jobs: Arr< '_, Box< WorkFn< '_>>>)
+    fn	AsRaw( &self) -> *const ()
     {
-        for job in jobs.iter_mut() {
-            job.DoWork( self);
-        }
+        self as *const Self as *const ()
     }
 }
 
