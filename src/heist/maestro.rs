@@ -59,6 +59,8 @@ impl< 'a> Maestro< 'a>
         maven.CurSuccId()
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	ConstructJob( &self, succId: U16, jobBox: Box< WorkFn< 'a>>) -> U16
     {
         self._Atelier.ConstructJob( self._MavenIndex, succId, jobBox)
