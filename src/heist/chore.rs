@@ -1,6 +1,6 @@
 
 //-- chore.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::silo::uint::{ U16, U32 };
+use	crate::silo::uint::U16;
 use	crate::silo::{ stash::Stash};
 use	crate::heist::maestro::Maestro;
 use	crate::stalks::work::{ IWorker, IWork };
@@ -112,7 +112,7 @@ where
                         return self.Process( node.Left().unwrap(), maestro, rJobId);
                     }
 
-                    let mut rXStash : Stash< U16> = Stash::New( U32(0));
+                    let mut rXStash : Stash< U16> = Stash::New( rSz);
                     self._JobStash.Stk().Export( &rXStash.Stk(), rSz);
                     let     rBuff = rXStash.BuffOut();
                     let  	branchJob  = Box::new( move | worker: &dyn IWorker| {
