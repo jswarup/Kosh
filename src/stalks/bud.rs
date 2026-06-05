@@ -250,6 +250,9 @@ macro_rules! BudTree {
     ( $type:ident, $lhs:ident | $($rhs:tt)+ ) => {
         <$type as $crate::stalks::bud::BudOp>::par( $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $type, $($rhs)+ ) )
     };
+    ( $type:ident, | $($body:tt)+ ) => {
+        $crate::stalks::bud::IntoBud::IntoBud( ( | $($body)+ ) as fn(&dyn $crate::stalks::work::IWorker) )
+    };
     ( $type:ident, $leaf:expr ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $leaf )
     };
@@ -268,6 +271,9 @@ macro_rules! BudTree {
     };
     ( $lhs:ident | $($rhs:tt)+ ) => {
         Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
+    };
+    ( | $($body:tt)+ ) => {
+        $crate::stalks::bud::IntoBud::IntoBud( ( | $($body)+ ) as fn(&dyn $crate::stalks::work::IWorker) )
     };
     ( $leaf:expr ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $leaf )

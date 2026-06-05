@@ -110,7 +110,7 @@ fn	TestChoreBuds()
     let  	aChore = Chore::New(|_m| { print!( "{} ", 10); });
     let  	bChore = Chore::New(|_m| { print!( "{} ", 20); });
     let  	cChore = Chore::New(|_m| { print!( "{} ", 40); });
-    let  	budTree = crate::BudTree!( ( cChore < ( bChore | aChore ) ));
+    let  	budTree = crate::BudTree!( ( cChore < ( bChore | aChore | (|_m| { print!( "{} ", 50); }) )));
     budTree.Print();
 
     let  	atelier = Atelier::New( U32( 4));
