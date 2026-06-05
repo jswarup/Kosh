@@ -79,9 +79,8 @@ impl< T: Default> Stash< T>
         T: From< usize> + Clone,
     {
 		let  	arr = self._Buff.Arr();
-        arr.USeg().Span( |i: U32| {
+        arr.USeg().Traverse( |i: U32| {
             arr.SetAt( i, &T::from( i.as_usize()));
-            true
         });
         self._Sz.Store( arr.Size(), Ordering::Release);
     }

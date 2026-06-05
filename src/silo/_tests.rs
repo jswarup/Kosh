@@ -170,11 +170,9 @@ fn	USegSpanTest()
 	let  	seg = USeg::Create( 10, 6);
     // Case 1: All values return true
 	let  	mut visited = Vec::new();
-	let  	result = seg.Span( |val| {
+	seg.Traverse( |val| {
         visited.push( val);
-        true
     });
-    assert!( result);
     assert_eq!( visited, vec![10, 11, 12, 13, 14, 15]);
     // Case 2: One value returns false (early termination)
 	let  	mut visited2 = Vec::new();
@@ -441,9 +439,8 @@ fn	TestDoQSort()
 
 	let  	res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
 
-    arr.USeg().Span( |i| {
+    arr.USeg().Traverse( |i| {
         print!( "{} ", arr.At( i));
-        true
     });
     assert!( res);
 }
@@ -491,7 +488,7 @@ fn	TestStashDynamicPushback()
     // Pop and verify LIFO order and contents
     let stk = stash.Stk();
     let mut out = U32(0);
-    
+
     assert!( stk.Pop( &mut out));
     assert_eq!( out, 50);
 
@@ -532,20 +529,20 @@ fn	TestStashAppend()
 {
     // Test with initial size 2
     let mut stash = Stash::<U32>::New(2);
-    
+
     // Create an Arr of elements to append
     let mut data = [U32(10), U32(20), U32(30)];
     let arr = Arr::from(&mut data);
-    
+
     stash.Append(arr);
     assert_eq!( stash.Size(), 3);
     // Buffer should resize to exactly 3 since neededSz (3) > current capacity (2)
     assert_eq!( stash.Size() + stash.Stk().SzVoid(), 3);
-    
+
     // Pop and verify elements (LIFO order: 30, 20, 10)
     let stk = stash.Stk();
     let mut out = U32(0);
-    
+
     assert!( stk.Pop( &mut out));
     assert_eq!( out, 30);
 

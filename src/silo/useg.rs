@@ -110,6 +110,17 @@ impl USeg
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    pub fn	Traverse< F>( &self, mut lambda: F)
+    where
+        F: FnMut( U32),
+    {
+        for i in self._First.as_u32()..=self._Last.as_u32() {
+            lambda( U32( i))
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     fn	Partition< LessAt, SwapAt>( &self, lessAt: &LessAt, swapAt: &mut SwapAt) -> U32
     where
         LessAt: Fn( U32, U32) -> bool,
@@ -120,12 +131,11 @@ impl USeg
             swapAt( self._First, mid);
         }
 		let  	mut pivot = self._First;
-        self.LSnip( 1).Span( &mut |i| {
+        self.LSnip( 1).Traverse( &mut |i| {
             if lessAt( i, self._First) {
                 pivot = pivot + 1;
                 swapAt( pivot, i);
             }
-            true
         });
         if lessAt( pivot, self._First) {
             swapAt( self._First, pivot);

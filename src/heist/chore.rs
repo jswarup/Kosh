@@ -118,9 +118,8 @@ where
                     let  	branchJob  = Box::new( move | worker: &dyn IWorker| {
                         let  	maestro = worker.AsMaestro().unwrap();
                         let  	arr = rBuff.Arr();
-                        arr.USeg().Span( | i| {
+                        arr.USeg().Traverse( | i| {
                             maestro.EnqueueJob( arr.MutAt( i));
-                            true
                         });
                     });
                     let  	branchId = maestro.ConstructJob( succId, branchJob);
@@ -139,9 +138,8 @@ where
 
         jobStash.Process( self, maestro, succId);
         let     jobArr = jobStash._JobStash.Stk().Arr();
-        jobArr.USeg().Span( |i| {
+        jobArr.USeg().Traverse( |i| {
             maestro.EnqueueJob( jobArr.MutAt( i));
-            true
         });
         return;
     }

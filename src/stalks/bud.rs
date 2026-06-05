@@ -90,15 +90,15 @@ impl< T: std::fmt::Display> dyn Bud<T>+ '_
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BudBinOp {
-    Seq,
-    Par,
+    LT,
+    BOR,
 }
 
 impl BudBinOp {
     pub fn as_str(&self) -> &'static str {
         match self {
-            BudBinOp::Seq => "<",
-            BudBinOp::Par => "|",
+            BudBinOp::LT => "<",
+            BudBinOp::BOR => "|",
         }
     }
 }
@@ -207,10 +207,10 @@ impl< T: Bud< T> + 'static> IntoBud< T> for T
 
 pub trait BudOp: Clone + Default + 'static {
     fn seq(left: Box<dyn Bud<Self>>, right: Box<dyn Bud<Self>>) -> Box<dyn Bud<Self>> {
-        Box::new(BudNode::Create(BudBinOp::Seq, left, right))
+        Box::new(BudNode::Create(BudBinOp::LT, left, right))
     }
     fn par(left: Box<dyn Bud<Self>>, right: Box<dyn Bud<Self>>) -> Box<dyn Bud<Self>> {
-        Box::new(BudNode::Create(BudBinOp::Par, left, right))
+        Box::new(BudNode::Create(BudBinOp::BOR, left, right))
     }
 }
 
@@ -258,16 +258,16 @@ macro_rules! BudTree {
         $crate::BudTree!( $($inner)+ )
     };
     (  ( $($lhs:tt)+ ) < $($rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::Seq, $crate::BudTree!( $($lhs)+ ), $crate::BudTree!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
+        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::LT, $crate::BudTree!( $($lhs)+ ), $crate::BudTree!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
     };
     ( ( $($lhs:tt)+ ) | $($rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::Par, $crate::BudTree!( $($lhs)+ ), $crate::BudTree!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
+        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::BudTree!( $($lhs)+ ), $crate::BudTree!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
     };
     ( $lhs:ident < $($rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::Seq, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
+        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::LT, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
     };
     ( $lhs:ident | $($rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::Par, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
+        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $($rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
     };
     ( $leaf:expr ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $leaf )

@@ -84,9 +84,8 @@ fn	TestDoQSort()
 	jobId = mainMaestro.ConstructJob(  jobId, Box::new( |_worker: &dyn IWorker| {
         let  	_res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
 
-        arr.USeg().Span( |i| {
+        arr.USeg().Traverse( |i| {
             print!( "{} ", arr.At( i));
-            true
         });
         println!();
     }));

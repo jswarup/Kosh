@@ -205,8 +205,6 @@ impl< 'a> Atelier< 'a>
                 std::thread::yield_now();
             }
         }
-         println!();
-        println!( "{}: {} Done", mavenIdx, maven.SzProcessed());
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -221,6 +219,10 @@ impl< 'a> Atelier< 'a>
                 });
             }
             self.ExecuteLoop( U32( 0));
+        });
+        println!();
+        mavens.USeg().Traverse( | mavenIdx| {
+            println!( "{}: {} Done", mavenIdx, mavens.At( mavenIdx).SzProcessed());
         });
         print!( "DoLaunch Over")
     }
