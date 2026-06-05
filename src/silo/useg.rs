@@ -100,7 +100,7 @@ impl USeg
         if self.IsEmpty() {
             return true;
         }
-        for i in self._First.as_u32()..=self._Last.as_u32() {
+        for i in self._First.as_u32()..self._Last.as_u32() {
             if !lambda( U32( i)) {
                 return false;
             }
@@ -114,6 +114,9 @@ impl USeg
     where
         F: FnMut( U32),
     {
+        if self.IsEmpty() {
+            return;
+        }
         for i in self._First.as_u32()..=self._Last.as_u32() {
             lambda( U32( i))
         }
