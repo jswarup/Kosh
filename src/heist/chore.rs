@@ -114,15 +114,7 @@ where
 
                     let mut rXStash : Stash< U16> = Stash::New( rSz);
                     self._JobStash.Stk().Export( &rXStash.Stk(), rSz);
-                    let     rBuff = rXStash.BuffOut();
-                    let  	branchJob  = Box::new( move | worker: &dyn IWorker| {
-                        let  	maestro = worker.AsMaestro().unwrap();
-                        let  	arr = rBuff.Arr();
-                        arr.USeg().Traverse( | i| {
-                            maestro.EnqueueJob( arr.MutAt( i));
-                        });
-                    });
-                    let  	branchId = maestro.ConstructJob( succId, branchJob);
+                    let  	branchId = maestro.ConstructEnqueueBulk( succId, rXStash.BuffOut());
                     let  	succL = self.Process( node.Left().unwrap(), maestro, branchId);
                     return succL;
                 } else {

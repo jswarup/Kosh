@@ -62,6 +62,19 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    pub fn	ConstructEnqueueBulk( &self, succId: U16, buff : Buff< U16>) ->  U16
+    {
+         return self.ConstructJob( succId, Box::new( move | worker: &dyn IWorker| {
+            let  	maestro = worker.AsMaestro().unwrap();
+            let  	arr = buff.Arr();
+            arr.USeg().Traverse( | i| {
+                maestro.EnqueueJob( arr.MutAt( i));
+            });
+        }));
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
 }
 
 
