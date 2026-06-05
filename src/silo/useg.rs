@@ -1,8 +1,7 @@
 //-- silo/useg.rs ---------------------------------------------------------------------------------------------------------------------
 
 use	crate::silo::uint::U32;
-use crate::silo::arr::Arr;
-use crate::stalks::work::{ IWorker, WorkFn };
+use crate::stalks::work::IWorker;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -180,31 +179,24 @@ impl USeg
         }
 		let  	pivot = self.Partition( &lessAt, &mut |i, j| swapAt( i, j));
 
-        let  	mut sz = 0;
-        let  	mut chunkWorks: [Box<WorkFn<'a>>; 2] = [ Box::new(|_w: &dyn IWorker| {}), Box::new(|_w: &dyn IWorker| {}), ];
-
 		let  	useg1 = USeg::Create( self._First, pivot - self._First);
         if useg1.Size() > 1 {
             let lessAtClone = lessAt.clone();
             let swapAtClone = swapAt.clone();
-            chunkWorks[sz] = Box::new( move |w: &dyn IWorker| {
+            worker.PostJob( Box::new( move |w: &dyn IWorker| {
                 useg1.DoQSort(w, lessAtClone.clone(), swapAtClone.clone());
-            });
-            sz += 1;
+            }));
         }
 
 		let  	useg2 = USeg::Create( pivot + 1, self._Last - pivot);
         if useg2.Size() > 1 {
             let lessAtClone = lessAt.clone();
             let swapAtClone = swapAt.clone();
-            chunkWorks[sz] = Box::new( move |w: &dyn IWorker| {
+            worker.PostJob( Box::new( move |w: &dyn IWorker| {
                 useg2.DoQSort(w, lessAtClone.clone(), swapAtClone.clone());
-            });
-            sz += 1;
+            }));
         }
 
-        let  	arrWorks = Arr::from( &mut chunkWorks[..sz]);
-        worker.PostJobs( arrWorks);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

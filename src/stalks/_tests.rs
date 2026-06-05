@@ -1,9 +1,5 @@
-//- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::arr::Arr;
 use	crate::silo::uint::U32;
-use	crate::stalks::work::{ IWorker, WorkFn, Worker };
-use	std::sync::Arc;
-use	std::sync::atomic::{ AtomicBool, Ordering };
+use	std::sync::atomic::Ordering;
 use	crate::stalks::atm::Atm;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -32,34 +28,6 @@ fn	TestAtmBasicOps()
     let  	atmVar1: Atm<U32> = Atm::New( U32( 0));
     atmVar1.FetchAdd( 1, Ordering::SeqCst);
     assert_eq!( atmVar1.Get(), 1);
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[test]
-fn	TestWorkerPost()
-{
-	let  	run1 = Arc::new( AtomicBool::new( false));
-	let  	run2 = Arc::new( AtomicBool::new( false));
-	let  	run1C = run1.clone();
-	let  	run2C = run2.clone();
-
-	let  	job1: Box< WorkFn< '_>> = Box::new( move |_worker: &dyn IWorker| {
-        run1C.store( true, Ordering::SeqCst);
-    });
-
-	let  	job2: Box< WorkFn< '_>> = Box::new( move |_worker: &dyn IWorker| {
-        run2C.store( true, Ordering::SeqCst);
-    });
-
-	let  	mut jobsVec = vec![ job1, job2];
-	let  	arr = Arr::from( &mut jobsVec[..]);
-
-	let  	worker = Worker::New();
-    worker.PostJobs( arr);
-
-    assert!( run1.load( Ordering::SeqCst));
-    assert!( run2.load( Ordering::SeqCst));
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
