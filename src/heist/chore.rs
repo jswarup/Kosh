@@ -59,7 +59,7 @@ impl Bud< Chore> for Chore
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl crate::stalks::bud::BudOp for Chore {
-    fn is_op_allowed(op: crate::stalks::bud::BudBinOp) -> bool {
+    fn IsOpAllowed(op: crate::stalks::bud::BudBinOp) -> bool {
         matches!(op, crate::stalks::bud::BudBinOp::LT | crate::stalks::bud::BudBinOp::BOR)
     }
 }

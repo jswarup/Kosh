@@ -65,7 +65,7 @@ fn TestUnsupportedOpPanic() {
         }
     }
     impl crate::stalks::bud::BudOp for Dummy {
-        fn is_op_allowed(_op: crate::stalks::bud::BudBinOp) -> bool {
+        fn IsOpAllowed(_op: crate::stalks::bud::BudBinOp) -> bool {
             false
         }
     }
