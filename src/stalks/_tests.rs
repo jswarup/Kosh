@@ -53,3 +53,25 @@ fn	TestBudBasicOps()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+#[should_panic(expected = "Binary operation not supported for this type")]
+fn TestUnsupportedOpPanic() {
+    #[derive(Clone, Default)]
+    struct Dummy;
+    impl crate::stalks::bud::Bud<Dummy> for Dummy {
+        fn Val(&self) -> Dummy {
+            Self
+        }
+    }
+    impl crate::stalks::bud::BudOp for Dummy {
+        fn is_op_allowed(_op: crate::stalks::bud::BudBinOp) -> bool {
+            false
+        }
+    }
+    let left = Box::new(Dummy) as Box<dyn crate::stalks::bud::Bud<Dummy>>;
+    let right = Box::new(Dummy) as Box<dyn crate::stalks::bud::Bud<Dummy>>;
+    let _combined = <Dummy as crate::stalks::bud::BudOp>::seq(left, right);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------

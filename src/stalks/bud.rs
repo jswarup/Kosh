@@ -120,19 +120,23 @@ pub struct BudNode< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl< T: BudOp> BudNode< T>
+{
+    pub fn	Create( op: BudBinOp, left: Box< dyn Bud<T>>, right: Box< dyn Bud<T>>) -> Self
+    {
+        assert!( T::is_op_allowed( op), "Binary operation not supported for this type");
+        Self {
+            _Type: BudType::Bin( op, left, right),
+        }
+    }
+}
+
 impl< T> BudNode< T>
 {
     pub fn	NewVal( id: T) -> Self
     {
         Self {
             _Type: BudType::Val( id),
-        }
-    }
-
-    pub fn	Create( op: BudBinOp, left: Box< dyn Bud<T>>, right: Box< dyn Bud<T>>) -> Self
-    {
-        Self {
-            _Type: BudType::Bin( op, left, right),
         }
     }
 }
@@ -206,6 +210,9 @@ impl< T: Bud< T> + 'static> IntoBud< T> for T
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub trait BudOp: Clone + Default + 'static {
+    fn is_op_allowed(_op: BudBinOp) -> bool {
+        true
+    }
     fn seq(left: Box<dyn Bud<Self>>, right: Box<dyn Bud<Self>>) -> Box<dyn Bud<Self>> {
         Box::new(BudNode::Create(BudBinOp::LT, left, right))
     }
