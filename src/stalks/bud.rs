@@ -233,6 +233,24 @@ impl_into_bud_for_primitives!( f64, f32, i32, i64, u32, u64, String, &'static st
 
 #[macro_export]
 macro_rules! BudTree {
+    ( Shard, ( $lbl:expr ) [ | $( $body:tt)+ ] < $( $rhs:tt)+ ) => {
+        < Shard as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::LT, $crate::stalks::bud::IntoBud::IntoBud( $crate::segue::shard::Shard::WithClosure( $lbl, | $( $body)+ ) ), $crate::BudTree!( Shard, $( $rhs)+ ) )
+    };
+    ( Shard, $lbl:literal [ | $( $body:tt)+ ] < $( $rhs:tt)+ ) => {
+        < Shard as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::LT, $crate::stalks::bud::IntoBud::IntoBud( $crate::segue::shard::Shard::WithClosure( $lbl, | $( $body)+ ) ), $crate::BudTree!( Shard, $( $rhs)+ ) )
+    };
+    ( Shard, ( $lbl:expr ) [ | $( $body:tt)+ ] | $( $rhs:tt)+ ) => {
+        < Shard as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::stalks::bud::IntoBud::IntoBud( $crate::segue::shard::Shard::WithClosure( $lbl, | $( $body)+ ) ), $crate::BudTree!( Shard, $( $rhs)+ ) )
+    };
+    ( Shard, $lbl:literal [ | $( $body:tt)+ ] | $( $rhs:tt)+ ) => {
+        < Shard as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::stalks::bud::IntoBud::IntoBud( $crate::segue::shard::Shard::WithClosure( $lbl, | $( $body)+ ) ), $crate::BudTree!( Shard, $( $rhs)+ ) )
+    };
+    ( Shard, ( $lbl:expr ) [ | $( $body:tt)+ ] ) => {
+        $crate::stalks::bud::IntoBud::IntoBud( $crate::segue::shard::Shard::WithClosure( $lbl, | $( $body)+ ) )
+    };
+    ( Shard, $lbl:literal [ | $( $body:tt)+ ] ) => {
+        $crate::stalks::bud::IntoBud::IntoBud( $crate::segue::shard::Shard::WithClosure( $lbl, | $( $body)+ ) )
+    };
     ( $type:ident, ( $( $inner:tt)+ ) ) => {
         $crate::BudTree!( $type, $( $inner)+ )
     };
