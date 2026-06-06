@@ -2,16 +2,14 @@
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IWork: Send + Sync
-{
+pub trait IWork: Send + Sync {
     fn	DoWork( &mut self, worker: &dyn IWorker);
 }
-
 impl< F> IWork for F
 where
-    F: for<'r> FnMut( &'r (dyn IWorker + 'r)) + Send + Sync,
-{
-    fn	DoWork( &mut self, worker: &dyn IWorker)
+    F: for< 'r> FnMut( &'r ( dyn IWorker + 'r)) + Send + Sync,
+    {
+    fn	DoWork( &mut self, worker: &dyn IWorker) 
     {
         self( worker);
     }
@@ -23,11 +21,9 @@ pub type WorkFn< 'a> = dyn IWork + 'a;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IWorker
-{
+pub trait IWorker {
     fn	PostJob( &self, job: Box< WorkFn< '_>>);
-
-    fn	AsRaw( &self) -> *const ()
+    fn	AsRaw( &self) -> *const () 
     {
         std::ptr::null()
     }
@@ -36,10 +32,9 @@ pub trait IWorker
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub struct Worker;
-
-impl Worker
+impl Worker 
 {
-    pub fn	New() -> Self
+    pub fn	New() -> Self 
     {
         Self
     }
@@ -47,14 +42,13 @@ impl Worker
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IWorker for Worker
+impl IWorker for Worker 
 {
-    fn	PostJob( &self, mut job: Box< WorkFn< '_>>)
+    fn	PostJob( &self, mut job: Box< WorkFn< '_>>) 
     {
         job.DoWork( self);
     }
-
-    fn	AsRaw( &self) -> *const ()
+    fn	AsRaw( &self) -> *const () 
     {
         self as *const Self as *const ()
     }

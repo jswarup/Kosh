@@ -1,56 +1,53 @@
-
 //-- chore.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::silo::uint::U16;
-use	crate::silo::{ stash::Stash};
 use	crate::heist::maestro::Maestro;
-use	crate::stalks::work::{ IWorker, IWork };
+use	crate::silo::stash::Stash;
+use	crate::silo::uint::U16;
 use	crate::stalks::bud::Bud;
+use	crate::stalks::work::{ IWork, IWorker };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Copy, Clone, Debug)]
-pub struct Chore {
-    _Closure: fn(&dyn IWorker),
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl Default for Chore {
-    fn default() -> Self {
-        Self {
-            _Closure: |_| {},
-        }
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl Chore
+pub struct Chore 
 {
-    pub fn	New( f: fn( &dyn IWorker ) ) -> Self
+    _Closure: fn( &dyn IWorker),
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl Default for Chore 
+{
+    fn	default() -> Self 
     {
-        Self {
-            _Closure: f,
-        }
+        Self { _Closure: |_| {} }
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IWork for Chore
+impl Chore 
 {
-    fn	DoWork( &mut self, worker: &dyn IWorker)
+    pub fn	New( f: fn( &dyn IWorker)) -> Self 
     {
-        (self._Closure)(worker);
+        Self { _Closure: f }
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IWork for Chore 
+{
+    fn	DoWork( &mut self, worker: &dyn IWorker) 
+    {
+        ( self._Closure)( worker);
+    }
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl Bud< Chore> for Chore
+impl Bud< Chore> for Chore 
 {
-    fn	Val( &self) -> Chore
+    fn	Val( &self) -> Chore 
     {
         *self
     }
@@ -58,22 +55,26 @@ impl Bud< Chore> for Chore
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::stalks::bud::BudOp for Chore {
-    fn IsOpAllowed(op: crate::stalks::bud::BudBinOp) -> bool {
-        matches!(op, crate::stalks::bud::BudBinOp::LT | crate::stalks::bud::BudBinOp::BOR)
+impl crate::stalks::bud::BudOp for Chore 
+{
+    fn	IsOpAllowed( op: crate::stalks::bud::BudBinOp) -> bool 
+    {
+        matches!( 
+            op,
+            crate::stalks::bud::BudBinOp::LT | crate::stalks::bud::BudBinOp::BOR
+        )
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl std::fmt::Display for Chore
+impl std::fmt::Display for Chore 
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result 
     {
         write!( f, "Chore")
     }
 }
-
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -81,16 +82,14 @@ impl< T> dyn Bud< T> + '_
 where
     T: IWork + Clone + Default + 'static,
 {
-    pub fn	Post( &self, worker:  &dyn IWorker )
+    pub fn	Post( &self, worker: &dyn IWorker) 
     {
-        let  	maestro: &Maestro<'_> = Maestro::FromWorker( worker);
-
-        struct JobStash
+        let  	maestro: &Maestro< '_> = Maestro::FromWorker( worker);
+        struct JobStash 
         {
             _JobStash: Stash< U16>,
         }
-
-        impl  JobStash
+        impl JobStash 
         {
             fn	Process< T>( &mut self, node: &dyn Bud< T>, maestro: &Maestro< '_>, succId: U16) -> U16
             where
@@ -103,20 +102,19 @@ where
                     return jobId;
                 }
                 if node.Op() == "|" {
-                    let     _succR = self.Process( node.Right().unwrap(), maestro, succId);
+                    let  	_succR = self.Process( node.Right().unwrap(), maestro, succId);
                     let  	_succL = self.Process( node.Left().unwrap(), maestro, succId);
                     return succId;
                 }
-                if node.Op() == "<" {
-                    let     mark = self._JobStash.Size();
+                if node.Op() == "< " {
+                    let  	mark = self._JobStash.Size();
                     let  	rJobId = self.Process( node.Right().unwrap(), maestro, succId);
-                    let     jStk = self._JobStash.Stk();
-                    let     rSz =  jStk.Size() -mark;
+                    let  	jStk = self._JobStash.Stk();
+                    let  	rSz = jStk.Size() - mark;
                     if rSz == 1 {
                         return self.Process( node.Left().unwrap(), maestro, rJobId);
                     }
-
-                    let mut rXStash : Stash< U16> = Stash::New( rSz);
+                    let  	mut rXStash: Stash< U16> = Stash::New( rSz);
                     self._JobStash.Stk().Export( &rXStash.Stk(), rSz);
                     let  	branchId = maestro.ConstructEnqueueBulk( succId, rXStash.BuffOut());
                     let  	succL = self.Process( node.Left().unwrap(), maestro, branchId);
@@ -126,14 +124,13 @@ where
                     return U16( 0);
                 }
             }
-
         }
-
         let  	succId = maestro.CurSuccId();
-        let  	mut jobStash = JobStash { _JobStash: Stash::New( 0) };
-
+        let  	mut jobStash = JobStash {
+            _JobStash: Stash::New( 0),
+        };
         jobStash.Process( self, maestro, succId);
-        let     jobArr = jobStash._JobStash.Stk().Arr();
+        let  	jobArr = jobStash._JobStash.Stk().Arr();
         jobArr.USeg().Traverse( |i| {
             maestro.EnqueueJob( jobArr.MutAt( i));
         });
@@ -143,14 +140,12 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::stalks::bud::IntoBud<Chore> for fn( &dyn IWorker )
+impl crate::stalks::bud::IntoBud< Chore> for fn( &dyn IWorker) 
 {
-    fn	IntoBud( self) -> Box< dyn Bud< Chore>>
+    fn	IntoBud( self) -> Box< dyn Bud< Chore>> 
     {
-        Box::new( Chore::New( self ) )
+        Box::new( Chore::New( self))
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
-

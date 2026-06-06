@@ -1,5 +1,4 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::stalks::atm::Atm;
 use	crate::silo::arr::Arr;
 use	crate::silo::buff::Buff;
 use	crate::silo::stash::Stash;
@@ -7,13 +6,14 @@ use	crate::silo::stk::Stk;
 #[warn( unused_imports)]
 use	crate::silo::uint::{ U16, U32 };
 use	crate::silo::useg::USeg;
+use	crate::stalks::atm::Atm;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	BuffBasicOpsTest()
+fn	BuffBasicOpsTest() 
 {
-	let  	mut buff = Buff::New( 10, 42);
+    let  	mut buff = Buff::New( 10, 42);
     assert_eq!( buff.len(), 10);
     assert_eq!( buff[0], 42);
     assert_eq!( buff[1], 42);
@@ -28,33 +28,30 @@ fn	BuffBasicOpsTest()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	BuffFromTest()
+fn	BuffFromTest() 
 {
     // Test creation from a slice
-	let  	sliceData = [10, 20, 30];
-	let  	buffFromSlice = Buff::from( &sliceData[..]);
+    let  	sliceData = [10, 20, 30];
+    let  	buffFromSlice = Buff::from( &sliceData[..]);
     assert_eq!( buffFromSlice.len(), 3);
     assert_eq!( buffFromSlice[0], 10);
     assert_eq!( buffFromSlice[1], 20);
     assert_eq!( buffFromSlice[2], 30);
     // Test creation from a Vec
-	let  	vecData = vec![40, 50];
-	let  	buffFromVec = Buff::from( vecData);
+    let  	vecData = vec![40, 50];
+    let  	buffFromVec = Buff::from( vecData);
     assert_eq!( buffFromVec.len(), 2);
     assert_eq!( buffFromVec[0], 40);
     assert_eq!( buffFromVec[1], 50);
-
     // Test creation from an array directly
-	let  	buffFromArr = Buff::from( [100, 200, 300, 400]);
+    let  	buffFromArr = Buff::from( [100, 200, 300, 400]);
     assert_eq!( buffFromArr.len(), 4);
     assert_eq!( buffFromArr[2], 300);
-
-	let  	buff1 = Buff::New( 10, ());
+    let  	buff1 = Buff::New( 10, ());
     assert_eq!( buff1.Size(), 10);
     assert_eq!( buff1[5], ());
-
     let  	buff2 = Buff::Create( 5, |_| 42);
-	let  	handle = std::thread::spawn( move || {
+    let  	handle = std::thread::spawn( move || {
         assert_eq!( buff2.len(), 5);
         assert_eq!( buff2[0], 42);
     });
@@ -64,11 +61,11 @@ fn	BuffFromTest()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	ArrBasicOpsTest()
+fn	ArrBasicOpsTest() 
 {
-	let  	buff = Buff::New( 3, 42);
+    let  	buff = Buff::New( 3, 42);
     {
-		let  	mut arr = buff.Arr();
+        let  	mut arr = buff.Arr();
         assert_eq!( arr.len(), 3);
         assert_eq!( arr[0], 42);
         arr[1] = 100;
@@ -78,7 +75,7 @@ fn	ArrBasicOpsTest()
         arr.SetAt( 2, &200u32);
         assert_eq!( *arr.At( 2), 200);
         // Test MoveAt
-		let  	mut val = 300;
+        let  	mut val = 300;
         arr.MoveAt( 0, &mut val);
         assert_eq!( *arr.At( 0), 300);
         // Test SwapAt
@@ -89,37 +86,34 @@ fn	ArrBasicOpsTest()
     assert_eq!( buff[0], 200);
     assert_eq!( buff[1], 100);
     assert_eq!( buff[2], 300);
-	let  	arr2 = buff.Arr();
+    let  	arr2 = buff.Arr();
     assert_eq!( arr2[1], 100);
     // Test Debug trait
     assert_eq!( format!( "{:?}", arr2), "[200, 100, 300]");
 }
 
-
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestArrFromArr()
+fn	TestArrFromArr() 
 {
     // Test creating an Arr from an array reference
-	let  	arrData = [10u32, 20u32, 30u32];
-	let  	arr = Arr::from( &arrData);
+    let  	arrData = [10u32, 20u32, 30u32];
+    let  	arr = Arr::from( &arrData);
     assert_eq!( arr.Size(), 3);
     assert_eq!( *arr.At( 0), 10);
     assert_eq!( *arr.At( 1), 20);
     assert_eq!( *arr.At( 2), 30);
-
     // Test creating a mutable Arr from a mutable array reference
-	let  	mut arrDataMut = [100u32, 200u32, 300u32];
-	let  	arrMut = Arr::from( &mut arrDataMut);
+    let  	mut arrDataMut = [100u32, 200u32, 300u32];
+    let  	arrMut = Arr::from( &mut arrDataMut);
     assert_eq!( arrMut.len(), 3);
     arrMut.SetAt( 1, &250u32);
     assert_eq!( *arrMut.At( 1), 250);
     assert_eq!( arrDataMut[1], 250);
-
     // Test creating an Arr from a slice
-	let  	sliceData: &[u32] = &[1, 2, 3, 4];
-	let  	arrSlice = Arr::from( sliceData);
+    let  	sliceData: &[u32] = &[1, 2, 3, 4];
+    let  	arrSlice = Arr::from( sliceData);
     assert_eq!( arrSlice.len(), 4);
     assert_eq!( *arrSlice.At( 3), 4);
 }
@@ -127,9 +121,9 @@ fn	TestArrFromArr()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	USegBasicOpsTest()
+fn	USegBasicOpsTest() 
 {
-	let  	seg = USeg::Create( 10, 11);
+    let  	seg = USeg::Create( 10, 11);
     assert_eq!( seg.First(), 10);
     assert_eq!( seg.Last(), 20);
     assert_eq!( seg.Size(), 11);
@@ -139,44 +133,44 @@ fn	USegBasicOpsTest()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	USegSnipTest()
+fn	USegSnipTest() 
 {
-	let  	seg = USeg::Create( 10, 11);
+    let  	seg = USeg::Create( 10, 11);
     // Test LSnip
-	let  	lSnipped = seg.LSnip( 5);
+    let  	lSnipped = seg.LSnip( 5);
     assert_eq!( lSnipped.First(), 15);
     assert_eq!( lSnipped.Last(), 20);
     assert_eq!( lSnipped.Size(), 6);
-	let  	lEmpty = seg.LSnip( 11);
+    let  	lEmpty = seg.LSnip( 11);
     assert!( lEmpty.IsEmpty());
-	let  	lOverflow = seg.LSnip( 15);
+    let  	lOverflow = seg.LSnip( 15);
     assert!( lOverflow.IsEmpty());
     // Test RSnip
-	let  	rSnipped = seg.RSnip( 4);
+    let  	rSnipped = seg.RSnip( 4);
     assert_eq!( rSnipped.First(), 10);
     assert_eq!( rSnipped.Last(), 16);
     assert_eq!( rSnipped.Size(), 7);
-	let  	rEmpty = seg.RSnip( 11);
+    let  	rEmpty = seg.RSnip( 11);
     assert!( rEmpty.IsEmpty());
-	let  	rUnderflow = seg.RSnip( 20);
+    let  	rUnderflow = seg.RSnip( 20);
     assert!( rUnderflow.IsEmpty());
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	USegSpanTest()
+fn	USegSpanTest() 
 {
-	let  	seg = USeg::Create( 10, 6);
+    let  	seg = USeg::Create( 10, 6);
     // Case 1: All values return true
-	let  	mut visited = Vec::new();
-	seg.Traverse( |val| {
+    let  	mut visited = Vec::new();
+    seg.Traverse( |val| {
         visited.push( val);
     });
     assert_eq!( visited, vec![10, 11, 12, 13, 14, 15]);
-    // Case 2: One value returns false (early termination)
-	let  	mut visited2 = Vec::new();
-	let  	result2 = seg.Span( |val| {
+    // Case 2: One value returns false ( early termination)
+    let  	mut visited2 = Vec::new();
+    let  	result2 = seg.Span( |val| {
         visited2.push( val);
         val < 13
     });
@@ -187,96 +181,96 @@ fn	USegSpanTest()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	StackBasicOps()
+fn	StackBasicOps() 
 {
     // Create a buffer of size 10 initialized with zeros
-	let  	buff = Buff::Create( U32( 10), |_| 0u32);
+    let  	buff = Buff::Create( U32( 10), |_| 0u32);
     // Atomic counter for size tracking
-	let  	atm = Atm::New( U32( 0));
+    let  	atm = Atm::New( U32( 0));
     // Obtain a mutable Arr view over the buffer
-	let  	arr = buff.Arr();
+    let  	arr = buff.Arr();
     // Create the stack
-	let  	stack = Stk::Create( &atm, arr);
+    let  	stack = Stk::Create( &atm, arr);
     // Stack should start empty
     assert_eq!( stack.Size(), 0);
     // Push values 1..=5 onto the stack
     for i in 1..=5u32 {
-		let  	mut val = i;
+        let  	mut val = i;
         assert!( stack.Push( &mut val), "push failed at {}", i);
     }
     assert_eq!( stack.Size(), 5);
     // Pop values and verify LIFO order
     for expected in ( 1..=5u32).rev() {
-		let  	mut out = 0u32;
+        let  	mut out = 0u32;
         assert!( stack.Pop( &mut out), "pop failed at {}", expected);
         assert_eq!( out, expected);
     }
     assert_eq!( stack.Size(), 0);
     // Popping from an empty stack should return false
-	let  	mut out = 0u32;
+    let  	mut out = 0u32;
     assert!( !stack.Pop( &mut out));
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-fn	UIntTestFrom()
+fn	UIntTestFrom() 
 {
-	let  	_q = U32::from( 0);
-	let  	a: U32 = 5u32.into();
+    let  	_q = U32::from( 0);
+    let  	a: U32 = 5u32.into();
     assert_eq!( a, 5);
-	let  	b: U32 = ( -3i32).into();
+    let  	b: U32 = ( -3i32).into();
     assert_eq!( b, ( -3i32) as u32);
-	let  	c: U32 = ( 10usize).into();
+    let  	c: U32 = ( 10usize).into();
     assert_eq!( c, 10);
 }
-fn	UIntTestArith()
+fn	UIntTestArith() 
 {
-	let  	a = U32::from( 10u32);
-	let  	b = U32::from( 3u32);
+    let  	a = U32::from( 10u32);
+    let  	b = U32::from( 3u32);
     assert_eq!( ( a + b), 13);
     assert_eq!( ( a - b), 7);
     assert_eq!( ( a * b), 30);
     assert_eq!( ( a / b), 3);
     assert_eq!( ( a % b), 1);
 }
-fn	UIntNegNotTest()
+fn	UIntNegNotTest() 
 {
-	let  	a = U32( 0);
+    let  	a = U32( 0);
     assert_eq!( ( -a), 0);
-	let  	b = U32( 5);
+    let  	b = U32( 5);
     assert_eq!( ( -b), 0u32.wrapping_sub( 5));
     assert_eq!( ( !b), !5u32);
 }
-fn	UInt16TestFrom()
+fn	UInt16TestFrom() 
 {
-	let  	_q = U16( 0);
-	let  	a: U16 = 5u16.into();
+    let  	_q = U16( 0);
+    let  	a: U16 = 5u16.into();
     assert_eq!( a, 5);
-	let  	b: U16 = ( -3i32).into();
+    let  	b: U16 = ( -3i32).into();
     assert_eq!( b, ( -3i32) as u16);
-	let  	c: U16 = ( 10usize).into();
+    let  	c: U16 = ( 10usize).into();
     assert_eq!( c, 10);
 }
-fn	UInt16TestArith()
+fn	UInt16TestArith() 
 {
-	let  	a = U16( 10);
-	let  	b = U16( 3);
+    let  	a = U16( 10);
+    let  	b = U16( 3);
     assert_eq!( ( a + b), 13);
     assert_eq!( ( a - b), 7);
     assert_eq!( ( a * b), 30);
     assert_eq!( ( a / b), 3);
     assert_eq!( ( a % b), 1);
 }
-fn	UInt16TestNegNot()
+fn	UInt16TestNegNot() 
 {
-	let  	a = U16( 0);
+    let  	a = U16( 0);
     assert_eq!( ( -a), 0);
-	let  	b = U16( 5);
+    let  	b = U16( 5);
     assert_eq!( ( -b), 0u16.wrapping_sub( 5));
     assert_eq!( ( !b), !5u16);
 }
 #[test]
-fn	UIntBasicOps()
+fn	UIntBasicOps() 
 {
     UIntTestFrom();
     UIntTestArith();
@@ -290,45 +284,45 @@ fn	UIntBasicOps()
 
 #[test]
 #[allow( dead_code)]
-fn	StackExportImportOps()
+fn	StackExportImportOps() 
 {
-	let  	srcStash = Stash::<U32>::New( 10);
-	let  	srcStk = srcStash.Stk();
+    let  	srcStash = Stash::< U32>::New( 10);
+    let  	srcStk = srcStash.Stk();
     for i in 1..=5u32 {
-		let  	mut val = U32( i);
+        let  	mut val = U32( i);
         assert!( srcStk.Push( &mut val));
     }
     assert_eq!( srcStk.Size(), 5);
     // Destination stack initially empty
-	let  	dstStash = Stash::<U32>::New( 10);
-	let  	dstStk = dstStash.Stk();
+    let  	dstStash = Stash::< U32>::New( 10);
+    let  	dstStk = dstStash.Stk();
     assert_eq!( dstStk.Size(), 0);
-    // Export from source to destination (move all 5 elements)
-	let  	moved = srcStk.Export( &dstStk, 5);
+    // Export from source to destination ( move all 5 elements)
+    let  	moved = srcStk.Export( &dstStk, 5);
     assert_eq!( moved, 5);
     assert_eq!( srcStk.Size(), 0);
     assert_eq!( dstStk.Size(), 5);
-    // Verify order in destination stack (should be LIFO 5..=1)
+    // Verify order in destination stack ( should be LIFO 5..=1)
     for expected in ( 1..=5u32).rev() {
-		let  	mut out = U32( 0);
+        let  	mut out = U32( 0);
         assert!( dstStk.Pop( &mut out));
         assert_eq!( out, expected);
     }
     assert_eq!( dstStk.Size(), 0);
     // Refill source stack for Import test
     for i in 10..=14u32 {
-		let  	mut v = U32( i);
+        let  	mut v = U32( i);
         assert!( srcStk.Push( &mut v));
     }
     assert_eq!( srcStk.Size(), 5);
-    // Import from source into destination (move all 5 elements)
-	let  	imported = dstStk.Import( &srcStk, 5);
+    // Import from source into destination ( move all 5 elements)
+    let  	imported = dstStk.Import( &srcStk, 5);
     // Import uses a mutable reference, srcStk remains usable.
     assert_eq!( imported, 5);
     assert_eq!( dstStk.Size(), 5);
-    // Verify imported order (LIFO, should be 14..=10)
+    // Verify imported order ( LIFO, should be 14..=10)
     for expected in ( 10..=14u32).rev() {
-		let  	mut out = U32( 0);
+        let  	mut out = U32( 0);
         assert!( dstStk.Pop( &mut out));
         assert_eq!( out, expected);
     }
@@ -338,25 +332,25 @@ fn	StackExportImportOps()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestConcurrentStackOps()
+fn	TestConcurrentStackOps() 
 {
     use	std::sync::Arc;
     use	std::thread;
     // Create a shared destination stack of size 1000
-	let  	dstStash = Arc::new( Stash::<U32>::New( 1000));
-	let  	mut handles = vec![];
+    let  	dstStash = Arc::new( Stash::< U32>::New( 1000));
+    let  	mut handles = vec![];
     for t in 0..10 {
-		let  	dstStk_clone = dstStash.clone();
-		let  	handle = thread::spawn( move || {
+        let  	dstStkClone = dstStash.clone();
+        let  	handle = thread::spawn( move || {
             // Create a thread-local source stack
-			let  	srcStash = Stash::<U32>::New( 10);
-			let  	srcStk = srcStash.Stk();
+            let  	srcStash = Stash::< U32>::New( 10);
+            let  	srcStk = srcStash.Stk();
             for i in 0..10 {
-				let  	mut v = U32( t * 10 + i);
+                let  	mut v = U32( t * 10 + i);
                 srcStk.Push( &mut v);
             }
             // Import elements from local srcStk to shared dstStk
-            dstStk_clone.Stk().Import( &srcStk, 10);
+            dstStkClone.Stk().Import( &srcStk, 10);
         });
         handles.push( handle);
     }
@@ -365,10 +359,10 @@ fn	TestConcurrentStackOps()
     }
     // Since 10 threads imported 10 elements each, dstStk size must be exactly 100
     assert_eq!( dstStash.Size(), 100);
-    // Collect all elements and verify they are exactly 0..100 (in some order)
-	let  	mut values = vec![];
-	let  	dstStk = dstStash.Stk();
-	let  	mut out = U32( 0);
+    // Collect all elements and verify they are exactly 0..100 ( in some order)
+    let  	mut values = vec![];
+    let  	dstStk = dstStash.Stk();
+    let  	mut out = U32( 0);
     while dstStk.Pop( &mut out) {
         values.push( out.0);
     }
@@ -382,63 +376,62 @@ fn	TestConcurrentStackOps()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	QSortTest()
+fn	QSortTest() 
 {
-	let  	buff = Buff::Create( U32( 256), |_| rand::random::<f64>());
+    let  	buff = Buff::Create( U32( 256), |_| rand::random::< f64>());
     //let     buff =  Buff::New( 5, | i| i);
-	let  	arr = buff.Arr();
+    let  	arr = buff.Arr();
     arr.USeg()
         .QSort( &|i, j| arr.At( i) > arr.At( j), &mut |i, j| {
             arr.SwapAt( i, j);
         });
     print! { "{:?}\n", arr};
-	let  	res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
+    let  	res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
     assert!( res);
 }
 
-
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestQSortBoundaries()
+fn	TestQSortBoundaries() 
 {
     // Test QSort with empty segment
-	let  	buff_empty = Buff::Create( U32( 0), |_| 0);
-	let  	arr_empty = buff_empty.Arr();
-    arr_empty
+    let  	buffEmpty = Buff::Create( U32( 0), |_| 0);
+    let  	arrEmpty = buffEmpty.Arr();
+    arrEmpty
         .USeg()
-        .QSort( &|i, j| arr_empty.At( i) > arr_empty.At( j), &mut |i, j| {
-            arr_empty.SwapAt( i, j);
+        .QSort( &|i, j| arrEmpty.At( i) > arrEmpty.At( j), &mut |i, j| {
+            arrEmpty.SwapAt( i, j);
         });
-    assert_eq!( arr_empty.len(), 0);
+    assert_eq!( arrEmpty.len(), 0);
     // Test QSort with size 1
-	let  	buff_one = Buff::Create( U32( 1), |_| 42);
-	let  	arr_one = buff_one.Arr();
-    arr_one
+    let  	buffOne = Buff::Create( U32( 1), |_| 42);
+    let  	arrOne = buffOne.Arr();
+    arrOne
         .USeg()
-        .QSort( &|i, j| arr_one.At( i) > arr_one.At( j), &mut |i, j| {
-            arr_one.SwapAt( i, j);
+        .QSort( &|i, j| arrOne.At( i) > arrOne.At( j), &mut |i, j| {
+            arrOne.SwapAt( i, j);
         });
-    assert_eq!( arr_one[0], 42);
+    assert_eq!( arrOne[0], 42);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestDoQSort()
+fn	TestDoQSort() 
 {
     use	crate::stalks::work::Worker;
-
-	let  	buff = Buff::Create( U32( 100), |_| rand::random::<f64>());
-	let  	arr = buff.Arr();
-	let  	worker = Worker::New();
-
-    arr.USeg().DoQSort( &worker, |i, j| arr.At( i) > arr.At( j), |i, j| {
-        arr.SwapAt( i, j);
-    });
-
-	let  	res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
-
+    let  	buff = Buff::Create( U32( 100), |_| rand::random::< f64>());
+    let  	arr = buff.Arr();
+    let  	worker = Worker::New();
+    arr.USeg().DoQSort( 
+        &worker,
+        |i, j| arr.At( i) > arr.At( j),
+        |i, j| {
+            arr.SwapAt( i, j);
+        },
+    );
+    let  	res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
     arr.USeg().Traverse( |i| {
         print!( "{} ", arr.At( i));
     });
@@ -448,75 +441,60 @@ fn	TestDoQSort()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestStashDynamicPushback()
+fn	TestStashDynamicPushback() 
 {
     // Test with initial size 2
-    let mut stash = Stash::<U32>::New(2);
+    let  	mut stash = Stash::< U32>::New( 2);
     assert_eq!( stash.Size(), 0);
     assert_eq!( stash.Size() + stash.Stk().SzVoid(), 2);
-
     // Push first element
-    let mut val1 = U32(10);
+    let  	mut val1 = U32( 10);
     stash.Pushback( &mut val1);
     assert_eq!( stash.Size(), 1);
     assert_eq!( stash.Size() + stash.Stk().SzVoid(), 2);
-
     // Push second element
-    let mut val2 = U32(20);
+    let  	mut val2 = U32( 20);
     stash.Pushback( &mut val2);
     assert_eq!( stash.Size(), 2);
     assert_eq!( stash.Size() + stash.Stk().SzVoid(), 2);
-
-    // Push third element (should trigger resize to 4)
-    let mut val3 = U32(30);
+    // Push third element ( should trigger resize to 4)
+    let  	mut val3 = U32( 30);
     stash.Pushback( &mut val3);
     assert_eq!( stash.Size(), 3);
     assert_eq!( stash.Size() + stash.Stk().SzVoid(), 4);
-
     // Push fourth element
-    let mut val4 = U32(40);
+    let  	mut val4 = U32( 40);
     stash.Pushback( &mut val4);
     assert_eq!( stash.Size(), 4);
     assert_eq!( stash.Size() + stash.Stk().SzVoid(), 4);
-
-    // Push fifth element (should trigger resize to 8)
-    let mut val5 = U32(50);
+    // Push fifth element ( should trigger resize to 8)
+    let  	mut val5 = U32( 50);
     stash.Pushback( &mut val5);
     assert_eq!( stash.Size(), 5);
     assert_eq!( stash.Size() + stash.Stk().SzVoid(), 8);
-
     // Pop and verify LIFO order and contents
-    let stk = stash.Stk();
-    let mut out = U32(0);
-
+    let  	stk = stash.Stk();
+    let  	mut out = U32( 0);
     assert!( stk.Pop( &mut out));
     assert_eq!( out, 50);
-
     assert!( stk.Pop( &mut out));
     assert_eq!( out, 40);
-
     assert!( stk.Pop( &mut out));
     assert_eq!( out, 30);
-
     assert!( stk.Pop( &mut out));
     assert_eq!( out, 20);
-
     assert!( stk.Pop( &mut out));
     assert_eq!( out, 10);
-
     assert!( !stk.Pop( &mut out));
-
     // Test with initial size 0
-    let mut stash0 = Stash::<U32>::New(0);
+    let  	mut stash0 = Stash::< U32>::New( 0);
     assert_eq!( stash0.Size(), 0);
     assert_eq!( stash0.Size() + stash0.Stk().SzVoid(), 0);
-
-    let mut v = U32(100);
+    let  	mut v = U32( 100);
     stash0.Pushback( &mut v);
     assert_eq!( stash0.Size(), 1);
     assert_eq!( stash0.Size() + stash0.Stk().SzVoid(), 1);
-
-    let mut v2 = U32(200);
+    let  	mut v2 = U32( 200);
     stash0.Pushback( &mut v2);
     assert_eq!( stash0.Size(), 2);
     assert_eq!( stash0.Size() + stash0.Stk().SzVoid(), 2);
@@ -525,57 +503,47 @@ fn	TestStashDynamicPushback()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestStashAppend()
+fn	TestStashAppend() 
 {
     // Test with initial size 2
-    let mut stash = Stash::<U32>::New(2);
-
+    let  	mut stash = Stash::< U32>::New( 2);
     // Create an Arr of elements to append
-    let mut data = [U32(10), U32(20), U32(30)];
-    let arr = Arr::from(&mut data);
-
-    stash.Append(arr);
+    let  	mut data = [U32( 10), U32( 20), U32( 30)];
+    let  	arr = Arr::from( &mut data);
+    stash.Append( arr);
     assert_eq!( stash.Size(), 3);
-    // Buffer should resize to exactly 3 since neededSz (3) > current capacity (2)
+    // Buffer should resize to exactly 3 since neededSz ( 3) > current capacity ( 2)
     assert_eq!( stash.Size() + stash.Stk().SzVoid(), 3);
-
-    // Pop and verify elements (LIFO order: 30, 20, 10)
-    let stk = stash.Stk();
-    let mut out = U32(0);
-
+    // Pop and verify elements ( LIFO order: 30, 20, 10)
+    let  	stk = stash.Stk();
+    let  	mut out = U32( 0);
     assert!( stk.Pop( &mut out));
     assert_eq!( out, 30);
-
     assert!( stk.Pop( &mut out));
     assert_eq!( out, 20);
-
     assert!( stk.Pop( &mut out));
     assert_eq!( out, 10);
-
     assert!( !stk.Pop( &mut out));
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive(Clone, PartialEq, Debug)]
-struct NonDefaultStruct {
+#[derive( Clone, PartialEq, Debug)]
+struct NonDefaultStruct 
+{
     value: i32,
 }
-
 #[test]
-fn	TestBuffResize()
+fn	TestBuffResize() 
 {
     // Create a buffer of size 3 initialized with NonDefaultStruct
-    let mut buff = Buff::New(3, NonDefaultStruct { value: 42 });
+    let  	mut buff = Buff::New( 3, NonDefaultStruct { value: 42 });
     assert_eq!( buff.len(), 3);
     assert_eq!( buff[0].value, 42);
-
     // Resize using Resize
-    buff.Resize(U32(5), |_| NonDefaultStruct { value: 100 });
+    buff.Resize( U32( 5), |_| NonDefaultStruct { value: 100 });
     assert_eq!( buff.len(), 5);
     assert_eq!( buff[2].value, 42);
     assert_eq!( buff[3].value, 100);
     assert_eq!( buff[4].value, 100);
 }
-
-

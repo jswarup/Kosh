@@ -1,14 +1,14 @@
 //-- stash.rs -------------------------------------------------------------------------------------------------------------------------
-use	std::sync::atomic::Ordering;
-use	crate::stalks::atm::Atm;
 use	crate::silo::arr::Arr;
 use	crate::silo::buff::Buff;
 use	crate::silo::stk::Stk;
 use	crate::silo::uint::U32;
+use	crate::stalks::atm::Atm;
+use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct Stash< T>
+pub struct Stash< T> 
 {
     _Buff: Buff< T>,
     _Sz: Atm< U32>,
@@ -16,12 +16,12 @@ pub struct Stash< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T: Default> Stash< T>
+impl< T: Default> Stash< T> 
 {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	New< S: Into< U32>>( sz: S) -> Self
+    pub fn	New< S: Into< U32>>( sz: S) -> Self 
     {
         Self {
             _Buff: Buff::Create( sz, |_| T::default()),
@@ -31,7 +31,7 @@ impl< T: Default> Stash< T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Create< S1: Into< U32>, S2: Into< U32>, Dispenser>(
+    pub fn	Create< S1: Into< U32>, S2: Into< U32>, Dispenser>( 
         sz: S1,
         szStk: S2,
         dispenser: Dispenser,
@@ -47,14 +47,14 @@ impl< T: Default> Stash< T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Size( &self) -> U32
+    pub fn	Size( &self) -> U32 
     {
         self._Sz.Load( Ordering::Acquire)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Stk( &self) -> Stk< '_, '_, T>
+    pub fn	Stk( &self) -> Stk< '_, '_, T> 
     {
         Stk::Create( &self._Sz, self._Buff.Arr())
     }
@@ -65,9 +65,8 @@ impl< T: Default> Stash< T>
     where
         T: Clone,
     {
-        let mut buff = Buff::New( 0, T::default());
+        let  	mut buff = Buff::New( 0, T::default());
         self._Buff.Swap( &mut buff);
-
         buff
     }
 
@@ -77,18 +76,17 @@ impl< T: Default> Stash< T>
     where
         T: From< usize> + Clone,
     {
-		let  	arr = self._Buff.Arr();
+        let  	arr = self._Buff.Arr();
         arr.USeg().Traverse( |i: U32| {
             arr.SetAt( i, &T::from( i.as_usize()));
         });
         self._Sz.Store( arr.Size(), Ordering::Release);
     }
-
-    pub fn	Pushback( &mut self, val: &mut T)
+    pub fn	Pushback( &mut self, val: &mut T) 
     {
         while !self.Stk().Push( val) {
             if self.Size() == self._Buff.Size() {
-                let newSz = if self._Buff.Size() == U32( 0) {
+                let  	newSz = if self._Buff.Size() == U32( 0) {
                     U32( 1)
                 } else {
                     self._Buff.Size() * U32( 2)
@@ -100,25 +98,23 @@ impl< T: Default> Stash< T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Append( &mut self, arr: Arr< '_, T>)
+    pub fn	Append( &mut self, arr: Arr< '_, T>) 
     {
-        let n = arr.Size();
+        let  	n = arr.Size();
         if n == U32( 0) {
             return;
         }
-        let neededSz = self.Size() + n;
+        let  	neededSz = self.Size() + n;
         if neededSz > self._Buff.Size() {
             self._Buff.Resize( neededSz, |_| T::default());
         }
-
-        let startSz = self.Size();
-        let arrBuff = self._Buff.Arr();
+        let  	startSz = self.Size();
+        let  	arrBuff = self._Buff.Arr();
         for i in 0..usize::from( n) {
             arrBuff.MoveAt( startSz + U32( i as u32), arr.MutAt( U32( i as u32)));
         }
         self._Sz.Set( startSz + n);
     }
-
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

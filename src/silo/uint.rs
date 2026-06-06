@@ -9,7 +9,7 @@ use	std::sync::atomic::{ AtomicU16, AtomicU32, Ordering };
 #[derive( Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr( transparent)]
 pub struct U32( pub u32);
-impl U32
+impl U32 
 {
     pub const _X: Self = U32( u32::MAX);
     pub const _0: Self = U32( 0u32);
@@ -18,9 +18,9 @@ impl U32
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    /// Create a `U32` from a primitive `u32` (inherent method).
+    /// Create a `U32` from a primitive `u32` ( inherent method).
     #[inline]
-    pub const fn	from( v: u32) -> Self
+    pub const fn	from( v: u32) -> Self 
     {
         U32( v)
     }
@@ -28,21 +28,21 @@ impl U32
     //-----------------------------------------------------------------------------------------------------------------------------
 
     #[inline]
-    pub const fn	from_u32( v: u32) -> Self
+    pub const fn	from_u32( v: u32) -> Self 
     {
         U32( v)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub const fn	from_usize( v: usize) -> Self
+    pub const fn	from_usize( v: usize) -> Self 
     {
         U32( v as u32)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub const fn	from_U16( v: U16) -> Self
+    pub const fn	from_U16( v: U16) -> Self 
     {
         U32( v.0 as u32)
     }
@@ -51,7 +51,7 @@ impl U32
 
     /// Get the inner `u32` value.
     #[inline]
-    pub const fn	as_u32( self) -> u32
+    pub const fn	as_u32( self) -> u32 
     {
         self.0
     }
@@ -60,14 +60,14 @@ impl U32
 
     /// Get the inner `usize` value.
     #[inline]
-    pub const fn	as_usize( self) -> usize
+    pub const fn	as_usize( self) -> usize 
     {
         self.0 as usize
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub const fn	Get( self) -> u32
+    pub const fn	Get( self) -> u32 
     {
         self.0
     }
@@ -78,7 +78,7 @@ impl U32
 #[derive( Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr( transparent)]
 pub struct U16( pub u16);
-impl U16
+impl U16 
 {
     pub const _X: Self = U16( u16::MAX);
     pub const _0: Self = U16( 0u16);
@@ -86,9 +86,9 @@ impl U16
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    /// Create a `U16` from a primitive `u16` (inherent method).
+    /// Create a `U16` from a primitive `u16` ( inherent method).
     #[inline]
-    pub const fn	from( v: u16) -> Self
+    pub const fn	from( v: u16) -> Self 
     {
         U16( v)
     }
@@ -97,7 +97,7 @@ impl U16
 
     /// Create a `U16` from a primitive `u16`.
     #[inline]
-    pub const fn	from_u16( v: u16) -> Self
+    pub const fn	from_u16( v: u16) -> Self 
     {
         U16( v)
     }
@@ -106,7 +106,7 @@ impl U16
 
     /// Get the inner `u16` value.
     #[inline]
-    pub const fn	as_u16( self) -> u16
+    pub const fn	as_u16( self) -> u16 
     {
         self.0
     }
@@ -115,7 +115,7 @@ impl U16
 
     /// Get the inner `usize` value.
     #[inline]
-    pub const fn	as_usize( self) -> usize
+    pub const fn	as_usize( self) -> usize 
     {
         self.0 as usize
     }
@@ -124,14 +124,14 @@ impl U16
 
     /// Maximum value for `U16`.
     #[inline]
-    pub const fn	Max() -> Self
+    pub const fn	Max() -> Self 
     {
         U16( u16::MAX)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub const fn	Get( self) -> u16
+    pub const fn	Get( self) -> u16 
     {
         self.0
     }
@@ -191,7 +191,7 @@ macro_rules! ImplUIntTraits {
         ImplOp!( $type, BitXor, bitxor, ^);
         ImplOp!( $type, Shl, shl, << );
         ImplOp!( $type, Shr, shr, >>);
-        // Unary `-` (negation) for unsigned values is defined as wrapping subtraction from zero.
+        // Unary `-` ( negation) for unsigned values is defined as wrapping subtraction from zero.
         impl Neg for $type
         {
             type Output = $type;
@@ -213,7 +213,8 @@ macro_rules! ImplUIntTraits {
         // Display & formatting
         impl std::fmt::Display for $type
         {
-            fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result {
+            fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result 
+            {
                 write!( f, "{}", self.0)
             }
         }
@@ -319,10 +320,10 @@ ImplUIntTraits!( U16, u16, AtomicU16);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl From< U16> for U32
+impl From< U16> for U32 
 {
     #[inline]
-    fn	from( v: U16) -> Self
+    fn	from( v: U16) -> Self 
     {
         U32( v.0 as u32)
     }

@@ -1,65 +1,69 @@
 //-- stk.rs -------------------------------------------------------------------------------------------------------------------------
-use	std::sync::atomic::Ordering;
 use	crate::silo::arr::Arr;
-use	crate::stalks::atm::Atm;
 use	crate::silo::uint::U32;
 use	crate::silo::useg::USeg;
+use	crate::stalks::atm::Atm;
+use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct Stk< 'a, 'b, T>
+pub struct Stk< 'a, 'b, T> 
 {
-    _Size: &'a Atm<U32>,
+    _Size: &'a Atm< U32>,
     _Arr: Arr< 'b, T>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, 'b, T> Stk< 'a, 'b, T>
+impl< 'a, 'b, T> Stk< 'a, 'b, T> 
 {
-    pub fn	Create( _Size: &'a Atm<U32>, _Arr: Arr<'b, T>) -> Self
+    pub fn	Create( _Size: &'a Atm< U32>, _Arr: Arr< 'b, T>) -> Self 
     {
-        Self
-        { _Size, _Arr }
+        Self { _Size, _Arr }
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Size( &self) -> U32
+    pub fn	Size( &self) -> U32 
     {
         self._Size.Load( Ordering::Acquire)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	SzVoid( &self) -> U32
+    pub fn	SzVoid( &self) -> U32 
     {
         self._Arr.Size() - self.Size()
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	USeg( &self) -> USeg
+    pub fn	USeg( &self) -> USeg 
     {
         USeg::Create( U32( 0), self.Size())
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Arr( &self) -> Arr< 'b, T> {
+    pub fn	Arr( &self) -> Arr< 'b, T> 
+    {
         self._Arr.RSnip( self._Arr.Size() - self.Size())
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    /// CAS-decrement _Size (Acquire), then read. Pairs with Push's Release.
 
+    /// CAS-decrement _Size ( Acquire), then read. Pairs with Push's Release.
     pub fn	Pop( &self, val: &mut T) -> bool
     where
         T: Default + Clone,
     {
-		let  	sz = self.Size();
+        let  	sz = self.Size();
         if ( sz == U32( 0))
-            || ( self._Size.CompareExchange( sz, sz - U32( 1),
+            || ( self
+                ._Size
+                .CompareExchange( 
+                    sz,
+                    sz - U32( 1),
                     std::sync::atomic::Ordering::Acquire,
                     std::sync::atomic::Ordering::Relaxed,
                 )
@@ -71,40 +75,40 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    /// CAS-decrement _Size (Acquire), then read. Pairs with Push's Release.
 
+    /// CAS-decrement _Size ( Acquire), then read. Pairs with Push's Release.
     pub fn	Popback( &self) -> T
     where
         T: Default + Clone,
     {
-        let mut     val = T::default();
+        let  	mut val = T::default();
         self.Pop( &mut val);
         return val;
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    /// Write-then-publish: MoveAt data first, CAS-increment _Size (Release).
+    /// Write-then-publish: MoveAt data first, CAS-increment _Size ( Release).
     /// On CAS failure, MoveAt rolls back the speculative write.
     pub fn	Push( &self, val: &mut T) -> bool
     where
         T: Default,
     {
-		let  	sz = self.Size();
+        let  	sz = self.Size();
         if sz >= self._Arr.Size() {
             return false;
         }
-        self._Arr.MoveAt( sz, val);                                     // Write data BEFORE publishing
+        self._Arr.MoveAt( sz, val);                                    // Write data BEFORE publishing
         if self
             ._Size
-            .CompareExchange(
+            .CompareExchange( 
                 sz,
                 sz + U32( 1),
                 std::sync::atomic::Ordering::Release,
                 std::sync::atomic::Ordering::Relaxed,
             )
             .is_err() {
-            self._Arr.MoveAt( sz, val);                                 // Rollback: swap original value back
+            self._Arr.MoveAt( sz, val);                                // Rollback: swap original value back
             return false;
         }
         true
@@ -116,27 +120,24 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
     where
         T: Copy,
     {
-		let  	max_mov = maxMov.into();
-		let  	( szAlloc, oldSz) = loop {
-			let  	sz = self.Size();
-			let  	szCacheVoid = self._Arr.Size() - sz;
-			let  	mut szAlloc = if szCacheVoid < stk.Size() {
+        let  	maxMov = maxMov.into();
+        let  	( szAlloc, oldSz) = loop {
+            let  	sz = self.Size();
+            let  	szCacheVoid = self._Arr.Size() - sz;
+            let  	mut szAlloc = if szCacheVoid < stk.Size() {
                 szCacheVoid
             } else {
                 stk.Size()
             };
-            if szAlloc > max_mov {
-                szAlloc = max_mov
+            if szAlloc > maxMov {
+                szAlloc = maxMov
             }
             if szAlloc == U32( 0) {
                 break ( U32( 0), sz);
             }
             if self
                 ._Size
-                .CompareExchange( sz, sz + szAlloc,
-                    Ordering::SeqCst,
-                    Ordering::SeqCst,
-                )
+                .CompareExchange( sz, sz + szAlloc, Ordering::SeqCst, Ordering::SeqCst)
                 .is_ok() {
                 break ( szAlloc, sz);
             }
@@ -144,7 +145,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         if szAlloc == U32( 0) {
             return U32( 0);
         }
-		let  	stkSz = stk._Size.FetchAdd( U32( 0) - szAlloc, Ordering::SeqCst) - szAlloc;
+        let  	stkSz = stk._Size.FetchAdd( U32( 0) - szAlloc, Ordering::SeqCst) - szAlloc;
         self._Arr.SwapFrom( oldSz, &stk._Arr, stkSz, szAlloc);
         szAlloc
     }
@@ -155,26 +156,21 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
     where
         T: Copy,
     {
-		let  	max_mov = maxMov.into();
-		let  	( szAlloc, oldSz) = loop {
-			let  	szStk = stk.Size();
-			let  	szStkVoid = stk._Arr.Size() - szStk;
-			let  	sz = self.Size();
-			let  	mut szAlloc = if szStkVoid < sz {
-                szStkVoid
-            } else  {
-                sz
-            };
-            if szAlloc > max_mov {
-                szAlloc = max_mov
+        let  	maxMov = maxMov.into();
+        let  	( szAlloc, oldSz) = loop {
+            let  	szStk = stk.Size();
+            let  	szStkVoid = stk._Arr.Size() - szStk;
+            let  	sz = self.Size();
+            let  	mut szAlloc = if szStkVoid < sz { szStkVoid } else { sz };
+            if szAlloc > maxMov {
+                szAlloc = maxMov
             }
             if szAlloc == U32( 0) {
                 break ( U32( 0), sz);
             }
-            if self._Size.CompareExchange( sz, sz - szAlloc,
-                    Ordering::SeqCst,
-                    Ordering::SeqCst,
-                )
+            if self
+                ._Size
+                .CompareExchange( sz, sz - szAlloc, Ordering::SeqCst, Ordering::SeqCst)
                 .is_ok() {
                 break ( szAlloc, sz);
             }
@@ -182,8 +178,9 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         if szAlloc == U32( 0) {
             return U32( 0);
         }
-		let  	szStk = stk._Size.FetchAdd( U32( 0) + szAlloc, Ordering::SeqCst);
-        stk._Arr.SwapFrom( szStk, &self._Arr, oldSz - szAlloc, szAlloc);
+        let  	szStk = stk._Size.FetchAdd( U32( 0) + szAlloc, Ordering::SeqCst);
+        stk._Arr
+            .SwapFrom( szStk, &self._Arr, oldSz - szAlloc, szAlloc);
         szAlloc
     }
 }

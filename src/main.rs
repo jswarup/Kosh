@@ -13,7 +13,7 @@ use	tracing_subscriber::EnvFilter;
 #[command( author, version, about, long_about = None)]
 struct Args
 {
-    /// Enable verbose logging (debug messages)
+    /// Enable verbose logging ( debug messages)
     #[arg( short, long)]
     verbose: bool,
 }
