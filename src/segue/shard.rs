@@ -90,7 +90,7 @@ impl crate::stalks::bud::BudOp for Shard
     {
         matches!(
             op,
-            crate::stalks::bud::BudBinOp::LT | crate::stalks::bud::BudBinOp::BOR
+            crate::stalks::bud::BudBinOp::SHL | crate::stalks::bud::BudBinOp::BOR
         )
     }
 }
