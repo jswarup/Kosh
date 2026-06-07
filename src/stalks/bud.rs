@@ -251,6 +251,33 @@ macro_rules! BudTree {
     ( Shard, $lbl:literal [ | $( $body:tt)+ ] ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $crate::segue::shard::Shard::WithClosure( $lbl, | $( $body)+ ) )
     };
+    ( $type:ident, * ( $( $lhs:tt)+ ) < $( $rhs:tt)+ ) => {
+        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::LT, $crate::BudTree!( $type, $( $lhs)+ ), $crate::BudTree!( $type, $( $rhs)+ ) )
+    };
+    ( $type:ident, * ( $( $lhs:tt)+ ) | $( $rhs:tt)+ ) => {
+        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::BudTree!( $type, $( $lhs)+ ), $crate::BudTree!( $type, $( $rhs)+ ) )
+    };
+    ( $type:ident, * $lhs:ident < $( $rhs:tt)+ ) => {
+        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::LT, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $type, $( $rhs)+ ) )
+    };
+    ( $type:ident, * $lhs:literal < $( $rhs:tt)+ ) => {
+        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::LT, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $type, $( $rhs)+ ) )
+    };
+    ( $type:ident, * $lhs:ident | $( $rhs:tt)+ ) => {
+        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $type, $( $rhs)+ ) )
+    };
+    ( $type:ident, * $lhs:literal | $( $rhs:tt)+ ) => {
+        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $type, $( $rhs)+ ) )
+    };
+    ( $type:ident, * ( $( $inner:tt)+ ) ) => {
+        $crate::BudTree!( $type, $( $inner)+ )
+    };
+    ( $type:ident, * $leaf:ident ) => {
+        $crate::stalks::bud::IntoBud::IntoBud( $leaf )
+    };
+    ( $type:ident, * $leaf:literal ) => {
+        $crate::stalks::bud::IntoBud::IntoBud( $leaf )
+    };
     ( $type:ident, ( $( $inner:tt)+ ) ) => {
         $crate::BudTree!( $type, $( $inner)+ )
     };
@@ -276,6 +303,33 @@ macro_rules! BudTree {
         $crate::stalks::bud::IntoBud::IntoBud( $type::New( | $( $body)+ ) )
     };
     ( $type:ident, $leaf:expr ) => {
+        $crate::stalks::bud::IntoBud::IntoBud( $leaf )
+    };
+    ( * ( $( $lhs:tt)+ ) < $( $rhs:tt)+ ) => {
+        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::LT, $crate::BudTree!( $( $lhs)+ ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
+    };
+    ( * ( $( $lhs:tt)+ ) | $( $rhs:tt)+ ) => {
+        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::BudTree!( $( $lhs)+ ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
+    };
+    ( * $lhs:ident < $( $rhs:tt)+ ) => {
+        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::LT, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
+    };
+    ( * $lhs:literal < $( $rhs:tt)+ ) => {
+        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::LT, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
+    };
+    ( * $lhs:ident | $( $rhs:tt)+ ) => {
+        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
+    };
+    ( * $lhs:literal | $( $rhs:tt)+ ) => {
+        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
+    };
+    ( * ( $( $inner:tt)+ ) ) => {
+        $crate::BudTree!( $( $inner)+ )
+    };
+    ( * $leaf:ident ) => {
+        $crate::stalks::bud::IntoBud::IntoBud( $leaf )
+    };
+    ( * $leaf:literal ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $leaf )
     };
     ( ( $( $inner:tt)+ ) ) => {
