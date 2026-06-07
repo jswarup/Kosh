@@ -265,10 +265,10 @@ impl_into_bud_for_primitives!( f64, f32, i32, i64, u32, u64, String, &'static st
 #[macro_export]
 macro_rules! BudTree {
 
-    // ── Typed: strip outer parens ───────────────────────────────────────────────────────────────────
+    // ── Strip outer parens ──────────────────────────────────────────────────────────────────────────
     ( $type:ident, ( $( $inner:tt)+ ) ) => { $crate::BudTree!( $type, $( $inner)+ ) };
 
-    // ── Typed unary operators ───────────────────────────────────────────────────────────────────────
+    // ── Unary operators ─────────────────────────────────────────────────────────────────────────────
     ( $type:ident, * $l:tt $( $r:tt)* ) => {
         $crate::BudTree!( $type, ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $type, $l ), $crate::stalks::bud::BudUniOp::STAR ) ) $( $r)* )
     };
@@ -282,122 +282,56 @@ macro_rules! BudTree {
         $crate::BudTree!( $type, ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $type, $l ), $crate::stalks::bud::BudUniOp::BANG ) ) $( $r)* )
     };
 
-    // ── Typed binary: (group) OP rhs ────────────────────────────────────────────────────────────────
-    ( $type:ident, ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $crate::BudTree!( @tb $type, SHL, ( $( $l)+ ), $( $r)+ ) };
-    ( $type:ident, ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $crate::BudTree!( @tb $type, SHR, ( $( $l)+ ), $( $r)+ ) };
-    ( $type:ident, ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $crate::BudTree!( @tb $type, LT,  ( $( $l)+ ), $( $r)+ ) };
-    ( $type:ident, ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $crate::BudTree!( @tb $type, BOR, ( $( $l)+ ), $( $r)+ ) };
+    // ── Binary: (group) OP rhs ──────────────────────────────────────────────────────────────────────
+    ( $type:ident, ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $crate::BudTree!( @bg $type, SHL, ( $( $l)+ ), $( $r)+ ) };
+    ( $type:ident, ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $crate::BudTree!( @bg $type, SHR, ( $( $l)+ ), $( $r)+ ) };
+    ( $type:ident, ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $crate::BudTree!( @bg $type, LT,  ( $( $l)+ ), $( $r)+ ) };
+    ( $type:ident, ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $crate::BudTree!( @bg $type, BOR, ( $( $l)+ ), $( $r)+ ) };
 
-    // ── Typed binary: ident OP rhs ──────────────────────────────────────────────────────────────────
-    ( $type:ident, $l:ident << $( $r:tt)+ ) => { $crate::BudTree!( @tl $type, SHL, $l, $( $r)+ ) };
-    ( $type:ident, $l:ident >> $( $r:tt)+ ) => { $crate::BudTree!( @tl $type, SHR, $l, $( $r)+ ) };
-    ( $type:ident, $l:ident <  $( $r:tt)+ ) => { $crate::BudTree!( @tl $type, LT,  $l, $( $r)+ ) };
-    ( $type:ident, $l:ident |  $( $r:tt)+ ) => { $crate::BudTree!( @tl $type, BOR, $l, $( $r)+ ) };
+    // ── Binary: ident/literal OP rhs ────────────────────────────────────────────────────────────────
+    ( $type:ident, $l:ident << $( $r:tt)+ ) => { $crate::BudTree!( @bl $type, SHL, $l, $( $r)+ ) };
+    ( $type:ident, $l:ident >> $( $r:tt)+ ) => { $crate::BudTree!( @bl $type, SHR, $l, $( $r)+ ) };
+    ( $type:ident, $l:ident <  $( $r:tt)+ ) => { $crate::BudTree!( @bl $type, LT,  $l, $( $r)+ ) };
+    ( $type:ident, $l:ident |  $( $r:tt)+ ) => { $crate::BudTree!( @bl $type, BOR, $l, $( $r)+ ) };
 
-    // ── Typed binary: literal OP rhs ────────────────────────────────────────────────────────────────
-    ( $type:ident, $l:literal << $( $r:tt)+ ) => { $crate::BudTree!( @tl $type, SHL, $l, $( $r)+ ) };
-    ( $type:ident, $l:literal >> $( $r:tt)+ ) => { $crate::BudTree!( @tl $type, SHR, $l, $( $r)+ ) };
-    ( $type:ident, $l:literal <  $( $r:tt)+ ) => { $crate::BudTree!( @tl $type, LT,  $l, $( $r)+ ) };
-    ( $type:ident, $l:literal |  $( $r:tt)+ ) => { $crate::BudTree!( @tl $type, BOR, $l, $( $r)+ ) };
+    ( $type:ident, $l:literal << $( $r:tt)+ ) => { $crate::BudTree!( @bl $type, SHL, $l, $( $r)+ ) };
+    ( $type:ident, $l:literal >> $( $r:tt)+ ) => { $crate::BudTree!( @bl $type, SHR, $l, $( $r)+ ) };
+    ( $type:ident, $l:literal <  $( $r:tt)+ ) => { $crate::BudTree!( @bl $type, LT,  $l, $( $r)+ ) };
+    ( $type:ident, $l:literal |  $( $r:tt)+ ) => { $crate::BudTree!( @bl $type, BOR, $l, $( $r)+ ) };
 
-    // ── Typed: closure literal ──────────────────────────────────────────────────────────────────────
+    // ── Closure literal ─────────────────────────────────────────────────────────────────────────────
     ( $type:ident, | $( $body:tt)+ ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $type::New( | $( $body)+ ) )
     };
 
-    // ── Typed: literal [ closure ] ──────────────────────────────────────────────────────────────────
+    // ── Leaf [ closure ] ────────────────────────────────────────────────────────────────────────────
     ( $type:ident, $l:literal [ $closure:expr ] ) => {
         $crate::stalks::bud::IntoBud::IntoBudAction( $l, $crate::stalks::bud::IntoBud::IntoBud( $type::New( $closure ) ) )
     };
-
-    // ── Typed: (expr) [ closure ] ───────────────────────────────────────────────────────────────────
     ( $type:ident, ( $( $expr:tt)+ ) [ $closure:expr ] ) => {
         $crate::stalks::bud::IntoBud::IntoBudAction( $crate::BudTree!( $type, $( $expr)+ ), $crate::stalks::bud::IntoBud::IntoBud( $type::New( $closure ) ) )
     };
 
-    // ── Typed: leaf fallback ────────────────────────────────────────────────────────────────────────
+    // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
     ( $type:ident, $leaf:expr ) => { $crate::stalks::bud::IntoBud::IntoBud( $leaf ) };
-
-    // ── Untyped: strip outer parens ─────────────────────────────────────────────────────────────────
-    ( ( $( $inner:tt)+ ) ) => { $crate::BudTree!( $( $inner)+ ) };
-
-    // ── Untyped unary operators ─────────────────────────────────────────────────────────────────────
-    ( * $l:tt $( $r:tt)* ) => {
-        $crate::BudTree!( ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $l ), $crate::stalks::bud::BudUniOp::STAR ) as Box< dyn $crate::stalks::bud::Bud< _ >> ) $( $r)* )
-    };
-    ( + $l:tt $( $r:tt)* ) => {
-        $crate::BudTree!( ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $l ), $crate::stalks::bud::BudUniOp::PLUS ) as Box< dyn $crate::stalks::bud::Bud< _ >> ) $( $r)* )
-    };
-    ( - $l:tt $( $r:tt)* ) => {
-        $crate::BudTree!( ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $l ), $crate::stalks::bud::BudUniOp::MINUS ) as Box< dyn $crate::stalks::bud::Bud< _ >> ) $( $r)* )
-    };
-    ( ! $l:tt $( $r:tt)* ) => {
-        $crate::BudTree!( ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $l ), $crate::stalks::bud::BudUniOp::BANG ) as Box< dyn $crate::stalks::bud::Bud< _ >> ) $( $r)* )
-    };
-
-    // ── Untyped binary: (group) OP rhs ──────────────────────────────────────────────────────────────
-    ( ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $crate::BudTree!( @ub SHL, ( $( $l)+ ), $( $r)+ ) };
-    ( ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $crate::BudTree!( @ub SHR, ( $( $l)+ ), $( $r)+ ) };
-    ( ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $crate::BudTree!( @ub LT,  ( $( $l)+ ), $( $r)+ ) };
-    ( ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $crate::BudTree!( @ub BOR, ( $( $l)+ ), $( $r)+ ) };
-
-    // ── Untyped binary: ident OP rhs ────────────────────────────────────────────────────────────────
-    ( $l:ident << $( $r:tt)+ ) => { $crate::BudTree!( @ul SHL, $l, $( $r)+ ) };
-    ( $l:ident >> $( $r:tt)+ ) => { $crate::BudTree!( @ul SHR, $l, $( $r)+ ) };
-    ( $l:ident <  $( $r:tt)+ ) => { $crate::BudTree!( @ul LT,  $l, $( $r)+ ) };
-    ( $l:ident |  $( $r:tt)+ ) => { $crate::BudTree!( @ul BOR, $l, $( $r)+ ) };
-
-    // ── Untyped binary: literal OP rhs ──────────────────────────────────────────────────────────────
-    ( $l:literal << $( $r:tt)+ ) => { $crate::BudTree!( @ul SHL, $l, $( $r)+ ) };
-    ( $l:literal >> $( $r:tt)+ ) => { $crate::BudTree!( @ul SHR, $l, $( $r)+ ) };
-    ( $l:literal <  $( $r:tt)+ ) => { $crate::BudTree!( @ul LT,  $l, $( $r)+ ) };
-    ( $l:literal |  $( $r:tt)+ ) => { $crate::BudTree!( @ul BOR, $l, $( $r)+ ) };
-
-    // ── Untyped: leaf fallback ──────────────────────────────────────────────────────────────────────
-    ( $leaf:expr ) => { $crate::stalks::bud::IntoBud::IntoBud( $leaf ) };
-
-    // ── Untyped: (expr) [ closure ] ─────────────────────────────────────────────────────────────────
-    ( ( $( $expr:tt)+ ) [ $closure:expr ] ) => {
-        $crate::stalks::bud::IntoBud::IntoBudAction( $( $expr)+, $closure )
-    };
 
     // ═══ Internal helpers ═══════════════════════════════════════════════════════════════════════════
 
-    // @tb : typed binary — (group) OP rhs
-    ( @tb $type:ident, $op:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => {
+    // @bg : binary — (group) OP rhs
+    ( @bg $type:ident, $op:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => {
         < $type as $crate::stalks::bud::BudOp>::Create(
             $crate::stalks::bud::BudBinOp::$op,
             $crate::BudTree!( $type, $( $l)+ ),
             $crate::BudTree!( $type, $( $r)+ ) )
     };
 
-    // @tl : typed binary — leaf OP rhs
-    ( @tl $type:ident, $op:ident, $l:expr, $( $r:tt)+ ) => {
+    // @bl : binary — leaf OP rhs
+    ( @bl $type:ident, $op:ident, $l:expr, $( $r:tt)+ ) => {
         < $type as $crate::stalks::bud::BudOp>::Create(
             $crate::stalks::bud::BudBinOp::$op,
             $crate::stalks::bud::IntoBud::IntoBud( $l ),
             $crate::BudTree!( $type, $( $r)+ ) )
     };
-
-    // (Removed @tu and @txu since they are now evaluated inline)
-
-    // @ub : untyped binary — (group) OP rhs
-    ( @ub $op:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create(
-            $crate::stalks::bud::BudBinOp::$op,
-            $crate::BudTree!( $( $l)+ ),
-            $crate::BudTree!( $( $r)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
-    };
-
-    // @ul : untyped binary — leaf OP rhs
-    ( @ul $op:ident, $l:expr, $( $r:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create(
-            $crate::stalks::bud::BudBinOp::$op,
-            $crate::stalks::bud::IntoBud::IntoBud( $l ),
-            $crate::BudTree!( $( $r)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
-    };
-
-    // (Removed @uxu and @uux since they are now evaluated inline)
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
