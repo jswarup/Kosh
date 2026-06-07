@@ -178,6 +178,10 @@ pub trait IntoBud< T>: Sized {
     {
         self.IntoBud()
     }
+    fn	IntoBudRepeat( self) ->  Box< dyn Bud< T>>
+    {
+        self.IntoBud()
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -261,6 +265,12 @@ macro_rules! BudTree {
     ( $type:ident, | $( $body:tt)+ ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $type::New( | $( $body)+ ) )
     };
+    ( $type:ident, * ( $( $inner:tt)+ ) ) => {
+        $crate::stalks::bud::IntoBud::IntoBudRepeat( $crate::BudTree!( $type, $( $inner)+ ) )
+    };
+    ( $type:ident, * $lhs:expr) => {
+        $crate::stalks::bud::IntoBud::IntoBudRepeat( $lhs)
+    };
     ( $type:ident, $lhs:literal [ $closure:expr ] ) => {
         $crate::stalks::bud::IntoBud::IntoBudAction( $lhs, $crate::stalks::bud::IntoBud::IntoBud( $type::New( $closure ) ) )
     };
@@ -288,11 +298,14 @@ macro_rules! BudTree {
     ( $lhs:literal | $( $rhs:tt)+ ) => {
         Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
     };
+    ( * $lhs:expr ) => {
+        $crate::stalks::bud::IntoBud::IntoBudRepeat( $lhs)
+    };
     ( $leaf:expr ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $leaf )
     };
-    ( ( $( $lhs:tt)+ ) [ $closure:expr ]) => {
-        $crate::stalks::bud::IntoBud::IntoBudAction( $( $lhs)+, $closure )
+    ( ( $( $expr:tt)+ ) [ $closure:expr ]) => {
+        $crate::stalks::bud::IntoBud::IntoBudAction( $( $expr)+, $closure )
     };
 }
 

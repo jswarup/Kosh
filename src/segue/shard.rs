@@ -153,6 +153,11 @@ impl crate::stalks::bud::IntoBud< Shard> for &'static str
     {
         Box::new( Shard::from( self))
     }
+
+    fn	IntoBudRepeat( self) -> Box<dyn Bud<Shard>>
+    {
+        Box::new( Shard::from( self))
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
