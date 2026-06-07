@@ -267,6 +267,18 @@ macro_rules! BudTree {
     // ── Typed: strip outer parens ───────────────────────────────────────────────────────────────────
     ( $type:ident, ( $( $inner:tt)+ ) ) => { $crate::BudTree!( $type, $( $inner)+ ) };
 
+    // ── Typed unary: OP (group) ─────────────────────────────────────────────────────────────────────
+    ( $type:ident, * ( $( $inner:tt)+ ) ) => { $crate::BudTree!( @tu $type, STAR,  $( $inner)+ ) };
+    ( $type:ident, + ( $( $inner:tt)+ ) ) => { $crate::BudTree!( @tu $type, PLUS,  $( $inner)+ ) };
+    ( $type:ident, - ( $( $inner:tt)+ ) ) => { $crate::BudTree!( @tu $type, MINUS, $( $inner)+ ) };
+    ( $type:ident, ! ( $( $inner:tt)+ ) ) => { $crate::BudTree!( @tu $type, BANG,  $( $inner)+ ) };
+
+    // ── Typed unary: OP expr ────────────────────────────────────────────────────────────────────────
+    ( $type:ident, * $l:expr ) => { $crate::BudTree!( @tux STAR,  $l ) };
+    ( $type:ident, + $l:expr ) => { $crate::BudTree!( @tux PLUS,  $l ) };
+    ( $type:ident, - $l:expr ) => { $crate::BudTree!( @tux MINUS, $l ) };
+    ( $type:ident, ! $l:expr ) => { $crate::BudTree!( @tux BANG,  $l ) };
+
     // ── Typed binary: (group) OP rhs ────────────────────────────────────────────────────────────────
     ( $type:ident, ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $crate::BudTree!( @tb $type, SHL, ( $( $l)+ ), $( $r)+ ) };
     ( $type:ident, ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $crate::BudTree!( @tb $type, SHR, ( $( $l)+ ), $( $r)+ ) };
@@ -290,18 +302,6 @@ macro_rules! BudTree {
         $crate::stalks::bud::IntoBud::IntoBud( $type::New( | $( $body)+ ) )
     };
 
-    // ── Typed unary: OP (group) ─────────────────────────────────────────────────────────────────────
-    ( $type:ident, * ( $( $inner:tt)+ ) ) => { $crate::BudTree!( @tu $type, STAR,  $( $inner)+ ) };
-    ( $type:ident, + ( $( $inner:tt)+ ) ) => { $crate::BudTree!( @tu $type, PLUS,  $( $inner)+ ) };
-    ( $type:ident, - ( $( $inner:tt)+ ) ) => { $crate::BudTree!( @tu $type, MINUS, $( $inner)+ ) };
-    ( $type:ident, ! ( $( $inner:tt)+ ) ) => { $crate::BudTree!( @tu $type, BANG,  $( $inner)+ ) };
-
-    // ── Typed unary: OP expr ────────────────────────────────────────────────────────────────────────
-    ( $type:ident, * $l:expr ) => { $crate::BudTree!( @tux STAR,  $l ) };
-    ( $type:ident, + $l:expr ) => { $crate::BudTree!( @tux PLUS,  $l ) };
-    ( $type:ident, - $l:expr ) => { $crate::BudTree!( @tux MINUS, $l ) };
-    ( $type:ident, ! $l:expr ) => { $crate::BudTree!( @tux BANG,  $l ) };
-
     // ── Typed: literal [ closure ] ──────────────────────────────────────────────────────────────────
     ( $type:ident, $l:literal [ $closure:expr ] ) => {
         $crate::stalks::bud::IntoBud::IntoBudAction( $l, $crate::stalks::bud::IntoBud::IntoBud( $type::New( $closure ) ) )
@@ -312,6 +312,12 @@ macro_rules! BudTree {
 
     // ── Untyped: strip outer parens ─────────────────────────────────────────────────────────────────
     ( ( $( $inner:tt)+ ) ) => { $crate::BudTree!( $( $inner)+ ) };
+
+    // ── Untyped unary: OP expr ──────────────────────────────────────────────────────────────────────
+    ( * $l:expr ) => { $crate::BudTree!( @tux STAR,  $l ) };
+    ( + $l:expr ) => { $crate::BudTree!( @tux PLUS,  $l ) };
+    ( - $l:expr ) => { $crate::BudTree!( @tux MINUS, $l ) };
+    ( ! $l:expr ) => { $crate::BudTree!( @tux BANG,  $l ) };
 
     // ── Untyped binary: (group) OP rhs ──────────────────────────────────────────────────────────────
     ( ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $crate::BudTree!( @ub SHL, ( $( $l)+ ), $( $r)+ ) };
@@ -330,12 +336,6 @@ macro_rules! BudTree {
     ( $l:literal >> $( $r:tt)+ ) => { $crate::BudTree!( @ul SHR, $l, $( $r)+ ) };
     ( $l:literal <  $( $r:tt)+ ) => { $crate::BudTree!( @ul LT,  $l, $( $r)+ ) };
     ( $l:literal |  $( $r:tt)+ ) => { $crate::BudTree!( @ul BOR, $l, $( $r)+ ) };
-
-    // ── Untyped unary: OP expr ──────────────────────────────────────────────────────────────────────
-    ( * $l:expr ) => { $crate::BudTree!( @tux STAR,  $l ) };
-    ( + $l:expr ) => { $crate::BudTree!( @tux PLUS,  $l ) };
-    ( - $l:expr ) => { $crate::BudTree!( @tux MINUS, $l ) };
-    ( ! $l:expr ) => { $crate::BudTree!( @tux BANG,  $l ) };
 
     // ── Untyped: leaf fallback ──────────────────────────────────────────────────────────────────────
     ( $leaf:expr ) => { $crate::stalks::bud::IntoBud::IntoBud( $leaf ) };
