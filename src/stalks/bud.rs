@@ -289,6 +289,24 @@ macro_rules! BudTree {
     ( $type:ident, * $lhs:expr) => {
         $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::STAR)
     };
+    ( $type:ident, + ( $( $inner:tt)+ ) ) => {
+        $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $type, $( $inner)+), $crate::stalks::bud::BudUniOp::PLUS )
+    };
+    ( $type:ident, + $lhs:expr) => {
+        $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::PLUS)
+    };
+    ( $type:ident, - ( $( $inner:tt)+ ) ) => {
+        $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $type, $( $inner)+), $crate::stalks::bud::BudUniOp::MINUS )
+    };
+    ( $type:ident, - $lhs:expr) => {
+        $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::MINUS)
+    };
+    ( $type:ident, ! ( $( $inner:tt)+ ) ) => {
+        $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $type, $( $inner)+), $crate::stalks::bud::BudUniOp::BANG )
+    };
+    ( $type:ident, ! $lhs:expr) => {
+        $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::BANG)
+    };
     ( $type:ident, $lhs:literal [ $closure:expr ] ) => {
         $crate::stalks::bud::IntoBud::IntoBudAction( $lhs, $crate::stalks::bud::IntoBud::IntoBud( $type::New( $closure ) ) )
     };
@@ -318,6 +336,15 @@ macro_rules! BudTree {
     };
     ( * $lhs:expr ) => {
         $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::STAR)
+    };
+    ( + $lhs:expr ) => {
+        $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::PLUS)
+    };
+    ( - $lhs:expr ) => {
+        $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::MINUS)
+    };
+    ( ! $lhs:expr ) => {
+        $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::BANG)
     };
     ( $leaf:expr ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $leaf )
