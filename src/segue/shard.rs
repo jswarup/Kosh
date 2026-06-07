@@ -5,7 +5,7 @@ use	crate::stalks::work::{ IWork, IWorker };
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Clone, Debug)]
-pub struct Shard 
+pub struct Shard
 {
     _Closure: Option< fn( &dyn IWorker)>,
     _Char: Option< char>,
@@ -14,9 +14,9 @@ pub struct Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl Default for Shard 
+impl Default for Shard
 {
-    fn	default() -> Self 
+    fn	default() -> Self
     {
         Self {
             _Closure: Some( |_| {}),
@@ -28,9 +28,9 @@ impl Default for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl Shard 
+impl Shard
 {
-    pub fn	New( f: fn( &dyn IWorker)) -> Self 
+    pub fn	New( f: fn( &dyn IWorker)) -> Self
     {
         Self {
             _Closure: Some( f),
@@ -38,7 +38,7 @@ impl Shard
             _String: None,
         }
     }
-    pub fn	NewChar( c: char) -> Self 
+    pub fn	NewChar( c: char) -> Self
     {
         Self {
             _Closure: None,
@@ -46,7 +46,7 @@ impl Shard
             _String: None,
         }
     }
-    pub fn	NewString( s: String) -> Self 
+    pub fn	NewString( s: String) -> Self
     {
         Self {
             _Closure: None,
@@ -58,9 +58,9 @@ impl Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IWork for Shard 
+impl IWork for Shard
 {
-    fn	DoWork( &mut self, worker: &dyn IWorker) 
+    fn	DoWork( &mut self, worker: &dyn IWorker)
     {
         if let  	Some( f) = self._Closure {
             ( f)( worker);
@@ -74,9 +74,9 @@ impl IWork for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl Bud< Shard> for Shard 
+impl Bud< Shard> for Shard
 {
-    fn	Val( &self) -> Shard 
+    fn	Val( &self) -> Shard
     {
         self.clone()
     }
@@ -84,11 +84,11 @@ impl Bud< Shard> for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::stalks::bud::BudOp for Shard 
+impl crate::stalks::bud::BudOp for Shard
 {
-    fn	IsOpAllowed( op: crate::stalks::bud::BudBinOp) -> bool 
+    fn	IsOpAllowed( op: crate::stalks::bud::BudBinOp) -> bool
     {
-        matches!( 
+        matches!(
             op,
             crate::stalks::bud::BudBinOp::LT | crate::stalks::bud::BudBinOp::BOR
         )
@@ -97,9 +97,9 @@ impl crate::stalks::bud::BudOp for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl std::fmt::Display for Shard 
+impl std::fmt::Display for Shard
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result 
+    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
         if let  	Some( c) = self._Char {
             write!( f, "Shard( {})", c)
@@ -113,9 +113,9 @@ impl std::fmt::Display for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::stalks::bud::IntoBud< Shard> for fn( &dyn IWorker) 
+impl crate::stalks::bud::IntoBud< Shard> for fn( &dyn IWorker)
 {
-    fn	IntoBud( self) -> Box< dyn Bud< Shard>> 
+    fn	IntoBud( self) -> Box< dyn Bud< Shard>>
     {
         Box::new( Shard::New( self))
     }
@@ -123,9 +123,9 @@ impl crate::stalks::bud::IntoBud< Shard> for fn( &dyn IWorker)
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::stalks::bud::IntoBud< Shard> for char 
+impl crate::stalks::bud::IntoBud< Shard> for char
 {
-    fn	IntoBud( self) -> Box< dyn Bud< Shard>> 
+    fn	IntoBud( self) -> Box< dyn Bud< Shard>>
     {
         Box::new( Shard::from( self))
     }
@@ -133,9 +133,9 @@ impl crate::stalks::bud::IntoBud< Shard> for char
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::stalks::bud::IntoBud< Shard> for String 
+impl crate::stalks::bud::IntoBud< Shard> for String
 {
-    fn	IntoBud( self) -> Box< dyn Bud< Shard>> 
+    fn	IntoBud( self) -> Box< dyn Bud< Shard>>
     {
         Box::new( Shard::from( self))
     }
@@ -143,9 +143,13 @@ impl crate::stalks::bud::IntoBud< Shard> for String
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::stalks::bud::IntoBud< Shard> for &'static str 
+impl crate::stalks::bud::IntoBud< Shard> for &'static str
 {
-    fn	IntoBud( self) -> Box< dyn Bud< Shard>> 
+    fn	IntoBud( self) -> Box< dyn Bud< Shard>>
+    {
+        Box::new( Shard::from( self))
+    }
+    fn	IntoBudAction( self, _act: Box<dyn Bud<Shard>>) -> Box<dyn Bud<Shard>>
     {
         Box::new( Shard::from( self))
     }
@@ -153,9 +157,9 @@ impl crate::stalks::bud::IntoBud< Shard> for &'static str
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl From< char> for Shard 
+impl From< char> for Shard
 {
-    fn	from( c: char) -> Self 
+    fn	from( c: char) -> Self
     {
         Self::NewChar( c)
     }
@@ -163,9 +167,9 @@ impl From< char> for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl From< String> for Shard 
+impl From< String> for Shard
 {
-    fn	from( s: String) -> Self 
+    fn	from( s: String) -> Self
     {
         Self::NewString( s)
     }
@@ -173,9 +177,9 @@ impl From< String> for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl From< &str> for Shard 
+impl From< &str> for Shard
 {
-    fn	from( s: &str) -> Self 
+    fn	from( s: &str) -> Self
     {
         Self::NewString( s.to_string())
     }

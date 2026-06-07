@@ -174,6 +174,10 @@ where
 
 pub trait IntoBud< T>: Sized {
     fn	IntoBud( self) -> Box< dyn Bud< T>>;
+    fn	IntoBudAction( self, _atm: Box< dyn Bud< T>>) -> Box< dyn Bud< T>>
+    {
+        self.IntoBud()
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -257,6 +261,9 @@ macro_rules! BudTree {
     ( $type:ident, | $( $body:tt)+ ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $type::New( | $( $body)+ ) )
     };
+    ( $type:ident, $lhs:literal [ $closure:expr ] ) => {
+        $crate::stalks::bud::IntoBud::IntoBudAction( $lhs, $crate::stalks::bud::IntoBud::IntoBud( $type::New( $closure ) ) )
+    };
     ( $type:ident, $leaf:expr ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $leaf )
     };
@@ -283,6 +290,9 @@ macro_rules! BudTree {
     };
     ( $leaf:expr ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $leaf )
+    };
+    ( ( $( $lhs:tt)+ ) [ $closure:expr ]) => {
+        $crate::stalks::bud::IntoBud::IntoBudAction( $( $lhs)+, $closure )
     };
 }
 
