@@ -61,7 +61,7 @@ impl crate::stalks::bud::BudOp for Chore
     {
         matches!( 
             op,
-            crate::stalks::bud::BudBinOp::SHL | crate::stalks::bud::BudBinOp::BOR
+            crate::stalks::bud::BudBinOp::LT | crate::stalks::bud::BudBinOp::BOR
         )
     }
 }
@@ -106,7 +106,7 @@ where
                     let  	_succL = self.Process( node.Left().unwrap(), maestro, succId);
                     return succId;
                 }
-                if node.Op() == "<<" {
+                if node.Op() == "<" {
                     let  	mark = self._JobStash.Size();
                     let  	rJobId = self.Process( node.Right().unwrap(), maestro, succId);
                     let  	jStk = self._JobStash.Stk();

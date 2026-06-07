@@ -133,7 +133,7 @@ fn	TestChoreBuds()
     let  	budTree = crate::BudTree!( 
         Chore,
         ( cChore
-            << ( bChore
+            < ( bChore
                 | aChore
                 | ( |_m| {
                     print!( "{} ", 50);

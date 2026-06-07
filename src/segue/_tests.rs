@@ -17,7 +17,7 @@ fn	TestShardBuds()
     });
     let  	budTree = crate::BudTree!(
         Shard,
-        ( cShard << ( bShard | aShard | ( |_m| {
+        ( cShard < ( bShard | aShard | ( |_m| {
             print!( "{} ", 50);
         }) ))
     );
@@ -34,7 +34,7 @@ fn	TestShardBuds()
 #[test]
 fn	TestShardFromCharAndString()
 {
-    let  	budTree = crate::BudTree!( Shard, ( !"cShard" << !( 'b' | "aShard"[ |_m| {
+    let  	budTree = crate::BudTree!( Shard, ( !"cShard" < !( 'b' | "aShard"[ |_m| {
                         print!( "{} ", 50);
                     }] )));
     budTree.Print();
