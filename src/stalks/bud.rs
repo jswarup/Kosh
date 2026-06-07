@@ -89,12 +89,30 @@ impl BudBinOp
     pub fn	as_str( &self) -> &'static str
     {
         match self {
-            BudBinOp::LT => "< ",
+            BudBinOp::LT => "<",
             BudBinOp::BOR => "|",
         }
     }
 }
 
+pub enum BudUniOp {
+    STAR,
+    PLUS,
+    MINUS,
+    BANG,
+}
+impl BudUniOp
+{
+    pub fn	as_str( &self) -> &'static str
+    {
+        match self {
+            BudUniOp::STAR => "*",
+            BudUniOp::PLUS => "+",
+            BudUniOp::MINUS => "-",
+            BudUniOp::BANG => "!",
+        }
+    }
+}
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub enum BudType< T> {
@@ -178,7 +196,7 @@ pub trait IntoBud< T>: Sized {
     {
         self.IntoBud()
     }
-    fn	IntoBudRepeat( self) ->  Box< dyn Bud< T>>
+    fn	IntoBudUniOp( self, _op: BudUniOp) ->  Box< dyn Bud< T>>
     {
         self.IntoBud()
     }
@@ -266,10 +284,10 @@ macro_rules! BudTree {
         $crate::stalks::bud::IntoBud::IntoBud( $type::New( | $( $body)+ ) )
     };
     ( $type:ident, * ( $( $inner:tt)+ ) ) => {
-        $crate::stalks::bud::IntoBud::IntoBudRepeat( $crate::BudTree!( $type, $( $inner)+ ) )
+        $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $type, $( $inner)+), $crate::stalks::bud::BudUniOp::STAR )
     };
     ( $type:ident, * $lhs:expr) => {
-        $crate::stalks::bud::IntoBud::IntoBudRepeat( $lhs)
+        $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::STAR)
     };
     ( $type:ident, $lhs:literal [ $closure:expr ] ) => {
         $crate::stalks::bud::IntoBud::IntoBudAction( $lhs, $crate::stalks::bud::IntoBud::IntoBud( $type::New( $closure ) ) )
@@ -299,7 +317,7 @@ macro_rules! BudTree {
         Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
     };
     ( * $lhs:expr ) => {
-        $crate::stalks::bud::IntoBud::IntoBudRepeat( $lhs)
+        $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::STAR)
     };
     ( $leaf:expr ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $leaf )
