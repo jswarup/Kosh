@@ -263,134 +263,132 @@ impl_into_bud_for_primitives!( f64, f32, i32, i64, u32, u64, String, &'static st
 
 #[macro_export]
 macro_rules! BudTree {
-    ( $type:ident, ( $( $inner:tt)+ ) ) => {
-        $crate::BudTree!( $type, $( $inner)+ )
-    };
-    ( $type:ident, ( $( $lhs:tt)+ ) << $( $rhs:tt)+ ) => {
-        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::SHL, $crate::BudTree!( $type, $( $lhs)+ ), $crate::BudTree!( $type, $( $rhs)+ ) )
-    };
-    ( $type:ident, ( $( $lhs:tt)+ ) >> $( $rhs:tt)+ ) => {
-        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::SHR, $crate::BudTree!( $type, $( $lhs)+ ), $crate::BudTree!( $type, $( $rhs)+ ) )
-    };
-    ( $type:ident,  ( $( $lhs:tt)+ ) < $( $rhs:tt)+ ) => {
-        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::LT, $crate::BudTree!( $type, $( $lhs)+ ), $crate::BudTree!( $type,$( $rhs)+ ) )
-    };
-    ( $type:ident, ( $( $lhs:tt)+ ) | $( $rhs:tt)+ ) => {
-        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::BudTree!( $type,$( $lhs)+ ), $crate::BudTree!( $type,$( $rhs)+ ) )
-    };
-    ( $type:ident, $lhs:ident << $( $rhs:tt)+ ) => {
-        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::SHL, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $type, $( $rhs)+ ) )
-    };
-    ( $type:ident, $lhs:literal << $( $rhs:tt)+ ) => {
-        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::SHL, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $type, $( $rhs)+ ) )
-    };
-    ( $type:ident, $lhs:ident >> $( $rhs:tt)+ ) => {
-        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::SHR, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $type, $( $rhs)+ ) )
-    };
-    ( $type:ident, $lhs:literal >> $( $rhs:tt)+ ) => {
-        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::SHR, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $type, $( $rhs)+ ) )
-    };
-    ( $type:ident, $lhs:ident < $( $rhs:tt)+ ) => {
-        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::LT, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $type, $( $rhs)+ ) )
-    };
-    ( $type:ident, $lhs:literal < $( $rhs:tt)+ ) => {
-        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::LT, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $type, $( $rhs)+ ) )
-    };
-    ( $type:ident, $lhs:ident | $( $rhs:tt)+ ) => {
-        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $type, $( $rhs)+ ) )
-    };
-    ( $type:ident, $lhs:literal | $( $rhs:tt)+ ) => {
-        < $type as $crate::stalks::bud::BudOp>::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $type, $( $rhs)+ ) )
-    };
+
+    // ── Typed: strip outer parens ───────────────────────────────────────────────────────────────────
+    ( $type:ident, ( $( $inner:tt)+ ) ) => { $crate::BudTree!( $type, $( $inner)+ ) };
+
+    // ── Typed binary: (group) OP rhs ────────────────────────────────────────────────────────────────
+    ( $type:ident, ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $crate::BudTree!( @tb $type, SHL, ( $( $l)+ ), $( $r)+ ) };
+    ( $type:ident, ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $crate::BudTree!( @tb $type, SHR, ( $( $l)+ ), $( $r)+ ) };
+    ( $type:ident, ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $crate::BudTree!( @tb $type, LT,  ( $( $l)+ ), $( $r)+ ) };
+    ( $type:ident, ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $crate::BudTree!( @tb $type, BOR, ( $( $l)+ ), $( $r)+ ) };
+
+    // ── Typed binary: ident OP rhs ──────────────────────────────────────────────────────────────────
+    ( $type:ident, $l:ident << $( $r:tt)+ ) => { $crate::BudTree!( @tl $type, SHL, $l, $( $r)+ ) };
+    ( $type:ident, $l:ident >> $( $r:tt)+ ) => { $crate::BudTree!( @tl $type, SHR, $l, $( $r)+ ) };
+    ( $type:ident, $l:ident <  $( $r:tt)+ ) => { $crate::BudTree!( @tl $type, LT,  $l, $( $r)+ ) };
+    ( $type:ident, $l:ident |  $( $r:tt)+ ) => { $crate::BudTree!( @tl $type, BOR, $l, $( $r)+ ) };
+
+    // ── Typed binary: literal OP rhs ────────────────────────────────────────────────────────────────
+    ( $type:ident, $l:literal << $( $r:tt)+ ) => { $crate::BudTree!( @tl $type, SHL, $l, $( $r)+ ) };
+    ( $type:ident, $l:literal >> $( $r:tt)+ ) => { $crate::BudTree!( @tl $type, SHR, $l, $( $r)+ ) };
+    ( $type:ident, $l:literal <  $( $r:tt)+ ) => { $crate::BudTree!( @tl $type, LT,  $l, $( $r)+ ) };
+    ( $type:ident, $l:literal |  $( $r:tt)+ ) => { $crate::BudTree!( @tl $type, BOR, $l, $( $r)+ ) };
+
+    // ── Typed: closure literal ──────────────────────────────────────────────────────────────────────
     ( $type:ident, | $( $body:tt)+ ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $type::New( | $( $body)+ ) )
     };
-    ( $type:ident, * ( $( $inner:tt)+ ) ) => {
-        $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $type, $( $inner)+), $crate::stalks::bud::BudUniOp::STAR )
+
+    // ── Typed unary: OP (group) ─────────────────────────────────────────────────────────────────────
+    ( $type:ident, * ( $( $inner:tt)+ ) ) => { $crate::BudTree!( @tu $type, STAR,  $( $inner)+ ) };
+    ( $type:ident, + ( $( $inner:tt)+ ) ) => { $crate::BudTree!( @tu $type, PLUS,  $( $inner)+ ) };
+    ( $type:ident, - ( $( $inner:tt)+ ) ) => { $crate::BudTree!( @tu $type, MINUS, $( $inner)+ ) };
+    ( $type:ident, ! ( $( $inner:tt)+ ) ) => { $crate::BudTree!( @tu $type, BANG,  $( $inner)+ ) };
+
+    // ── Typed unary: OP expr ────────────────────────────────────────────────────────────────────────
+    ( $type:ident, * $l:expr ) => { $crate::BudTree!( @tux STAR,  $l ) };
+    ( $type:ident, + $l:expr ) => { $crate::BudTree!( @tux PLUS,  $l ) };
+    ( $type:ident, - $l:expr ) => { $crate::BudTree!( @tux MINUS, $l ) };
+    ( $type:ident, ! $l:expr ) => { $crate::BudTree!( @tux BANG,  $l ) };
+
+    // ── Typed: literal [ closure ] ──────────────────────────────────────────────────────────────────
+    ( $type:ident, $l:literal [ $closure:expr ] ) => {
+        $crate::stalks::bud::IntoBud::IntoBudAction( $l, $crate::stalks::bud::IntoBud::IntoBud( $type::New( $closure ) ) )
     };
-    ( $type:ident, * $lhs:expr) => {
-        $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::STAR)
-    };
-    ( $type:ident, + ( $( $inner:tt)+ ) ) => {
-        $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $type, $( $inner)+), $crate::stalks::bud::BudUniOp::PLUS )
-    };
-    ( $type:ident, + $lhs:expr) => {
-        $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::PLUS)
-    };
-    ( $type:ident, - ( $( $inner:tt)+ ) ) => {
-        $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $type, $( $inner)+), $crate::stalks::bud::BudUniOp::MINUS )
-    };
-    ( $type:ident, - $lhs:expr) => {
-        $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::MINUS)
-    };
-    ( $type:ident, ! ( $( $inner:tt)+ ) ) => {
-        $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $type, $( $inner)+), $crate::stalks::bud::BudUniOp::BANG )
-    };
-    ( $type:ident, ! $lhs:expr) => {
-        $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::BANG)
-    };
-    ( $type:ident, $lhs:literal [ $closure:expr ] ) => {
-        $crate::stalks::bud::IntoBud::IntoBudAction( $lhs, $crate::stalks::bud::IntoBud::IntoBud( $type::New( $closure ) ) )
-    };
-    ( $type:ident, $leaf:expr ) => {
-        $crate::stalks::bud::IntoBud::IntoBud( $leaf )
-    };
-    ( ( $( $inner:tt)+ ) ) => {
-        $crate::BudTree!( $( $inner)+ )
-    };
-    ( ( $( $lhs:tt)+ ) << $( $rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::SHL, $crate::BudTree!( $( $lhs)+ ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
-    };
-    ( ( $( $lhs:tt)+ ) >> $( $rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::SHR, $crate::BudTree!( $( $lhs)+ ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
-    };
-    (  ( $( $lhs:tt)+ ) < $( $rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::LT, $crate::BudTree!( $( $lhs)+ ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
-    };
-    ( ( $( $lhs:tt)+ ) | $( $rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::BudTree!( $( $lhs)+ ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
-    };
-    ( $lhs:ident << $( $rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::SHL, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
-    };
-    ( $lhs:literal << $( $rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::SHL, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
-    };
-    ( $lhs:ident >> $( $rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::SHR, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
-    };
-    ( $lhs:literal >> $( $rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::SHR, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
-    };
-    ( $lhs:ident < $( $rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::LT, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
-    };
-    ( $lhs:literal < $( $rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::LT, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
-    };
-    ( $lhs:ident | $( $rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
-    };
-    ( $lhs:literal | $( $rhs:tt)+ ) => {
-        Box::new( $crate::stalks::bud::BudNode::Create( $crate::stalks::bud::BudBinOp::BOR, $crate::stalks::bud::IntoBud::IntoBud( $lhs ), $crate::BudTree!( $( $rhs)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
-    };
-    ( * $lhs:expr ) => {
-        $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::STAR)
-    };
-    ( + $lhs:expr ) => {
-        $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::PLUS)
-    };
-    ( - $lhs:expr ) => {
-        $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::MINUS)
-    };
-    ( ! $lhs:expr ) => {
-        $crate::stalks::bud::IntoBud::IntoBudUniOp( $lhs, $crate::stalks::bud::BudUniOp::BANG)
-    };
-    ( $leaf:expr ) => {
-        $crate::stalks::bud::IntoBud::IntoBud( $leaf )
-    };
-    ( ( $( $expr:tt)+ ) [ $closure:expr ]) => {
+
+    // ── Typed: leaf fallback ────────────────────────────────────────────────────────────────────────
+    ( $type:ident, $leaf:expr ) => { $crate::stalks::bud::IntoBud::IntoBud( $leaf ) };
+
+    // ── Untyped: strip outer parens ─────────────────────────────────────────────────────────────────
+    ( ( $( $inner:tt)+ ) ) => { $crate::BudTree!( $( $inner)+ ) };
+
+    // ── Untyped binary: (group) OP rhs ──────────────────────────────────────────────────────────────
+    ( ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $crate::BudTree!( @ub SHL, ( $( $l)+ ), $( $r)+ ) };
+    ( ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $crate::BudTree!( @ub SHR, ( $( $l)+ ), $( $r)+ ) };
+    ( ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $crate::BudTree!( @ub LT,  ( $( $l)+ ), $( $r)+ ) };
+    ( ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $crate::BudTree!( @ub BOR, ( $( $l)+ ), $( $r)+ ) };
+
+    // ── Untyped binary: ident OP rhs ────────────────────────────────────────────────────────────────
+    ( $l:ident << $( $r:tt)+ ) => { $crate::BudTree!( @ul SHL, $l, $( $r)+ ) };
+    ( $l:ident >> $( $r:tt)+ ) => { $crate::BudTree!( @ul SHR, $l, $( $r)+ ) };
+    ( $l:ident <  $( $r:tt)+ ) => { $crate::BudTree!( @ul LT,  $l, $( $r)+ ) };
+    ( $l:ident |  $( $r:tt)+ ) => { $crate::BudTree!( @ul BOR, $l, $( $r)+ ) };
+
+    // ── Untyped binary: literal OP rhs ──────────────────────────────────────────────────────────────
+    ( $l:literal << $( $r:tt)+ ) => { $crate::BudTree!( @ul SHL, $l, $( $r)+ ) };
+    ( $l:literal >> $( $r:tt)+ ) => { $crate::BudTree!( @ul SHR, $l, $( $r)+ ) };
+    ( $l:literal <  $( $r:tt)+ ) => { $crate::BudTree!( @ul LT,  $l, $( $r)+ ) };
+    ( $l:literal |  $( $r:tt)+ ) => { $crate::BudTree!( @ul BOR, $l, $( $r)+ ) };
+
+    // ── Untyped unary: OP expr ──────────────────────────────────────────────────────────────────────
+    ( * $l:expr ) => { $crate::BudTree!( @tux STAR,  $l ) };
+    ( + $l:expr ) => { $crate::BudTree!( @tux PLUS,  $l ) };
+    ( - $l:expr ) => { $crate::BudTree!( @tux MINUS, $l ) };
+    ( ! $l:expr ) => { $crate::BudTree!( @tux BANG,  $l ) };
+
+    // ── Untyped: leaf fallback ──────────────────────────────────────────────────────────────────────
+    ( $leaf:expr ) => { $crate::stalks::bud::IntoBud::IntoBud( $leaf ) };
+
+    // ── Untyped: (expr) [ closure ] ─────────────────────────────────────────────────────────────────
+    ( ( $( $expr:tt)+ ) [ $closure:expr ] ) => {
         $crate::stalks::bud::IntoBud::IntoBudAction( $( $expr)+, $closure )
+    };
+
+    // ═══ Internal helpers ═══════════════════════════════════════════════════════════════════════════
+
+    // @tb : typed binary — (group) OP rhs
+    ( @tb $type:ident, $op:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => {
+        < $type as $crate::stalks::bud::BudOp>::Create(
+            $crate::stalks::bud::BudBinOp::$op,
+            $crate::BudTree!( $type, $( $l)+ ),
+            $crate::BudTree!( $type, $( $r)+ ) )
+    };
+
+    // @tl : typed binary — leaf OP rhs
+    ( @tl $type:ident, $op:ident, $l:expr, $( $r:tt)+ ) => {
+        < $type as $crate::stalks::bud::BudOp>::Create(
+            $crate::stalks::bud::BudBinOp::$op,
+            $crate::stalks::bud::IntoBud::IntoBud( $l ),
+            $crate::BudTree!( $type, $( $r)+ ) )
+    };
+
+    // @tu : typed unary — OP (group)
+    ( @tu $type:ident, $op:ident, $( $inner:tt)+ ) => {
+        $crate::stalks::bud::IntoBud::IntoBudUniOp(
+            $crate::BudTree!( $type, $( $inner)+ ),
+            $crate::stalks::bud::BudUniOp::$op )
+    };
+
+    // @tux : unary — OP expr  (shared by typed and untyped)
+    ( @tux $op:ident, $l:expr ) => {
+        $crate::stalks::bud::IntoBud::IntoBudUniOp( $l, $crate::stalks::bud::BudUniOp::$op )
+    };
+
+    // @ub : untyped binary — (group) OP rhs
+    ( @ub $op:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => {
+        Box::new( $crate::stalks::bud::BudNode::Create(
+            $crate::stalks::bud::BudBinOp::$op,
+            $crate::BudTree!( $( $l)+ ),
+            $crate::BudTree!( $( $r)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
+    };
+
+    // @ul : untyped binary — leaf OP rhs
+    ( @ul $op:ident, $l:expr, $( $r:tt)+ ) => {
+        Box::new( $crate::stalks::bud::BudNode::Create(
+            $crate::stalks::bud::BudBinOp::$op,
+            $crate::stalks::bud::IntoBud::IntoBud( $l ),
+            $crate::BudTree!( $( $r)+ ) ) ) as Box< dyn $crate::stalks::bud::Bud< _ >>
     };
 }
 
