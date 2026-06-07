@@ -54,12 +54,6 @@ impl Shard
             _String: Some( s),
         }
     }
-    pub fn	WithClosure< L: Into< Shard>>( label: L, f: fn( &dyn IWorker)) -> Self 
-    {
-        let  	mut labelShard = label.into();
-        labelShard._Closure = Some( f);
-        labelShard
-    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

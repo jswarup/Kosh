@@ -34,9 +34,7 @@ fn	TestShardBuds()
 #[test]
 fn	TestShardFromCharAndString()
 {
-    let  	budTree = crate::BudTree!( Shard, ( "cShard" < *( 'b' | "aShard"[ |_m| {
-                        print!( "{} ", 50);
-                    }] )));
+    let  	budTree = crate::BudTree!( Shard, ( "cShard" < ( 'b' | "aShard" )));
     budTree.Print();
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
