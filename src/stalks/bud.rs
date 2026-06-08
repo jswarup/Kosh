@@ -197,6 +197,12 @@ where
 
 pub trait IntoBud< T>: Sized {
     fn	IntoBud( self) -> Box< dyn Bud< T>>;
+
+    fn	IntoBudBox( self) -> Box< dyn Bud< T>>
+    {
+        self.IntoBud()
+    }
+
     fn	IntoBudAction( self, _atm: Box< dyn Bud< T>>) -> Box< dyn Bud< T>>
     {
         self.IntoBud()
@@ -304,18 +310,36 @@ macro_rules! BudTree {
         $crate::stalks::bud::IntoBud::IntoBud( $type::New( | $( $body)+ ) )
     };
 
-    // ── Leaf [ closure ] ────────────────────────────────────────────────────────────────────────────
-    ( $type:ident, $l:literal [ $closure:expr ] ) => {
-        $crate::stalks::bud::IntoBud::IntoBudAction( $l, $crate::stalks::bud::IntoBud::IntoBud( $type::New( $closure ) ) )
+    // ── Leaf [ action ] ────────────────────────────────────────────────────────────────────────────
+    ( $type:ident, $l:literal [ $( $inner:tt )* ] ) => {
+        $crate::BudTree!( @closure_match $type, $l, $( $inner )* )
     };
-    ( $type:ident, ( $( $expr:tt)+ ) [ $closure:expr ] ) => {
-        $crate::stalks::bud::IntoBud::IntoBudAction( $crate::BudTree!( $type, $( $expr)+ ), $crate::stalks::bud::IntoBud::IntoBud( $type::New( $closure ) ) )
+    ( $type:ident, ( $( $expr:tt)+ ) [ $( $inner:tt )* ] ) => {
+        $crate::BudTree!( @closure_match $type, $crate::BudTree!( $type, $( $expr)+ ), $( $inner )* )
     };
+
+    // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
+    ( $type:ident, [ $leaf:expr ]  ) => { $crate::stalks::bud::IntoBud::IntoBudBox( $leaf ) };
+
 
     // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
     ( $type:ident, $leaf:expr ) => { $crate::stalks::bud::IntoBud::IntoBud( $leaf ) };
 
     // ═══ Internal helpers ═══════════════════════════════════════════════════════════════════════════
+
+    // @closure_match : resolves closure vs non-closure for action leaf
+    ( @closure_match $type:ident, $base:expr, | $( $closure:tt )* ) => {
+        $crate::stalks::bud::IntoBud::IntoBudAction( $base, $crate::stalks::bud::IntoBud::IntoBud( $type::New( | $($closure)* ) ) )
+    };
+    ( @closure_match $type:ident, $base:expr, || $( $closure:tt )* ) => {
+        $crate::stalks::bud::IntoBud::IntoBudAction( $base, $crate::stalks::bud::IntoBud::IntoBud( $type::New( || $($closure)* ) ) )
+    };
+    ( @closure_match $type:ident, $base:expr, move | $( $closure:tt )* ) => {
+        $crate::stalks::bud::IntoBud::IntoBudAction( $base, $crate::stalks::bud::IntoBud::IntoBud( $type::New( move | $($closure)* ) ) )
+    };
+    ( @closure_match $type:ident, $base:expr, move || $( $closure:tt )* ) => {
+        $crate::stalks::bud::IntoBud::IntoBudAction( $base, $crate::stalks::bud::IntoBud::IntoBud( $type::New( move || $($closure)* ) ) )
+    };
 
     // @bg : binary — (group) OP rhs
     ( @bg $type:ident, $op:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => {
