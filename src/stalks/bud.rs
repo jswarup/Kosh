@@ -303,6 +303,10 @@ macro_rules! BudTree {
     ( @feature_ACTION [ $($cb:tt)* ], $type:ident, $l:literal [ $( $inner:tt )* ] ) => { $crate::BudTree!( @closure_match [ $($cb)* ], $type, $l, $( $inner )* ) };
     ( @feature_ACTION [ $($cb:tt)* ], $type:ident, ( $( $expr:tt)+ ) [ $( $inner:tt )* ] ) => { $crate::BudTree!( @closure_match [ $($cb)* ], $type, $($cb)* !( @cb [ $($cb)* ], $type, $( $expr)+ ), $( $inner )* ) };
 
+    ( @feature_BOXET [ $($cb:tt)* ], $type:ident, [ $leaf:expr ] ) => {
+        $crate::stalks::bud::IntoBud::IntoBudBox( $leaf )
+    };
+
 
     // ── Strip outer parens ──────────────────────────────────────────────────────────────────────────
     ( @cb [ $($cb:tt)* ], $type:ident, ( $( $inner:tt)+ ) ) => { $($cb)* !( @cb [ $($cb)* ], $type, $( $inner)+ ) };
@@ -342,6 +346,17 @@ macro_rules! BudTree {
     };
     ( @cb [ $($cb:tt)* ], $type:ident, ( $( $expr:tt)+ ) [ $( $inner:tt )* ] ) => {
         $($cb)* !( @feature_ACTION [ $($cb)* ], $type, ( $( $expr )+ ) [ $( $inner )* ] )
+    };
+
+    // ── Binary: [ boxet ] OP rhs ────────────────────────────────────────────────────────────────────
+    ( @cb [ $($cb:tt)* ], $type:ident, [ $( $inner:tt )* ] << $( $r:tt)+ ) => { $($cb)* !( @feature_SHL [ $($cb)* ], @bg $type, ( [ $( $inner )* ] ), $( $r )+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, [ $( $inner:tt )* ] >> $( $r:tt)+ ) => { $($cb)* !( @feature_SHR [ $($cb)* ], @bg $type, ( [ $( $inner )* ] ), $( $r )+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, [ $( $inner:tt )* ] <  $( $r:tt)+ ) => { $($cb)* !( @feature_LT  [ $($cb)* ], @bg $type, ( [ $( $inner )* ] ), $( $r )+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, [ $( $inner:tt )* ] |  $( $r:tt)+ ) => { $($cb)* !( @feature_BOR [ $($cb)* ], @bg $type, ( [ $( $inner )* ] ), $( $r )+ ) };
+
+    // ── Leaf Boxet ──────────────────────────────────────────────────────────────────────────────────
+    ( @cb [ $($cb:tt)* ], $type:ident, [ $( $inner:tt )* ] ) => {
+        $($cb)* !( @feature_BOXET [ $($cb)* ], $type, [ $( $inner )* ] )
     };
 
     // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────

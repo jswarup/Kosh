@@ -33,7 +33,7 @@ fn	TestShardBuds()
 #[test]
 fn	TestShardFromCharAndString()
 {
-    let  	budTree = crate::ShardTree!( ( !"cShard" < !( 'b' | "aShard"[ |_m| {
+    let  	budTree = crate::ShardTree!( ( !"cShard" < !( 'b' < [ a-z] < "aShard"[ |_m| {
                         print!( "{} ", 50);
                     }] )));
     budTree.Print();

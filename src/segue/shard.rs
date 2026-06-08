@@ -90,7 +90,7 @@ impl crate::stalks::bud::BudOp for Shard
     {
         matches!(
             op,
-            crate::stalks::bud::BudBinOp::LT | crate::stalks::bud::BudBinOp::BOR
+            crate::stalks::bud::BudBinOp::LT | crate::stalks::bud::BudBinOp::BOR | crate::stalks::bud::BudBinOp::SHL
         )
     }
 }
@@ -205,9 +205,18 @@ macro_rules! ShardTree {
     ( @feature_LT [ $($cb:tt)* ], @bg $type:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, LT, ( $( $l)+ ), $( $r)+ ) };
     ( @feature_LT [ $($cb:tt)* ], @bl $type:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, LT, $l, $( $r)+ ) };
 
+    // Enable SHL (<<)
+    ( @feature_SHL [ $($cb:tt)* ], @bg $type:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, SHL, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_SHL [ $($cb:tt)* ], @bl $type:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, SHL, $l, $( $r)+ ) };
+
     // Enable BOR (|)
     ( @feature_BOR [ $($cb:tt)* ], @bg $type:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, BOR, ( $( $l)+ ), $( $r)+ ) };
     ( @feature_BOR [ $($cb:tt)* ], @bl $type:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, BOR, $l, $( $r)+ ) };
+
+    // Enable Boxet stringification
+    ( @feature_BOXET [ $($cb:tt)* ], $type:ident, [ $( $inner:tt )* ] ) => {
+        $crate::stalks::bud::IntoBud::IntoBud( $type::from( stringify!( $($inner)* ).replace( " ", "" ) ) )
+    };
 
     // Enable Closure literal (NEW)
     ( @feature_NEW [ $($cb:tt)* ], $type:ident, | $( $body:tt)+ ) => { $crate::stalks::bud::IntoBud::IntoBud( $type::New( | $( $body)+ ) ) };
