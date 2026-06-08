@@ -271,90 +271,94 @@ impl_into_bud_for_primitives!( f64, f32, i32, i64, u32, u64, String, &'static st
 #[macro_export]
 macro_rules! BudTree {
 
+    // ── Top-level entry points for backward compatibility ───────────────────────────────────────────
+    ( $type:ident, $( $inner:tt )+ ) => {
+        $crate::BudTree!( @cb [ $crate::BudTree ], $type, $( $inner )+ )
+    };
+
     // ── Strip outer parens ──────────────────────────────────────────────────────────────────────────
-    ( $type:ident, ( $( $inner:tt)+ ) ) => { $crate::BudTree!( $type, $( $inner)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, ( $( $inner:tt)+ ) ) => { $($cb)* !( @cb [ $($cb)* ], $type, $( $inner)+ ) };
 
     // ── Unary operators ─────────────────────────────────────────────────────────────────────────────
-    ( $type:ident, * $l:tt $( $r:tt)* ) => {
-        $crate::BudTree!( $type, ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $type, $l ), $crate::stalks::bud::BudUniOp::STAR ) ) $( $r)* )
+    ( @cb [ $($cb:tt)* ], $type:ident, * $l:tt $( $r:tt)* ) => {
+        $($cb)* !( @cb [ $($cb)* ], $type, ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $($cb)* !( @cb [ $($cb)* ], $type, $l ), $crate::stalks::bud::BudUniOp::STAR ) ) $( $r)* )
     };
-    ( $type:ident, + $l:tt $( $r:tt)* ) => {
-        $crate::BudTree!( $type, ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $type, $l ), $crate::stalks::bud::BudUniOp::PLUS ) ) $( $r)* )
+    ( @cb [ $($cb:tt)* ], $type:ident, + $l:tt $( $r:tt)* ) => {
+        $($cb)* !( @cb [ $($cb)* ], $type, ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $($cb)* !( @cb [ $($cb)* ], $type, $l ), $crate::stalks::bud::BudUniOp::PLUS ) ) $( $r)* )
     };
-    ( $type:ident, - $l:tt $( $r:tt)* ) => {
-        $crate::BudTree!( $type, ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $type, $l ), $crate::stalks::bud::BudUniOp::MINUS ) ) $( $r)* )
+    ( @cb [ $($cb:tt)* ], $type:ident, - $l:tt $( $r:tt)* ) => {
+        $($cb)* !( @cb [ $($cb)* ], $type, ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $($cb)* !( @cb [ $($cb)* ], $type, $l ), $crate::stalks::bud::BudUniOp::MINUS ) ) $( $r)* )
     };
-    ( $type:ident, ! $l:tt $( $r:tt)* ) => {
-        $crate::BudTree!( $type, ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $crate::BudTree!( $type, $l ), $crate::stalks::bud::BudUniOp::BANG ) ) $( $r)* )
+    ( @cb [ $($cb:tt)* ], $type:ident, ! $l:tt $( $r:tt)* ) => {
+        $($cb)* !( @cb [ $($cb)* ], $type, ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $($cb)* !( @cb [ $($cb)* ], $type, $l ), $crate::stalks::bud::BudUniOp::BANG ) ) $( $r)* )
     };
 
     // ── Binary: (group) OP rhs ──────────────────────────────────────────────────────────────────────
-    ( $type:ident, ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $crate::BudTree!( @bg $type, SHL, ( $( $l)+ ), $( $r)+ ) };
-    ( $type:ident, ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $crate::BudTree!( @bg $type, SHR, ( $( $l)+ ), $( $r)+ ) };
-    ( $type:ident, ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $crate::BudTree!( @bg $type, LT,  ( $( $l)+ ), $( $r)+ ) };
-    ( $type:ident, ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $crate::BudTree!( @bg $type, BOR, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, SHL, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, SHR, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, LT,  ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, BOR, ( $( $l)+ ), $( $r)+ ) };
 
     // ── Binary: ident/literal OP rhs ────────────────────────────────────────────────────────────────
-    ( $type:ident, $l:ident << $( $r:tt)+ ) => { $crate::BudTree!( @bl $type, SHL, $l, $( $r)+ ) };
-    ( $type:ident, $l:ident >> $( $r:tt)+ ) => { $crate::BudTree!( @bl $type, SHR, $l, $( $r)+ ) };
-    ( $type:ident, $l:ident <  $( $r:tt)+ ) => { $crate::BudTree!( @bl $type, LT,  $l, $( $r)+ ) };
-    ( $type:ident, $l:ident |  $( $r:tt)+ ) => { $crate::BudTree!( @bl $type, BOR, $l, $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:ident << $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, SHL, $l, $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:ident >> $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, SHR, $l, $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:ident <  $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, LT,  $l, $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:ident |  $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, BOR, $l, $( $r)+ ) };
 
-    ( $type:ident, $l:literal << $( $r:tt)+ ) => { $crate::BudTree!( @bl $type, SHL, $l, $( $r)+ ) };
-    ( $type:ident, $l:literal >> $( $r:tt)+ ) => { $crate::BudTree!( @bl $type, SHR, $l, $( $r)+ ) };
-    ( $type:ident, $l:literal <  $( $r:tt)+ ) => { $crate::BudTree!( @bl $type, LT,  $l, $( $r)+ ) };
-    ( $type:ident, $l:literal |  $( $r:tt)+ ) => { $crate::BudTree!( @bl $type, BOR, $l, $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:literal << $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, SHL, $l, $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:literal >> $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, SHR, $l, $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:literal <  $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, LT,  $l, $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:literal |  $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, BOR, $l, $( $r)+ ) };
 
     // ── Closure literal ─────────────────────────────────────────────────────────────────────────────
-    ( $type:ident, | $( $body:tt)+ ) => {
+    ( @cb [ $($cb:tt)* ], $type:ident, | $( $body:tt)+ ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $type::New( | $( $body)+ ) )
     };
 
     // ── Leaf [ action ] ────────────────────────────────────────────────────────────────────────────
-    ( $type:ident, $l:literal [ $( $inner:tt )* ] ) => {
-        $crate::BudTree!( @closure_match $type, $l, $( $inner )* )
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:literal [ $( $inner:tt )* ] ) => {
+        $crate::BudTree!( @closure_match [ $($cb)* ], $type, $l, $( $inner )* )
     };
-    ( $type:ident, ( $( $expr:tt)+ ) [ $( $inner:tt )* ] ) => {
-        $crate::BudTree!( @closure_match $type, $crate::BudTree!( $type, $( $expr)+ ), $( $inner )* )
+    ( @cb [ $($cb:tt)* ], $type:ident, ( $( $expr:tt)+ ) [ $( $inner:tt )* ] ) => {
+        $crate::BudTree!( @closure_match [ $($cb)* ], $type, $($cb)* !( @cb [ $($cb)* ], $type, $( $expr)+ ), $( $inner )* )
     };
 
     // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
-    ( $type:ident, [ $leaf:expr ]  ) => { $crate::stalks::bud::IntoBud::IntoBudBox( $leaf ) };
-
+    ( @cb [ $($cb:tt)* ], $type:ident, [ $leaf:expr ]  ) => { $crate::stalks::bud::IntoBud::IntoBudBox( $leaf ) };
 
     // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
-    ( $type:ident, $leaf:expr ) => { $crate::stalks::bud::IntoBud::IntoBud( $leaf ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, $leaf:expr ) => { $crate::stalks::bud::IntoBud::IntoBud( $leaf ) };
 
     // ═══ Internal helpers ═══════════════════════════════════════════════════════════════════════════
 
     // @closure_match : resolves closure vs non-closure for action leaf
-    ( @closure_match $type:ident, $base:expr, | $( $closure:tt )* ) => {
+    ( @closure_match [ $($cb:tt)* ], $type:ident, $base:expr, | $( $closure:tt )* ) => {
         $crate::stalks::bud::IntoBud::IntoBudAction( $base, $crate::stalks::bud::IntoBud::IntoBud( $type::New( | $($closure)* ) ) )
     };
-    ( @closure_match $type:ident, $base:expr, || $( $closure:tt )* ) => {
+    ( @closure_match [ $($cb:tt)* ], $type:ident, $base:expr, || $( $closure:tt )* ) => {
         $crate::stalks::bud::IntoBud::IntoBudAction( $base, $crate::stalks::bud::IntoBud::IntoBud( $type::New( || $($closure)* ) ) )
     };
-    ( @closure_match $type:ident, $base:expr, move | $( $closure:tt )* ) => {
+    ( @closure_match [ $($cb:tt)* ], $type:ident, $base:expr, move | $( $closure:tt )* ) => {
         $crate::stalks::bud::IntoBud::IntoBudAction( $base, $crate::stalks::bud::IntoBud::IntoBud( $type::New( move | $($closure)* ) ) )
     };
-    ( @closure_match $type:ident, $base:expr, move || $( $closure:tt )* ) => {
+    ( @closure_match [ $($cb:tt)* ], $type:ident, $base:expr, move || $( $closure:tt )* ) => {
         $crate::stalks::bud::IntoBud::IntoBudAction( $base, $crate::stalks::bud::IntoBud::IntoBud( $type::New( move || $($closure)* ) ) )
     };
 
     // @bg : binary — (group) OP rhs
-    ( @bg $type:ident, $op:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => {
+    ( @bg [ $($cb:tt)* ], $type:ident, $op:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => {
         < $type as $crate::stalks::bud::BudOp>::Create(
             $crate::stalks::bud::BudBinOp::$op,
-            $crate::BudTree!( $type, $( $l)+ ),
-            $crate::BudTree!( $type, $( $r)+ ) )
+            $($cb)* !( @cb [ $($cb)* ], $type, $( $l)+ ),
+            $($cb)* !( @cb [ $($cb)* ], $type, $( $r)+ ) )
     };
 
     // @bl : binary — leaf OP rhs
-    ( @bl $type:ident, $op:ident, $l:expr, $( $r:tt)+ ) => {
+    ( @bl [ $($cb:tt)* ], $type:ident, $op:ident, $l:expr, $( $r:tt)+ ) => {
         < $type as $crate::stalks::bud::BudOp>::Create(
             $crate::stalks::bud::BudBinOp::$op,
             $crate::stalks::bud::IntoBud::IntoBud( $l ),
-            $crate::BudTree!( $type, $( $r)+ ) )
+            $($cb)* !( @cb [ $($cb)* ], $type, $( $r)+ ) )
     };
 }
 

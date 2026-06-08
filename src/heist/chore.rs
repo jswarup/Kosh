@@ -8,16 +8,16 @@ use	crate::stalks::work::{ IWork, IWorker };
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Copy, Clone, Debug)]
-pub struct Chore 
+pub struct Chore
 {
     _Closure: fn( &dyn IWorker),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl Default for Chore 
+impl Default for Chore
 {
-    fn	default() -> Self 
+    fn	default() -> Self
     {
         Self { _Closure: |_| {} }
     }
@@ -25,9 +25,9 @@ impl Default for Chore
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl Chore 
+impl Chore
 {
-    pub fn	New( f: fn( &dyn IWorker)) -> Self 
+    pub fn	New( f: fn( &dyn IWorker)) -> Self
     {
         Self { _Closure: f }
     }
@@ -35,9 +35,9 @@ impl Chore
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IWork for Chore 
+impl IWork for Chore
 {
-    fn	DoWork( &mut self, worker: &dyn IWorker) 
+    fn	DoWork( &mut self, worker: &dyn IWorker)
     {
         ( self._Closure)( worker);
     }
@@ -45,9 +45,9 @@ impl IWork for Chore
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl Bud< Chore> for Chore 
+impl Bud< Chore> for Chore
 {
-    fn	Val( &self) -> Chore 
+    fn	Val( &self) -> Chore
     {
         *self
     }
@@ -55,11 +55,11 @@ impl Bud< Chore> for Chore
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::stalks::bud::BudOp for Chore 
+impl crate::stalks::bud::BudOp for Chore
 {
-    fn	IsOpAllowed( op: crate::stalks::bud::BudBinOp) -> bool 
+    fn	IsOpAllowed( op: crate::stalks::bud::BudBinOp) -> bool
     {
-        matches!( 
+        matches!(
             op,
             crate::stalks::bud::BudBinOp::LT | crate::stalks::bud::BudBinOp::BOR
         )
@@ -68,9 +68,9 @@ impl crate::stalks::bud::BudOp for Chore
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl std::fmt::Display for Chore 
+impl std::fmt::Display for Chore
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result 
+    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
         write!( f, "Chore")
     }
@@ -82,14 +82,14 @@ impl< T> dyn Bud< T> + '_
 where
     T: IWork + Clone + Default + 'static,
 {
-    pub fn	Post( &self, worker: &dyn IWorker) 
+    pub fn	Post( &self, worker: &dyn IWorker)
     {
         let  	maestro: &Maestro< '_> = Maestro::FromWorker( worker);
-        struct JobStash 
+        struct JobStash
         {
             _JobStash: Stash< U16>,
         }
-        impl JobStash 
+        impl JobStash
         {
             fn	Process< T>( &mut self, node: &dyn Bud< T>, maestro: &Maestro< '_>, succId: U16) -> U16
             where
@@ -140,12 +140,32 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::stalks::bud::IntoBud< Chore> for fn( &dyn IWorker) 
+impl crate::stalks::bud::IntoBud< Chore> for fn( &dyn IWorker)
 {
-    fn	IntoBud( self) -> Box< dyn Bud< Chore>> 
+    fn	IntoBud( self) -> Box< dyn Bud< Chore>>
     {
         Box::new( Chore::New( self))
     }
+}
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[macro_export]
+macro_rules! ChoreTree {
+    // OVERRIDE: Intercept and suppress action [ closure ] for ChoreTree
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:literal [ $( $closure:tt )* ] ) => {
+        compile_error!("IntoBudAction via [ closure ] is suppressed for ChoreTree");
+    };
+    ( @cb [ $($cb:tt)* ], $type:ident, ( $( $expr:tt)+ ) [ $( $closure:tt )* ] ) => {
+        compile_error!("IntoBudAction via [ closure ] is suppressed for ChoreTree");
+    };
+
+    // FALLBACK: Delegate everything else to BudTree TT engine
+    ( @cb [ $($cb:tt)* ], $type:ident, $( $inner:tt )+ ) => {
+        $crate::BudTree!( @cb [ $($cb)* ], $type, $( $inner )+ )
+    };
+
+    // Top-level entry (moved to bottom to avoid intercepting @cb)
+    ( $( $inner:tt)+ )  => { $crate::ChoreTree!( @cb [ $crate::ChoreTree ], Chore, $( $inner)+ ) };
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
