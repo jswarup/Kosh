@@ -194,7 +194,7 @@ impl From< &str> for Shard
 
 #[macro_export]
 macro_rules! ShardTree {
-    // ═══ OPT-IN FEATURES ════════════════════════════════════════════════════════════════════════════
+    // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
     ( @feature_STAR   $($args:tt)* ) => { $crate::BudTree!( @feature_STAR   $($args)* ) };
     ( @feature_PLUS   $($args:tt)* ) => { $crate::BudTree!( @feature_PLUS   $($args)* ) };
     ( @feature_BANG   $($args:tt)* ) => { $crate::BudTree!( @feature_BANG   $($args)* ) };
@@ -209,7 +209,7 @@ macro_rules! ShardTree {
         $crate::stalks::bud::IntoBud::IntoBud( $type::from( $s ) )
     };
 
-    // ═══ FALLBACKS ══════════════════════════════════════════════════════════════════════════════════
+    // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
     // Forward unhandled internal callbacks to BudTree (e.g., disallowed features like @feature_SHR)
     ( @ $( $inner:tt )+ ) => {
         $crate::BudTree!( @ $( $inner )+ )

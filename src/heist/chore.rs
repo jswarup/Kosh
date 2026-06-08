@@ -151,12 +151,12 @@ impl crate::stalks::bud::IntoBud< Chore> for fn( &dyn IWorker)
 
 #[macro_export]
 macro_rules! ChoreTree {
-    // ═══ OPT-IN FEATURES ════════════════════════════════════════════════════════════════════════════
+    // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
     ( @feature_LT  $($args:tt)* ) => { $crate::BudTree!( @feature_LT  $($args)* ) };
     ( @feature_BOR $($args:tt)* ) => { $crate::BudTree!( @feature_BOR $($args)* ) };
     ( @feature_NEW $($args:tt)* ) => { $crate::BudTree!( @feature_NEW $($args)* ) };
 
-    // ═══ FALLBACKS ══════════════════════════════════════════════════════════════════════════════════
+    // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
     // Forward unhandled internal callbacks to BudTree (e.g., disallowed features like @feature_SHL)
     ( @ $( $inner:tt )+ ) => {
         $crate::BudTree!( @ $( $inner )+ )

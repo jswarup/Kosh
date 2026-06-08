@@ -276,7 +276,7 @@ macro_rules! BudTree {
         $crate::BudTree!( @cb [ $crate::BudTree ], $type, $( $inner )+ )
     };
 
-    // ═══ FEATURE OPT-INS FOR BudTree ITSELF ═════════════════════════════════════════════════════════
+    // ---- FEATURE OPT-INS FOR BudTree ITSELF ----------------------------------------------------------------------------
     // BudTree explicitly opts in to all features by delegating back to its own builders.
     ( @feature_STAR [ $($cb:tt)* ], $type:ident, $l:tt $( $r:tt )* ) => { $crate::BudTree!( @uni [ $($cb)* ], $type, STAR, $l $( $r )* ) };
     ( @feature_PLUS [ $($cb:tt)* ], $type:ident, $l:tt $( $r:tt )* ) => { $crate::BudTree!( @uni [ $($cb)* ], $type, PLUS, $l $( $r )* ) };
@@ -362,7 +362,7 @@ macro_rules! BudTree {
     // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
     ( @cb [ $($cb:tt)* ], $type:ident, $leaf:expr ) => { $crate::stalks::bud::IntoBud::IntoBud( $leaf ) };
 
-    // ═══ Internal helpers ═══════════════════════════════════════════════════════════════════════════
+    // ---- Internal helpers ----------------------------------------------------------------------------------------------------
 
     // @uni : unary - OP rhs
     ( @uni [ $($cb:tt)* ], $type:ident, $op:ident, $l:tt $( $r:tt)* ) => {
@@ -399,7 +399,7 @@ macro_rules! BudTree {
             $($cb)* !( @cb [ $($cb)* ], $type, $( $r)+ ) )
     };
 
-    // ═══ DEFAULT FALLBACK ERRORS FOR DISABLED FEATURES ══════════════════════════════════════════════
+    // ---- DEFAULT FALLBACK ERRORS FOR DISABLED FEATURES -------------------------------------------------------------
     ( @feature_STAR $( $args:tt )* ) => { compile_error!("Unary STAR (*) is not enabled for this tree"); };
     ( @feature_PLUS $( $args:tt )* ) => { compile_error!("Unary PLUS (+) is not enabled for this tree"); };
     ( @feature_MINUS $( $args:tt )* ) => { compile_error!("Unary MINUS (-) is not enabled for this tree"); };
