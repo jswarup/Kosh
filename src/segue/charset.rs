@@ -516,7 +516,7 @@ impl crate::stalks::bud::IntoBud<Shard> for Charset
 {
     fn	IntoBud( self) -> Box<dyn crate::stalks::bud::Bud<Shard>>
     {
-        Box::new( Shard::from( self.ToString()))
+        Box::new( Shard::from( self))
     }
 }
 

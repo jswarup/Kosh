@@ -1,15 +1,17 @@
 //-- shard.rs -------------------------------------------------------------------------------------------------------------------------
 use	crate::stalks::bud::Bud;
 use	crate::stalks::work::{ IWork, IWorker };
+use	crate::segue::charset::Charset;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Clone, Debug)]
-pub struct Shard
+pub enum Shard
 {
-    _Closure: Option< fn( &dyn IWorker)>,
-    _Char: Option< char>,
-    _String: Option< String>,
+    Closure( fn( &dyn IWorker)),
+    Char( char),
+    String( String),
+    Charset( Charset),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -18,11 +20,7 @@ impl Default for Shard
 {
     fn	default() -> Self
     {
-        Self {
-            _Closure: Some( |_| {}),
-            _Char: None,
-            _String: None,
-        }
+        Self::Closure( |_| {})
     }
 }
 
@@ -32,27 +30,19 @@ impl Shard
 {
     pub fn	New( f: fn( &dyn IWorker)) -> Self
     {
-        Self {
-            _Closure: Some( f),
-            _Char: None,
-            _String: None,
-        }
+        Self::Closure( f)
     }
     pub fn	NewChar( c: char) -> Self
     {
-        Self {
-            _Closure: None,
-            _Char: Some( c),
-            _String: None,
-        }
+        Self::Char( c)
     }
     pub fn	NewString( s: String) -> Self
     {
-        Self {
-            _Closure: None,
-            _Char: None,
-            _String: Some( s),
-        }
+        Self::String( s)
+    }
+    pub fn	NewCharset( cs: Charset) -> Self
+    {
+        Self::Charset( cs)
     }
 }
 
@@ -62,12 +52,11 @@ impl IWork for Shard
 {
     fn	DoWork( &mut self, worker: &dyn IWorker)
     {
-        if let  	Some( f) = self._Closure {
-            ( f)( worker);
-        } else if let  	Some( c) = self._Char {
-            print!( "{} ", c);
-        } else if let  	Some( s) = &self._String {
-            print!( "{} ", s);
+        match self {
+            Self::Closure( f) => ( f)( worker),
+            Self::Char( c) => print!( "{} ", c),
+            Self::String( s) => print!( "{} ", s),
+            Self::Charset( cs) => print!( "{} ", cs),
         }
     }
 }
@@ -101,12 +90,11 @@ impl std::fmt::Display for Shard
 {
     fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
-        if let  	Some( c) = self._Char {
-            write!( f, "Shard( {})", c)
-        } else if let  	Some( s) = &self._String {
-            write!( f, "Shard( {})", s)
-        } else {
-            write!( f, "Shard")
+        match self {
+            Self::Char( c) => write!( f, "Shard( {})", c),
+            Self::String( s) => write!( f, "Shard( {})", s),
+            Self::Charset( cs) => write!( f, "Shard( {})", cs),
+            Self::Closure( _) => write!( f, "Shard"),
         }
     }
 }
@@ -166,7 +154,7 @@ impl From< char> for Shard
 {
     fn	from( c: char) -> Self
     {
-        Self::NewChar( c)
+        Self::Char( c)
     }
 }
 
@@ -176,7 +164,7 @@ impl From< String> for Shard
 {
     fn	from( s: String) -> Self
     {
-        Self::NewString( s)
+        Self::String( s)
     }
 }
 
@@ -186,7 +174,17 @@ impl From< &str> for Shard
 {
     fn	from( s: &str) -> Self
     {
-        Self::NewString( s.to_string())
+        Self::String( s.to_string())
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl From< Charset> for Shard
+{
+    fn	from( cs: Charset) -> Self
+    {
+        Self::Charset( cs)
     }
 }
 
@@ -206,7 +204,7 @@ macro_rules! ShardTree {
 
     // ── Custom: Boxet stringification (overrides BudTree default) ───────────────────────────────────
     ( @feature_BOXET [ $($cb:tt)* ], $type:ident, $s:literal ) => {
-        $crate::stalks::bud::IntoBud::IntoBud( $type::from( $s ) )
+        $crate::stalks::bud::IntoBud::IntoBud( $type::NewCharset( $crate::segue::charset::Charset::FromBoxet( $s.as_bytes() ) ) )
     };
 
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
