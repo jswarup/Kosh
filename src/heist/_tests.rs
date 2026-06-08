@@ -13,19 +13,19 @@ use	crate::{
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	BuffBasicAtelierTest() 
+fn	BuffBasicAtelierTest()
 {
-    fn	trialJob( worker: &dyn IWorker) 
+    fn	trialJob( worker: &dyn IWorker)
     {
         let  	maestro = Maestro::FromWorker( worker);
         let  	mut jobId = maestro.CurSuccId();
-        jobId = maestro.ConstructJob( 
+        jobId = maestro.ConstructJob(
             jobId,
             Box::new( |w1: &dyn IWorker| {
                 println!( "Trial1 {}", Maestro::FromWorker( w1).MavenIndex());
             }),
         );
-        jobId = maestro.ConstructJob( 
+        jobId = maestro.ConstructJob(
             jobId,
             Box::new( |w2: &dyn IWorker| {
                 println!( "Trial2 {}", Maestro::FromWorker( w2).MavenIndex());
@@ -45,7 +45,7 @@ fn	BuffBasicAtelierTest()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestThreadSharedInteger() 
+fn	TestThreadSharedInteger()
 {
     use	std::sync::{ Arc, Mutex };
     use	std::thread;
@@ -69,7 +69,7 @@ fn	TestThreadSharedInteger()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestMaestroBasicOps() 
+fn	TestMaestroBasicOps()
 {
     let  	atelier = Atelier::New( U32( 4));
     atelier.Mavens().At( 2).SetCurSuccId( U16( 42));
@@ -81,14 +81,14 @@ fn	TestMaestroBasicOps()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestDoQSort() 
+fn	TestDoQSort()
 {
     let  	buff = Buff::Create( U32( 1000), |_| rand::random::< f64>());
     let  	arr = buff.Arr();
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
     let  	mut jobId = U16( 0);
-    jobId = mainMaestro.ConstructJob( 
+    jobId = mainMaestro.ConstructJob(
         jobId,
         Box::new( |_worker: &dyn IWorker| {
             let  	_res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
@@ -98,10 +98,10 @@ fn	TestDoQSort()
             println!();
         }),
     );
-    jobId = mainMaestro.ConstructJob( 
+    jobId = mainMaestro.ConstructJob(
         jobId,
         Box::new( |worker: &dyn IWorker| {
-            arr.USeg().DoQSort( 
+            arr.USeg().DoQSort(
                 worker,
                 move |i, j| arr.At( i) > arr.At( j),
                 move |i, j| {
@@ -118,7 +118,7 @@ fn	TestDoQSort()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestChoreBuds() 
+fn	TestChoreBuds()
 {
     use	crate::heist::chore::Chore;
     let  	aChore = Chore::New( |_m| {
@@ -130,8 +130,7 @@ fn	TestChoreBuds()
     let  	cChore = Chore::New( |_m| {
         print!( "{} ", 40);
     });
-    let  	budTree = crate::BudTree!( 
-        Chore,
+    let  	budTree = crate::ChoreTree!(
         ( cChore
             < ( bChore
                 | aChore

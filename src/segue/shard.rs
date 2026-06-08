@@ -193,7 +193,7 @@ impl From< &str> for Shard
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[macro_export]
-macro_rules! SegueTree {
+macro_rules! ShardTree {
     // ═══ OPT-IN FEATURES ════════════════════════════════════════════════════════════════════════════
 
     // Enable Unary Operators (*, +, !)
@@ -227,7 +227,7 @@ macro_rules! SegueTree {
     };
 
     // Top-level entry (user code)
-    ( $( $inner:tt)+ )  => { $crate::SegueTree!( @cb [ $crate::SegueTree ], Shard, $( $inner)+ ) };
+    ( $( $inner:tt)+ )  => { $crate::ShardTree!( @cb [ $crate::ShardTree ], Shard, $( $inner)+ ) };
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
