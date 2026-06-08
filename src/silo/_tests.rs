@@ -117,6 +117,11 @@ fn	TestArrFromArr()
     let  	arrSlice = Arr::from( sliceData);
     assert_eq!( arrSlice.len(), 4);
     assert_eq!( *arrSlice.At( 3), 4);
+
+    // Test Arr<'a, U8>::Str()
+    let  	arrU8Data = [U8( b'h'), U8( b'e'), U8( b'l'), U8( b'l'), U8( b'o')];
+    let  	arrU8 = Arr::from( &arrU8Data);
+    assert_eq!( arrU8.Str(), "hello");
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -658,14 +663,16 @@ fn	TestInStream()
     stream.RollTo( U32( 1));
     assert_eq!( stream.Curr(), U8( b'b'));
 
-    let  	rem1 = stream.Remaining();
-    assert_eq!( rem1.Size(), 2);
-    assert_eq!( *rem1.At( 0), U8( b'b'));
-    assert_eq!( *rem1.At( 1), U8( b'c'));
+    let  	rest1 = stream.Rest();
+    assert_eq!( rest1.Size(), 2);
+    assert_eq!( *rest1.At( 0), U8( b'b'));
+    assert_eq!( *rest1.At( 1), U8( b'c'));
+    assert_eq!( stream.Remaining(), "bc");
 
     stream.RollTo( U32( 5));
     assert_eq!( stream.Curr(), U8::_0);
 
-    let  	rem5 = stream.Remaining();
-    assert_eq!( rem5.Size(), 0);
+    let  	rest5 = stream.Rest();
+    assert_eq!( rest5.Size(), 0);
+    assert_eq!( stream.Remaining(), "");
 }

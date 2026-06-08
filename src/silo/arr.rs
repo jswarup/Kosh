@@ -1,5 +1,5 @@
 //-- arr.rs -----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::uint::U32;
+use	crate::silo::uint::{ U8, U32 };
 use	crate::silo::useg::USeg;
 use	std::marker::PhantomData;
 use	std::ops::{ Deref, DerefMut };
@@ -261,6 +261,20 @@ impl< 'a, T> From< &'a mut [T]> for Arr< 'a, T>
     fn	from( slice: &'a mut [T]) -> Self 
     {
         unsafe { Arr::New( NonNull::new_unchecked( slice.as_mut_ptr()), slice.len()) }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a> Arr< 'a, U8> 
+{
+    pub fn	Str( &self) -> &'a str 
+    {
+        unsafe {
+            let  	sliceU8: &'a [U8] = std::slice::from_raw_parts( self._Ptr.as_ptr(), self._Size.AsUsize());
+            let  	bytes: &'a [u8] = std::mem::transmute( sliceU8);
+            std::str::from_utf8_unchecked( bytes)
+        }
     }
 }
 
