@@ -195,42 +195,22 @@ impl From< &str> for Shard
 #[macro_export]
 macro_rules! ShardTree {
     // ═══ OPT-IN FEATURES ════════════════════════════════════════════════════════════════════════════
+    ( @feature_STAR   $($args:tt)* ) => { $crate::BudTree!( @feature_STAR   $($args)* ) };
+    ( @feature_PLUS   $($args:tt)* ) => { $crate::BudTree!( @feature_PLUS   $($args)* ) };
+    ( @feature_BANG   $($args:tt)* ) => { $crate::BudTree!( @feature_BANG   $($args)* ) };
+    ( @feature_LT     $($args:tt)* ) => { $crate::BudTree!( @feature_LT     $($args)* ) };
+    ( @feature_SHL    $($args:tt)* ) => { $crate::BudTree!( @feature_SHL    $($args)* ) };
+    ( @feature_BOR    $($args:tt)* ) => { $crate::BudTree!( @feature_BOR    $($args)* ) };
+    ( @feature_NEW    $($args:tt)* ) => { $crate::BudTree!( @feature_NEW    $($args)* ) };
+    ( @feature_ACTION $($args:tt)* ) => { $crate::BudTree!( @feature_ACTION $($args)* ) };
 
-    // Enable Unary Operators (*, +, !)
-    ( @feature_STAR [ $($cb:tt)* ], $type:ident, $l:tt $( $r:tt )* ) => { $crate::BudTree!( @uni [ $($cb)* ], $type, STAR, $l $( $r )* ) };
-    ( @feature_PLUS [ $($cb:tt)* ], $type:ident, $l:tt $( $r:tt )* ) => { $crate::BudTree!( @uni [ $($cb)* ], $type, PLUS, $l $( $r )* ) };
-    ( @feature_BANG [ $($cb:tt)* ], $type:ident, $l:tt $( $r:tt )* ) => { $crate::BudTree!( @uni [ $($cb)* ], $type, BANG, $l $( $r )* ) };
-
-    // Enable LT (<)
-    ( @feature_LT [ $($cb:tt)* ], @bg $type:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, LT, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_LT [ $($cb:tt)* ], @bl $type:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, LT, $l, $( $r)+ ) };
-
-    // Enable SHL (<<)
-    ( @feature_SHL [ $($cb:tt)* ], @bg $type:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, SHL, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_SHL [ $($cb:tt)* ], @bl $type:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, SHL, $l, $( $r)+ ) };
-
-    // Enable BOR (|)
-    ( @feature_BOR [ $($cb:tt)* ], @bg $type:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, BOR, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_BOR [ $($cb:tt)* ], @bl $type:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, BOR, $l, $( $r)+ ) };
-
-    // Enable Boxet stringification
+    // ── Custom: Boxet stringification (overrides BudTree default) ───────────────────────────────────
     ( @feature_BOXET [ $($cb:tt)* ], $type:ident, [ $( $inner:tt )* ] ) => {
         $crate::stalks::bud::IntoBud::IntoBud( $type::from( stringify!( $($inner)* ).replace( " ", "" ) ) )
     };
 
-    // Enable Closure literal (NEW)
-    ( @feature_NEW [ $($cb:tt)* ], $type:ident, | $( $body:tt)+ ) => { $crate::stalks::bud::IntoBud::IntoBud( $type::New( | $( $body)+ ) ) };
-    ( @feature_NEW [ $($cb:tt)* ], $type:ident, || $( $body:tt)+ ) => { $crate::stalks::bud::IntoBud::IntoBud( $type::New( || $( $body)+ ) ) };
-    ( @feature_NEW [ $($cb:tt)* ], $type:ident, move | $( $body:tt)+ ) => { $crate::stalks::bud::IntoBud::IntoBud( $type::New( move | $( $body)+ ) ) };
-    ( @feature_NEW [ $($cb:tt)* ], $type:ident, move || $( $body:tt)+ ) => { $crate::stalks::bud::IntoBud::IntoBud( $type::New( move || $( $body)+ ) ) };
-
-    // Enable Action Bracket [ closure ]
-    ( @feature_ACTION [ $($cb:tt)* ], $type:ident, $l:literal [ $( $inner:tt )* ] ) => { $crate::BudTree!( @closure_match [ $($cb)* ], $type, $l, $( $inner )* ) };
-    ( @feature_ACTION [ $($cb:tt)* ], $type:ident, ( $( $expr:tt)+ ) [ $( $inner:tt )* ] ) => { $crate::BudTree!( @closure_match [ $($cb)* ], $type, $($cb)* !( @cb [ $($cb)* ], $type, $( $expr)+ ), $( $inner )* ) };
-
     // ═══ FALLBACKS ══════════════════════════════════════════════════════════════════════════════════
-
-    // Forward unhandled internal callbacks to BudTree (e.g., disallowed features like @feature_SHL)
+    // Forward unhandled internal callbacks to BudTree (e.g., disallowed features like @feature_SHR)
     ( @ $( $inner:tt )+ ) => {
         $crate::BudTree!( @ $( $inner )+ )
     };

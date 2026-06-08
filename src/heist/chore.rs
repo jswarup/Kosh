@@ -152,23 +152,11 @@ impl crate::stalks::bud::IntoBud< Chore> for fn( &dyn IWorker)
 #[macro_export]
 macro_rules! ChoreTree {
     // ═══ OPT-IN FEATURES ════════════════════════════════════════════════════════════════════════════
-
-    // Enable LT (<)
-    ( @feature_LT [ $($cb:tt)* ], @bg $type:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, LT, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_LT [ $($cb:tt)* ], @bl $type:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, LT, $l, $( $r)+ ) };
-
-    // Enable BOR (|)
-    ( @feature_BOR [ $($cb:tt)* ], @bg $type:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, BOR, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_BOR [ $($cb:tt)* ], @bl $type:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, BOR, $l, $( $r)+ ) };
-
-    // Enable Closure literal (NEW)
-    ( @feature_NEW [ $($cb:tt)* ], $type:ident, | $( $body:tt)+ ) => { $crate::stalks::bud::IntoBud::IntoBud( $type::New( | $( $body)+ ) ) };
-    ( @feature_NEW [ $($cb:tt)* ], $type:ident, || $( $body:tt)+ ) => { $crate::stalks::bud::IntoBud::IntoBud( $type::New( || $( $body)+ ) ) };
-    ( @feature_NEW [ $($cb:tt)* ], $type:ident, move | $( $body:tt)+ ) => { $crate::stalks::bud::IntoBud::IntoBud( $type::New( move | $( $body)+ ) ) };
-    ( @feature_NEW [ $($cb:tt)* ], $type:ident, move || $( $body:tt)+ ) => { $crate::stalks::bud::IntoBud::IntoBud( $type::New( move || $( $body)+ ) ) };
+    ( @feature_LT  $($args:tt)* ) => { $crate::BudTree!( @feature_LT  $($args)* ) };
+    ( @feature_BOR $($args:tt)* ) => { $crate::BudTree!( @feature_BOR $($args)* ) };
+    ( @feature_NEW $($args:tt)* ) => { $crate::BudTree!( @feature_NEW $($args)* ) };
 
     // ═══ FALLBACKS ══════════════════════════════════════════════════════════════════════════════════
-
     // Forward unhandled internal callbacks to BudTree (e.g., disallowed features like @feature_SHL)
     ( @ $( $inner:tt )+ ) => {
         $crate::BudTree!( @ $( $inner )+ )

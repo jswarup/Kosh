@@ -360,9 +360,6 @@ macro_rules! BudTree {
     };
 
     // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
-    ( @cb [ $($cb:tt)* ], $type:ident, [ $leaf:expr ]  ) => { $crate::stalks::bud::IntoBud::IntoBudBox( $leaf ) };
-
-    // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
     ( @cb [ $($cb:tt)* ], $type:ident, $leaf:expr ) => { $crate::stalks::bud::IntoBud::IntoBud( $leaf ) };
 
     // ═══ Internal helpers ═══════════════════════════════════════════════════════════════════════════
@@ -413,6 +410,7 @@ macro_rules! BudTree {
     ( @feature_BOR $( $args:tt )* ) => { compile_error!("Binary BOR (|) is not enabled for this tree"); };
     ( @feature_NEW $( $args:tt )* ) => { compile_error!("Closure literal is not enabled for this tree"); };
     ( @feature_ACTION $( $args:tt )* ) => { compile_error!("Bracketed action [ closure ] is not enabled for this tree"); };
+    ( @feature_BOXET $( $args:tt )* ) => { compile_error!("Boxet [ ... ] is not enabled for this tree"); };
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
