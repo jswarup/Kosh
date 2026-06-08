@@ -2,14 +2,15 @@
 
 use	std::sync::LazyLock;
 use	crate::segue::shard::Shard;
+use	crate::silo::uint::{ U8, U64 };
 //---------------------------------------------------------------------------------------------------------------------------------
-/// A 256-bit filter for `u8` characters — one bit per byte value.
+/// A 256-bit filter for `U8` characters — one bit per byte value.
 /// Enables set algebra (union, intersection, negation) over character classes.
 
 #[derive( Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Charset
 {
-    _Bits: [u64; Self::SZ],
+    _Bits: [U64; Self::SZ],
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -21,22 +22,22 @@ impl Charset
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub const fn	New() -> Self { Self { _Bits: [0; Self::SZ] } }
+    pub const fn	New() -> Self { Self { _Bits: [U64::_0; Self::SZ] } }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	FromFilter( filter: fn( u8) -> bool) -> Self
+    pub fn	FromFilter( filter: fn( U8) -> bool) -> Self
     {
         let  	mut cs = Self::New();
         for i in 0u16..=255 {
-            cs.Set( i as u8, filter( i as u8));
+            cs.Set( U8( i as u8), filter( U8( i as u8)));
         }
         cs
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	FromBoxet( spec: &[u8]) -> Self
+    pub fn	FromBoxet( spec: &[U8]) -> Self
     {
         let  	mut cs = Self::New();
         let  	mut i = 0usize;
@@ -44,7 +45,7 @@ impl Charset
             let  	first = spec[i];
             cs.SetChar( first);
             // peek for  '-' range
-            if i + 2 < spec.len() && spec[i + 1] == b'-' {
+            if i + 2 < spec.len() && spec[i + 1] == U8( b'-') {
                 let  	last = spec[i + 2];
                 cs.SetByteRange( first, last, true);
                 i += 3;
@@ -57,35 +58,38 @@ impl Charset
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Get( &self, c: u8) -> bool
+    pub fn	Get< C: Into< U8>>( &self, c: C) -> bool
     {
-        let  	idx = (c as usize) / Self::SZ_BITS as usize;
-        let  	bit = (c as u32) % Self::SZ_BITS;
-        ( self._Bits[idx] & ( 1u64 << bit)) != 0
+        let  	c = c.into();
+        let  	idx = (c.as_usize()) / Self::SZ_BITS as usize;
+        let  	bit = (c.as_u8() as u32) % Self::SZ_BITS;
+        ( self._Bits[idx] & U64( 1u64 << bit)) != 0u64
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	SetChar( &mut self, c: u8)
+    pub fn	SetChar< C: Into< U8>>( &mut self, c: C)
     {
-        let  	idx = (c as usize) / Self::SZ_BITS as usize;
-        let  	bit = (c as u32) % Self::SZ_BITS;
-        self._Bits[idx] |= 1u64 << bit;
+        let  	c = c.into();
+        let  	idx = (c.as_usize()) / Self::SZ_BITS as usize;
+        let  	bit = (c.as_u8() as u32) % Self::SZ_BITS;
+        self._Bits[idx] |= U64( 1u64 << bit);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ClearChar( &mut self, c: u8)
+    pub fn	ClearChar< C: Into< U8>>( &mut self, c: C)
     {
-        let  	idx = (c as usize) / Self::SZ_BITS as usize;
-        let  	bit = (c as u32) % Self::SZ_BITS;
-        self._Bits[idx] &= !( 1u64 << bit);
+        let  	c = c.into();
+        let  	idx = (c.as_usize()) / Self::SZ_BITS as usize;
+        let  	bit = (c.as_u8() as u32) % Self::SZ_BITS;
+        self._Bits[idx] &= !U64( 1u64 << bit);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
     /// Set the bit for byte `c` to `v`.
 
-    pub fn	Set( &mut self, c: u8, v: bool)
+    pub fn	Set< C: Into< U8>>( &mut self, c: C, v: bool)
     {
         if v { self.SetChar( c) } else { self.ClearChar( c) }
     }
@@ -93,10 +97,12 @@ impl Charset
     //-----------------------------------------------------------------------------------------------------------------------------
     /// Set all bits in the inclusive range `start..=stop` to `value`.
 
-    pub fn	SetByteRange( &mut self, start: u8, stop: u8, value: bool)
+    pub fn	SetByteRange< C: Into< U8>>( &mut self, start: C, stop: C, value: bool)
     {
+        let  	start = start.into().as_u8();
+        let  	stop = stop.into().as_u8();
         for c in start..=stop {
-            self.Set( c, value);
+            self.Set( U8( c), value);
         }
     }
 
@@ -126,7 +132,7 @@ impl Charset
     pub fn	IsIntersect( &self, other: &Charset) -> bool
     {
         for i in 0..Self::SZ {
-            if self._Bits[i] & other._Bits[i] != 0 {
+            if (self._Bits[i] & other._Bits[i]) != 0u64 {
                 return true;
             }
         }
@@ -173,7 +179,7 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    /// Lexicographic comparison of the four u64 words.
+    /// Lexicographic comparison of the four U64 words.
 
     pub fn	Compare( &self, other: &Charset) -> i32
     {
@@ -187,15 +193,15 @@ impl Charset
     //-----------------------------------------------------------------------------------------------------------------------------
     /// Collect all byte-values whose bit is set.
 
-    pub fn	ListChars( &self) -> Vec<u8>
+    pub fn	ListChars( &self) -> Vec<U8>
     {
         let  	mut list = Vec::new();
         for i in 0..Self::SZ {
-            let  	mut b = self._Bits[i];
-            while b != 0 {
-                let  	tz = b.trailing_zeros();
-                list.push( (( i as u32) * Self::SZ_BITS + tz) as u8);
-                b &= b - 1;
+            let  	mut val = self._Bits[i].0;
+            while val != 0 {
+                let  	tz = val.trailing_zeros();
+                list.push( U8( (( i as u32) * Self::SZ_BITS + tz) as u8));
+                val &= val - 1;
             }
         }
         list
@@ -206,7 +212,7 @@ impl Charset
 
     pub fn	Weight( &self) -> u32
     {
-        self._Bits.iter().map( |w| w.count_ones()).sum()
+        self._Bits.iter().map( |w| w.0.count_ones()).sum()
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -398,9 +404,10 @@ impl Charset
     //-----------------------------------------------------------------------------------------------------------------------------
     // Formatting helpers
 
-    fn	PrettyPrintChar( c: u8, chrClsFlg: bool, out: &mut String)
+    fn	PrettyPrintChar( c: U8, chrClsFlg: bool, out: &mut String)
     {
-        match c {
+        let val = c.as_u8();
+        match val {
             b'\t' => { out.push_str( "\\t"); return; }
             b'\n' => { out.push_str( "\\n"); return; }
             b'\r' => { out.push_str( "\\r"); return; }
@@ -412,27 +419,27 @@ impl Charset
         let  	mut hex = false;
         let  	mut escape = false;
         if !chrClsFlg {
-            if b"'\"=".contains( &c) {
+            if b"'\"=".contains( &val) {
                 hex = true;
             }
-            if b"^$ *+{}[].\\/|?".contains( &c) {
+            if b"^$ *+{}[].\\/|?".contains( &val) {
                 escape = true;
             }
         } else {
-            if b"^[]\\/- ".contains( &c) {
+            if b"^[]\\/- ".contains( &val) {
                 escape = true;
             }
         }
-        if !c.is_ascii_alphanumeric() && c != b'.' && c != b'$' && c != b'@' && c != b'_' {
+        if !val.is_ascii_alphanumeric() && val != b'.' && val != b'$' && val != b'@' && val != b'_' {
             hex = true;
         }
         if escape {
             out.push( '\\');
-            out.push( c as char);
+            out.push( val as char);
         } else if hex {
-            out.push_str( &format!( "\\x{:02X}", c));
+            out.push_str( &format!( "\\x{:02X}", val));
         } else {
-            out.push( c as char);
+            out.push( val as char);
         }
     }
 
@@ -454,7 +461,7 @@ impl Charset
         let  	mut i = 0usize;
         while i < chars.len() {
             let  	mut j = i + 1;
-            while j < chars.len() && chars[j] == chars[j - 1] + 1 {
+            while j < chars.len() && chars[j].as_u8() == chars[j - 1].as_u8() + 1 {
                 j += 1;
             }
             let  	runLen = j - i;

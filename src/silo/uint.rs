@@ -480,6 +480,53 @@ macro_rules! ImplUIntTraits {
             fn	partial_cmp( &self, other: &$type) -> Option< std::cmp::Ordering>
             { self.partial_cmp( &other.0) }
         }
+        impl $type {
+            #[inline]
+            pub fn	FromSlice( slice: &[$prim]) -> &[Self]
+            {
+                unsafe { std::mem::transmute( slice) }
+            }
+        }
+        impl< T> std::ops::AddAssign< T> for $type
+        where
+            T: Into< $type>,
+        {
+            #[inline]
+            fn	add_assign( &mut self, rhs: T)
+            {
+                self.0 = self.0.wrapping_add( rhs.into().0);
+            }
+        }
+        impl< T> std::ops::SubAssign< T> for $type
+        where
+            T: Into< $type>,
+        {
+            #[inline]
+            fn	sub_assign( &mut self, rhs: T)
+            {
+                self.0 = self.0.wrapping_sub( rhs.into().0);
+            }
+        }
+        impl< T> std::ops::BitAndAssign< T> for $type
+        where
+            T: Into< $type>,
+        {
+            #[inline]
+            fn	bitand_assign( &mut self, rhs: T)
+            {
+                self.0 &= rhs.into().0;
+            }
+        }
+        impl< T> std::ops::BitOrAssign< T> for $type
+        where
+            T: Into< $type>,
+        {
+            #[inline]
+            fn	bitor_assign( &mut self, rhs: T)
+            {
+                self.0 |= rhs.into().0;
+            }
+        }
     };
 }
 

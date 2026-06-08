@@ -264,7 +264,7 @@ macro_rules! impl_into_bud_for_primitives {
         )*
     };
 }
-impl_into_bud_for_primitives!( f64, f32, i32, i64, u32, u64, String, &'static str);
+impl_into_bud_for_primitives!( f64, f32, i32, i64, u32, u64, crate::silo::uint::U8, crate::silo::uint::U64, String, &'static str);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
