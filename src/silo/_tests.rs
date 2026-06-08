@@ -4,7 +4,7 @@ use	crate::silo::buff::Buff;
 use	crate::silo::stash::Stash;
 use	crate::silo::stk::Stk;
 #[warn( unused_imports)]
-use	crate::silo::uint::{ U16, U32 };
+use	crate::silo::uint::{ U8, U16, U32, U64 };
 use	crate::silo::useg::USeg;
 use	crate::stalks::atm::Atm;
 
@@ -269,6 +269,62 @@ fn	UInt16TestNegNot()
     assert_eq!( ( -b), 0u16.wrapping_sub( 5));
     assert_eq!( ( !b), !5u16);
 }
+fn	UInt8TestFrom() 
+{
+    let  	_q = U8( 0);
+    let  	a: U8 = 5u8.into();
+    assert_eq!( a, 5);
+    let  	b: U8 = ( -3i32).into();
+    assert_eq!( b, ( -3i32) as u8);
+    let  	c: U8 = ( 10usize).into();
+    assert_eq!( c, 10);
+}
+fn	UInt8TestArith() 
+{
+    let  	a = U8( 10);
+    let  	b = U8( 3);
+    assert_eq!( ( a + b), 13);
+    assert_eq!( ( a - b), 7);
+    assert_eq!( ( a * b), 30);
+    assert_eq!( ( a / b), 3);
+    assert_eq!( ( a % b), 1);
+}
+fn	UInt8TestNegNot() 
+{
+    let  	a = U8( 0);
+    assert_eq!( ( -a), 0);
+    let  	b = U8( 5);
+    assert_eq!( ( -b), 0u8.wrapping_sub( 5));
+    assert_eq!( ( !b), !5u8);
+}
+fn	UInt64TestFrom() 
+{
+    let  	_q = U64( 0);
+    let  	a: U64 = 5u64.into();
+    assert_eq!( a, 5);
+    let  	b: U64 = ( -3i32).into();
+    assert_eq!( b, ( -3i32) as u64);
+    let  	c: U64 = ( 10usize).into();
+    assert_eq!( c, 10);
+}
+fn	UInt64TestArith() 
+{
+    let  	a = U64( 10);
+    let  	b = U64( 3);
+    assert_eq!( ( a + b), 13);
+    assert_eq!( ( a - b), 7);
+    assert_eq!( ( a * b), 30);
+    assert_eq!( ( a / b), 3);
+    assert_eq!( ( a % b), 1);
+}
+fn	UInt64TestNegNot() 
+{
+    let  	a = U64( 0);
+    assert_eq!( ( -a), 0);
+    let  	b = U64( 5);
+    assert_eq!( ( -b), 0u64.wrapping_sub( 5));
+    assert_eq!( ( !b), !5u64);
+}
 #[test]
 fn	UIntBasicOps() 
 {
@@ -278,6 +334,12 @@ fn	UIntBasicOps()
     UInt16TestFrom();
     UInt16TestArith();
     UInt16TestNegNot();
+    UInt8TestFrom();
+    UInt8TestArith();
+    UInt8TestNegNot();
+    UInt64TestFrom();
+    UInt64TestArith();
+    UInt64TestNegNot();
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
