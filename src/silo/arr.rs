@@ -62,7 +62,7 @@ impl< 'a, T> Arr< 'a, T>
     pub fn	At< K: Into< U32>>( &self, k: K) -> &'a T 
     {
         unsafe {
-            let  	ptr = self._Ptr.as_ptr().add( k.into().as_usize());
+            let  	ptr = self._Ptr.as_ptr().add( k.into().AsUsize());
             &*ptr
         }
     }
@@ -72,7 +72,7 @@ impl< 'a, T> Arr< 'a, T>
     pub fn	MutAt< K: Into< U32>>( &self, k: K) -> &'a mut T 
     {
         unsafe {
-            let  	ptr = self._Ptr.as_ptr().add( k.into().as_usize());
+            let  	ptr = self._Ptr.as_ptr().add( k.into().AsUsize());
             &mut *ptr
         }
     }
@@ -84,7 +84,7 @@ impl< 'a, T> Arr< 'a, T>
         T: Clone,
     {
         unsafe {
-            let  	ptr = self._Ptr.as_ptr().add( k.into().as_usize());
+            let  	ptr = self._Ptr.as_ptr().add( k.into().AsUsize());
             *ptr = a.clone();
             &*ptr
         }
@@ -95,7 +95,7 @@ impl< 'a, T> Arr< 'a, T>
     pub fn	MoveAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &'a T 
     {
         unsafe {
-            let  	ptr = self._Ptr.as_ptr().add( k.into().as_usize());
+            let  	ptr = self._Ptr.as_ptr().add( k.into().AsUsize());
             std::ptr::swap( ptr, a);
             &*ptr
         }
@@ -107,8 +107,8 @@ impl< 'a, T> Arr< 'a, T>
     {
         unsafe {
             std::ptr::swap( 
-                self._Ptr.add( i.into().as_usize()).as_ptr(),
-                self._Ptr.add( j.into().as_usize()).as_ptr(),
+                self._Ptr.add( i.into().AsUsize()).as_ptr(),
+                self._Ptr.add( j.into().AsUsize()).as_ptr(),
             );
         }
     }
@@ -126,9 +126,9 @@ impl< 'a, T> Arr< 'a, T>
     {
         unsafe {
             std::ptr::swap_nonoverlapping( 
-                src._Ptr.as_ptr().add( srcStart.into().as_usize()),
-                self._Ptr.as_ptr().add( dstStart.into().as_usize()),
-                count.as_usize(),
+                src._Ptr.as_ptr().add( srcStart.into().AsUsize()),
+                self._Ptr.as_ptr().add( dstStart.into().AsUsize()),
+                count.AsUsize(),
             );
         }
     }
@@ -139,7 +139,7 @@ impl< 'a, T> Arr< 'a, T>
     {
         let  	cnt = count.into();
         Arr::New( 
-            unsafe { self._Ptr.add( cnt.as_u32() as usize) },
+            unsafe { self._Ptr.add( cnt.AsU32() as usize) },
             self.Size() - cnt,
         )
     }

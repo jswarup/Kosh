@@ -178,7 +178,7 @@ impl< 'a> Atelier< 'a>
     {
         let  	maven = self._Mavens.Arr().MutAt( mavenIdx);
         let  	mut jobId = U16( 0);
-        let  	mut stealSeed = mavenIdx.as_u32();
+        let  	mut stealSeed = mavenIdx.AsU32();
         while self.SzSchedJob() != 0 {
             while jobId != 0 {
                 maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));

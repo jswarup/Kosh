@@ -204,7 +204,7 @@ macro_rules! ShardTree {
 
     // ── Custom: Boxet stringification (overrides BudTree default) ───────────────────────────────────
     ( @feature_BOXET [ $($cb:tt)* ], $type:ident, $s:literal ) => {
-        $crate::stalks::bud::IntoBud::IntoBud( $type::NewCharset( $crate::segue::charset::Charset::FromBoxet( $crate::silo::uint::U8::FromSlice( $s.as_bytes() ) ) ) )
+        $crate::stalks::bud::IntoBud::IntoBud( $type::NewCharset( $crate::segue::charset::Charset::FromBoxet( $crate::silo::uint::U8::FromArr( $crate::silo::arr::Arr::from( $s.as_bytes() ) ) ) ) )
     };
 
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------

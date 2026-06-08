@@ -232,6 +232,30 @@ fn	UIntTestArith()
     assert_eq!( ( a * b), 30);
     assert_eq!( ( a / b), 3);
     assert_eq!( ( a % b), 1);
+
+    let  	mut x = U32::from( 10u32);
+    x += b;
+    assert_eq!( x, 13);
+    x -= b;
+    assert_eq!( x, 10);
+    x *= b;
+    assert_eq!( x, 30);
+    x /= b;
+    assert_eq!( x, 10);
+    x %= b;
+    assert_eq!( x, 1);
+
+    let  	mut y = U32::from( 6u32);
+    y &= b;
+    assert_eq!( y, 2);
+    y |= b;
+    assert_eq!( y, 3);
+    y ^= U32::from( 1u32);
+    assert_eq!( y, 2);
+    y <<= 1u32;
+    assert_eq!( y, 4);
+    y >>= 1u32;
+    assert_eq!( y, 2);
 }
 fn	UIntNegNotTest() 
 {

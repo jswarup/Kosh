@@ -44,7 +44,7 @@ impl USeg
     pub fn	Mid( &self) -> U32 
     {
         // Compute mid as U32 using inner u32 arithmetic
-        let  	sum = self._First.as_u32() + self._Last.as_u32();
+        let  	sum = self._First.AsU32() + self._Last.AsU32();
         let  	mid = sum / 2;
         U32( mid)
     }
@@ -97,7 +97,7 @@ impl USeg
         if self.IsEmpty() {
             return true;
         }
-        for i in self._First.as_u32()..self._Last.as_u32() {
+        for i in self._First.AsU32()..self._Last.AsU32() {
             if !lambda( U32( i)) {
                 return false;
             }
@@ -114,7 +114,7 @@ impl USeg
         if self.IsEmpty() {
             return;
         }
-        for i in self._First.as_u32()..=self._Last.as_u32() {
+        for i in self._First.AsU32()..=self._Last.AsU32() {
             lambda( U32( i))
         }
     }

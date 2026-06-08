@@ -3,6 +3,7 @@
 use	std::sync::LazyLock;
 use	crate::segue::shard::Shard;
 use	crate::silo::uint::{ U8, U64 };
+use	crate::silo::arr::Arr;
 //---------------------------------------------------------------------------------------------------------------------------------
 /// A 256-bit filter for `U8` characters — one bit per byte value.
 /// Enables set algebra (union, intersection, negation) over character classes.
@@ -37,7 +38,7 @@ impl Charset
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	FromBoxet( spec: &[U8]) -> Self
+    pub fn	FromBoxet( spec: Arr< '_, U8>) -> Self
     {
         let  	mut cs = Self::New();
         let  	mut i = 0usize;
@@ -61,8 +62,8 @@ impl Charset
     pub fn	Get< C: Into< U8>>( &self, c: C) -> bool
     {
         let  	c = c.into();
-        let  	idx = (c.as_usize()) / Self::SZ_BITS as usize;
-        let  	bit = (c.as_u8() as u32) % Self::SZ_BITS;
+        let  	idx = (c.AsUsize()) / Self::SZ_BITS as usize;
+        let  	bit = (c.AsU8() as u32) % Self::SZ_BITS;
         ( self._Bits[idx] & U64( 1u64 << bit)) != 0u64
     }
 
@@ -71,8 +72,8 @@ impl Charset
     pub fn	SetChar< C: Into< U8>>( &mut self, c: C)
     {
         let  	c = c.into();
-        let  	idx = (c.as_usize()) / Self::SZ_BITS as usize;
-        let  	bit = (c.as_u8() as u32) % Self::SZ_BITS;
+        let  	idx = (c.AsUsize()) / Self::SZ_BITS as usize;
+        let  	bit = (c.AsU8() as u32) % Self::SZ_BITS;
         self._Bits[idx] |= U64( 1u64 << bit);
     }
 
@@ -81,8 +82,8 @@ impl Charset
     pub fn	ClearChar< C: Into< U8>>( &mut self, c: C)
     {
         let  	c = c.into();
-        let  	idx = (c.as_usize()) / Self::SZ_BITS as usize;
-        let  	bit = (c.as_u8() as u32) % Self::SZ_BITS;
+        let  	idx = (c.AsUsize()) / Self::SZ_BITS as usize;
+        let  	bit = (c.AsU8() as u32) % Self::SZ_BITS;
         self._Bits[idx] &= !U64( 1u64 << bit);
     }
 
@@ -99,8 +100,8 @@ impl Charset
 
     pub fn	SetByteRange< C: Into< U8>>( &mut self, start: C, stop: C, value: bool)
     {
-        let  	start = start.into().as_u8();
-        let  	stop = stop.into().as_u8();
+        let  	start = start.into().AsU8();
+        let  	stop = stop.into().AsU8();
         for c in start..=stop {
             self.Set( U8( c), value);
         }
@@ -406,7 +407,7 @@ impl Charset
 
     fn	PrettyPrintChar( c: U8, chrClsFlg: bool, out: &mut String)
     {
-        let val = c.as_u8();
+        let val = c.AsU8();
         match val {
             b'\t' => { out.push_str( "\\t"); return; }
             b'\n' => { out.push_str( "\\n"); return; }
@@ -461,7 +462,7 @@ impl Charset
         let  	mut i = 0usize;
         while i < chars.len() {
             let  	mut j = i + 1;
-            while j < chars.len() && chars[j].as_u8() == chars[j - 1].as_u8() + 1 {
+            while j < chars.len() && chars[j].AsU8() == chars[j - 1].AsU8() + 1 {
                 j += 1;
             }
             let  	runLen = j - i;

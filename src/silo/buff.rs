@@ -122,11 +122,11 @@ impl< T> Buff< T>
         let  	size = sz.into();
         let  	isZst = std::mem::size_of::< T>() == 0;
         if size == 0 || isZst {
-            let  	dangling = NonNull::slice_from_raw_parts( NonNull::dangling(), size.as_usize());
+            let  	dangling = NonNull::slice_from_raw_parts( NonNull::dangling(), size.AsUsize());
             return Buff { _Ptr: dangling };
         }
         // Calculate layout for an array of T with length `size`
-        let  	layout = Layout::array::< T>( size.as_usize()).expect( "Layout calculation failed");
+        let  	layout = Layout::array::< T>( size.AsUsize()).expect( "Layout calculation failed");
         unsafe {
             let  	rawPtr = alloc( layout) as *mut T;                 // Allocate memory
             if rawPtr.is_null() {
@@ -158,7 +158,7 @@ impl< T> Buff< T>
                 _Layout: layout,
                 _InitCount: 0,
             };
-            for i in 0..size.as_usize()
+            for i in 0..size.AsUsize()
             // Initialize each element in the contiguous memory block
             {
                 std::ptr::write( rawPtr.add( i), dispenser( U32( i as u32)));
@@ -166,7 +166,7 @@ impl< T> Buff< T>
             }
             _ = std::mem::ManuallyDrop::new( guard);                   // Defuse the guard so memory/elements aren't cleaned up when exiting the block
             let  	nonNullPtr = NonNull::new_unchecked( rawPtr);
-            let  	slicePtr = NonNull::slice_from_raw_parts( nonNullPtr, size.as_usize());
+            let  	slicePtr = NonNull::slice_from_raw_parts( nonNullPtr, size.AsUsize());
             Buff { _Ptr: slicePtr }
         }
     }
