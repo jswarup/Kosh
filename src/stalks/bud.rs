@@ -276,51 +276,72 @@ macro_rules! BudTree {
         $crate::BudTree!( @cb [ $crate::BudTree ], $type, $( $inner )+ )
     };
 
+    // ═══ FEATURE OPT-INS FOR BudTree ITSELF ═════════════════════════════════════════════════════════
+    // BudTree explicitly opts in to all features by delegating back to its own builders.
+    ( @feature_STAR [ $($cb:tt)* ], $type:ident, $l:tt $( $r:tt )* ) => { $crate::BudTree!( @uni [ $($cb)* ], $type, STAR, $l $( $r )* ) };
+    ( @feature_PLUS [ $($cb:tt)* ], $type:ident, $l:tt $( $r:tt )* ) => { $crate::BudTree!( @uni [ $($cb)* ], $type, PLUS, $l $( $r )* ) };
+    ( @feature_MINUS [ $($cb:tt)* ], $type:ident, $l:tt $( $r:tt )* ) => { $crate::BudTree!( @uni [ $($cb)* ], $type, MINUS, $l $( $r )* ) };
+    ( @feature_BANG [ $($cb:tt)* ], $type:ident, $l:tt $( $r:tt )* ) => { $crate::BudTree!( @uni [ $($cb)* ], $type, BANG, $l $( $r )* ) };
+
+    ( @feature_SHL [ $($cb:tt)* ], @bg $type:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, SHL, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_SHL [ $($cb:tt)* ], @bl $type:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, SHL, $l, $( $r)+ ) };
+
+    ( @feature_SHR [ $($cb:tt)* ], @bg $type:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, SHR, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_SHR [ $($cb:tt)* ], @bl $type:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, SHR, $l, $( $r)+ ) };
+
+    ( @feature_LT [ $($cb:tt)* ], @bg $type:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, LT, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_LT [ $($cb:tt)* ], @bl $type:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, LT, $l, $( $r)+ ) };
+
+    ( @feature_BOR [ $($cb:tt)* ], @bg $type:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, BOR, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_BOR [ $($cb:tt)* ], @bl $type:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, BOR, $l, $( $r)+ ) };
+
+    ( @feature_NEW [ $($cb:tt)* ], $type:ident, | $( $body:tt)+ ) => { $crate::stalks::bud::IntoBud::IntoBud( $type::New( | $( $body)+ ) ) };
+    ( @feature_NEW [ $($cb:tt)* ], $type:ident, || $( $body:tt)+ ) => { $crate::stalks::bud::IntoBud::IntoBud( $type::New( || $( $body)+ ) ) };
+    ( @feature_NEW [ $($cb:tt)* ], $type:ident, move | $( $body:tt)+ ) => { $crate::stalks::bud::IntoBud::IntoBud( $type::New( move | $( $body)+ ) ) };
+    ( @feature_NEW [ $($cb:tt)* ], $type:ident, move || $( $body:tt)+ ) => { $crate::stalks::bud::IntoBud::IntoBud( $type::New( move || $( $body)+ ) ) };
+
+    ( @feature_ACTION [ $($cb:tt)* ], $type:ident, $l:literal [ $( $inner:tt )* ] ) => { $crate::BudTree!( @closure_match [ $($cb)* ], $type, $l, $( $inner )* ) };
+    ( @feature_ACTION [ $($cb:tt)* ], $type:ident, ( $( $expr:tt)+ ) [ $( $inner:tt )* ] ) => { $crate::BudTree!( @closure_match [ $($cb)* ], $type, $($cb)* !( @cb [ $($cb)* ], $type, $( $expr)+ ), $( $inner )* ) };
+
+
     // ── Strip outer parens ──────────────────────────────────────────────────────────────────────────
     ( @cb [ $($cb:tt)* ], $type:ident, ( $( $inner:tt)+ ) ) => { $($cb)* !( @cb [ $($cb)* ], $type, $( $inner)+ ) };
 
     // ── Unary operators ─────────────────────────────────────────────────────────────────────────────
-    ( @cb [ $($cb:tt)* ], $type:ident, * $l:tt $( $r:tt)* ) => {
-        $($cb)* !( @cb [ $($cb)* ], $type, ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $($cb)* !( @cb [ $($cb)* ], $type, $l ), $crate::stalks::bud::BudUniOp::STAR ) ) $( $r)* )
-    };
-    ( @cb [ $($cb:tt)* ], $type:ident, + $l:tt $( $r:tt)* ) => {
-        $($cb)* !( @cb [ $($cb)* ], $type, ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $($cb)* !( @cb [ $($cb)* ], $type, $l ), $crate::stalks::bud::BudUniOp::PLUS ) ) $( $r)* )
-    };
-    ( @cb [ $($cb:tt)* ], $type:ident, - $l:tt $( $r:tt)* ) => {
-        $($cb)* !( @cb [ $($cb)* ], $type, ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $($cb)* !( @cb [ $($cb)* ], $type, $l ), $crate::stalks::bud::BudUniOp::MINUS ) ) $( $r)* )
-    };
-    ( @cb [ $($cb:tt)* ], $type:ident, ! $l:tt $( $r:tt)* ) => {
-        $($cb)* !( @cb [ $($cb)* ], $type, ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $($cb)* !( @cb [ $($cb)* ], $type, $l ), $crate::stalks::bud::BudUniOp::BANG ) ) $( $r)* )
-    };
+    ( @cb [ $($cb:tt)* ], $type:ident, * $l:tt $( $r:tt)* ) => { $($cb)* !( @feature_STAR [ $($cb)* ], $type, $l $( $r )* ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, + $l:tt $( $r:tt)* ) => { $($cb)* !( @feature_PLUS [ $($cb)* ], $type, $l $( $r )* ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, - $l:tt $( $r:tt)* ) => { $($cb)* !( @feature_MINUS [ $($cb)* ], $type, $l $( $r )* ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, ! $l:tt $( $r:tt)* ) => { $($cb)* !( @feature_BANG [ $($cb)* ], $type, $l $( $r )* ) };
 
     // ── Binary: (group) OP rhs ──────────────────────────────────────────────────────────────────────
-    ( @cb [ $($cb:tt)* ], $type:ident, ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, SHL, ( $( $l)+ ), $( $r)+ ) };
-    ( @cb [ $($cb:tt)* ], $type:ident, ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, SHR, ( $( $l)+ ), $( $r)+ ) };
-    ( @cb [ $($cb:tt)* ], $type:ident, ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, LT,  ( $( $l)+ ), $( $r)+ ) };
-    ( @cb [ $($cb:tt)* ], $type:ident, ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, BOR, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $($cb)* !( @feature_SHL [ $($cb)* ], @bg $type, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $($cb)* !( @feature_SHR [ $($cb)* ], @bg $type, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $($cb)* !( @feature_LT  [ $($cb)* ], @bg $type, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $($cb)* !( @feature_BOR [ $($cb)* ], @bg $type, ( $( $l)+ ), $( $r)+ ) };
 
     // ── Binary: ident/literal OP rhs ────────────────────────────────────────────────────────────────
-    ( @cb [ $($cb:tt)* ], $type:ident, $l:ident << $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, SHL, $l, $( $r)+ ) };
-    ( @cb [ $($cb:tt)* ], $type:ident, $l:ident >> $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, SHR, $l, $( $r)+ ) };
-    ( @cb [ $($cb:tt)* ], $type:ident, $l:ident <  $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, LT,  $l, $( $r)+ ) };
-    ( @cb [ $($cb:tt)* ], $type:ident, $l:ident |  $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, BOR, $l, $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:ident << $( $r:tt)+ ) => { $($cb)* !( @feature_SHL [ $($cb)* ], @bl $type, $l, $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:ident >> $( $r:tt)+ ) => { $($cb)* !( @feature_SHR [ $($cb)* ], @bl $type, $l, $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:ident <  $( $r:tt)+ ) => { $($cb)* !( @feature_LT  [ $($cb)* ], @bl $type, $l, $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:ident |  $( $r:tt)+ ) => { $($cb)* !( @feature_BOR [ $($cb)* ], @bl $type, $l, $( $r)+ ) };
 
-    ( @cb [ $($cb:tt)* ], $type:ident, $l:literal << $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, SHL, $l, $( $r)+ ) };
-    ( @cb [ $($cb:tt)* ], $type:ident, $l:literal >> $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, SHR, $l, $( $r)+ ) };
-    ( @cb [ $($cb:tt)* ], $type:ident, $l:literal <  $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, LT,  $l, $( $r)+ ) };
-    ( @cb [ $($cb:tt)* ], $type:ident, $l:literal |  $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, BOR, $l, $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:literal << $( $r:tt)+ ) => { $($cb)* !( @feature_SHL [ $($cb)* ], @bl $type, $l, $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:literal >> $( $r:tt)+ ) => { $($cb)* !( @feature_SHR [ $($cb)* ], @bl $type, $l, $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:literal <  $( $r:tt)+ ) => { $($cb)* !( @feature_LT  [ $($cb)* ], @bl $type, $l, $( $r)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, $l:literal |  $( $r:tt)+ ) => { $($cb)* !( @feature_BOR [ $($cb)* ], @bl $type, $l, $( $r)+ ) };
 
     // ── Closure literal ─────────────────────────────────────────────────────────────────────────────
-    ( @cb [ $($cb:tt)* ], $type:ident, | $( $body:tt)+ ) => {
-        $crate::stalks::bud::IntoBud::IntoBud( $type::New( | $( $body)+ ) )
-    };
+    ( @cb [ $($cb:tt)* ], $type:ident, | $( $body:tt)+ ) => { $($cb)* !( @feature_NEW [ $($cb)* ], $type, | $( $body)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, || $( $body:tt)+ ) => { $($cb)* !( @feature_NEW [ $($cb)* ], $type, || $( $body)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, move | $( $body:tt)+ ) => { $($cb)* !( @feature_NEW [ $($cb)* ], $type, move | $( $body)+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, move || $( $body:tt)+ ) => { $($cb)* !( @feature_NEW [ $($cb)* ], $type, move || $( $body)+ ) };
 
     // ── Leaf [ action ] ────────────────────────────────────────────────────────────────────────────
     ( @cb [ $($cb:tt)* ], $type:ident, $l:literal [ $( $inner:tt )* ] ) => {
-        $crate::BudTree!( @closure_match [ $($cb)* ], $type, $l, $( $inner )* )
+        $($cb)* !( @feature_ACTION [ $($cb)* ], $type, $l [ $( $inner )* ] )
     };
     ( @cb [ $($cb:tt)* ], $type:ident, ( $( $expr:tt)+ ) [ $( $inner:tt )* ] ) => {
-        $crate::BudTree!( @closure_match [ $($cb)* ], $type, $($cb)* !( @cb [ $($cb)* ], $type, $( $expr)+ ), $( $inner )* )
+        $($cb)* !( @feature_ACTION [ $($cb)* ], $type, ( $( $expr )+ ) [ $( $inner )* ] )
     };
 
     // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
@@ -330,6 +351,11 @@ macro_rules! BudTree {
     ( @cb [ $($cb:tt)* ], $type:ident, $leaf:expr ) => { $crate::stalks::bud::IntoBud::IntoBud( $leaf ) };
 
     // ═══ Internal helpers ═══════════════════════════════════════════════════════════════════════════
+
+    // @uni : unary - OP rhs
+    ( @uni [ $($cb:tt)* ], $type:ident, $op:ident, $l:tt $( $r:tt)* ) => {
+        $($cb)* !( @cb [ $($cb)* ], $type, ( $crate::stalks::bud::IntoBud::IntoBudUniOp( $($cb)* !( @cb [ $($cb)* ], $type, $l ), $crate::stalks::bud::BudUniOp::$op ) ) $( $r)* )
+    };
 
     // @closure_match : resolves closure vs non-closure for action leaf
     ( @closure_match [ $($cb:tt)* ], $type:ident, $base:expr, | $( $closure:tt )* ) => {
@@ -360,6 +386,18 @@ macro_rules! BudTree {
             $crate::stalks::bud::IntoBud::IntoBud( $l ),
             $($cb)* !( @cb [ $($cb)* ], $type, $( $r)+ ) )
     };
+
+    // ═══ DEFAULT FALLBACK ERRORS FOR DISABLED FEATURES ══════════════════════════════════════════════
+    ( @feature_STAR $( $args:tt )* ) => { compile_error!("Unary STAR (*) is not enabled for this tree"); };
+    ( @feature_PLUS $( $args:tt )* ) => { compile_error!("Unary PLUS (+) is not enabled for this tree"); };
+    ( @feature_MINUS $( $args:tt )* ) => { compile_error!("Unary MINUS (-) is not enabled for this tree"); };
+    ( @feature_BANG $( $args:tt )* ) => { compile_error!("Unary BANG (!) is not enabled for this tree"); };
+    ( @feature_SHL $( $args:tt )* ) => { compile_error!("Binary SHL (<<) is not enabled for this tree"); };
+    ( @feature_SHR $( $args:tt )* ) => { compile_error!("Binary SHR (>>) is not enabled for this tree"); };
+    ( @feature_LT $( $args:tt )* ) => { compile_error!("Binary LT (<) is not enabled for this tree"); };
+    ( @feature_BOR $( $args:tt )* ) => { compile_error!("Binary BOR (|) is not enabled for this tree"); };
+    ( @feature_NEW $( $args:tt )* ) => { compile_error!("Closure literal is not enabled for this tree"); };
+    ( @feature_ACTION $( $args:tt )* ) => { compile_error!("Bracketed action [ closure ] is not enabled for this tree"); };
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

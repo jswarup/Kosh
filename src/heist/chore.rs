@@ -151,20 +151,30 @@ impl crate::stalks::bud::IntoBud< Chore> for fn( &dyn IWorker)
 
 #[macro_export]
 macro_rules! ChoreTree {
-    // OVERRIDE: Intercept and suppress action [ closure ] for ChoreTree
-    ( @cb [ $($cb:tt)* ], $type:ident, $l:literal [ $( $closure:tt )* ] ) => {
-        compile_error!("IntoBudAction via [ closure ] is suppressed for ChoreTree");
-    };
-    ( @cb [ $($cb:tt)* ], $type:ident, ( $( $expr:tt)+ ) [ $( $closure:tt )* ] ) => {
-        compile_error!("IntoBudAction via [ closure ] is suppressed for ChoreTree");
+    // ═══ OPT-IN FEATURES ════════════════════════════════════════════════════════════════════════════
+
+    // Enable LT (<)
+    ( @feature_LT [ $($cb:tt)* ], @bg $type:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, LT, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_LT [ $($cb:tt)* ], @bl $type:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, LT, $l, $( $r)+ ) };
+
+    // Enable BOR (|)
+    ( @feature_BOR [ $($cb:tt)* ], @bg $type:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $($cb)* ], $type, BOR, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_BOR [ $($cb:tt)* ], @bl $type:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $($cb)* ], $type, BOR, $l, $( $r)+ ) };
+
+    // Enable Closure literal (NEW)
+    ( @feature_NEW [ $($cb:tt)* ], $type:ident, | $( $body:tt)+ ) => { $crate::stalks::bud::IntoBud::IntoBud( $type::New( | $( $body)+ ) ) };
+    ( @feature_NEW [ $($cb:tt)* ], $type:ident, || $( $body:tt)+ ) => { $crate::stalks::bud::IntoBud::IntoBud( $type::New( || $( $body)+ ) ) };
+    ( @feature_NEW [ $($cb:tt)* ], $type:ident, move | $( $body:tt)+ ) => { $crate::stalks::bud::IntoBud::IntoBud( $type::New( move | $( $body)+ ) ) };
+    ( @feature_NEW [ $($cb:tt)* ], $type:ident, move || $( $body:tt)+ ) => { $crate::stalks::bud::IntoBud::IntoBud( $type::New( move || $( $body)+ ) ) };
+
+    // ═══ FALLBACKS ══════════════════════════════════════════════════════════════════════════════════
+
+    // Forward unhandled internal callbacks to BudTree (e.g., disallowed features like @feature_SHL)
+    ( @ $( $inner:tt )+ ) => {
+        $crate::BudTree!( @ $( $inner )+ )
     };
 
-    // FALLBACK: Delegate everything else to BudTree TT engine
-    ( @cb [ $($cb:tt)* ], $type:ident, $( $inner:tt )+ ) => {
-        $crate::BudTree!( @cb [ $($cb)* ], $type, $( $inner )+ )
-    };
-
-    // Top-level entry (moved to bottom to avoid intercepting @cb)
+    // Top-level entry (user code)
     ( $( $inner:tt)+ )  => { $crate::ChoreTree!( @cb [ $crate::ChoreTree ], Chore, $( $inner)+ ) };
 }
 
