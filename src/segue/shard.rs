@@ -205,8 +205,8 @@ macro_rules! ShardTree {
     ( @feature_ACTION $($args:tt)* ) => { $crate::BudTree!( @feature_ACTION $($args)* ) };
 
     // ── Custom: Boxet stringification (overrides BudTree default) ───────────────────────────────────
-    ( @feature_BOXET [ $($cb:tt)* ], $type:ident, [ $( $inner:tt )* ] ) => {
-        $crate::stalks::bud::IntoBud::IntoBud( $type::from( stringify!( $($inner)* ).replace( " ", "" ) ) )
+    ( @feature_BOXET [ $($cb:tt)* ], $type:ident, $s:literal ) => {
+        $crate::stalks::bud::IntoBud::IntoBud( $type::from( $s ) )
     };
 
     // ═══ FALLBACKS ══════════════════════════════════════════════════════════════════════════════════

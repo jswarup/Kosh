@@ -303,8 +303,8 @@ macro_rules! BudTree {
     ( @feature_ACTION [ $($cb:tt)* ], $type:ident, $l:literal [ $( $inner:tt )* ] ) => { $crate::BudTree!( @closure_match [ $($cb)* ], $type, $l, $( $inner )* ) };
     ( @feature_ACTION [ $($cb:tt)* ], $type:ident, ( $( $expr:tt)+ ) [ $( $inner:tt )* ] ) => { $crate::BudTree!( @closure_match [ $($cb)* ], $type, $($cb)* !( @cb [ $($cb)* ], $type, $( $expr)+ ), $( $inner )* ) };
 
-    ( @feature_BOXET [ $($cb:tt)* ], $type:ident, [ $leaf:expr ] ) => {
-        $crate::stalks::bud::IntoBud::IntoBudBox( $leaf )
+    ( @feature_BOXET [ $($cb:tt)* ], $type:ident, $s:literal ) => {
+        $crate::stalks::bud::IntoBud::IntoBud( $s )
     };
 
 
@@ -349,14 +349,14 @@ macro_rules! BudTree {
     };
 
     // ── Binary: [ boxet ] OP rhs ────────────────────────────────────────────────────────────────────
-    ( @cb [ $($cb:tt)* ], $type:ident, [ $( $inner:tt )* ] << $( $r:tt)+ ) => { $($cb)* !( @feature_SHL [ $($cb)* ], @bg $type, ( [ $( $inner )* ] ), $( $r )+ ) };
-    ( @cb [ $($cb:tt)* ], $type:ident, [ $( $inner:tt )* ] >> $( $r:tt)+ ) => { $($cb)* !( @feature_SHR [ $($cb)* ], @bg $type, ( [ $( $inner )* ] ), $( $r )+ ) };
-    ( @cb [ $($cb:tt)* ], $type:ident, [ $( $inner:tt )* ] <  $( $r:tt)+ ) => { $($cb)* !( @feature_LT  [ $($cb)* ], @bg $type, ( [ $( $inner )* ] ), $( $r )+ ) };
-    ( @cb [ $($cb:tt)* ], $type:ident, [ $( $inner:tt )* ] |  $( $r:tt)+ ) => { $($cb)* !( @feature_BOR [ $($cb)* ], @bg $type, ( [ $( $inner )* ] ), $( $r )+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, [ $s:literal ] << $( $r:tt)+ ) => { $($cb)* !( @feature_SHL [ $($cb)* ], @bg $type, ( $($cb)* !( @feature_BOXET [ $($cb)* ], $type, $s ) ), $( $r )+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, [ $s:literal ] >> $( $r:tt)+ ) => { $($cb)* !( @feature_SHR [ $($cb)* ], @bg $type, ( $($cb)* !( @feature_BOXET [ $($cb)* ], $type, $s ) ), $( $r )+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, [ $s:literal ] <  $( $r:tt)+ ) => { $($cb)* !( @feature_LT  [ $($cb)* ], @bg $type, ( $($cb)* !( @feature_BOXET [ $($cb)* ], $type, $s ) ), $( $r )+ ) };
+    ( @cb [ $($cb:tt)* ], $type:ident, [ $s:literal ] |  $( $r:tt)+ ) => { $($cb)* !( @feature_BOR [ $($cb)* ], @bg $type, ( $($cb)* !( @feature_BOXET [ $($cb)* ], $type, $s ) ), $( $r )+ ) };
 
     // ── Leaf Boxet ──────────────────────────────────────────────────────────────────────────────────
-    ( @cb [ $($cb:tt)* ], $type:ident, [ $( $inner:tt )* ] ) => {
-        $($cb)* !( @feature_BOXET [ $($cb)* ], $type, [ $( $inner )* ] )
+    ( @cb [ $($cb:tt)* ], $type:ident, [ $s:literal ] ) => {
+        $($cb)* !( @feature_BOXET [ $($cb)* ], $type, $s )
     };
 
     // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
