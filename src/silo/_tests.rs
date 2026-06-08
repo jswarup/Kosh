@@ -1,6 +1,7 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::silo::arr::Arr;
 use	crate::silo::buff::Buff;
+use	crate::silo::instream::InStream;
 use	crate::silo::stash::Stash;
 use	crate::silo::stk::Stk;
 #[warn( unused_imports)]
@@ -632,4 +633,39 @@ fn	TestBuffResize()
     assert_eq!( buff[2].value, 42);
     assert_eq!( buff[3].value, 100);
     assert_eq!( buff[4].value, 100);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestInStream() 
+{
+    let  	data = [U8( b'a'), U8( b'b'), U8( b'c')];
+    let  	buff = Buff::Create( U32( 3), |i| data[i.AsUsize()]);
+    let  	mut stream = InStream::New( buff);
+
+    assert_eq!( stream.Curr(), U8( b'a'));
+
+    assert!( stream.Next());
+    assert_eq!( stream.Curr(), U8( b'b'));
+
+    assert!( stream.Next());
+    assert_eq!( stream.Curr(), U8( b'c'));
+
+    assert!( !stream.Next());
+    assert_eq!( stream.Curr(), U8::_0);
+
+    stream.RollTo( U32( 1));
+    assert_eq!( stream.Curr(), U8( b'b'));
+
+    let  	rem1 = stream.Remaining();
+    assert_eq!( rem1.Size(), 2);
+    assert_eq!( *rem1.At( 0), U8( b'b'));
+    assert_eq!( *rem1.At( 1), U8( b'c'));
+
+    stream.RollTo( U32( 5));
+    assert_eq!( stream.Curr(), U8::_0);
+
+    let  	rem5 = stream.Remaining();
+    assert_eq!( rem5.Size(), 0);
 }

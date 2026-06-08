@@ -3,6 +3,7 @@
 mod _tests;
 pub mod arr;
 pub mod buff;
+pub mod instream;
 pub mod stash;
 pub mod stk;
 pub mod uint;
