@@ -38,12 +38,17 @@ fn	BuffFromTest()
     assert_eq!( buffFromSlice[0], 10);
     assert_eq!( buffFromSlice[1], 20);
     assert_eq!( buffFromSlice[2], 30);
-    // Test creation from a Vec
-    let  	vecData = vec![40, 50];
-    let  	buffFromVec = Buff::from( vecData);
+    // Test creation and push/pop on Buff
+    let  	mut buffFromVec = Buff::NewEmpty();
+    assert_eq!( buffFromVec.len(), 0);
+    buffFromVec.Push( 40);
+    buffFromVec.Push( 50);
     assert_eq!( buffFromVec.len(), 2);
     assert_eq!( buffFromVec[0], 40);
     assert_eq!( buffFromVec[1], 50);
+    assert_eq!( buffFromVec.Pop(), Some( 50));
+    assert_eq!( buffFromVec.Pop(), Some( 40));
+    assert_eq!( buffFromVec.Pop(), None);
     // Test creation from an array directly
     let  	buffFromArr = Buff::from( [100, 200, 300, 400]);
     assert_eq!( buffFromArr.len(), 4);
@@ -169,19 +174,19 @@ fn	USegSpanTest()
 {
     let  	seg = USeg::Create( 10, 6);
     // Case 1: All values return true
-    let  	mut visited = Vec::new();
+    let  	mut visited = Buff::NewEmpty();
     seg.Traverse( |val| {
-        visited.push( val);
+        visited.Push( val);
     });
-    assert_eq!( visited, vec![10, 11, 12, 13, 14, 15]);
+    assert_eq!( &*visited, &[U32( 10), U32( 11), U32( 12), U32( 13), U32( 14), U32( 15)]);
     // Case 2: One value returns false ( early termination)
-    let  	mut visited2 = Vec::new();
+    let  	mut visited2 = Buff::NewEmpty();
     let  	result2 = seg.Span( |val| {
-        visited2.push( val);
+        visited2.Push( val);
         val < 13
     });
     assert!( !result2);
-    assert_eq!( visited2, vec![10, 11, 12, 13]);
+    assert_eq!( &*visited2, &[U32( 10), U32( 11), U32( 12), U32( 13)]);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -430,7 +435,7 @@ fn	TestConcurrentStackOps()
     use	std::thread;
     // Create a shared destination stack of size 1000
     let  	dstStash = Arc::new( Stash::< U32>::New( 1000));
-    let  	mut handles = vec![];
+    let  	mut handles = Buff::NewEmpty();
     for t in 0..10 {
         let  	dstStkClone = dstStash.clone();
         let  	handle = thread::spawn( move || {
@@ -444,24 +449,24 @@ fn	TestConcurrentStackOps()
             // Import elements from local srcStk to shared dstStk
             dstStkClone.Stk().Import( &srcStk, 10);
         });
-        handles.push( handle);
+        handles.Push( handle);
     }
-    for handle in handles {
+    while let Some( handle) = handles.Pop() {
         handle.join().unwrap();
     }
     // Since 10 threads imported 10 elements each, dstStk size must be exactly 100
     assert_eq!( dstStash.Size(), 100);
     // Collect all elements and verify they are exactly 0..100 ( in some order)
-    let  	mut values = vec![];
+    let  	mut values = Buff::NewEmpty();
     let  	dstStk = dstStash.Stk();
     let  	mut out = U32( 0);
     while dstStk.Pop( &mut out) {
-        values.push( out.0);
+        values.Push( out);
     }
     assert_eq!( values.len(), 100);
     values.sort();
     for i in 0..100 {
-        assert_eq!( values[i], i as u32);
+        assert_eq!( values[i], U32( i as u32));
     }
 }
 

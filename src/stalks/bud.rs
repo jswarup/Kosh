@@ -1,4 +1,6 @@
 //-- bud.rs -------------------------------------------------------------------------------------------------------------------------
+use	crate::silo::buff::Buff;
+use	crate::silo::uint::U32;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -52,24 +54,24 @@ impl< T: std::fmt::Display> dyn Bud< T> + '_
 {
     pub fn	Print( &self)
     {
-        let  	mut childCounts = Vec::new();
+        let  	mut childCounts = Buff::<U32>::NewEmpty();
         self.TraverseDFS( &mut |node, event| match event {
             TraversalEvent::Entry => {
                 if let  	Some( count) = childCounts.last_mut() {
-                    if *count > 0 {
+                    if *count > U32( 0) {
                         print!( " ");
                     }
-                    *count += 1;
+                    *count += U32( 1);
                 }
                 if node.Left().is_some() || node.Right().is_some() {
                     print!( "[{} ", node.Op());
-                    childCounts.push( 0);
+                    childCounts.Push( U32( 0));
                 } else {
                     print!( "{}", node.Val());
                 }
             }
             TraversalEvent::Exit => {
-                childCounts.pop();
+                childCounts.Pop();
                 print!( "]");
             }
         });

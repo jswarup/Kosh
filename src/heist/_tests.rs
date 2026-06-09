@@ -50,7 +50,7 @@ fn	TestThreadSharedInteger()
     use	std::sync::{ Arc, Mutex };
     use	std::thread;
     let  	shared = Arc::new( Mutex::new( 0));
-    let  	mut handles = vec![];
+    let  	mut handles = Buff::NewEmpty();
     for i in 0..4 {
         let  	sharedClone = shared.clone();
         let  	handle = thread::spawn( move || {
@@ -58,9 +58,9 @@ fn	TestThreadSharedInteger()
             *val += 1;
             println!( "Thread {} incremented shared integer to: {}", i, *val);
         });
-        handles.push( handle);
+        handles.Push( handle);
     }
-    for handle in handles {
+    while let Some( handle) = handles.Pop() {
         handle.join().unwrap();
     }
     assert_eq!( *shared.lock().unwrap(), 4);

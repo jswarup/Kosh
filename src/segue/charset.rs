@@ -4,6 +4,7 @@ use	std::sync::LazyLock;
 use	crate::segue::shard::Shard;
 use	crate::silo::uint::{ U8, U64 };
 use	crate::silo::arr::Arr;
+use	crate::silo::buff::Buff;
 //---------------------------------------------------------------------------------------------------------------------------------
 /// A 256-bit filter for `U8` characters — one bit per byte value.
 /// Enables set algebra (union, intersection, negation) over character classes.
@@ -194,14 +195,17 @@ impl Charset
     //-----------------------------------------------------------------------------------------------------------------------------
     /// Collect all byte-values whose bit is set.
 
-    pub fn	ListChars( &self) -> Vec<U8>
+    pub fn	ListChars( &self) -> Buff<U8>
     {
-        let  	mut list = Vec::new();
+        let  	weight = self.Weight();
+        let  	mut list = Buff::New( weight, U8( 0));
+        let  	mut idx = 0usize;
         for i in 0..Self::SZ {
             let  	mut val = self._Bits[i].0;
             while val != 0 {
                 let  	tz = val.trailing_zeros();
-                list.push( U8( (( i as u32) * Self::SZ_BITS + tz) as u8));
+                list[idx] = U8( (( i as u32) * Self::SZ_BITS + tz) as u8);
+                idx += 1;
                 val &= val - 1;
             }
         }

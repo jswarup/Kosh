@@ -26,6 +26,72 @@ unsafe impl< T: Sync> Sync for Buff< T>
 
 impl< T> Buff< T> 
 {
+    pub fn	NewEmpty() -> Self 
+    {
+        Self {
+            _Ptr: NonNull::slice_from_raw_parts( NonNull::dangling(), 0),
+        }
+    }
+
+    pub fn	Push( &mut self, val: T) 
+    {
+        let  	oldSize = self._Ptr.len();
+        let  	newSize = oldSize + 1;
+        let  	isZst = std::mem::size_of::< T>() == 0;
+        if isZst {
+            self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), newSize);
+            return;
+        }
+        unsafe {
+            let  	oldLayout = Layout::array::< T>( oldSize).unwrap();
+            let  	newLayout = Layout::array::< T>( newSize).unwrap();
+            let  	rawPtr = if oldSize == 0 {
+                alloc( newLayout)
+            } else {
+                std::alloc::realloc( self._Ptr.cast::< u8>().as_ptr(), oldLayout, newLayout.size())
+            };
+            if rawPtr.is_null() {
+                handle_alloc_error( newLayout);
+            }
+            let  	rawPtrT = rawPtr as *mut T;
+            std::ptr::write( rawPtrT.add( oldSize), val);
+            let  	nonNullPtr = NonNull::new_unchecked( rawPtrT);
+            self._Ptr = NonNull::slice_from_raw_parts( nonNullPtr, newSize);
+        }
+    }
+
+    pub fn	Pop( &mut self) -> Option< T> 
+    {
+        let  	oldSize = self._Ptr.len();
+        if oldSize == 0 {
+            return None;
+        }
+        let  	newSize = oldSize - 1;
+        let  	isZst = std::mem::size_of::< T>() == 0;
+        if isZst {
+            self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), newSize);
+            return Some( unsafe { std::ptr::read( NonNull::<T>::dangling().as_ptr()) });
+        }
+        unsafe {
+            let  	rawPtrT = self._Ptr.as_ptr() as *mut T;
+            let  	val = std::ptr::read( rawPtrT.add( newSize));
+            if newSize == 0 {
+                let  	layout = Layout::array::< T>( oldSize).unwrap();
+                dealloc( rawPtrT as *mut u8, layout);
+                self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), 0);
+            } else {
+                let  	oldLayout = Layout::array::< T>( oldSize).unwrap();
+                let  	newLayout = Layout::array::< T>( newSize).unwrap();
+                let  	rawPtr = std::alloc::realloc( rawPtrT as *mut u8, oldLayout, newLayout.size());
+                if rawPtr.is_null() {
+                    handle_alloc_error( newLayout);
+                }
+                let  	nonNullPtr = NonNull::new_unchecked( rawPtr as *mut T);
+                self._Ptr = NonNull::slice_from_raw_parts( nonNullPtr, newSize);
+            }
+            Some( val)
+        }
+    }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
@@ -348,16 +414,6 @@ impl< T: Clone> From< &[T]> for Buff< T>
             let  	slicePtr = NonNull::slice_from_raw_parts( nonNullPtr, size);
             Buff { _Ptr: slicePtr }
         }
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< T: Clone> From< Vec< T>> for Buff< T> 
-{
-    fn	from( vec: Vec< T>) -> Self 
-    {
-        Self::from( vec.as_slice())
     }
 }
 
