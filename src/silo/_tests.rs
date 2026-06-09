@@ -466,7 +466,7 @@ fn	TestConcurrentStackOps()
     assert_eq!( values.len(), 100);
     values.sort();
     for i in 0..100 {
-        assert_eq!( values[i], U32( i as u32));
+        assert_eq!( values[i], i as u32);
     }
 }
 

@@ -58,14 +58,14 @@ impl< T: std::fmt::Display> dyn Bud< T> + '_
         self.TraverseDFS( &mut |node, event| match event {
             TraversalEvent::Entry => {
                 if let  	Some( count) = childCounts.last_mut() {
-                    if *count > U32( 0) {
+                    if *count > 0 {
                         print!( " ");
                     }
-                    *count += U32( 1);
+                    *count += 1;
                 }
                 if node.Left().is_some() || node.Right().is_some() {
                     print!( "[{} ", node.Op());
-                    childCounts.Push( U32( 0));
+                    childCounts.Push( 0.into());
                 } else {
                     print!( "{}", node.Val());
                 }
