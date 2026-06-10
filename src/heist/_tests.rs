@@ -87,20 +87,16 @@ fn	TestDoQSort()
     let  	arr = buff.Arr();
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
-    let  	mut jobId = U16( 0);
-    jobId = mainMaestro.ConstructJob(
-        jobId,
-        AutoFreeJob::New( |_worker: &dyn IWorker| {
+    let  	mut jobId = U16( 0); 
+    jobId = mainMaestro.ConstructJob( jobId, |_worker: &dyn IWorker| {
             let  	_res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
             arr.USeg().Traverse( |i| {
                 print!( "{} ", arr.At( i));
             });
             println!();
-        }),
+        },
     );
-    jobId = mainMaestro.ConstructJob(
-        jobId,
-        AutoFreeJob::New( |worker: &dyn IWorker| {
+    jobId = mainMaestro.ConstructJob( jobId, |worker: &dyn IWorker| {
             arr.USeg().DoQSort(
                 worker,
                 move |i, j| arr.At( i) > arr.At( j),
@@ -108,7 +104,7 @@ fn	TestDoQSort()
                     arr.SwapAt( i, j);
                 },
             );
-        }),
+        },
     );
     mainMaestro.EnqueueJob( &mut jobId);
     drop( mainMaestro);

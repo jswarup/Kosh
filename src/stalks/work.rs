@@ -44,6 +44,42 @@ impl< 'a> JobPtr< 'a> {
     {
         self.data.is_null()
     }
+    pub fn	FromRef< T: IWork + 'a>( inner: &'a mut T) -> Self 
+    {
+        let  	data = inner as *mut T as *mut ();
+        let  	func: JobFn = |data_ptr, worker| unsafe {
+            let  	actual = &mut *( data_ptr as *mut T );
+            actual.DoWork( worker );
+        };
+        Self {
+            data,
+            func,
+            _marker: std::marker::PhantomData,
+        }
+    }
+}
+
+pub trait IntoJobPtr< 'a> 
+{
+    fn	into_job_ptr( self) -> JobPtr< 'a>;
+}
+
+impl< 'a> IntoJobPtr< 'a> for JobPtr< 'a> 
+{
+    fn	into_job_ptr( self) -> JobPtr< 'a> 
+    {
+        self
+    }
+}
+
+impl< 'a, F> IntoJobPtr< 'a> for F 
+where
+    F: for< 'r> FnMut( &'r ( dyn IWorker + 'r)) + Send + Sync + 'a,
+{
+    fn	into_job_ptr( self) -> JobPtr< 'a> 
+    {
+        AutoFreeJob::New( self)
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
