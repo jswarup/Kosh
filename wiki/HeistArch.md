@@ -41,7 +41,7 @@ Defined in [maestro.rs](../src/heist/maestro.rs), `Maestro` is the thread-local 
 Defined in [chore.rs](../src/heist/chore.rs), `Chore` represents a unit of work that can be structured into a dependent tree (`dyn Bud<Chore>`) using the `ChoreTree!` macro.
 * **Operators**:
   * `a | b`: Parallel execution (OR dependency).
-  * `a < b`: Sequencing (a runs after b completed).
+  * `a < b`: Sequencing (a runs before b).
 * When a chore tree is posted (`budTree.Post(&maestro)`), it compiles the tree into `WorkPtr`s with correct successor chains, and schedules them onto the `Atelier`.
 
 ---
@@ -90,7 +90,7 @@ let a = Chore::New(|_| { print!("A "); });
 let b = Chore::New(|_| { print!("B "); });
 let c = Chore::New(|_| { print!("C "); });
 
-// c runs after both b and a have completed
+// c runs before both b and a
 let budTree = crate::ChoreTree!(
     c < (b | a)
 );
@@ -101,17 +101,38 @@ let mainMaestro = atelier.MainMaestro();
 budTree.Post(&mainMaestro);
 drop(mainMaestro);
 
-atelier.DoLaunch(); // Will print A B C (or B A C)
+atelier.DoLaunch(); // Will print C A B (or C B A)
 ```
 
----
-
-## Sequential & Unthreaded Execution (`Worker`)
-
+### 3. Sequential & Unthreaded Execution (`Worker`)
 While the framework is designed for high-performance parallel, work-stealing execution using `Atelier` and `Maestro`, it also supports sequential, unthreaded execution.
 
-This is achieved using the `Worker` struct (defined in [work.rs](../src/stalks/work.rs)), which is a zero-overhead, Zero-Sized Type (ZST) implementation of the `IWorker` trait.
+This is achieved using the `Worker` struct (defined in [work.rs](../src/stalks/work.rs)), which is a zero-overhead, Zero-Sized Type (ZST) implementation of the `IWorker` trait. When a job or execution is scheduled using a `Worker` instance, it immediately and synchronously executes the posted job on the current thread rather than enqueuing it to a background thread pool.
 
-When a job or execution is scheduled using a `Worker` instance:
-* Instead of enqueuing work to a background thread pool, `Worker` immediately and synchronously executes the posted job on the current thread.
-* This allows the exact same code (e.g. algorithms using `IWorker::Post` such as parallel quicksort `DoQSort`) to run sequentially and deterministically without modification.
+This allows the exact same code (e.g. recursive algorithms using `IWorker::Post` such as parallel quicksort `DoQSort`) to run sequentially and deterministically without modification:
+
+```rust
+use crate::stalks::work::{Worker, IWorker};
+
+let worker = Worker::New();
+
+// Execute a job directly and synchronously on the caller's thread
+worker.Post(|w: &dyn IWorker| {
+    println!("Job executed sequentially!");
+});
+```
+
+For example, running `DoQSort` sequentially:
+```rust
+let buff = Buff::Create(U32(100), |_| rand::random::<f64>());
+let arr = buff.Arr();
+let worker = Worker::New();
+
+// Run quicksort sequentially on the current thread
+arr.USeg().DoQSort(
+    &worker,
+    |i, j| arr.At(i) > arr.At(j),
+    |i, j| arr.SwapAt(i, j),
+);
+```
+

@@ -133,6 +133,10 @@ pub trait IWorker {
     {
         std::ptr::null()
     }
+    fn	IsSequential( &self) -> bool 
+    {
+        false
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -169,6 +173,10 @@ impl IWorker for Worker
     fn	AsRaw( &self) -> *const () 
     {
         self as *const Self as *const ()
+    }
+    fn	IsSequential( &self) -> bool 
+    {
+        true
     }
 }
 

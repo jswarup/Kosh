@@ -7,7 +7,7 @@ use	crate::{
         uint::
         { U16, U32 },
     },
-    stalks::work::IWorker,
+    stalks::work::{ IWorker, Worker},
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -135,6 +135,11 @@ fn	TestChoreBuds()
                 })))
     );
     budTree.Print();
+
+    let     worker = Worker::New();
+    
+    budTree.Post( &worker);
+
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
     budTree.Post( &mainMaestro);

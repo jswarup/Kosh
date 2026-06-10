@@ -84,6 +84,39 @@ where
 {
     pub fn	Post( &self, worker: &dyn IWorker)
     {
+        if worker.IsSequential() {
+            fn RunSequential< T>( node: &dyn Bud< T>, worker: &dyn IWorker)
+            where
+                T: IWork + Clone + Default + 'static,
+            {
+                if node.Left().is_none() && node.Right().is_none() {
+                    let  	mut val = node.Val();
+                    val.DoWork( worker);
+                    return;
+                }
+                if node.Op() == "|" {
+                    if let Some( left) = node.Left() {
+                        RunSequential( left, worker);
+                    }
+                    if let Some( right) = node.Right() {
+                        RunSequential( right, worker);
+                    }
+                    return;
+                }
+                if node.Op() == "<" {
+                    if let Some( left) = node.Left() {
+                        RunSequential( left, worker);
+                    }
+                    if let Some( right) = node.Right() {
+                        RunSequential( right, worker);
+                    }
+                    return;
+                }
+            }
+            RunSequential( self, worker);
+            return;
+        }
+
         let  	maestro: &Maestro< '_> = Maestro::FromWorker( worker);
         struct JobStash
         {
