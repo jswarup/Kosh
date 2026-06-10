@@ -7,7 +7,7 @@ use	crate::{
         uint::
         { U16, U32 },
     },
-    stalks::work::{ IWorker, AutoFreeJob },
+    stalks::work::IWorker,
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -21,22 +21,22 @@ fn	BuffBasicAtelierTest()
         let  	mut jobId = maestro.CurSuccId();
         jobId = maestro.ConstructJob(
             jobId,
-            AutoFreeJob::New( |w1: &dyn IWorker| {
+            |w1: &dyn IWorker| {
                 println!( "Trial1 {}", Maestro::FromWorker( w1).MavenIndex());
-            }),
+            },
         );
         jobId = maestro.ConstructJob(
             jobId,
-            AutoFreeJob::New( |w2: &dyn IWorker| {
+            |w2: &dyn IWorker| {
                 println!( "Trial2 {}", Maestro::FromWorker( w2).MavenIndex());
-            }),
+            },
         );
         maestro.EnqueueJob( &mut jobId);
         println!( "Trial {}", maestro.MavenIndex());
     }
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
-    let  	mut jobId = mainMaestro.ConstructJob( U16( 0), AutoFreeJob::New( trialJob));
+    let  	mut jobId = mainMaestro.ConstructJob( U16( 0), trialJob);
     mainMaestro.EnqueueJob( &mut jobId);
     drop( mainMaestro);
     atelier.DoLaunch();
