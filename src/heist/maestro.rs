@@ -2,7 +2,7 @@
 use	crate::heist::atelier::Atelier;
 use	crate::silo::uint::{ U16, U32 };
 use	crate::silo::{ buff::Buff, stash::Stash };
-use	crate::stalks::work::{ IWorker, JobPtr, IntoJobPtr };
+use	crate::stalks::work::{ IWorker, WorkPtr, IntoWorkPtr };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -62,9 +62,9 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ConstructJob( &self, succId: U16, job: impl IntoJobPtr< 'a>) -> U16 
+    pub fn	ConstructJob( &self, succId: U16, job: impl IntoWorkPtr< 'a>) -> U16 
     {
-        self._Atelier.ConstructJob( self._MavenIndex, succId, job.into_job_ptr())
+        self._Atelier.ConstructJob( self._MavenIndex, succId, job.into_work_ptr())
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -98,7 +98,7 @@ impl< 'a> Maestro< 'a>
 
 impl< 'a> IWorker for Maestro< 'a> 
 {
-    fn	PostJob( &self, job: JobPtr< '_>) 
+    fn	PostJob( &self, job: WorkPtr< '_>) 
     {
         let  	mut jobId = self.CurSuccId();
         jobId = self.ConstructJob( jobId, job);

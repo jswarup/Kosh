@@ -9,7 +9,7 @@ use	crate::silo::{
     { U16, U32 },
 };
 use	crate::stalks::atm::{ Atm, Spinlock };
-use	crate::stalks::work::JobPtr;
+use	crate::stalks::work::WorkPtr;
 use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -24,7 +24,7 @@ pub struct Atelier< 'a>
     _SuccIds: Buff< U16>,
     _FreeJobLock: Spinlock,
     _FreeJobStash: Stash< U16>,                                        // A Stack of free jobIds
-    _JobBuff: Buff< JobPtr< 'a>>,
+    _JobBuff: Buff< WorkPtr< 'a>>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -45,7 +45,7 @@ impl< 'a> Atelier< 'a>
             _SuccIds: Buff::< U16>::New( U32::_16Sz, U16::_0),
             _FreeJobLock: Spinlock::New(),
             _FreeJobStash: Stash::< U16>::New( U32::_16Sz),
-            _JobBuff: Buff::New( U32::_16Sz, JobPtr::null()),
+            _JobBuff: Buff::New( U32::_16Sz, WorkPtr::null()),
         };
         atelier._FreeJobStash.DoIndexSetup();
         atelier
@@ -126,7 +126,7 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ConstructJob( &self, mavenIdx: U32, succId: U16, job: JobPtr< 'a>) -> U16 
+    pub fn	ConstructJob( &self, mavenIdx: U32, succId: U16, job: WorkPtr< 'a>) -> U16 
     {
         let  	jobId = self.AllocJob( mavenIdx);
         if jobId == 0 {
@@ -182,7 +182,7 @@ impl< 'a> Atelier< 'a>
                 let  	job = *self._JobBuff.Arr().At( jobId);
                 if !job.is_null() {
                     ( job.func)( job.data, &maestro);   // Run job
-                    self._JobBuff.Arr().SetAt( jobId, &JobPtr::null());
+                    self._JobBuff.Arr().SetAt( jobId, &WorkPtr::null());
                 }
                 maven.IncrSzProcessed( 1);
                 let  	_res = self.FreeJob( mavenIdx, jobId);

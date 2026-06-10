@@ -22,16 +22,16 @@ pub type WorkFn< 'a> = dyn IWork + 'a;
 pub type JobFn = for< 'r > fn( data: *mut (), worker: &'r ( dyn IWorker + 'r ) );
 
 #[derive( Copy, Clone )]
-pub struct JobPtr< 'a> {
+pub struct WorkPtr< 'a> {
     pub data: *mut (),
     pub func: JobFn,
     _marker: std::marker::PhantomData< &'a () >,
 }
 
-unsafe impl< 'a> Send for JobPtr< 'a> {}
-unsafe impl< 'a> Sync for JobPtr< 'a> {}
+unsafe impl< 'a> Send for WorkPtr< 'a> {}
+unsafe impl< 'a> Sync for WorkPtr< 'a> {}
 
-impl< 'a> JobPtr< 'a> {
+impl< 'a> WorkPtr< 'a> {
     pub fn	null() -> Self 
     {
         Self {
@@ -47,8 +47,8 @@ impl< 'a> JobPtr< 'a> {
     pub fn	FromRef< T: IWork + 'a>( inner: &'a mut T) -> Self 
     {
         let  	data = inner as *mut T as *mut ();
-        let  	func: JobFn = |data_ptr, worker| unsafe {
-            let  	actual = &mut *( data_ptr as *mut T );
+        let  	func: JobFn = |dataPtr, worker| unsafe {
+            let  	actual = &mut *( dataPtr as *mut T );
             actual.DoWork( worker );
         };
         Self {
@@ -59,41 +59,41 @@ impl< 'a> JobPtr< 'a> {
     }
 }
 
-pub trait IntoJobPtr< 'a> 
+pub trait IntoWorkPtr< 'a> 
 {
-    fn	into_job_ptr( self) -> JobPtr< 'a>;
+    fn	into_work_ptr( self) -> WorkPtr< 'a>;
 }
 
-impl< 'a> IntoJobPtr< 'a> for JobPtr< 'a> 
+impl< 'a> IntoWorkPtr< 'a> for WorkPtr< 'a> 
 {
-    fn	into_job_ptr( self) -> JobPtr< 'a> 
+    fn	into_work_ptr( self) -> WorkPtr< 'a> 
     {
         self
     }
 }
 
-impl< 'a, T> IntoJobPtr< 'a> for T 
+impl< 'a, T> IntoWorkPtr< 'a> for T 
 where
     T: IWork + 'a,
 {
-    fn	into_job_ptr( self) -> JobPtr< 'a> 
+    fn	into_work_ptr( self) -> WorkPtr< 'a> 
     {
-        AutoFreeJob::New( self)
+        WorkSlot::New( self)
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct AutoFreeJob< T: IWork> 
+pub struct WorkSlot< T: IWork> 
 {
     _Inner: T,
     _Ptr: *mut Self,
 }
 
-unsafe impl< T: IWork> Send for AutoFreeJob< T> {}
-unsafe impl< T: IWork> Sync for AutoFreeJob< T> {}
+unsafe impl< T: IWork> Send for WorkSlot< T> {}
+unsafe impl< T: IWork> Sync for WorkSlot< T> {}
 
-impl< T: IWork> IWork for AutoFreeJob< T> 
+impl< T: IWork> IWork for WorkSlot< T> 
 {
     fn	DoWork( &mut self, worker: &dyn IWorker) 
     {
@@ -104,9 +104,9 @@ impl< T: IWork> IWork for AutoFreeJob< T>
     }
 }
 
-impl< T: IWork> AutoFreeJob< T> 
+impl< T: IWork> WorkSlot< T> 
 {
-    pub fn	New< 'a>( inner: T) -> JobPtr< 'a> 
+    pub fn	New< 'a>( inner: T) -> WorkPtr< 'a> 
     where
         T: 'a,
     {
@@ -117,11 +117,11 @@ impl< T: IWork> AutoFreeJob< T>
         let ptr = &mut *boxed as *mut Self;
         boxed._Ptr = ptr;
         let data = Box::into_raw( boxed ) as *mut ();
-        let func: JobFn = |data_ptr, worker| unsafe {
-            let actual = &mut *( data_ptr as *mut Self );
+        let func: JobFn = |dataPtr, worker| unsafe {
+            let actual = &mut *( dataPtr as *mut Self );
             actual.DoWork( worker );
         };
-        JobPtr {
+        WorkPtr {
             data,
             func,
             _marker: std::marker::PhantomData,
@@ -132,10 +132,20 @@ impl< T: IWork> AutoFreeJob< T>
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub trait IWorker {
-    fn	PostJob( &self, job: JobPtr< '_>);
+    fn	PostJob( &self, job: WorkPtr< '_>);
     fn	AsRaw( &self) -> *const () 
     {
         std::ptr::null()
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl dyn IWorker + '_ 
+{
+    pub fn	Post< 'a, J: IntoWorkPtr< 'a>>( &self, job: J) 
+    {
+        self.PostJob( job.into_work_ptr());
     }
 }
 
@@ -154,7 +164,7 @@ impl Worker
 
 impl IWorker for Worker 
 {
-    fn	PostJob( &self, job: JobPtr< '_>) 
+    fn	PostJob( &self, job: WorkPtr< '_>) 
     {
         if !job.is_null() {
             ( job.func)( job.data, self);
