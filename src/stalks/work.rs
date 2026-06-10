@@ -87,7 +87,6 @@ where
 pub struct WorkSlot< T: IWork> 
 {
     _Inner: T,
-    _Ptr: *mut Self,
 }
 
 unsafe impl< T: IWork> Send for WorkSlot< T> {}
@@ -99,7 +98,7 @@ impl< T: IWork> IWork for WorkSlot< T>
     {
         self._Inner.DoWork( worker);
         unsafe {
-            let _owned = Box::from_raw( self._Ptr);
+            let _owned = Box::from_raw( self as *mut Self );
         }
     }
 }
@@ -110,15 +109,12 @@ impl< T: IWork> WorkSlot< T>
     where
         T: 'a,
     {
-        let mut boxed = Box::new( Self {
+        let  	boxed = Box::new( Self {
             _Inner: inner,
-            _Ptr: std::ptr::null_mut(),
         });
-        let ptr = &mut *boxed as *mut Self;
-        boxed._Ptr = ptr;
-        let data = Box::into_raw( boxed ) as *mut ();
-        let func: JobFn = |dataPtr, worker| unsafe {
-            let actual = &mut *( dataPtr as *mut Self );
+        let  	data = Box::into_raw( boxed ) as *mut ();
+        let  	func: JobFn = |dataPtr, worker| unsafe {
+            let  	actual = &mut *( dataPtr as *mut Self );
             actual.DoWork( worker );
         };
         WorkPtr {
