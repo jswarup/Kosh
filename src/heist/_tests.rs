@@ -7,7 +7,7 @@ use	crate::{
         uint::
         { U16, U32 },
     },
-    stalks::work::IWorker,
+    stalks::work::{ IWorker, AutoFreeJob },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -21,13 +21,13 @@ fn	BuffBasicAtelierTest()
         let  	mut jobId = maestro.CurSuccId();
         jobId = maestro.ConstructJob(
             jobId,
-            Box::new( |w1: &dyn IWorker| {
+            AutoFreeJob::New( |w1: &dyn IWorker| {
                 println!( "Trial1 {}", Maestro::FromWorker( w1).MavenIndex());
             }),
         );
         jobId = maestro.ConstructJob(
             jobId,
-            Box::new( |w2: &dyn IWorker| {
+            AutoFreeJob::New( |w2: &dyn IWorker| {
                 println!( "Trial2 {}", Maestro::FromWorker( w2).MavenIndex());
             }),
         );
@@ -36,7 +36,7 @@ fn	BuffBasicAtelierTest()
     }
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
-    let  	mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( trialJob));
+    let  	mut jobId = mainMaestro.ConstructJob( U16( 0), AutoFreeJob::New( trialJob));
     mainMaestro.EnqueueJob( &mut jobId);
     drop( mainMaestro);
     atelier.DoLaunch();
@@ -90,7 +90,7 @@ fn	TestDoQSort()
     let  	mut jobId = U16( 0);
     jobId = mainMaestro.ConstructJob(
         jobId,
-        Box::new( |_worker: &dyn IWorker| {
+        AutoFreeJob::New( |_worker: &dyn IWorker| {
             let  	_res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
             arr.USeg().Traverse( |i| {
                 print!( "{} ", arr.At( i));
@@ -100,7 +100,7 @@ fn	TestDoQSort()
     );
     jobId = mainMaestro.ConstructJob(
         jobId,
-        Box::new( |worker: &dyn IWorker| {
+        AutoFreeJob::New( |worker: &dyn IWorker| {
             arr.USeg().DoQSort(
                 worker,
                 move |i, j| arr.At( i) > arr.At( j),

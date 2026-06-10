@@ -9,12 +9,11 @@ use	crate::silo::{
     { U16, U32 },
 };
 use	crate::stalks::atm::{ Atm, Spinlock };
-use	crate::stalks::work::{ IWorker, WorkFn };
+use	crate::stalks::work::JobPtr;
 use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-type JobFn< 'a> = WorkFn< 'a>;
 pub struct Atelier< 'a> 
 {
     _StartCount: U32,                                                  // Count of Processing Queue started, used for startup and shutdown
@@ -25,7 +24,7 @@ pub struct Atelier< 'a>
     _SuccIds: Buff< U16>,
     _FreeJobLock: Spinlock,
     _FreeJobStash: Stash< U16>,                                        // A Stack of free jobIds
-    _JobBuff: Buff< Box< JobFn< 'a>>>,
+    _JobBuff: Buff< JobPtr< 'a>>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -46,10 +45,7 @@ impl< 'a> Atelier< 'a>
             _SuccIds: Buff::< U16>::New( U32::_16Sz, U16::_0),
             _FreeJobLock: Spinlock::New(),
             _FreeJobStash: Stash::< U16>::New( U32::_16Sz),
-            _JobBuff: Buff::Create( U32::_16Sz, |_i| {
-                let  	cb: Box< JobFn< 'static>> = Box::new( |_m: &dyn IWorker| {});
-                cb
-            }),
+            _JobBuff: Buff::New( U32::_16Sz, JobPtr( None )),
         };
         atelier._FreeJobStash.DoIndexSetup();
         atelier
@@ -130,13 +126,13 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ConstructJob( &self, mavenIdx: U32, succId: U16, mut jobBox: Box< JobFn< 'a>>) -> U16 
+    pub fn	ConstructJob( &self, mavenIdx: U32, succId: U16, job: JobPtr< 'a>) -> U16 
     {
         let  	jobId = self.AllocJob( mavenIdx);
         if jobId == 0 {
             return jobId;
         }
-        self._JobBuff.Arr().MoveAt( jobId, &mut jobBox);
+        self._JobBuff.Arr().SetAt( jobId, &job);
         self._SuccIds.Arr().SetAt( jobId, &succId);
         self.IncrPredAt( succId, 1);
         jobId
@@ -183,7 +179,13 @@ impl< 'a> Atelier< 'a>
             while jobId != 0 {
                 maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
                 let  	maestro = Maestro::New( self, mavenIdx);
-                self._JobBuff.Arr().MutAt( jobId).DoWork( &maestro);   // Run job
+                let  	jobPtr = self._JobBuff.Arr().At( jobId).0;
+                if let Some( mut non_null ) = jobPtr {
+                    unsafe {
+                        non_null.as_mut().DoWork( &maestro);   // Run job
+                    }
+                    self._JobBuff.Arr().SetAt( jobId, &JobPtr( None ));
+                }
                 maven.IncrSzProcessed( 1);
                 let  	_res = self.FreeJob( mavenIdx, jobId);
                 let  	succId = maven.CurSuccId();
