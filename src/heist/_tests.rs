@@ -4,6 +4,7 @@ use	crate::{
     { atelier::Atelier, maestro::Maestro },
     silo::{
         buff::Buff,
+        arr::Arr,
         uint::
         { U16, U32 },
     },
@@ -77,40 +78,6 @@ fn	TestMaestroBasicOps()
     assert_eq!( maestro.MavenIndex(), U32( 2));
     assert_eq!( maestro.CurSuccId(), U16( 42));
 }
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[test]
-fn	TestDoQSort()
-{
-    let  	buff = Buff::Create( U32( 1000), |_| rand::random::< f64>());
-    let  	arr = buff.Arr();
-    let  	atelier = Atelier::New( U32( 4));
-    let  	meister = atelier.Meister();
-    let  	mut jobId = U16( 0); 
-    jobId = meister.ConstructJob( jobId, |_worker: &dyn IWorker| {
-            let  	_res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
-            arr.USeg().Traverse( |i| {
-                print!( "{} ", arr.At( i));
-            });
-            println!();
-        },
-    );
-    jobId = meister.ConstructJob( jobId, |worker: &dyn IWorker| {
-            arr.USeg().DoQSort(
-                worker,
-                move |i, j| arr.At( i) > arr.At( j),
-                move |i, j| {
-                    arr.SwapAt( i, j);
-                },
-            );
-        },
-    );
-    meister.EnqueueJob( &mut jobId);
-    drop( meister);
-    atelier.DoLaunch();
-}
-
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
@@ -137,7 +104,7 @@ fn	TestChoreBuds()
     budTree.Print();
 
     let     worker = Worker::New();
-    
+
     budTree.Post( &worker);
 
     let  	atelier = Atelier::New( U32( 4));
@@ -147,6 +114,51 @@ fn	TestChoreBuds()
     //meister.EnqueueJob( &mut jobId);
     drop( meister);
     atelier.DoLaunch();
+}
+
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestDoQSort()
+{
+    let printAndAssertArr = | arr: Arr< '_, U32>| {
+        arr.USeg().Traverse( |i| { print!( "{} ", arr.At( i)); });
+        println!();
+        assert!( arr.USeg().RSnip( 1).Span( |k| arr.At( k) >= arr.At( k + 1)));
+    };
+    fn sorter<'a>(arr: Arr<'a, U32>) -> impl FnMut(&dyn IWorker) + Send + Sync + 'a {
+        move |worker: &dyn IWorker| {
+            arr.USeg().DoQSort( worker,
+                move |i, j| arr.At(i) > arr.At(j),
+                move |i, j| { arr.SwapAt(i, j); },
+            );
+        }
+    }
+    let mut     buff0 = Buff::Create( U32( 100), |_| U32( rand::random::< u32>() % 128));
+    let mut     buff1 = buff0.clone();
+
+    let sortWorkStealing = |buff: &mut Buff< U32>| {
+        let  	atelier = Atelier::New( U32( 4));
+        {
+            let  	meister = atelier.Meister();
+            let  	mut jobId = meister.ConstructJob( atelier.Terminal(),  sorter( buff.Arr()));
+            meister.EnqueueJob( &mut jobId);
+        }
+        atelier.DoLaunch();
+    };
+    sortWorkStealing(  &mut buff0);
+    printAndAssertArr( buff0.Arr());
+
+    let sortSequential = |buff: &mut Buff< U32>| {
+        print!( "Sequential[ ");
+        let     worker = Worker::New();
+        sorter( buff.Arr())( &worker);
+        println!( "]")
+    };
+    sortSequential( &mut buff1);
+    printAndAssertArr( buff1.Arr());
+    return;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
