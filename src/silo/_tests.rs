@@ -4,15 +4,15 @@ use	crate::silo::buff::Buff;
 use	crate::silo::instream::InStream;
 use	crate::silo::stash::Stash;
 use	crate::silo::stk::Stk;
-#[warn( unused_imports)]
 use	crate::silo::uint::{ U8, U16, U32, U64 };
 use	crate::silo::useg::USeg;
 use	crate::stalks::atm::Atm;
+use	crate::stalks::work::Worker;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	BuffBasicOpsTest() 
+fn	BuffBasicOpsTest()
 {
     let  	mut buff = Buff::New( 10, 42);
     assert_eq!( buff.len(), 10);
@@ -29,7 +29,7 @@ fn	BuffBasicOpsTest()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	BuffFromTest() 
+fn	BuffFromTest()
 {
     // Test creation from a slice
     let  	sliceData = [10, 20, 30];
@@ -67,7 +67,7 @@ fn	BuffFromTest()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	ArrBasicOpsTest() 
+fn	ArrBasicOpsTest()
 {
     let  	buff = Buff::New( 3, 42);
     {
@@ -101,7 +101,7 @@ fn	ArrBasicOpsTest()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestArrFromArr() 
+fn	TestArrFromArr()
 {
     // Test creating an Arr from an array reference
     let  	arrData = [10u32, 20u32, 30u32];
@@ -132,7 +132,7 @@ fn	TestArrFromArr()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	USegBasicOpsTest() 
+fn	USegBasicOpsTest()
 {
     let  	seg = USeg::Create( 10, 11);
     assert_eq!( seg.First(), 10);
@@ -144,7 +144,7 @@ fn	USegBasicOpsTest()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	USegSnipTest() 
+fn	USegSnipTest()
 {
     let  	seg = USeg::Create( 10, 11);
     // Test LSnip
@@ -170,7 +170,7 @@ fn	USegSnipTest()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	USegSpanTest() 
+fn	USegSpanTest()
 {
     let  	seg = USeg::Create( 10, 6);
     // Case 1: All values return true
@@ -192,7 +192,7 @@ fn	USegSpanTest()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	StackBasicOps() 
+fn	StackBasicOps()
 {
     // Create a buffer of size 10 initialized with zeros
     let  	buff = Buff::Create( U32( 10), |_| 0u32);
@@ -224,7 +224,7 @@ fn	StackBasicOps()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-fn	UIntTestFrom() 
+fn	UIntTestFrom()
 {
     let  	_q = U32::from( 0);
     let  	a: U32 = 5u32.into();
@@ -234,7 +234,7 @@ fn	UIntTestFrom()
     let  	c: U32 = ( 10usize).into();
     assert_eq!( c, 10);
 }
-fn	UIntTestArith() 
+fn	UIntTestArith()
 {
     let  	a = U32::from( 10u32);
     let  	b = U32::from( 3u32);
@@ -268,7 +268,7 @@ fn	UIntTestArith()
     y >>= 1u32;
     assert_eq!( y, 2);
 }
-fn	UIntNegNotTest() 
+fn	UIntNegNotTest()
 {
     let  	a = U32( 0);
     assert_eq!( ( -a), 0);
@@ -276,7 +276,7 @@ fn	UIntNegNotTest()
     assert_eq!( ( -b), 0u32.wrapping_sub( 5));
     assert_eq!( ( !b), !5u32);
 }
-fn	UInt16TestFrom() 
+fn	UInt16TestFrom()
 {
     let  	_q = U16( 0);
     let  	a: U16 = 5u16.into();
@@ -286,7 +286,7 @@ fn	UInt16TestFrom()
     let  	c: U16 = ( 10usize).into();
     assert_eq!( c, 10);
 }
-fn	UInt16TestArith() 
+fn	UInt16TestArith()
 {
     let  	a = U16( 10);
     let  	b = U16( 3);
@@ -296,7 +296,7 @@ fn	UInt16TestArith()
     assert_eq!( ( a / b), 3);
     assert_eq!( ( a % b), 1);
 }
-fn	UInt16TestNegNot() 
+fn	UInt16TestNegNot()
 {
     let  	a = U16( 0);
     assert_eq!( ( -a), 0);
@@ -304,7 +304,7 @@ fn	UInt16TestNegNot()
     assert_eq!( ( -b), 0u16.wrapping_sub( 5));
     assert_eq!( ( !b), !5u16);
 }
-fn	UInt8TestFrom() 
+fn	UInt8TestFrom()
 {
     let  	_q = U8( 0);
     let  	a: U8 = 5u8.into();
@@ -314,7 +314,7 @@ fn	UInt8TestFrom()
     let  	c: U8 = ( 10usize).into();
     assert_eq!( c, 10);
 }
-fn	UInt8TestArith() 
+fn	UInt8TestArith()
 {
     let  	a = U8( 10);
     let  	b = U8( 3);
@@ -324,7 +324,7 @@ fn	UInt8TestArith()
     assert_eq!( ( a / b), 3);
     assert_eq!( ( a % b), 1);
 }
-fn	UInt8TestNegNot() 
+fn	UInt8TestNegNot()
 {
     let  	a = U8( 0);
     assert_eq!( ( -a), 0);
@@ -332,7 +332,7 @@ fn	UInt8TestNegNot()
     assert_eq!( ( -b), 0u8.wrapping_sub( 5));
     assert_eq!( ( !b), !5u8);
 }
-fn	UInt64TestFrom() 
+fn	UInt64TestFrom()
 {
     let  	_q = U64( 0);
     let  	a: U64 = 5u64.into();
@@ -342,7 +342,7 @@ fn	UInt64TestFrom()
     let  	c: U64 = ( 10usize).into();
     assert_eq!( c, 10);
 }
-fn	UInt64TestArith() 
+fn	UInt64TestArith()
 {
     let  	a = U64( 10);
     let  	b = U64( 3);
@@ -352,7 +352,7 @@ fn	UInt64TestArith()
     assert_eq!( ( a / b), 3);
     assert_eq!( ( a % b), 1);
 }
-fn	UInt64TestNegNot() 
+fn	UInt64TestNegNot()
 {
     let  	a = U64( 0);
     assert_eq!( ( -a), 0);
@@ -361,7 +361,7 @@ fn	UInt64TestNegNot()
     assert_eq!( ( !b), !5u64);
 }
 #[test]
-fn	UIntBasicOps() 
+fn	UIntBasicOps()
 {
     UIntTestFrom();
     UIntTestArith();
@@ -381,7 +381,7 @@ fn	UIntBasicOps()
 
 #[test]
 #[allow( dead_code)]
-fn	StackExportImportOps() 
+fn	StackExportImportOps()
 {
     let  	srcStash = Stash::< U32>::New( 10);
     let  	srcStk = srcStash.Stk();
@@ -429,7 +429,7 @@ fn	StackExportImportOps()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestConcurrentStackOps() 
+fn	TestConcurrentStackOps()
 {
     use	std::sync::Arc;
     use	std::thread;
@@ -473,7 +473,7 @@ fn	TestConcurrentStackOps()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	QSortTest() 
+fn	QSortTest()
 {
     let  	buff = Buff::Create( U32( 256), |_| rand::random::< f64>());
     //let     buff =  Buff::New( 5, | i| i);
@@ -490,7 +490,7 @@ fn	QSortTest()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestQSortBoundaries() 
+fn	TestQSortBoundaries()
 {
     // Test QSort with empty segment
     let  	buffEmpty = Buff::Create( U32( 0), |_| 0);
@@ -515,13 +515,12 @@ fn	TestQSortBoundaries()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestDoQSort() 
+fn	TestDoQSort()
 {
-    use	crate::stalks::work::Worker;
     let  	buff = Buff::Create( U32( 100), |_| rand::random::< f64>());
     let  	arr = buff.Arr();
     let  	worker = Worker::New();
-    arr.USeg().DoQSort( 
+    arr.USeg().DoQSort(
         &worker,
         |i, j| arr.At( i) > arr.At( j),
         |i, j| {
@@ -538,7 +537,7 @@ fn	TestDoQSort()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestStashDynamicPushback() 
+fn	TestStashDynamicPushback()
 {
     // Test with initial size 2
     let  	mut stash = Stash::< U32>::New( 2);
@@ -600,7 +599,7 @@ fn	TestStashDynamicPushback()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestStashAppend() 
+fn	TestStashAppend()
 {
     // Test with initial size 2
     let  	mut stash = Stash::< U32>::New( 2);
@@ -626,12 +625,12 @@ fn	TestStashAppend()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Clone, PartialEq, Debug)]
-struct NonDefaultStruct 
+struct NonDefaultStruct
 {
     value: i32,
 }
 #[test]
-fn	TestBuffResize() 
+fn	TestBuffResize()
 {
     // Create a buffer of size 3 initialized with NonDefaultStruct
     let  	mut buff = Buff::New( 3, NonDefaultStruct { value: 42 });
@@ -648,7 +647,7 @@ fn	TestBuffResize()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestInStream() 
+fn	TestInStream()
 {
     let  	data = [U8( b'a'), U8( b'b'), U8( b'c')];
     let  	buff = Buff::Create( U32( 3), |i| data[i.AsUsize()]);

@@ -61,12 +61,12 @@ impl< 'a> WorkPtr< 'a> {
 
 pub trait IntoWorkPtr< 'a> 
 {
-    fn	into_work_ptr( self) -> WorkPtr< 'a>;
+    fn	IntoWorkPtr( self) -> WorkPtr< 'a>;
 }
 
 impl< 'a> IntoWorkPtr< 'a> for WorkPtr< 'a> 
 {
-    fn	into_work_ptr( self) -> WorkPtr< 'a> 
+    fn	IntoWorkPtr( self) -> WorkPtr< 'a> 
     {
         self
     }
@@ -76,7 +76,7 @@ impl< 'a, T> IntoWorkPtr< 'a> for T
 where
     T: IWork + 'a,
 {
-    fn	into_work_ptr( self) -> WorkPtr< 'a> 
+    fn	IntoWorkPtr( self) -> WorkPtr< 'a> 
     {
         WorkSlot::New( self)
     }
@@ -141,7 +141,7 @@ impl dyn IWorker + '_
 {
     pub fn	Post< 'a, J: IntoWorkPtr< 'a>>( &self, job: J) 
     {
-        self.PostJob( job.into_work_ptr());
+        self.PostJob( job.IntoWorkPtr());
     }
 }
 
