@@ -35,10 +35,10 @@ fn	BuffBasicAtelierTest()
         println!( "Trial {}", maestro.MavenIndex());
     }
     let  	atelier = Atelier::New( U32( 4));
-    let  	mainMaestro = atelier.MainMaestro();
-    let  	mut jobId = mainMaestro.ConstructJob( U16( 0), trialJob);
-    mainMaestro.EnqueueJob( &mut jobId);
-    drop( mainMaestro);
+    let  	meister = atelier.Meister();
+    let  	mut jobId = meister.ConstructJob( U16( 0), trialJob);
+    meister.EnqueueJob( &mut jobId);
+    drop( meister);
     atelier.DoLaunch();
 }
 
@@ -86,9 +86,9 @@ fn	TestDoQSort()
     let  	buff = Buff::Create( U32( 1000), |_| rand::random::< f64>());
     let  	arr = buff.Arr();
     let  	atelier = Atelier::New( U32( 4));
-    let  	mainMaestro = atelier.MainMaestro();
+    let  	meister = atelier.Meister();
     let  	mut jobId = U16( 0); 
-    jobId = mainMaestro.ConstructJob( jobId, |_worker: &dyn IWorker| {
+    jobId = meister.ConstructJob( jobId, |_worker: &dyn IWorker| {
             let  	_res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
             arr.USeg().Traverse( |i| {
                 print!( "{} ", arr.At( i));
@@ -96,7 +96,7 @@ fn	TestDoQSort()
             println!();
         },
     );
-    jobId = mainMaestro.ConstructJob( jobId, |worker: &dyn IWorker| {
+    jobId = meister.ConstructJob( jobId, |worker: &dyn IWorker| {
             arr.USeg().DoQSort(
                 worker,
                 move |i, j| arr.At( i) > arr.At( j),
@@ -106,8 +106,8 @@ fn	TestDoQSort()
             );
         },
     );
-    mainMaestro.EnqueueJob( &mut jobId);
-    drop( mainMaestro);
+    meister.EnqueueJob( &mut jobId);
+    drop( meister);
     atelier.DoLaunch();
 }
 
@@ -141,11 +141,11 @@ fn	TestChoreBuds()
     budTree.Post( &worker);
 
     let  	atelier = Atelier::New( U32( 4));
-    let  	mainMaestro = atelier.MainMaestro();
-    budTree.Post( &mainMaestro);
-    //let  	mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( chore));
-    //mainMaestro.EnqueueJob( &mut jobId);
-    drop( mainMaestro);
+    let  	meister = atelier.Meister();
+    budTree.Post( &meister);
+    //let  	mut jobId = meister.ConstructJob( U16( 0), Box::new( chore));
+    //meister.EnqueueJob( &mut jobId);
+    drop( meister);
     atelier.DoLaunch();
 }
 

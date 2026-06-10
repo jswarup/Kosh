@@ -53,11 +53,11 @@ Jobs can be created directly by passing closures to `ConstructJob`:
 
 ```rust
 let atelier = Atelier::New(U32(4)); // Create Atelier with 4 worker threads
-let mainMaestro = atelier.MainMaestro();
+let meister = atelier.Meister();
 let mut jobId = U16(0);
 
 // Define job 1
-jobId = mainMaestro.ConstructJob(
+jobId = meister.ConstructJob(
     jobId, // Succesor dependency (0 means no successor)
     |_worker: &dyn IWorker| {
         println!("Job 1 executed!");
@@ -65,7 +65,7 @@ jobId = mainMaestro.ConstructJob(
 );
 
 // Define job 2 (Job 1 will only run after Job 2 completes)
-jobId = mainMaestro.ConstructJob(
+jobId = meister.ConstructJob(
     jobId, // Job 1 is successor
     |_worker: &dyn IWorker| {
         println!("Job 2 executed!");
@@ -73,8 +73,8 @@ jobId = mainMaestro.ConstructJob(
 );
 
 // Enqueue starting job (Job 2)
-mainMaestro.EnqueueJob(&mut jobId);
-drop(mainMaestro);
+meister.EnqueueJob(&mut jobId);
+drop(meister);
 
 // Launch execution
 atelier.DoLaunch();
@@ -96,10 +96,10 @@ let budTree = crate::ChoreTree!(
 );
 
 let atelier = Atelier::New(U32(4));
-let mainMaestro = atelier.MainMaestro();
+let meister = atelier.Meister();
 
-budTree.Post(&mainMaestro);
-drop(mainMaestro);
+budTree.Post(&meister);
+drop(meister);
 
 atelier.DoLaunch(); // Will print C A B (or C B A)
 ```
