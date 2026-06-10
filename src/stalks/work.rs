@@ -19,11 +19,32 @@ where
 
 pub type WorkFn< 'a> = dyn IWork + 'a;
 
+pub type JobFn = for< 'r > fn( data: *mut (), worker: &'r ( dyn IWorker + 'r ) );
+
 #[derive( Copy, Clone )]
-pub struct JobPtr< 'a>( pub Option< std::ptr::NonNull< WorkFn< 'a>>>);
+pub struct JobPtr< 'a> {
+    pub data: *mut (),
+    pub func: JobFn,
+    _marker: std::marker::PhantomData< &'a () >,
+}
 
 unsafe impl< 'a> Send for JobPtr< 'a> {}
 unsafe impl< 'a> Sync for JobPtr< 'a> {}
+
+impl< 'a> JobPtr< 'a> {
+    pub fn	null() -> Self 
+    {
+        Self {
+            data: std::ptr::null_mut(),
+            func: |_, _| {},
+            _marker: std::marker::PhantomData,
+        }
+    }
+    pub fn	is_null( &self) -> bool 
+    {
+        self.data.is_null()
+    }
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -59,8 +80,16 @@ impl< T: IWork> AutoFreeJob< T>
         });
         let ptr = &mut *boxed as *mut Self;
         boxed._Ptr = ptr;
-        let non_null = unsafe { std::ptr::NonNull::new_unchecked( Box::into_raw( boxed) as *mut WorkFn< 'a>) };
-        JobPtr( Some( non_null ) )
+        let data = Box::into_raw( boxed ) as *mut ();
+        let func: JobFn = |data_ptr, worker| unsafe {
+            let actual = &mut *( data_ptr as *mut Self );
+            actual.DoWork( worker );
+        };
+        JobPtr {
+            data,
+            func,
+            _marker: std::marker::PhantomData,
+        }
     }
 }
 
@@ -91,10 +120,8 @@ impl IWorker for Worker
 {
     fn	PostJob( &self, job: JobPtr< '_>) 
     {
-        if let Some( mut non_null ) = job.0 {
-            unsafe {
-                non_null.as_mut().DoWork( self);
-            }
+        if !job.is_null() {
+            ( job.func)( job.data, self);
         }
     }
     fn	AsRaw( &self) -> *const () 

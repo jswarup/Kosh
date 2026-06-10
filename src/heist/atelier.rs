@@ -45,7 +45,7 @@ impl< 'a> Atelier< 'a>
             _SuccIds: Buff::< U16>::New( U32::_16Sz, U16::_0),
             _FreeJobLock: Spinlock::New(),
             _FreeJobStash: Stash::< U16>::New( U32::_16Sz),
-            _JobBuff: Buff::New( U32::_16Sz, JobPtr( None )),
+            _JobBuff: Buff::New( U32::_16Sz, JobPtr::null()),
         };
         atelier._FreeJobStash.DoIndexSetup();
         atelier
@@ -179,12 +179,10 @@ impl< 'a> Atelier< 'a>
             while jobId != 0 {
                 maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
                 let  	maestro = Maestro::New( self, mavenIdx);
-                let  	jobPtr = self._JobBuff.Arr().At( jobId).0;
-                if let Some( mut non_null ) = jobPtr {
-                    unsafe {
-                        non_null.as_mut().DoWork( &maestro);   // Run job
-                    }
-                    self._JobBuff.Arr().SetAt( jobId, &JobPtr( None ));
+                let  	job = *self._JobBuff.Arr().At( jobId);
+                if !job.is_null() {
+                    ( job.func)( job.data, &maestro);   // Run job
+                    self._JobBuff.Arr().SetAt( jobId, &JobPtr::null());
                 }
                 maven.IncrSzProcessed( 1);
                 let  	_res = self.FreeJob( mavenIdx, jobId);
