@@ -1,13 +1,14 @@
 //-- arr.rs -----------------------------------------------------------------------------------------------------------------------
 use	crate::silo::uint::{ U8, U32 };
 use	crate::silo::useg::USeg;
+use	crate::stalks::work::IWorker;
 use	std::marker::PhantomData;
 use	std::ops::{ Deref, DerefMut };
 use	std::ptr::NonNull;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct Arr< 'a, T> 
+pub struct Arr< 'a, T>
 {
     _Ptr: NonNull< T>,
     _Size: U32,
@@ -16,18 +17,18 @@ pub struct Arr< 'a, T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-unsafe impl< 'a, T: Send> Send for Arr< 'a, T> 
+unsafe impl< 'a, T: Send> Send for Arr< 'a, T>
 {
 }
-unsafe impl< 'a, T: Sync> Sync for Arr< 'a, T> 
+unsafe impl< 'a, T: Sync> Sync for Arr< 'a, T>
 {
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T> Arr< 'a, T> 
+impl< 'a, T> Arr< 'a, T>
 {
-    pub fn	New< S: Into< U32>>( ptr: NonNull< T>, size: S) -> Self 
+    pub fn	New< S: Into< U32>>( ptr: NonNull< T>, size: S) -> Self
     {
         Arr {
             _Ptr: ptr,
@@ -38,28 +39,28 @@ impl< 'a, T> Arr< 'a, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Size( &self) -> U32 
+    pub fn	Size( &self) -> U32
     {
         self._Size
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	IsEmpty( &self) -> bool 
+    pub fn	IsEmpty( &self) -> bool
     {
         self.Size() == U32( 0)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	USeg( &self) -> USeg 
+    pub fn	USeg( &self) -> USeg
     {
         USeg::Create( U32( 0), self.Size())
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	At< K: Into< U32>>( &self, k: K) -> &'a T 
+    pub fn	At< K: Into< U32>>( &self, k: K) -> &'a T
     {
         unsafe {
             let  	ptr = self._Ptr.as_ptr().add( k.into().AsUsize());
@@ -69,7 +70,7 @@ impl< 'a, T> Arr< 'a, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	MutAt< K: Into< U32>>( &self, k: K) -> &'a mut T 
+    pub fn	MutAt< K: Into< U32>>( &self, k: K) -> &'a mut T
     {
         unsafe {
             let  	ptr = self._Ptr.as_ptr().add( k.into().AsUsize());
@@ -92,7 +93,7 @@ impl< 'a, T> Arr< 'a, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	MoveAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &'a T 
+    pub fn	MoveAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &'a T
     {
         unsafe {
             let  	ptr = self._Ptr.as_ptr().add( k.into().AsUsize());
@@ -103,10 +104,10 @@ impl< 'a, T> Arr< 'a, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	SwapAt< I: Into< U32>, J: Into< U32>>( &self, i: I, j: J) 
+    pub fn	SwapAt< I: Into< U32>, J: Into< U32>>( &self, i: I, j: J)
     {
         unsafe {
-            std::ptr::swap( 
+            std::ptr::swap(
                 self._Ptr.add( i.into().AsUsize()).as_ptr(),
                 self._Ptr.add( j.into().AsUsize()).as_ptr(),
             );
@@ -115,7 +116,7 @@ impl< 'a, T> Arr< 'a, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	SwapFrom< S: Into< U32>, D: Into< U32>>( 
+    pub fn	SwapFrom< S: Into< U32>, D: Into< U32>>(
         &self,
         dstStart: D,
         src: &Arr< '_, T>,
@@ -125,7 +126,7 @@ impl< 'a, T> Arr< 'a, T>
         T: Copy,
     {
         unsafe {
-            std::ptr::swap_nonoverlapping( 
+            std::ptr::swap_nonoverlapping(
                 src._Ptr.as_ptr().add( srcStart.into().AsUsize()),
                 self._Ptr.as_ptr().add( dstStart.into().AsUsize()),
                 count.AsUsize(),
@@ -135,10 +136,10 @@ impl< 'a, T> Arr< 'a, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	LSnip< C: Into< U32>>( &self, count: C) -> Self 
+    pub fn	LSnip< C: Into< U32>>( &self, count: C) -> Self
     {
         let  	cnt = count.into();
-        Arr::New( 
+        Arr::New(
             unsafe { self._Ptr.add( cnt.AsU32() as usize) },
             self.Size() - cnt,
         )
@@ -146,7 +147,7 @@ impl< 'a, T> Arr< 'a, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	RSnip< C: Into< U32>>( &self, count: C) -> Self 
+    pub fn	RSnip< C: Into< U32>>( &self, count: C) -> Self
     {
         let  	cnt = count.into();
         Arr::New( self._Ptr, self.Size() - cnt)
@@ -163,14 +164,45 @@ impl< 'a, T> Arr< 'a, T>
         }
         self.USeg().Span( |k| f( self.At( k)))
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	QuickSorter< Less>( &self, less: Less) -> impl Fn( &dyn IWorker) + Send + Sync + 'a
+    where
+        Less: Fn( &T, &T) -> bool + Send + Sync + Clone + 'a,
+        T: Send + Sync + 'a,
+    {
+        let  	arr = *self;
+        move |worker: &dyn IWorker| {
+            let  	less = less.clone();
+            arr.USeg().DoQSort(
+                worker,
+                move |i, j| less( arr.At( i), arr.At( j)),
+                move |i, j| {
+                    arr.SwapAt( i, j);
+                },
+            );
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub  fn     SortSanity< Less>( &self, less: Less) -> bool
+    where
+        Less: Fn( &T, &T) -> bool + Send + Sync + Clone + 'a,
+    {
+        self.USeg().RSnip( 1).Span( |k| !less( self.At( k +1), self.At( k)))
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T> Deref for Arr< 'a, T> 
+impl< 'a, T> Deref for Arr< 'a, T>
 {
     type Target = [T];
-    fn	deref( &self) -> &Self::Target 
+    fn	deref( &self) -> &Self::Target
     {
         unsafe { std::slice::from_raw_parts( self._Ptr.as_ptr(), usize::from( self._Size)) }
     }
@@ -178,9 +210,9 @@ impl< 'a, T> Deref for Arr< 'a, T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T> DerefMut for Arr< 'a, T> 
+impl< 'a, T> DerefMut for Arr< 'a, T>
 {
-    fn	deref_mut( &mut self) -> &mut Self::Target 
+    fn	deref_mut( &mut self) -> &mut Self::Target
     {
         unsafe { std::slice::from_raw_parts_mut( self._Ptr.as_ptr(), usize::from( self._Size)) }
     }
@@ -188,9 +220,9 @@ impl< 'a, T> DerefMut for Arr< 'a, T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T> Clone for Arr< 'a, T> 
+impl< 'a, T> Clone for Arr< 'a, T>
 {
-    fn	clone( &self) -> Self 
+    fn	clone( &self) -> Self
     {
         *self
     }
@@ -198,15 +230,15 @@ impl< 'a, T> Clone for Arr< 'a, T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T> Copy for Arr< 'a, T> 
+impl< 'a, T> Copy for Arr< 'a, T>
 {
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T: std::fmt::Debug> std::fmt::Debug for Arr< 'a, T> 
+impl< 'a, T: std::fmt::Debug> std::fmt::Debug for Arr< 'a, T>
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result 
+    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
         std::fmt::Debug::fmt( &**self, f)
     }
@@ -214,9 +246,9 @@ impl< 'a, T: std::fmt::Debug> std::fmt::Debug for Arr< 'a, T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T: PartialEq> PartialEq for Arr< 'a, T> 
+impl< 'a, T: PartialEq> PartialEq for Arr< 'a, T>
 {
-    fn	eq( &self, other: &Self) -> bool 
+    fn	eq( &self, other: &Self) -> bool
     {
         **self == **other
     }
@@ -224,41 +256,41 @@ impl< 'a, T: PartialEq> PartialEq for Arr< 'a, T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T: Eq> Eq for Arr< 'a, T> 
+impl< 'a, T: Eq> Eq for Arr< 'a, T>
 {
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T, const N: usize> From< &'a [T; N]> for Arr< 'a, T> 
+impl< 'a, T, const N: usize> From< &'a [T; N]> for Arr< 'a, T>
 {
-    fn	from( arr: &'a [T; N]) -> Self 
+    fn	from( arr: &'a [T; N]) -> Self
     {
         unsafe { Arr::New( NonNull::new_unchecked( arr.as_ptr() as *mut T), N) }
     }
 }
-impl< 'a, T, const N: usize> From< &'a mut [T; N]> for Arr< 'a, T> 
+impl< 'a, T, const N: usize> From< &'a mut [T; N]> for Arr< 'a, T>
 {
-    fn	from( arr: &'a mut [T; N]) -> Self 
+    fn	from( arr: &'a mut [T; N]) -> Self
     {
         unsafe { Arr::New( NonNull::new_unchecked( arr.as_mut_ptr()), N) }
     }
 }
-impl< 'a, T> From< &'a [T]> for Arr< 'a, T> 
+impl< 'a, T> From< &'a [T]> for Arr< 'a, T>
 {
-    fn	from( slice: &'a [T]) -> Self 
+    fn	from( slice: &'a [T]) -> Self
     {
         unsafe {
-            Arr::New( 
+            Arr::New(
                 NonNull::new_unchecked( slice.as_ptr() as *mut T),
                 slice.len(),
             )
         }
     }
 }
-impl< 'a, T> From< &'a mut [T]> for Arr< 'a, T> 
+impl< 'a, T> From< &'a mut [T]> for Arr< 'a, T>
 {
-    fn	from( slice: &'a mut [T]) -> Self 
+    fn	from( slice: &'a mut [T]) -> Self
     {
         unsafe { Arr::New( NonNull::new_unchecked( slice.as_mut_ptr()), slice.len()) }
     }
@@ -266,9 +298,9 @@ impl< 'a, T> From< &'a mut [T]> for Arr< 'a, T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> Arr< 'a, U8> 
+impl< 'a> Arr< 'a, U8>
 {
-    pub fn	Str( &self) -> &'a str 
+    pub fn	Str( &self) -> &'a str
     {
         unsafe {
             let  	sliceU8: &'a [U8] = std::slice::from_raw_parts( self._Ptr.as_ptr(), self._Size.AsUsize());

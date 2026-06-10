@@ -122,42 +122,37 @@ fn	TestChoreBuds()
 #[test]
 fn	TestDoQSort()
 {
-    let printAndAssertArr = | arr: Arr< '_, U32>| {
-        arr.USeg().Traverse( |i| { print!( "{} ", arr.At( i)); });
-        println!();
-        assert!( arr.USeg().RSnip( 1).Span( |k| arr.At( k) >= arr.At( k + 1)));
+    let printArr = | arr: Arr< '_, U32>| {
+        arr.USeg().Traverse( |i| { print!( "{} ", arr.At( i)); }); println!();
     };
-    fn sorter<'a>(arr: Arr<'a, U32>) -> impl FnMut(&dyn IWorker) + Send + Sync + 'a {
-        move |worker: &dyn IWorker| {
-            arr.USeg().DoQSort( worker,
-                move |i, j| arr.At(i) > arr.At(j),
-                move |i, j| { arr.SwapAt(i, j); },
-            );
-        }
-    }
+
     let mut     buff0 = Buff::Create( U32( 100), |_| U32( rand::random::< u32>() % 128));
     let mut     buff1 = buff0.clone();
-
     let sortWorkStealing = |buff: &mut Buff< U32>| {
+
+        let     quickSorter = buff.Arr().QuickSorter( |a, b| { a > b});
         let  	atelier = Atelier::New( U32( 4));
         {
             let  	meister = atelier.Meister();
-            let  	mut jobId = meister.ConstructJob( atelier.Terminal(),  sorter( buff.Arr()));
+            let  	mut jobId = meister.ConstructJob( atelier.Terminal(),  quickSorter);
             meister.EnqueueJob( &mut jobId);
         }
         atelier.DoLaunch();
     };
     sortWorkStealing(  &mut buff0);
-    printAndAssertArr( buff0.Arr());
+    assert!( buff0.Arr().SortSanity(|a, b| { a > b} ));
+    printArr( buff0.Arr());
 
     let sortSequential = |buff: &mut Buff< U32>| {
         print!( "Sequential[ ");
+        let     quickSorter = buff.Arr().QuickSorter( |a, b| { a > b});
         let     worker = Worker::New();
-        sorter( buff.Arr())( &worker);
+        quickSorter( &worker);
         println!( "]")
     };
     sortSequential( &mut buff1);
-    printAndAssertArr( buff1.Arr());
+    assert!( buff1.Arr().SortSanity(|a, b| { a > b} ));
+    printArr( buff1.Arr());
     return;
 }
 

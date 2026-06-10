@@ -2,6 +2,11 @@
 
 The `heist` module is a high-performance, work-stealing task scheduling and dependency resolution framework designed for parallel execution of structured jobs in Kosh. It manages a pool of worker threads, schedules jobs with predecessor/successor dependencies, and supports dynamic, graph-based execution.
 
+## Purpose & Design Philosophy
+The primary purpose of the Heist implementation is:
+1. **Unthreaded Development**: Enable developers to design, develop, and debug complex recursive algorithms (such as QuickSort) in a simple, sequential, unthreaded environment using the ZST `Worker`.
+2. **Seamless Scaling**: Effortlessly transition the exact same algorithm code to a multi-threaded parallel model (using `Atelier` and its `Meister` orchestrator) to match the machine's hardware capabilities and performance requirements.
+
 ---
 
 ## Architecture & Core Components
@@ -104,35 +109,34 @@ drop(meister);
 atelier.DoLaunch(); // Will print C A B (or C B A)
 ```
 
-### 3. Sequential & Unthreaded Execution (`Worker`)
-While the framework is designed for high-performance parallel, work-stealing execution using `Atelier` and `Maestro`, it also supports sequential, unthreaded execution.
+### 3. QuickSorter 2-Way Execution (Threaded vs. Unthreaded)
 
-This is achieved using the `Worker` struct (defined in [work.rs](../src/stalks/work.rs)), which is a zero-overhead, Zero-Sized Type (ZST) implementation of the `IWorker` trait. When a job or execution is scheduled using a `Worker` instance, it immediately and synchronously executes the posted job on the current thread rather than enqueuing it to a background thread pool.
+A concrete application of the framework's versatility is `QuickSorter` (defined on `Arr` in [arr.rs](../src/silo/arr.rs)). It produces a job closure that can be run either sequentially on a single thread or in parallel using the work-stealing thread pool:
 
-This allows the exact same code (e.g. recursive algorithms using `IWorker::Post` such as parallel quicksort `DoQSort`) to run sequentially and deterministically without modification:
+#### A. Threaded Execution (Work-Stealing)
+Using `Atelier` and a `Meister` context, the sorting tasks are scheduled dynamically across multiple worker threads to enable multi-threaded execution based on machine capability and performance:
 
 ```rust
-use crate::stalks::work::{Worker, IWorker};
+let mut buff = Buff::Create(U32(100), |_| U32(rand::random::<u32>() % 128));
+let quickSorter = buff.Arr().QuickSorter(|a, b| a > b);
 
-let worker = Worker::New();
-
-// Execute a job directly and synchronously on the caller's thread
-worker.Post(|w: &dyn IWorker| {
-    println!("Job executed sequentially!");
-});
+let atelier = Atelier::New(U32(4)); // Spawns 4 worker threads
+{
+    let meister = atelier.Meister();
+    let mut jobId = meister.ConstructJob(atelier.Terminal(), quickSorter);
+    meister.EnqueueJob(&mut jobId);
+}
+atelier.DoLaunch(); // Runs quicksort in parallel
 ```
 
-For example, running `DoQSort` sequentially:
-```rust
-let buff = Buff::Create(U32(100), |_| rand::random::<f64>());
-let arr = buff.Arr();
-let worker = Worker::New();
+#### B. Unthreaded Execution (Sequential)
+Using a synchronous ZST `Worker` instance, the same `quickSorter` job executes sequentially and immediately on the caller's main thread, enabling simple algorithm development and debugging in an unthreaded environment:
 
-// Run quicksort sequentially on the current thread
-arr.USeg().DoQSort(
-    &worker,
-    |i, j| arr.At(i) > arr.At(j),
-    |i, j| arr.SwapAt(i, j),
-);
+```rust
+let mut buff = Buff::Create(U32(100), |_| U32(rand::random::<u32>() % 128));
+let quickSorter = buff.Arr().QuickSorter(|a, b| a > b);
+
+let worker = Worker::New();
+quickSorter(&worker); // Runs quicksort sequentially on the current thread
 ```
 
