@@ -21,24 +21,24 @@ graph TD
 ```
 
 ### 1. Atelier (The Scheduler)
-Defined in [atelier.rs](file:///c:/Work/Taregna/Kosh/src/heist/atelier.rs), `Atelier` is the central coordination engine. It:
+Defined in [atelier.rs](../src/heist/atelier.rs), `Atelier` is the central coordination engine. It:
 * Manages a fixed-size thread pool running multiple `Maven` workers.
 * Stores scheduled jobs in a cache-friendly, pre-allocated array of type-erased `WorkPtr`s.
 * Tracks predecessors (`_SzPreds`) and successor job IDs (`_SuccIds`) to execute task DAGs (Directed Acyclic Graphs). When a job completes, it decrements the predecessor count of its successor; once that count hits 1 (meaning all dependencies are done), the successor job is automatically enqueued.
 
 ### 2. Maven (The Worker)
-Defined in [maven.rs](file:///c:/Work/Taregna/Kosh/src/heist/maven.rs), a `Maven` represents a worker thread. It has:
+Defined in [maven.rs](../src/heist/maven.rs), a `Maven` represents a worker thread. It has:
 * A thread-local job stash (`_JobCache`) to recycle job IDs without global lock contention.
 * A synchronized run queue (`_RunQueue`) protected by a `Spinlock`.
 * Work-stealing capabilities: if a worker's run queue is empty, it attempts to steal work from other Mavens using a randomized steal seed.
 
 ### 3. Maestro (The Orchestrator)
-Defined in [maestro.rs](file:///c:/Work/Taregna/Kosh/src/heist/maestro.rs), `Maestro` is the thread-local context wrapper that implements the `IWorker` trait. 
+Defined in [maestro.rs](../src/heist/maestro.rs), `Maestro` is the thread-local context wrapper that implements the `IWorker` trait. 
 * Every job is executed inside a `Maestro` context.
 * Jobs can use `Maestro` to dynamically spawn sub-tasks, construct successor dependencies (`ConstructJob`), or enqueue bulk work (`ConstructEnqueueBulk`).
 
 ### 4. Chore & ChoreTree (Dependency Graph)
-Defined in [chore.rs](file:///c:/Work/Taregna/Kosh/src/heist/chore.rs), `Chore` represents a unit of work that can be structured into a dependent tree (`dyn Bud<Chore>`) using the `ChoreTree!` macro.
+Defined in [chore.rs](../src/heist/chore.rs), `Chore` represents a unit of work that can be structured into a dependent tree (`dyn Bud<Chore>`) using the `ChoreTree!` macro.
 * **Operators**:
   * `a | b`: Parallel execution (OR dependency).
   * `a < b`: Sequencing (a runs after b completed).
@@ -110,9 +110,8 @@ atelier.DoLaunch(); // Will print A B C (or B A C)
 
 While the framework is designed for high-performance parallel, work-stealing execution using `Atelier` and `Maestro`, it also supports sequential, unthreaded execution.
 
-This is achieved using the `Worker` struct (defined in [work.rs](file:///c:/Work/Taregna/Kosh/src/stalks/work.rs)), which is a zero-overhead, Zero-Sized Type (ZST) implementation of the `IWorker` trait.
+This is achieved using the `Worker` struct (defined in [work.rs](../src/stalks/work.rs)), which is a zero-overhead, Zero-Sized Type (ZST) implementation of the `IWorker` trait.
 
 When a job or execution is scheduled using a `Worker` instance:
 * Instead of enqueuing work to a background thread pool, `Worker` immediately and synchronously executes the posted job on the current thread.
 * This allows the exact same code (e.g. algorithms using `IWorker::Post` such as parallel quicksort `DoQSort`) to run sequentially and deterministically without modification.
-
