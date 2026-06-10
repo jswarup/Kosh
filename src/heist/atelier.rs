@@ -16,9 +16,7 @@ use	std::sync::atomic::Ordering;
 
 pub struct Atelier< 'a> 
 {
-    _StartCount: U32,                                                  // Count of Processing Queue started, used for startup and shutdown
     _SzSchedJob: Atm< U32>,                                            // Count of cumulative jobs in flight
-    _LockedMark: U32,
     _Mavens: Buff< Maven>,
     _SzPreds: Buff< Atm< U16>>,                                        // Count of predessors for job at the jobId
     _SuccIds: Buff< U16>,
@@ -37,10 +35,8 @@ impl< 'a> Atelier< 'a>
     pub fn	New( szMaven: U32) -> Atelier< 'a> 
     {
         let  	atelier = Self {
-            _StartCount: U32::_0,
             _SzSchedJob: Atm::New( U32::_0),
             _Mavens: Buff::Create( szMaven, Maven::New),
-            _LockedMark: U32::_0,
             _SzPreds: Buff::Create( U32::_16Sz, |_i| Atm::New( U16::_0)),
             _SuccIds: Buff::< U16>::New( U32::_16Sz, U16::_0),
             _FreeJobLock: Spinlock::New(),

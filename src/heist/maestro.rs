@@ -31,13 +31,6 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Atelier( &self) -> &'a Atelier< 'a> 
-    {
-        self._Atelier
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
     pub fn	MavenIndex( &self) -> U32 
     {
         self._MavenIndex
@@ -64,7 +57,7 @@ impl< 'a> Maestro< 'a>
 
     pub fn	ConstructJob( &self, succId: U16, job: impl IntoWorkPtr< 'a>) -> U16 
     {
-        self._Atelier.ConstructJob( self._MavenIndex, succId, job.into_work_ptr())
+        self._Atelier.ConstructJob( self._MavenIndex, succId, job.IntoWorkPtr())
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

@@ -9,7 +9,6 @@ use	std::sync::atomic::Ordering;
 
 pub struct Maven 
 {
-    _Index: U32,
     _SzProcessed: U32,
     _JobCache: Stash< U16>,
     _RunQueue: Stash< U16>,
@@ -24,23 +23,15 @@ impl Maven
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	New( mavenInd: U32) -> Self 
+    pub fn	New( _mavenInd: U32) -> Self 
     {
         Self {
-            _Index: mavenInd,
             _SzProcessed: U32::_0,
             _JobCache: Stash::< U16>::New( U32( 256)),
             _RunQueue: Stash::< U16>::New( U32( 1024)),
             _RunQlock: Spinlock::New(),
             _CurSuccId: Atm::New( U16::_0),
         }
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	Index( &self) -> U32 
-    {
-        self._Index
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
