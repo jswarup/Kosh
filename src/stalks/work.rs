@@ -72,9 +72,9 @@ impl< 'a> IntoJobPtr< 'a> for JobPtr< 'a>
     }
 }
 
-impl< 'a, F> IntoJobPtr< 'a> for F 
+impl< 'a, T> IntoJobPtr< 'a> for T 
 where
-    F: for< 'r> FnMut( &'r ( dyn IWorker + 'r)) + Send + Sync + 'a,
+    T: IWork + 'a,
 {
     fn	into_job_ptr( self) -> JobPtr< 'a> 
     {

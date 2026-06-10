@@ -1,6 +1,6 @@
 //-- silo/useg.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::silo::uint::U32;
-use	crate::stalks::work::{ IWorker, AutoFreeJob };
+use	crate::stalks::work::{ IWorker, IntoJobPtr };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -180,17 +180,23 @@ impl USeg
         if useg1.Size() > 1 {
             let  	lessAtClone = lessAt.clone();
             let  	swapAtClone = swapAt.clone();
-            worker.PostJob( AutoFreeJob::New( move |w: &dyn IWorker| {
-                useg1.DoQSort( w, lessAtClone.clone(), swapAtClone.clone());
-            }));
+            worker.PostJob(
+                (move |w: &dyn IWorker| {
+                    useg1.DoQSort( w, lessAtClone.clone(), swapAtClone.clone());
+                })
+                .into_job_ptr(),
+            );
         }
         let  	useg2 = USeg::Create( pivot + 1, self._Last - pivot);
         if useg2.Size() > 1 {
             let  	lessAtClone = lessAt.clone();
             let  	swapAtClone = swapAt.clone();
-            worker.PostJob( AutoFreeJob::New( move |w: &dyn IWorker| {
-                useg2.DoQSort( w, lessAtClone.clone(), swapAtClone.clone());
-            }));
+            worker.PostJob(
+                (move |w: &dyn IWorker| {
+                    useg2.DoQSort( w, lessAtClone.clone(), swapAtClone.clone());
+                })
+                .into_job_ptr(),
+            );
         }
     }
 

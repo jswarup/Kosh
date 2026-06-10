@@ -3,7 +3,7 @@ use	crate::heist::maestro::Maestro;
 use	crate::silo::stash::Stash;
 use	crate::silo::uint::U16;
 use	crate::stalks::bud::Bud;
-use	crate::stalks::work::{ IWork, IWorker, AutoFreeJob };
+use	crate::stalks::work::{ IWork, IWorker };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -96,8 +96,7 @@ where
                 T: IWork + Clone + Default + 'static,
             {
                 if node.Left().is_none() && node.Right().is_none() {
-                    let  	choreJob = AutoFreeJob::New( node.Val());
-                    let  	mut jobId = maestro.ConstructJob( succId, choreJob);
+                    let  	mut jobId = maestro.ConstructJob( succId, node.Val());
                     self._JobStash.Pushback( &mut jobId);
                     return jobId;
                 }
