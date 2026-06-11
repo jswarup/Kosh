@@ -82,7 +82,7 @@ fn	TestUnsupportedOpPanic()
 #[test]
 fn	TestBNode()
 {
-    use crate::stalks::bnode::IBNode;
+    use crate::stalks::bnode::{IBNode, TraversalEvent};
     let  	rootFromLiterals = BNodeTree!( U32, 10 < ( 20 | 30));
     assert_eq!( rootFromLiterals.CountLeaves(), 3);
     println!( "Tree structure: {:#?}", rootFromLiterals);
@@ -97,6 +97,29 @@ fn	TestBNode()
     assert_eq!( root.Right().unwrap().Op(), "|");
     assert_eq!( root.Right().unwrap().Left().unwrap().Val(), Some(&U32(20)));
     assert_eq!( root.Right().unwrap().Right().unwrap().Val(), Some(&U32(30)));
+
+    let mut visited = Vec::new();
+    root.TraverseDFS(&mut |node, event| {
+        let node_repr = if let Some(val) = node.Val() {
+            format!("{}", val.0)
+        } else {
+            node.Op().to_string()
+        };
+        visited.push((node_repr, event));
+    });
+
+    assert_eq!(
+        visited,
+        vec![
+            ("<".to_string(), TraversalEvent::Entry),
+            ("10".to_string(), TraversalEvent::Entry),
+            ("|".to_string(), TraversalEvent::Entry),
+            ("20".to_string(), TraversalEvent::Entry),
+            ("30".to_string(), TraversalEvent::Entry),
+            ("|".to_string(), TraversalEvent::Exit),
+            ("<".to_string(), TraversalEvent::Exit),
+        ]
+    );
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

@@ -43,7 +43,7 @@ impl BNodeUniOp
 
 pub trait IBNode< T> {
     fn	Val( &self) -> Option< &T>;
-    
+
     fn	Left( &self) -> Option< &dyn IBNode< T>>
     {
         None
@@ -58,6 +58,33 @@ pub trait IBNode< T> {
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[derive( Debug, PartialEq, Eq)]
+pub enum TraversalEvent {
+    Entry,
+    Exit,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T> dyn IBNode< T> + '_
+{
+    pub fn	TraverseDFS( &self, f: &mut dyn FnMut( &dyn IBNode< T>, TraversalEvent))
+    {
+        let  	isLeaf = self.Left().is_none() && self.Right().is_none();
+        f( self, TraversalEvent::Entry);
+        if let  	Some( left) = self.Left() {
+            left.TraverseDFS( f);
+        }
+        if let  	Some( right) = self.Right() {
+            right.TraverseDFS( f);
+        }
+        if !isLeaf {
+            f( self, TraversalEvent::Exit);
+        }
+    }
+}
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[macro_export]
