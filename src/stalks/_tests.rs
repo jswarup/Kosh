@@ -80,17 +80,17 @@ fn	TestUnsupportedOpPanic()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn TestBNode()
+fn	TestBNode()
 {
-    let leafOne = BNode::NewLeaf (1);
-    let leafTwo = BNode::NewLeaf (2);
-    let leafThree = BNode::NewLeaf (3);
-
-    let rightBranch = BNode::New(leafTwo, leafThree);
-    let root = BNode::New(leafOne, rightBranch);
-
-    println!("My tree has {} leaves.", root.CountLeaves());
-    println!("Tree structure: {:#?}", root);
+    use	crate::stalks::bnode::BNodeBinOp;
+    use	crate::BNodeTree;
+    let  	leafOne = BNode::NewLeaf ( 1);
+    let  	leafTwo = BNode::NewLeaf ( 2);
+    let  	leafThree = BNode::NewLeaf ( 3);
+    let  	rightBranch = BNode::New( BNodeBinOp::LT, leafTwo, leafThree);
+    let  	root = BNodeTree!( leafOne < rightBranch);
+    println!( "My tree has {} leaves.", root.CountLeaves());
+    println!( "Tree structure: {:#?}", root);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
