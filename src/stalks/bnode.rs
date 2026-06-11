@@ -77,24 +77,24 @@ macro_rules! BNodeTree {
                         }
                     }
                 }
-                $crate::BNodeTree!( @cb [ $crate::BNodeTree ], [<$Arg BNode>], $( $inner )+ )
+                $crate::BNodeTree!( @cb [ $crate::BNodeTree ], $Arg, [<$Arg BNode>], $( $inner )+ )
             }
         }
     };
-    ( @cb [ $( $cb:tt)* ], $Node:ident, ( $( $inner:tt)+ ) ) => { $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $inner)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Node:ident, ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHL, $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Node:ident, ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHR, $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Node:ident, ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::LT,  $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Node:ident, ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::BOR, $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Node:ident, $l:ident << $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHL, $Node::New( $l ), $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Node:ident, $l:ident >> $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHR, $Node::New( $l ), $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Node:ident, $l:ident <  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::LT,  $Node::New( $l ), $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Node:ident, $l:ident |  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::BOR, $Node::New( $l ), $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Node:ident, $l:literal << $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHL, $Node::New( $l ), $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Node:ident, $l:literal >> $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHR, $Node::New( $l ), $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Node:ident, $l:literal <  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::LT,  $Node::New( $l ), $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Node:ident, $l:literal |  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::BOR, $Node::New( $l ), $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Node:ident, $leaf:expr ) => { $Node::New( $leaf ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $inner:tt)+ ) ) => { $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $inner)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHL, $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHR, $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::LT,  $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::BOR, $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident << $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHL, $Node::New( $l ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident >> $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHR, $Node::New( $l ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident <  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::LT,  $Node::New( $l ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident |  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::BOR, $Node::New( $l ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal << $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHL, $Node::New( $l ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal >> $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHR, $Node::New( $l ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal <  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::LT,  $Node::New( $l ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal |  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::BOR, $Node::New( $l ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $leaf:expr ) => { $Node::New( $leaf ) };
 }
 pub use	crate::BNodeTree;
 
