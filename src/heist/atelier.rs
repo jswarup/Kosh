@@ -1,5 +1,5 @@
 //-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::heist::maven::Maven;
+use	crate::heist::maestro::Maestro;
 use	crate::silo::{
     arr::Arr,
     buff::Buff,
@@ -16,7 +16,7 @@ use	std::sync::atomic::Ordering;
 pub struct Atelier< 'a>
 {
     _SzSchedJob: Atm< U32>,                                            // Count of cumulative jobs in flight
-    _Mavens: Buff< Maven< 'a>>,
+    _Maestros: Buff< Maestro< 'a>>,
     _SzPreds: Buff< Atm< U16>>,                                        // Count of predessors for job at the jobId
     _SuccIds: Buff< U16>,
     _FreeJobLock: Spinlock,
@@ -32,11 +32,11 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	New( szMaven: U32) -> Atelier< 'a>
+    pub fn	New( szMaestro: U32) -> Atelier< 'a>
     {
         let  	mut atelier = Self {
             _SzSchedJob: Atm::New( U32::_0),
-            _Mavens: Buff::Create( szMaven, Maven::New),
+            _Maestros: Buff::Create( szMaestro, Maestro::New),
             _SzPreds: Buff::Create( U32::_16Sz, |_i| Atm::New( U16::_0)),
             _SuccIds: Buff::< U16>::New( U32::_16Sz, U16::_0),
             _FreeJobLock: Spinlock::New(),
@@ -51,11 +51,11 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	MainMaven( &self) -> &Maven< 'a> 
+    pub fn	MainMaestro( &self) -> &Maestro< 'a> 
     {
-        let  	maven = self._Mavens.Arr().MutAt( U32( 0));
-        maven.SetAtelier( self);
-        maven
+        let  	maestro = self._Maestros.Arr().MutAt( U32( 0));
+        maestro.SetAtelier( self);
+        maestro
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -67,9 +67,9 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Mavens( &self) -> Arr< 'a, Maven< 'a>>
+    pub fn	Maestros( &self) -> Arr< 'a, Maestro< 'a>>
     {
-        self._Mavens.Arr()
+        self._Maestros.Arr()
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -98,10 +98,10 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	AllocJob( &self, mavenIdx: U32) -> U16
+    fn	AllocJob( &self, maestroIdx: U32) -> U16
     {
-        let  	maven = self._Mavens.Arr().At( mavenIdx);
-        let  	jobCacheStk = maven.JobCacheStk();
+        let  	maestro = self._Maestros.Arr().At( maestroIdx);
+        let  	jobCacheStk = maestro.JobCacheStk();
         loop {
             let  	mut jobId = U16( 0);
             if jobCacheStk.Size() != 0 && jobCacheStk.Pop( &mut jobId) {
@@ -118,10 +118,10 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	FreeJob( &self, mavenIdx: U32, mut jobId: U16) -> bool
+    fn	FreeJob( &self, maestroIdx: U32, mut jobId: U16) -> bool
     {
-        let  	maven = self._Mavens.Arr().At( mavenIdx);
-        let  	jobCacheStk = maven.JobCacheStk();
+        let  	maestro = self._Maestros.Arr().At( maestroIdx);
+        let  	jobCacheStk = maestro.JobCacheStk();
         loop {
             if jobCacheStk.SzVoid() != 0 && jobCacheStk.Push( &mut jobId) {
                 return true;
@@ -133,9 +133,9 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ConstructJob( &self, mavenIdx: U32, succId: U16, job: WorkPtr< 'a>) -> U16
+    pub fn	ConstructJob( &self, maestroIdx: U32, succId: U16, job: WorkPtr< 'a>) -> U16
     {
-        let  	jobId = self.AllocJob( mavenIdx);
+        let  	jobId = self.AllocJob( maestroIdx);
         if jobId == 0 {
             return jobId;
         }
@@ -147,27 +147,27 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	EnqueueJob( &self, mavenIdx: U32, jobId: &mut U16)
+    pub fn	EnqueueJob( &self, maestroIdx: U32, jobId: &mut U16)
     {
         self.IncrSzSchedJob( U32( 1));
-        let  	maven = self._Mavens.Arr().At( mavenIdx);
-        maven.EnqueueActiveJob( jobId);
+        let  	maestro = self._Maestros.Arr().At( maestroIdx);
+        maestro.EnqueueActiveJob( jobId);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
     fn	GrabJob( &self, idx: U32, stealSeed: &mut u32) -> U16
     {
-        let  	mavens = self._Mavens.Arr();
-        let  	sz = mavens.len() as u32;
+        let  	maestros = self._Maestros.Arr();
+        let  	sz = maestros.len() as u32;
         *stealSeed = stealSeed.wrapping_mul( 2654435761).wrapping_add( 1);
         for mIdx in 0..sz {
-            let  	mavenIdx = U32( ( *stealSeed + mIdx) % sz);
-            if mavenIdx == idx {
+            let  	maestroIdx = U32( ( *stealSeed + mIdx) % sz);
+            if maestroIdx == idx {
                 continue;
             }
-            let  	maven = mavens.At( mavenIdx);
-            let  	jobId = maven.PopJob();
+            let  	maestro = maestros.At( maestroIdx);
+            let  	jobId = maestro.PopJob();
             if jobId != 0 {
                 return jobId;
             }
@@ -177,24 +177,24 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ExecuteLoop( &self, mavenIdx: U32)
+    pub fn	ExecuteLoop( &self, maestroIdx: U32)
     {
-        let  	maven = self._Mavens.Arr().MutAt( mavenIdx);
-        maven.SetAtelier( self );
+        let  	maestro = self._Maestros.Arr().MutAt( maestroIdx);
+        maestro.SetAtelier( self );
         let  	mut jobId = U16( 0);
-        let  	mut stealSeed = mavenIdx.AsU32();
+        let  	mut stealSeed = maestroIdx.AsU32();
         while self.SzSchedJob() != 0 {
             while jobId != 0 {
-                maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
+                maestro.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
                 let  	job = *self._JobBuff.Arr().At( jobId);
                 if !job.is_null() {
-                    ( job.func)( job.data, maven);   // Run job
+                    ( job.func)( job.data, maestro);   // Run job
                     self._JobBuff.Arr().SetAt( jobId, &WorkPtr::null());
-                    maven.FlushTempQueue();
+                    maestro.FlushTempQueue();
                 }
-                maven.IncrSzProcessed( 1);
-                let  	_res = self.FreeJob( mavenIdx, jobId);
-                let  	succId = maven.CurSuccId();
+                maestro.IncrSzProcessed( 1);
+                let  	_res = self.FreeJob( maestroIdx, jobId);
+                let  	succId = maestro.CurSuccId();
                 if succId != U16( 0) {
                     let  	szPred: U16 = self.IncrPredAt( succId, -U16( 1));
                     if szPred == U16( 1) {
@@ -208,9 +208,9 @@ impl< 'a> Atelier< 'a>
                 }
                 self.IncrSzSchedJob( -U32( 1));
             }
-            jobId = maven.PopJob();
+            jobId = maestro.PopJob();
             if jobId == 0 {
-                jobId = self.GrabJob( mavenIdx, &mut stealSeed);
+                jobId = self.GrabJob( maestroIdx, &mut stealSeed);
             }
             if jobId == 0 {
                 std::thread::yield_now();
@@ -223,23 +223,23 @@ impl< 'a> Atelier< 'a>
     pub fn	DoLaunch( &self) 
     {
         {
-            let  	maven0 = self._Mavens.Arr().MutAt( U32( 0));
-            maven0.SetAtelier( self );
-            maven0.FlushTempQueue();
+            let  	maestro0 = self._Maestros.Arr().MutAt( U32( 0));
+            maestro0.SetAtelier( self );
+            maestro0.FlushTempQueue();
         }
-        let  	mavens = self._Mavens.Arr();
+        let  	maestros = self._Maestros.Arr();
         std::thread::scope( |s| {
-            for mavenIdx in 1..mavens.len() {
+            for maestroIdx in 1..maestros.len() {
                 s.spawn( move || {
-                    self.ExecuteLoop( U32( mavenIdx as u32));
+                    self.ExecuteLoop( U32( maestroIdx as u32));
                 });
             }
             self.ExecuteLoop( U32( 0));
         });
         println!();
         print!( "Atelier[ ");
-        mavens.USeg().Traverse( |mavenIdx| {
-            print!( "( Maven-{}: {})", mavenIdx, mavens.At( mavenIdx).SzProcessed());
+        maestros.USeg().Traverse( |maestroIdx| {
+            print!( "( Maestro-{}: {})", maestroIdx, maestros.At( maestroIdx).SzProcessed());
         });
         println!( "]")
     }

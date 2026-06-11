@@ -22,8 +22,8 @@ fn	TestShardBuds()
     );
     budTree.Print();
     let  	atelier = Atelier::New( U32( 4));
-    let  	mainMaven = atelier.MainMaven();
-    budTree.Post( mainMaven);
+    let  	mainMaestro = atelier.MainMaestro();
+    budTree.Post( mainMaestro);
     atelier.DoLaunch();
 }
 
@@ -37,8 +37,8 @@ fn	TestShardFromCharAndString()
                     }] )));
     budTree.Print();
     let  	atelier = Atelier::New( U32( 4));
-    let  	mainMaven = atelier.MainMaven();
-    budTree.Post( mainMaven);
+    let  	mainMaestro = atelier.MainMaestro();
+    budTree.Post( mainMaestro);
     atelier.DoLaunch();
 }
 //---------------------------------------------------------------------------------------------------------------------------------

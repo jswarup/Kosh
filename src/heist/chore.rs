@@ -1,5 +1,5 @@
 //-- chore.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::heist::maven::Maven;
+use	crate::heist::maestro::Maestro;
 use	crate::silo::stash::Stash;
 use	crate::silo::uint::U16;
 use	crate::stalks::bud::Bud;
@@ -117,39 +117,39 @@ where
             return;
         }
 
-        let  	maven: &Maven< '_> = Maven::FromWorker( worker);
+        let  	maestro: &Maestro< '_> = Maestro::FromWorker( worker);
         struct JobStash
         {
             _JobStash: Stash< U16>,
         }
         impl JobStash
         {
-            fn	Process< T>( &mut self, node: &dyn Bud< T>, maven: &Maven< '_>, succId: U16) -> U16
+            fn	Process< T>( &mut self, node: &dyn Bud< T>, maestro: &Maestro< '_>, succId: U16) -> U16
             where
                 T: IWork + Clone + Default + 'static,
             {
                 if node.Left().is_none() && node.Right().is_none() {
-                    let  	mut jobId = maven.ConstructJob( succId, node.Val());
+                    let  	mut jobId = maestro.ConstructJob( succId, node.Val());
                     self._JobStash.Pushback( &mut jobId);
                     return jobId;
                 }
                 if node.Op() == "|" {
-                    let  	_succR = self.Process( node.Right().unwrap(), maven, succId);
-                    let  	_succL = self.Process( node.Left().unwrap(), maven, succId);
+                    let  	_succR = self.Process( node.Right().unwrap(), maestro, succId);
+                    let  	_succL = self.Process( node.Left().unwrap(), maestro, succId);
                     return succId;
                 }
                 if node.Op() == "<" {
                     let  	mark = self._JobStash.Size();
-                    let  	rJobId = self.Process( node.Right().unwrap(), maven, succId);
+                    let  	rJobId = self.Process( node.Right().unwrap(), maestro, succId);
                     let  	jStk = self._JobStash.Stk();
                     let  	rSz = jStk.Size() - mark;
                     if rSz == 1 {
-                        return self.Process( node.Left().unwrap(), maven, rJobId);
+                        return self.Process( node.Left().unwrap(), maestro, rJobId);
                     }
                     let  	mut rXStash: Stash< U16> = Stash::New( rSz);
                     self._JobStash.Stk().Export( &rXStash.Stk(), rSz);
-                    let  	branchId = maven.ConstructEnqueueBulk( succId, rXStash.BuffOut());
-                    let  	succL = self.Process( node.Left().unwrap(), maven, branchId);
+                    let  	branchId = maestro.ConstructEnqueueBulk( succId, rXStash.BuffOut());
+                    let  	succL = self.Process( node.Left().unwrap(), maestro, branchId);
                     return succL;
                 } else {
                     assert!( false);
@@ -157,14 +157,14 @@ where
                 }
             }
         }
-        let  	succId = maven.CurSuccId();
+        let  	succId = maestro.CurSuccId();
         let  	mut jobStash = JobStash {
             _JobStash: Stash::New( 0),
         };
-        jobStash.Process( self, maven, succId);
+        jobStash.Process( self, maestro, succId);
         let  	jobArr = jobStash._JobStash.Stk().Arr();
         jobArr.USeg().Traverse( |i| {
-            maven.EnqueueJob( jobArr.MutAt( i));
+            maestro.EnqueueJob( jobArr.MutAt( i));
         });
         return;
     }

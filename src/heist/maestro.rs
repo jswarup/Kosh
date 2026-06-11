@@ -1,4 +1,4 @@
-//-- maven.rs -----------------------------------------------------------------------------------------------------------------------
+//-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::atelier::Atelier;
 use	crate::silo::buff::Buff;
 use	crate::silo::stash::Stash;
@@ -10,7 +10,7 @@ use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct Maven< 'a> 
+pub struct Maestro< 'a> 
 {
     _Index: U32,
     _Atelier: *const Atelier< 'a>,
@@ -22,20 +22,20 @@ pub struct Maven< 'a>
     _TempQueue: Stash< U16>,
 }
 
-unsafe impl< 'a> Send for Maven< 'a> {}
-unsafe impl< 'a> Sync for Maven< 'a> {}
+unsafe impl< 'a> Send for Maestro< 'a> {}
+unsafe impl< 'a> Sync for Maestro< 'a> {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> Maven< 'a> 
+impl< 'a> Maestro< 'a> 
 {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	New( mavenInd: U32) -> Self 
+    pub fn	New( maestroInd: U32) -> Self 
     {
         Self {
-            _Index: mavenInd,
+            _Index: maestroInd,
             _Atelier: std::ptr::null(),
             _SzProcessed: U32::_0,
             _JobCache: Stash::< U16>::New( U32( 256)),
@@ -63,7 +63,7 @@ impl< 'a> Maven< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	MavenIndex( &self) -> U32 
+    pub fn	MaestroIndex( &self) -> U32 
     {
         self._Index
     }
@@ -98,10 +98,10 @@ impl< 'a> Maven< 'a>
         self.ConstructJob(
             succId,
             move |worker: &dyn IWorker| {
-                let  	maven = Maven::FromWorker( worker);
+                let  	maestro = Maestro::FromWorker( worker);
                 let  	arr = buff.Arr();
                 arr.USeg().Traverse( |i| {
-                    maven.Atelier().EnqueueJob( maven._Index, arr.MutAt( i));
+                    maestro.Atelier().EnqueueJob( maestro._Index, arr.MutAt( i));
                 });
             },
         )
@@ -192,7 +192,7 @@ impl< 'a> Maven< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> IWorker for Maven< 'a> 
+impl< 'a> IWorker for Maestro< 'a> 
 {
     fn	PostJob( &self, job: WorkPtr< '_>) 
     {
