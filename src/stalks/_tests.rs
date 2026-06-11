@@ -1,6 +1,6 @@
 //-- _tests.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::silo::U32;
-use	crate::stalks::Atm;
+use	crate::stalks::{ Atm, BNode };
 use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -75,6 +75,22 @@ fn	TestUnsupportedOpPanic()
     let  	right = Box::new( Dummy) as Box< dyn crate::stalks::bud::Bud< Dummy>>;
     let  	_combined =
         <Dummy as crate::stalks::bud::BudOp>::Create( crate::stalks::bud::BudBinOp::LT, left, right);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn TestBNode()
+{
+    let leafOne = BNode::NewLeaf (1);
+    let leafTwo = BNode::NewLeaf (2);
+    let leafThree = BNode::NewLeaf (3);
+
+    let rightBranch = BNode::New(leafTwo, leafThree);
+    let root = BNode::New(leafOne, rightBranch);
+
+    println!("My tree has {} leaves.", root.CountLeaves());
+    println!("Tree structure: {:#?}", root);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
