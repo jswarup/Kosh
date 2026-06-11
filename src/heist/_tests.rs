@@ -97,10 +97,12 @@ fn	TestChoreBuds()
     );
     budTree.Print();
     let  	worker = Worker::New();
-    worker.PostChore( budTree.as_ref());
+    worker.Tender( aChore);
+    budTree.Post( &worker);
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
-    mainMaestro.PostChore( budTree.as_ref());
+    mainMaestro.Tender( aChore);
+    budTree.Post( mainMaestro);
     //let  	mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( chore));
     //mainMaestro.EnqueueJob( &mut jobId);
     atelier.DoLaunch();
@@ -116,8 +118,7 @@ fn	TestDoQSortWorkStealing()
     let  	quickSorter = arr.QuickSorter( |a, b| a > b);
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
-    let  	mut jobId = mainMaestro.ConstructJob( atelier.Terminal(), quickSorter);
-    mainMaestro.EnqueueJob( &mut jobId);
+    mainMaestro.Tender( quickSorter);
     atelier.DoLaunch();
     assert!( arr.SortSanity( |a, b| { a > b }));
     arr.USeg().Traverse( |i| {
@@ -134,7 +135,7 @@ fn	TestDoQSortSequential()
     let  	buff = Buff::Create( U32( 100), |_| U32( rand::random::<u32>() % 128));
     let  	quickSorter = buff.Arr().QuickSorter( |a, b| a > b);
     let  	worker = Worker::New();
-    quickSorter( &worker);
+    worker.Tender( quickSorter);
     assert!( buff.Arr().SortSanity( |a, b| { a > b }));
     buff.Arr().USeg().Traverse( |i| {
         print!( "{} ", buff.Arr().At( i));

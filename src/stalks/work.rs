@@ -2,7 +2,6 @@
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-use	crate::heist::Chore;
 pub trait IWork: Send + Sync {
     fn	DoWork( &mut self, worker: &dyn IWorker);
 }
@@ -127,7 +126,12 @@ pub trait IWorker {
     {
         false
     }
-    fn	PostChore( &self, chore: &dyn crate::stalks::Bud< Chore>);
+    fn	Tender< 'a, J: IntoWorkPtr<'a>>( &self, job: J)
+    where
+        Self: Sized
+    {
+        self.PostJob( job.IntoWorkPtr());
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -166,10 +170,6 @@ impl IWorker for Worker
     fn	IsSequential( &self) -> bool
     {
         true
-    }
-    fn	PostChore( &self, chore: &dyn crate::stalks::Bud< Chore>)
-    {
-        chore.Post( self);
     }
 }
 
