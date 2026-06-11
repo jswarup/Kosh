@@ -2,3 +2,4 @@
 .vscode/
 .idea/
 *.rs.bk
+tools/__pycache__/*
