@@ -1,7 +1,7 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::{
     heist::
-    { atelier::Atelier, maestro::Maestro },
+    { atelier::Atelier, maven::Maven },
     silo::{
         buff::Buff,
         arr::Arr,
@@ -18,27 +18,27 @@ fn	BuffBasicAtelierTest()
 {
     fn	trialJob( worker: &dyn IWorker)
     {
-        let  	maestro = Maestro::FromWorker( worker);
-        let  	mut jobId = maestro.CurSuccId();
-        jobId = maestro.ConstructJob(
+        let  	maven = Maven::FromWorker( worker);
+        let  	mut jobId = maven.CurSuccId();
+        jobId = maven.ConstructJob(
             jobId,
             |w1: &dyn IWorker| {
-                println!( "Trial1 {}", Maestro::FromWorker( w1).MavenIndex());
+                println!( "Trial1 {}", Maven::FromWorker( w1).MavenIndex());
             },
         );
-        jobId = maestro.ConstructJob(
+        jobId = maven.ConstructJob(
             jobId,
             |w2: &dyn IWorker| {
-                println!( "Trial2 {}", Maestro::FromWorker( w2).MavenIndex());
+                println!( "Trial2 {}", Maven::FromWorker( w2).MavenIndex());
             },
         );
-        maestro.EnqueueJob( &mut jobId);
-        println!( "Trial {}", maestro.MavenIndex());
+        maven.EnqueueJob( &mut jobId);
+        println!( "Trial {}", maven.MavenIndex());
     }
     let  	atelier = Atelier::New( U32( 4));
-    let  	mainMaestro = atelier.MainMaestro();
-    let  	mut jobId = mainMaestro.ConstructJob( U16( 0), trialJob);
-    mainMaestro.EnqueueJob( &mut jobId);
+    let  	mainMaven = atelier.MainMaven();
+    let  	mut jobId = mainMaven.ConstructJob( U16( 0), trialJob);
+    mainMaven.EnqueueJob( &mut jobId);
     atelier.DoLaunch();
 }
 
@@ -69,13 +69,17 @@ fn	TestThreadSharedInteger()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestMaestroBasicOps()
+fn	TestMavenBasicOps()
 {
     let  	atelier = Atelier::New( U32( 4));
-    atelier.Mavens().At( 2).SetCurSuccId( U16( 42));
-    let  	maestro = Maestro::New( &atelier, U32( 2));
-    assert_eq!( maestro.MavenIndex(), U32( 2));
-    assert_eq!( maestro.CurSuccId(), U16( 42));
+    {
+        let  	maven = atelier.Mavens().MutAt( 2);
+        maven.SetAtelier( &atelier);
+        maven.SetCurSuccId( U16( 42));
+    }
+    let  	maven = atelier.Mavens().At( 2);
+    assert_eq!( maven.MavenIndex(), U32( 2));
+    assert_eq!( maven.CurSuccId(), U16( 42));
 }
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -107,10 +111,10 @@ fn	TestChoreBuds()
     budTree.Post( &worker);
 
     let  	atelier = Atelier::New( U32( 4));
-    let  	mainMaestro = atelier.MainMaestro();
-    budTree.Post( &mainMaestro);
-    //let  	mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( chore));
-    //mainMaestro.EnqueueJob( &mut jobId);
+    let  	mainMaven = atelier.MainMaven();
+    budTree.Post( mainMaven);
+    //let  	mut jobId = mainMaven.ConstructJob( U16( 0), Box::new( chore));
+    //mainMaven.EnqueueJob( &mut jobId);
     atelier.DoLaunch();
 }
 
@@ -130,9 +134,9 @@ fn	TestDoQSort()
 
         let     quickSorter = buff.Arr().QuickSorter( |a, b| { a > b});
         let  	atelier = Atelier::New( U32( 4));
-        let  	mainMaestro = atelier.MainMaestro();
-        let  	mut jobId = mainMaestro.ConstructJob( atelier.Terminal(),  quickSorter);
-        mainMaestro.EnqueueJob( &mut jobId);
+        let  	mainMaven = atelier.MainMaven();
+        let  	mut jobId = mainMaven.ConstructJob( atelier.Terminal(),  quickSorter);
+        mainMaven.EnqueueJob( &mut jobId);
         atelier.DoLaunch();
     };
     sortWorkStealing(  &mut buff0);

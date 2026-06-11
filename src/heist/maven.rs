@@ -1,15 +1,19 @@
 //-- maven.rs -----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::atelier::Atelier;
+use	crate::silo::buff::Buff;
 use	crate::silo::stash::Stash;
 use	crate::silo::stk::Stk;
 use	crate::silo::uint::{ U16, U32 };
 use	crate::stalks::atm::{ Atm, Spinlock };
+use	crate::stalks::work::{ IWorker, IntoWorkPtr, WorkPtr };
 use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct Maven 
+pub struct Maven< 'a> 
 {
+    _Index: U32,
+    _Atelier: *const Atelier< 'a>,
     _SzProcessed: U32,
     _JobCache: Stash< U16>,
     _RunQueue: Stash< U16>,
@@ -18,16 +22,21 @@ pub struct Maven
     _TempQueue: Stash< U16>,
 }
 
+unsafe impl< 'a> Send for Maven< 'a> {}
+unsafe impl< 'a> Sync for Maven< 'a> {}
+
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl Maven 
+impl< 'a> Maven< 'a> 
 {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	New( _mavenInd: U32) -> Self 
+    pub fn	New( mavenInd: U32) -> Self 
     {
         Self {
+            _Index: mavenInd,
+            _Atelier: std::ptr::null(),
             _SzProcessed: U32::_0,
             _JobCache: Stash::< U16>::New( U32( 256)),
             _RunQueue: Stash::< U16>::New( U32( 1024)),
@@ -35,6 +44,67 @@ impl Maven
             _CurSuccId: Atm::New( U16::_0),
             _TempQueue: Stash::< U16>::New( U32( 64)),
         }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	SetAtelier( &mut self, atelier: *const Atelier< 'a>) 
+    {
+        self._Atelier = atelier;
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	Atelier( &self) -> &Atelier< 'a> 
+    {
+        assert!( !self._Atelier.is_null());
+        unsafe { &*self._Atelier }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	MavenIndex( &self) -> U32 
+    {
+        self._Index
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	FromWorker( worker: &dyn IWorker) -> &Self 
+    {
+        let  	ptr = worker.AsRaw();
+        assert!( !ptr.is_null());
+        unsafe { &*( ptr as *const Self) }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	ConstructJob( &self, succId: U16, job: impl IntoWorkPtr< 'a>) -> U16 
+    {
+        self.Atelier().ConstructJob( self._Index, succId, job.IntoWorkPtr())
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	EnqueueJob( &self, jobId: &mut U16) 
+    {
+        assert!( self.TempQueueStk().Push( jobId));
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	ConstructEnqueueBulk( &self, succId: U16, buff: Buff< U16>) -> U16 
+    {
+        self.ConstructJob(
+            succId,
+            move |worker: &dyn IWorker| {
+                let  	maven = Maven::FromWorker( worker);
+                let  	arr = buff.Arr();
+                arr.USeg().Traverse( |i| {
+                    maven.Atelier().EnqueueJob( maven._Index, arr.MutAt( i));
+                });
+            },
+        )
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -53,13 +123,13 @@ impl Maven
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	FlushTempQueue( &self, atelier: &Atelier< '_>, mavenIdx: U32) 
+    pub fn	FlushTempQueue( &self) 
     {
         let  	arr = self._TempQueue.Stk().Arr();
         arr.USeg().Traverse( |i| {
             let  	mut jobId = *arr.At( i);
             if jobId != 0 {
-                atelier.EnqueueJob( mavenIdx, &mut jobId);
+                self.Atelier().EnqueueJob( self._Index, &mut jobId);
             }
         });
         self._TempQueue.Clear();
@@ -81,7 +151,7 @@ impl Maven
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	EnqueueJob( &self, jobId: &mut U16) 
+    pub fn	EnqueueActiveJob( &self, jobId: &mut U16) 
     {
         let  	_guard = self._RunQlock.Lock();
         self._RunQueue.Stk().Push( jobId);
@@ -118,6 +188,22 @@ impl Maven
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a> IWorker for Maven< 'a> 
+{
+    fn	PostJob( &self, job: WorkPtr< '_>) 
+    {
+        let  	mut jobId = self.CurSuccId();
+        jobId = self.ConstructJob( jobId, job);
+        self.EnqueueJob( &mut jobId);
+    }
+    fn	AsRaw( &self) -> *const () 
+    {
+        self as *const Self as *const ()
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

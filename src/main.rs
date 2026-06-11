@@ -16,6 +16,10 @@ struct Args
     /// Enable verbose logging ( debug messages)
     #[arg( short, long)]
     verbose: bool,
+
+    /// Run unit tests (optionally specify a filter)
+    #[arg( long, num_args = 0..=1, default_missing_value = "all" )]
+    test: Option< String >,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -41,9 +45,31 @@ fn	setup_logging( verbose: bool) -> Result< ()>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+fn	run_tests( filter: &str) -> Result< ()>
+{
+    let  	mut cmd = std::process::Command::new( "cargo");
+    cmd.arg( "test");
+    if filter != "all" {
+        cmd.arg( filter);
+    }
+    cmd.stdout( std::process::Stdio::inherit());
+    cmd.stderr( std::process::Stdio::inherit());
+
+    let  	status = cmd.status().context( "Failed to run cargo test")?;
+    if !status.success() {
+        anyhow::bail!( "Tests failed with exit code: {:?}", status.code());
+    }
+    Ok( ())
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 fn	main() -> Result< ()>
 {
 	let  	args = Args::parse();                                      // Parse command line arguments
+    if let Some( ref filter) = args.test {
+        return run_tests( filter);
+    }
     setup_logging( args.verbose).context( "Setting up logging framework failed")?; // Initialize logging based on verbosity flag
  
 

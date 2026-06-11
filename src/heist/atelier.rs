@@ -1,5 +1,4 @@
 //-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::heist::maestro::Maestro;
 use	crate::heist::maven::Maven;
 use	crate::silo::{
     arr::Arr,
@@ -17,7 +16,7 @@ use	std::sync::atomic::Ordering;
 pub struct Atelier< 'a>
 {
     _SzSchedJob: Atm< U32>,                                            // Count of cumulative jobs in flight
-    _Mavens: Buff< Maven>,
+    _Mavens: Buff< Maven< 'a>>,
     _SzPreds: Buff< Atm< U16>>,                                        // Count of predessors for job at the jobId
     _SuccIds: Buff< U16>,
     _FreeJobLock: Spinlock,
@@ -52,9 +51,11 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	MainMaestro( &self) -> Maestro< '_> 
+    pub fn	MainMaven( &self) -> &Maven< 'a> 
     {
-        Maestro::New( self, U32( 0))
+        let  	maven = self._Mavens.Arr().MutAt( U32( 0));
+        maven.SetAtelier( self);
+        maven
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -66,7 +67,7 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Mavens( &self) -> Arr< 'a, Maven>
+    pub fn	Mavens( &self) -> Arr< 'a, Maven< 'a>>
     {
         self._Mavens.Arr()
     }
@@ -150,7 +151,7 @@ impl< 'a> Atelier< 'a>
     {
         self.IncrSzSchedJob( U32( 1));
         let  	maven = self._Mavens.Arr().At( mavenIdx);
-        maven.EnqueueJob( jobId);
+        maven.EnqueueActiveJob( jobId);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -179,17 +180,17 @@ impl< 'a> Atelier< 'a>
     pub fn	ExecuteLoop( &self, mavenIdx: U32)
     {
         let  	maven = self._Mavens.Arr().MutAt( mavenIdx);
+        maven.SetAtelier( self );
         let  	mut jobId = U16( 0);
         let  	mut stealSeed = mavenIdx.AsU32();
         while self.SzSchedJob() != 0 {
             while jobId != 0 {
                 maven.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
-                let  	maestro = Maestro::New( self, mavenIdx);
                 let  	job = *self._JobBuff.Arr().At( jobId);
                 if !job.is_null() {
-                    ( job.func)( job.data, &maestro);   // Run job
+                    ( job.func)( job.data, maven);   // Run job
                     self._JobBuff.Arr().SetAt( jobId, &WorkPtr::null());
-                    maven.FlushTempQueue( self, mavenIdx);
+                    maven.FlushTempQueue();
                 }
                 maven.IncrSzProcessed( 1);
                 let  	_res = self.FreeJob( mavenIdx, jobId);
@@ -221,7 +222,11 @@ impl< 'a> Atelier< 'a>
 
     pub fn	DoLaunch( &self) 
     {
-        self._Mavens.Arr().At( U32( 0)).FlushTempQueue( self, U32( 0));
+        {
+            let  	maven0 = self._Mavens.Arr().MutAt( U32( 0));
+            maven0.SetAtelier( self );
+            maven0.FlushTempQueue();
+        }
         let  	mavens = self._Mavens.Arr();
         std::thread::scope( |s| {
             for mavenIdx in 1..mavens.len() {
