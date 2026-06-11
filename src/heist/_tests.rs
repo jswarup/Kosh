@@ -5,7 +5,7 @@ use	crate::{
     silo::
     { Buff, U16, U32 },
     stalks::
-    { IWorker, Worker },
+    { BNodeTree, IWorker, Worker },
 };
 use	std::sync::{ Arc, Mutex };
 use	std::thread;
@@ -87,6 +87,16 @@ fn	TestChoreBuds()
     let  	cChore = Chore::New( |_m| {
         print!( "{} ", 40);
     });
+    let  	choreTree = BNodeTree!( 
+        Chore,
+        ( cChore
+            < ( bChore
+                | aChore
+                | Chore::New( |_m| {
+                    print!( "{} ", 50);
+                })))
+    );
+    println!( "ChoreTree: {:#?}", choreTree);
     let  	budTree = crate::ChoreTree!( 
         ( cChore
             < ( bChore
