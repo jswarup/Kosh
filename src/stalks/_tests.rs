@@ -82,7 +82,7 @@ fn	TestUnsupportedOpPanic()
 #[test]
 fn	TestBNode()
 {
-    let  	rootFromLiterals = BNodeTree!( i32, 10 < ( 20 | 30));
+    let  	rootFromLiterals = BNodeTree!( U32, 10 < ( 20 | 30));
     assert_eq!( rootFromLiterals.CountLeaves(), 3);
     println!( "Tree structure: {:#?}", rootFromLiterals);
 }
