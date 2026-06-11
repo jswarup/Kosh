@@ -189,6 +189,7 @@ impl< 'a> Atelier< 'a>
                 if !job.is_null() {
                     ( job.func)( job.data, &maestro);   // Run job
                     self._JobBuff.Arr().SetAt( jobId, &WorkPtr::null());
+                    maven.FlushTempQueue( self, mavenIdx);
                 }
                 maven.IncrSzProcessed( 1);
                 let  	_res = self.FreeJob( mavenIdx, jobId);
@@ -218,8 +219,9 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	DoLaunch( &self)
+    pub fn	DoLaunch( &self) 
     {
+        self._Mavens.Arr().At( U32( 0)).FlushTempQueue( self, U32( 0));
         let  	mavens = self._Mavens.Arr();
         std::thread::scope( |s| {
             for mavenIdx in 1..mavens.len() {

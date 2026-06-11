@@ -39,7 +39,6 @@ fn	BuffBasicAtelierTest()
     let  	mainMaestro = atelier.MainMaestro();
     let  	mut jobId = mainMaestro.ConstructJob( U16( 0), trialJob);
     mainMaestro.EnqueueJob( &mut jobId);
-    drop( mainMaestro);
     atelier.DoLaunch();
 }
 
@@ -112,7 +111,6 @@ fn	TestChoreBuds()
     budTree.Post( &mainMaestro);
     //let  	mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( chore));
     //mainMaestro.EnqueueJob( &mut jobId);
-    drop( mainMaestro);
     atelier.DoLaunch();
 }
 
@@ -132,11 +130,9 @@ fn	TestDoQSort()
 
         let     quickSorter = buff.Arr().QuickSorter( |a, b| { a > b});
         let  	atelier = Atelier::New( U32( 4));
-        {
-            let  	mainMaestro = atelier.MainMaestro();
-            let  	mut jobId = mainMaestro.ConstructJob( atelier.Terminal(),  quickSorter);
-            mainMaestro.EnqueueJob( &mut jobId);
-        }
+        let  	mainMaestro = atelier.MainMaestro();
+        let  	mut jobId = mainMaestro.ConstructJob( atelier.Terminal(),  quickSorter);
+        mainMaestro.EnqueueJob( &mut jobId);
         atelier.DoLaunch();
     };
     sortWorkStealing(  &mut buff0);

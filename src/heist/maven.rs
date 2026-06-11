@@ -1,4 +1,5 @@
 //-- maven.rs -----------------------------------------------------------------------------------------------------------------------
+use	crate::heist::atelier::Atelier;
 use	crate::silo::stash::Stash;
 use	crate::silo::stk::Stk;
 use	crate::silo::uint::{ U16, U32 };
@@ -14,6 +15,7 @@ pub struct Maven
     _RunQueue: Stash< U16>,
     _RunQlock: Spinlock,
     _CurSuccId: Atm< U16>,
+    _TempQueue: Stash< U16>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -31,6 +33,7 @@ impl Maven
             _RunQueue: Stash::< U16>::New( U32( 1024)),
             _RunQlock: Spinlock::New(),
             _CurSuccId: Atm::New( U16::_0),
+            _TempQueue: Stash::< U16>::New( U32( 64)),
         }
     }
 
@@ -39,6 +42,27 @@ impl Maven
     pub fn	JobCacheStk( &self) -> Stk< '_, '_, U16> 
     {
         self._JobCache.Stk()
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	TempQueueStk( &self) -> Stk< '_, '_, U16> 
+    {
+        self._TempQueue.Stk()
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	FlushTempQueue( &self, atelier: &Atelier< '_>, mavenIdx: U32) 
+    {
+        let  	arr = self._TempQueue.Stk().Arr();
+        arr.USeg().Traverse( |i| {
+            let  	mut jobId = *arr.At( i);
+            if jobId != 0 {
+                atelier.EnqueueJob( mavenIdx, &mut jobId);
+            }
+        });
+        self._TempQueue.Clear();
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

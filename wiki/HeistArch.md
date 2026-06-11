@@ -79,7 +79,6 @@ jobId = meister.ConstructJob(
 
 // Enqueue starting job (Job 2)
 meister.EnqueueJob(&mut jobId);
-drop(meister); // Must drop meister before launching execution as the cache needs flush.
 
 // Launch execution
 atelier.DoLaunch();
@@ -104,7 +103,6 @@ let atelier = Atelier::New(U32(4));
 let meister = atelier.MainMaestro();
 
 budTree.Post(&meister);
-drop(meister);
 
 atelier.DoLaunch(); // Will print C A B (or C B A)
 ```
@@ -121,11 +119,9 @@ let mut buff = Buff::Create(U32(100), |_| U32(rand::random::<u32>() % 128));
 let quickSorter = buff.Arr().QuickSorter(|a, b| a > b);
 
 let atelier = Atelier::New(U32(4)); // Spawns 4 worker threads
-{
-    let meister = atelier.MainMaestro();
-    let mut jobId = meister.ConstructJob(atelier.Terminal(), quickSorter);
-    meister.EnqueueJob(&mut jobId);
-}
+let meister = atelier.MainMaestro();
+let mut jobId = meister.ConstructJob(atelier.Terminal(), quickSorter);
+meister.EnqueueJob(&mut jobId);
 atelier.DoLaunch(); // Runs quicksort in parallel
 ```
 

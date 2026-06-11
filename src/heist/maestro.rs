@@ -1,7 +1,7 @@
 //-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::atelier::Atelier;
 use	crate::silo::uint::{ U16, U32 };
-use	crate::silo::{ buff::Buff, stash::Stash };
+use	crate::silo::buff::Buff;
 use	crate::stalks::work::{ IWorker, WorkPtr, IntoWorkPtr };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -10,7 +10,6 @@ pub struct Maestro< 'a>
 {
     _Atelier: &'a Atelier< 'a>,
     _MavenIndex: U32,
-    _Stash: Stash< U16>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -25,7 +24,6 @@ impl< 'a> Maestro< 'a>
         Self {
             _Atelier: atelier,
             _MavenIndex: mavenIdx,
-            _Stash: Stash::New( U32( 64)),
         }
     }
 
@@ -64,7 +62,8 @@ impl< 'a> Maestro< 'a>
 
     pub fn	EnqueueJob( &self, jobId: &mut U16) 
     {
-        assert!( self._Stash.Stk().Push( jobId));
+        let  	maven = self._Atelier.Mavens().At( self._MavenIndex);
+        assert!( maven.TempQueueStk().Push( jobId));
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -100,22 +99,6 @@ impl< 'a> IWorker for Maestro< 'a>
     fn	AsRaw( &self) -> *const () 
     {
         self as *const Self as *const ()
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< 'a> Drop for Maestro< 'a> 
-{
-    fn	drop( &mut self) 
-    {
-        let  	arr = self._Stash.Stk().Arr();
-        arr.USeg().Traverse( |i| {
-            let  	mut jobId = *arr.At( i);
-            if jobId != 0 {
-                self._Atelier.EnqueueJob( self._MavenIndex, &mut jobId);
-            }
-        });
     }
 }
 
