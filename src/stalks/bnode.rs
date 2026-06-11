@@ -3,7 +3,7 @@
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Debug, Clone, Copy, PartialEq, Eq)]
-pub( crate) enum BNodeBinOp {
+pub enum BNodeBinOp {
     LT,
     BOR,
     SHL,
@@ -11,7 +11,7 @@ pub( crate) enum BNodeBinOp {
 }
 impl BNodeBinOp
 {
-    pub( crate) fn	as_str( &self) -> &'static str {
+    pub fn	as_str( &self) -> &'static str {
         match self {
             BNodeBinOp::LT => "<",
             BNodeBinOp::BOR => "|",
@@ -21,7 +21,7 @@ impl BNodeBinOp
     }
 }
 #[derive( Debug, Clone, Copy, PartialEq, Eq)]
-pub( crate) enum BNodeUniOp {
+pub enum BNodeUniOp {
     STAR,
     PLUS,
     MINUS,
@@ -29,13 +29,32 @@ pub( crate) enum BNodeUniOp {
 }
 impl BNodeUniOp
 {
-    pub( crate) fn	as_str( &self) -> &'static str {
+    pub fn	as_str( &self) -> &'static str {
         match self {
             BNodeUniOp::STAR => "*",
             BNodeUniOp::PLUS => "+",
             BNodeUniOp::MINUS => "-",
             BNodeUniOp::BANG => "!",
         }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait IBNode< T> {
+    fn	Val( &self) -> Option< &T>;
+    
+    fn	Left( &self) -> Option< &dyn IBNode< T>>
+    {
+        None
+    }
+    fn	Right( &self) -> Option< &dyn IBNode< T>>
+    {
+        None
+    }
+    fn	Op( &self) -> &str
+    {
+        ""
     }
 }
 
@@ -72,11 +91,42 @@ macro_rules! BNodeTree {
                             _Right: Box::new( right),
                         }
                     }
-                    pub( crate) fn	CountLeaves( &self) -> usize
+                    pub fn	CountLeaves( &self) -> usize
                     {
                         match self {
                             [<$Arg BNode>]::Leaf( _) => 1,
                             [<$Arg BNode>]::Node { _Left, _Right, .. } => _Left.CountLeaves() + _Right.CountLeaves(),
+                        }
+                    }
+                }
+                impl $crate::stalks::bnode::IBNode< $Arg> for [<$Arg BNode>]
+                {
+                    fn	Val( &self) -> Option< &$Arg>
+                    {
+                        match self {
+                            [<$Arg BNode>]::Leaf( value) => Some( value),
+                            _ => None,
+                        }
+                    }
+                    fn	Left( &self) -> Option< &dyn $crate::stalks::bnode::IBNode< $Arg>>
+                    {
+                        match self {
+                            [<$Arg BNode>]::Leaf( _) => None,
+                            [<$Arg BNode>]::Node { _Left, .. } => Some( &**_Left),
+                        }
+                    }
+                    fn	Right( &self) -> Option< &dyn $crate::stalks::bnode::IBNode< $Arg>>
+                    {
+                        match self {
+                            [<$Arg BNode>]::Leaf( _) => None,
+                            [<$Arg BNode>]::Node { _Right, .. } => Some( &**_Right),
+                        }
+                    }
+                    fn	Op( &self) -> &str
+                    {
+                        match self {
+                            [<$Arg BNode>]::Leaf( _) => "",
+                            [<$Arg BNode>]::Node { _BinOp, .. } => _BinOp.as_str(),
                         }
                     }
                 }

@@ -82,9 +82,21 @@ fn	TestUnsupportedOpPanic()
 #[test]
 fn	TestBNode()
 {
+    use crate::stalks::bnode::IBNode;
     let  	rootFromLiterals = BNodeTree!( U32, 10 < ( 20 | 30));
     assert_eq!( rootFromLiterals.CountLeaves(), 3);
     println!( "Tree structure: {:#?}", rootFromLiterals);
+
+    let root: &dyn IBNode<U32> = &rootFromLiterals;
+    assert_eq!( root.Val(), None);
+    assert_eq!( root.Op(), "<");
+    assert!( root.Left().is_some());
+    assert_eq!( root.Left().unwrap().Val(), Some(&U32(10)));
+    assert_eq!( root.Left().unwrap().Op(), "");
+    assert!( root.Right().is_some());
+    assert_eq!( root.Right().unwrap().Op(), "|");
+    assert_eq!( root.Right().unwrap().Left().unwrap().Val(), Some(&U32(20)));
+    assert_eq!( root.Right().unwrap().Right().unwrap().Val(), Some(&U32(30)));
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
