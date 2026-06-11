@@ -45,38 +45,40 @@ impl BNodeUniOp
 macro_rules! BNodeTree {
     ( $Arg:ident, $( $inner:tt )+ ) => {
         {
-            #[derive( Debug, PartialEq, Clone)]
-            enum ArgBNode {
-                Leaf( $Arg),
-                Node {
-                    _BinOp: $crate::stalks::bnode::BNodeBinOp,
-                    _Left: Box< ArgBNode>,
-                    _Right: Box< ArgBNode>,
-                }
-            }
-            impl ArgBNode
-            {
-                fn	New( value: $Arg) -> Self
-                {
-                    ArgBNode::Leaf( value)
-                }
-                fn	NewBranch( op: $crate::stalks::bnode::BNodeBinOp, left: Self, right: Self) -> Self
-                {
-                    ArgBNode::Node {
-                        _BinOp: op,
-                        _Left: Box::new( left),
-                        _Right: Box::new( right),
+            paste::paste! {
+                #[derive( Debug, PartialEq, Clone)]
+                enum [<$Arg BNode>] {
+                    Leaf( $Arg),
+                    Node {
+                        _BinOp: $crate::stalks::bnode::BNodeBinOp,
+                        _Left: Box< [<$Arg BNode>]>,
+                        _Right: Box< [<$Arg BNode>]>,
                     }
                 }
-                pub( crate) fn	CountLeaves( &self) -> usize
+                impl [<$Arg BNode>]
                 {
-                    match self {
-                        ArgBNode::Leaf( _) => 1,
-                        ArgBNode::Node { _Left, _Right, .. } => _Left.CountLeaves() + _Right.CountLeaves(),
+                    fn	New( value: $Arg) -> Self
+                    {
+                        [<$Arg BNode>]::Leaf( value)
+                    }
+                    fn	NewBranch( op: $crate::stalks::bnode::BNodeBinOp, left: Self, right: Self) -> Self
+                    {
+                        [<$Arg BNode>]::Node {
+                            _BinOp: op,
+                            _Left: Box::new( left),
+                            _Right: Box::new( right),
+                        }
+                    }
+                    pub( crate) fn	CountLeaves( &self) -> usize
+                    {
+                        match self {
+                            [<$Arg BNode>]::Leaf( _) => 1,
+                            [<$Arg BNode>]::Node { _Left, _Right, .. } => _Left.CountLeaves() + _Right.CountLeaves(),
+                        }
                     }
                 }
+                $crate::BNodeTree!( @cb [ $crate::BNodeTree ], [<$Arg BNode>], $( $inner )+ )
             }
-            $crate::BNodeTree!( @cb [ $crate::BNodeTree ], ArgBNode, $( $inner )+ )
         }
     };
     ( @cb [ $( $cb:tt)* ], $Node:ident, ( $( $inner:tt)+ ) ) => { $( $cb)* !( @cb [ $( $cb)* ], $Node, $( $inner)+ ) };
