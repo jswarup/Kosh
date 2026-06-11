@@ -3,7 +3,7 @@
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BNodeBinOp {
+pub( crate) enum BNodeBinOp {
     LT,
     BOR,
     SHL,
@@ -11,7 +11,7 @@ pub enum BNodeBinOp {
 }
 impl BNodeBinOp
 {
-    pub fn	as_str( &self) -> &'static str {
+    pub( crate) fn	as_str( &self) -> &'static str {
         match self {
             BNodeBinOp::LT => "<",
             BNodeBinOp::BOR => "|",
@@ -21,7 +21,7 @@ impl BNodeBinOp
     }
 }
 #[derive( Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BNodeUniOp {
+pub( crate) enum BNodeUniOp {
     STAR,
     PLUS,
     MINUS,
@@ -29,7 +29,7 @@ pub enum BNodeUniOp {
 }
 impl BNodeUniOp
 {
-    pub fn	as_str( &self) -> &'static str {
+    pub( crate) fn	as_str( &self) -> &'static str {
         match self {
             BNodeUniOp::STAR => "*",
             BNodeUniOp::PLUS => "+",
@@ -42,7 +42,7 @@ impl BNodeUniOp
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Debug, PartialEq, Clone)]
-pub enum BNode< T> {
+pub( crate) enum BNode< T> {
     Leaf( T),
     Node {
         _BinOp: BNodeBinOp,
@@ -58,14 +58,14 @@ impl< T> BNode< T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	New( value: T) -> Self
+    pub( crate) fn	New( value: T) -> Self
     {
         BNode::Leaf( value)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	NewBranch( op: BNodeBinOp, _Left: BNode< T>, _Right: BNode< T>) -> Self
+    pub( crate) fn	NewBranch( op: BNodeBinOp, _Left: BNode< T>, _Right: BNode< T>) -> Self
     {
         BNode::Node {
             _BinOp: op,
@@ -76,7 +76,7 @@ impl< T> BNode< T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	CountLeaves( &self) -> usize
+    pub( crate) fn	CountLeaves( &self) -> usize
     {
         match self {
             BNode::Leaf( _) => 1,
@@ -101,18 +101,18 @@ macro_rules! BNodeTree {
         }
     };
     ( @cb [ $( $cb:tt)* ], ( $( $inner:tt)+ ) ) => { $( $cb)* !( @cb [ $( $cb)* ], $( $inner)+ ) };
-    ( @cb [ $( $cb:tt)* ], ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $crate::stalks::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHL, $( $cb)* !( @cb [ $( $cb)* ], $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $crate::stalks::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHR, $( $cb)* !( @cb [ $( $cb)* ], $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $crate::stalks::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::LT,  $( $cb)* !( @cb [ $( $cb)* ], $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $crate::stalks::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::BOR, $( $cb)* !( @cb [ $( $cb)* ], $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $l:ident << $( $r:tt)+ ) => { $crate::stalks::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHL, $crate::BNodeTree!( @wrap $l ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $l:ident >> $( $r:tt)+ ) => { $crate::stalks::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHR, $crate::BNodeTree!( @wrap $l ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $l:ident <  $( $r:tt)+ ) => { $crate::stalks::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::LT,  $crate::BNodeTree!( @wrap $l ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $l:ident |  $( $r:tt)+ ) => { $crate::stalks::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::BOR, $crate::BNodeTree!( @wrap $l ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $l:literal << $( $r:tt)+ ) => { $crate::stalks::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHL, $crate::BNodeTree!( @wrap $l ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $l:literal >> $( $r:tt)+ ) => { $crate::stalks::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHR, $crate::BNodeTree!( @wrap $l ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $l:literal <  $( $r:tt)+ ) => { $crate::stalks::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::LT,  $crate::BNodeTree!( @wrap $l ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $l:literal |  $( $r:tt)+ ) => { $crate::stalks::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::BOR, $crate::BNodeTree!( @wrap $l ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $crate::stalks::bnode::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHL, $( $cb)* !( @cb [ $( $cb)* ], $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $crate::stalks::bnode::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHR, $( $cb)* !( @cb [ $( $cb)* ], $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $crate::stalks::bnode::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::LT,  $( $cb)* !( @cb [ $( $cb)* ], $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $crate::stalks::bnode::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::BOR, $( $cb)* !( @cb [ $( $cb)* ], $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $l:ident << $( $r:tt)+ ) => { $crate::stalks::bnode::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHL, $crate::BNodeTree!( @wrap $l ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $l:ident >> $( $r:tt)+ ) => { $crate::stalks::bnode::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHR, $crate::BNodeTree!( @wrap $l ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $l:ident <  $( $r:tt)+ ) => { $crate::stalks::bnode::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::LT,  $crate::BNodeTree!( @wrap $l ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $l:ident |  $( $r:tt)+ ) => { $crate::stalks::bnode::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::BOR, $crate::BNodeTree!( @wrap $l ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $l:literal << $( $r:tt)+ ) => { $crate::stalks::bnode::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHL, $crate::BNodeTree!( @wrap $l ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $l:literal >> $( $r:tt)+ ) => { $crate::stalks::bnode::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHR, $crate::BNodeTree!( @wrap $l ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $l:literal <  $( $r:tt)+ ) => { $crate::stalks::bnode::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::LT,  $crate::BNodeTree!( @wrap $l ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $l:literal |  $( $r:tt)+ ) => { $crate::stalks::bnode::BNode::NewBranch( $crate::stalks::bnode::BNodeBinOp::BOR, $crate::BNodeTree!( @wrap $l ), $( $cb)* !( @cb [ $( $cb)* ], $( $r)+ ) ) };
     ( @cb [ $( $cb:tt)* ], $leaf:expr ) => { $crate::BNodeTree!( @wrap $leaf ) };
     ( $( $inner:tt )+ ) => {
         $crate::BNodeTree!( @cb [ $crate::BNodeTree ], $( $inner )+ )
@@ -122,16 +122,16 @@ pub use	crate::BNodeTree;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct BNodeWrap< T>( pub T);
+pub( crate) struct BNodeWrap< T>( pub( crate) T);
 impl< T> BNodeWrap< BNode< T>>
 {
     #[inline]
-    pub fn	IntoBNode( self) -> BNode< T>
+    pub( crate) fn	IntoBNode( self) -> BNode< T>
     {
         self.0
     }
 }
-pub trait IntoBNodeFallback< T> {
+pub( crate) trait IntoBNodeFallback< T> {
     fn	IntoBNode( self) -> BNode< T>;
 }
 impl< T> IntoBNodeFallback< T> for BNodeWrap< T>
