@@ -26,6 +26,6 @@ All Rust source files (`.rs`) in this project must adhere to the following forma
 
 ## 7. Use Statements
 - **Indentation**: The `use` keyword must be immediately followed by a tab character (`\t`) instead of a space.
-- **Braces**: The outer-most opening brace `{` following `use` must remain on the same line as the `use` path/keyword. Nested braces must have a newline before their opening brace `{` only if they do not contain any sub-braces inside them.
+- **Braces**: The outer-most opening brace `{` following `use` must remain on the same line as the `use` path/keyword.  
 
 

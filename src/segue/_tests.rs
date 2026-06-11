@@ -21,9 +21,12 @@ fn	TestShardBuds()
         print!( "{} ", 40);
     });
     let  	budTree = crate::ShardTree!( 
-        ( cShard < ( bShard | aShard | ( |_m| {
-            print!( "{} ", 50);
-        }) ))
+        ( cShard
+            < ( bShard
+                | aShard
+                | ( |_m| {
+                    print!( "{} ", 50);
+                })))
     );
     budTree.Print();
     let  	atelier = Atelier::New( U32( 4));

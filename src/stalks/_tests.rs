@@ -1,3 +1,4 @@
+//-- _tests.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::silo::U32;
 use	crate::stalks::Atm;
 use	std::sync::atomic::Ordering;
@@ -72,7 +73,8 @@ fn	TestUnsupportedOpPanic()
     }
     let  	left = Box::new( Dummy) as Box< dyn crate::stalks::bud::Bud< Dummy>>;
     let  	right = Box::new( Dummy) as Box< dyn crate::stalks::bud::Bud< Dummy>>;
-    let  	_combined = < Dummy as crate::stalks::bud::BudOp>::Create( crate::stalks::bud::BudBinOp::LT, left, right);
+    let  	_combined =
+        <Dummy as crate::stalks::bud::BudOp>::Create( crate::stalks::bud::BudBinOp::LT, left, right);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::{
     heist::
-    { Atelier, Maestro, Chore },
+    { Atelier, Chore, Maestro },
     silo::
     { Buff, U16, U32 },
     stalks::
@@ -97,10 +97,10 @@ fn	TestChoreBuds()
     );
     budTree.Print();
     let  	worker = Worker::New();
-    budTree.Post( &worker);
+    worker.PostChore( budTree.as_ref());
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
-    budTree.Post( mainMaestro);
+    mainMaestro.PostChore( budTree.as_ref());
     //let  	mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( chore));
     //mainMaestro.EnqueueJob( &mut jobId);
     atelier.DoLaunch();
