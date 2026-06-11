@@ -2,8 +2,7 @@
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
 use	anyhow::{ Context, Result };
 use	clap::Parser;
-use	colored::Colorize;
-use	tracing::{ debug, info, level_filters::LevelFilter };
+use	tracing::{ debug, level_filters::LevelFilter };
 use	tracing_subscriber::EnvFilter;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -16,17 +15,19 @@ struct Args
     /// Enable verbose logging ( debug messages)
     #[arg( short, long)]
     verbose: bool,
-
     /// Run unit tests (optionally specify a filter)
     #[arg( long, num_args = 0..=1, default_missing_value = "all" )]
-    test: Option< String >,
+    test: Option< String>,
+    /// Enable output prints from tests (nocapture)
+    #[arg( short = 'g', long)]
+    nocapture: bool,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 fn	setup_logging( verbose: bool) -> Result< ()>
 {
-	let  	filter = if verbose {
+    let  	filter = if verbose {
         EnvFilter::builder()
             .with_default_directive( LevelFilter::DEBUG.into())
             .from_env_lossy()
@@ -45,16 +46,19 @@ fn	setup_logging( verbose: bool) -> Result< ()>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-fn	run_tests( filter: &str) -> Result< ()>
+fn	run_tests( filter: &str, nocapture: bool) -> Result< ()>
 {
     let  	mut cmd = std::process::Command::new( "cargo");
     cmd.arg( "test");
     if filter != "all" {
         cmd.arg( filter);
     }
+    if nocapture {
+        cmd.arg( "--");
+        cmd.arg( "--nocapture");
+    }
     cmd.stdout( std::process::Stdio::inherit());
     cmd.stderr( std::process::Stdio::inherit());
-
     let  	status = cmd.status().context( "Failed to run cargo test")?;
     if !status.success() {
         anyhow::bail!( "Tests failed with exit code: {:?}", status.code());
@@ -66,13 +70,11 @@ fn	run_tests( filter: &str) -> Result< ()>
 
 fn	main() -> Result< ()>
 {
-	let  	args = Args::parse();                                      // Parse command line arguments
-    if let Some( ref filter) = args.test {
-        return run_tests( filter);
+    let  	args = Args::parse();                                      // Parse command line arguments
+    if let  	Some( ref filter) = args.test {
+        return run_tests( filter, args.nocapture);
     }
     setup_logging( args.verbose).context( "Setting up logging framework failed")?; // Initialize logging based on verbosity flag
- 
-
     debug!( "Kosh CLI execution finished successfully");
     Ok( ())
 }

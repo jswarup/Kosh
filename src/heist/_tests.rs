@@ -4,11 +4,11 @@ use	crate::{
     { atelier::Atelier, maestro::Maestro },
     silo::{
         buff::Buff,
-        arr::Arr,
         uint::
         { U16, U32 },
     },
-    stalks::work::{ IWorker, Worker},
+    stalks::work::
+    { IWorker, Worker },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -20,18 +20,12 @@ fn	BuffBasicAtelierTest()
     {
         let  	maestro = Maestro::FromWorker( worker);
         let  	mut jobId = maestro.CurSuccId();
-        jobId = maestro.ConstructJob(
-            jobId,
-            |w1: &dyn IWorker| {
-                println!( "Trial1 {}", Maestro::FromWorker( w1).MaestroIndex());
-            },
-        );
-        jobId = maestro.ConstructJob(
-            jobId,
-            |w2: &dyn IWorker| {
-                println!( "Trial2 {}", Maestro::FromWorker( w2).MaestroIndex());
-            },
-        );
+        jobId = maestro.ConstructJob( jobId, |w1: &dyn IWorker| {
+            println!( "Trial1 {}", Maestro::FromWorker( w1).MaestroIndex());
+        });
+        jobId = maestro.ConstructJob( jobId, |w2: &dyn IWorker| {
+            println!( "Trial2 {}", Maestro::FromWorker( w2).MaestroIndex());
+        });
         maestro.EnqueueJob( &mut jobId);
         println!( "Trial {}", maestro.MaestroIndex());
     }
@@ -60,7 +54,7 @@ fn	TestThreadSharedInteger()
         });
         handles.Push( handle);
     }
-    while let Some( handle) = handles.Pop() {
+    while let  	Some( handle) = handles.Pop() {
         handle.join().unwrap();
     }
     assert_eq!( *shared.lock().unwrap(), 4);
@@ -81,6 +75,7 @@ fn	TestMaestroBasicOps()
     assert_eq!( maestro.MaestroIndex(), U32( 2));
     assert_eq!( maestro.CurSuccId(), U16( 42));
 }
+
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
@@ -96,7 +91,7 @@ fn	TestChoreBuds()
     let  	cChore = Chore::New( |_m| {
         print!( "{} ", 40);
     });
-    let  	budTree = crate::ChoreTree!(
+    let  	budTree = crate::ChoreTree!( 
         ( cChore
             < ( bChore
                 | aChore
@@ -105,11 +100,8 @@ fn	TestChoreBuds()
                 })))
     );
     budTree.Print();
-
-    let     worker = Worker::New();
-
+    let  	worker = Worker::New();
     budTree.Post( &worker);
-
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
     budTree.Post( mainMaestro);
@@ -118,42 +110,40 @@ fn	TestChoreBuds()
     atelier.DoLaunch();
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestDoQSortWorkStealing()
+{
+    let  	buff = Buff::Create( U32( 100), |_| U32( rand::random::<u32>() % 128));
+    let  	arr = buff.Arr();
+    let  	quickSorter = arr.QuickSorter( |a, b| a > b);
+    let  	atelier = Atelier::New( U32( 4));
+    let  	mainMaestro = atelier.MainMaestro();
+    let  	mut jobId = mainMaestro.ConstructJob( atelier.Terminal(), quickSorter);
+    mainMaestro.EnqueueJob( &mut jobId);
+    atelier.DoLaunch();
+    assert!( arr.SortSanity( |a, b| { a > b }));
+    arr.USeg().Traverse( |i| {
+        print!( "{} ", arr.At( i));
+    });
+    println!();
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestDoQSort()
+fn	TestDoQSortSequential()
 {
-    let printArr = | arr: Arr< '_, U32>| {
-        arr.USeg().Traverse( |i| { print!( "{} ", arr.At( i)); }); println!();
-    };
-
-    let mut     buff0 = Buff::Create( U32( 100), |_| U32( rand::random::< u32>() % 128));
-    let mut     buff1 = buff0.clone();
-    let sortWorkStealing = |buff: &mut Buff< U32>| {
-
-        let     quickSorter = buff.Arr().QuickSorter( |a, b| { a > b});
-        let  	atelier = Atelier::New( U32( 4));
-        let  	mainMaestro = atelier.MainMaestro();
-        let  	mut jobId = mainMaestro.ConstructJob( atelier.Terminal(),  quickSorter);
-        mainMaestro.EnqueueJob( &mut jobId);
-        atelier.DoLaunch();
-    };
-    sortWorkStealing(  &mut buff0);
-    assert!( buff0.Arr().SortSanity(|a, b| { a > b} ));
-    printArr( buff0.Arr());
-
-    let sortSequential = |buff: &mut Buff< U32>| {
-        print!( "Sequential[ ");
-        let     quickSorter = buff.Arr().QuickSorter( |a, b| { a > b});
-        let     worker = Worker::New();
-        quickSorter( &worker);
-        println!( "]")
-    };
-    sortSequential( &mut buff1);
-    assert!( buff1.Arr().SortSanity(|a, b| { a > b} ));
-    printArr( buff1.Arr());
-    return;
+    let  	buff = Buff::Create( U32( 100), |_| U32( rand::random::<u32>() % 128));
+    let  	quickSorter = buff.Arr().QuickSorter( |a, b| a > b);
+    let  	worker = Worker::New();
+    quickSorter( &worker);
+    assert!( buff.Arr().SortSanity( |a, b| { a > b }));
+    buff.Arr().USeg().Traverse( |i| {
+        print!( "{} ", buff.Arr().At( i));
+    });
+    println!();
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
