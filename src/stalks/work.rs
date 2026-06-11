@@ -128,8 +128,7 @@ pub trait IWorker {
     }
     fn	Tender< 'a, J: IntoWorkPtr<'a>>( &self, job: J)
     where
-        Self: Sized
-    {
+        Self: Sized {
         self.PostJob( job.IntoWorkPtr());
     }
 }
