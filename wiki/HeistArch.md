@@ -5,7 +5,7 @@ The `heist` module is a high-performance, work-stealing task scheduling and depe
 ## Purpose & Design Philosophy
 The primary purpose of the Heist implementation is:
 1. **Unthreaded Development**: Enable developers to design, develop, and debug complex recursive algorithms (such as QuickSort) in a simple, sequential, unthreaded environment using the ZST `Worker`.
-2. **Seamless Scaling**: Effortlessly transition the exact same algorithm code to a multi-threaded parallel model (using `Atelier` and its `Meister` orchestrator) to match the machine's hardware capabilities and performance requirements.
+2. **Seamless Scaling**: Effortlessly transition the exact same algorithm code to a multi-threaded parallel model (using `Atelier`) to match the machine's hardware capabilities and performance requirements.
 
 ---
 
@@ -57,8 +57,8 @@ Defined in [chore.rs](../src/heist/chore.rs), `Chore` represents a unit of work 
 Jobs can be created directly by passing closures to `ConstructJob`:
 
 ```rust
-let atelier = Atelier::New(U32(4)); // Create Atelier with 4 worker threads
-let meister = atelier.Meister();
+let atelier = Atelier::New(U32(4));     // Create Atelier with 4 worker threads
+let meister = atelier.MainMaestro();    // Other threads are not kicked off, 
 let mut jobId = U16(0);
 
 // Define job 1
@@ -79,7 +79,7 @@ jobId = meister.ConstructJob(
 
 // Enqueue starting job (Job 2)
 meister.EnqueueJob(&mut jobId);
-drop(meister);
+drop(meister); // Must drop meister before launching execution as the cache needs flush.
 
 // Launch execution
 atelier.DoLaunch();
@@ -101,7 +101,7 @@ let budTree = crate::ChoreTree!(
 );
 
 let atelier = Atelier::New(U32(4));
-let meister = atelier.Meister();
+let meister = atelier.MainMaestro();
 
 budTree.Post(&meister);
 drop(meister);
@@ -114,7 +114,7 @@ atelier.DoLaunch(); // Will print C A B (or C B A)
 A concrete application of the framework's versatility is `QuickSorter` (defined on `Arr` in [arr.rs](../src/silo/arr.rs)). It produces a job closure that can be run either sequentially on a single thread or in parallel using the work-stealing thread pool:
 
 #### A. Threaded Execution (Work-Stealing)
-Using `Atelier` and a `Meister` context, the sorting tasks are scheduled dynamically across multiple worker threads to enable multi-threaded execution based on machine capability and performance:
+Using `Atelier` and a `MainMaestro` context, the sorting tasks are scheduled dynamically across multiple worker threads to enable multi-threaded execution based on machine capability and performance:
 
 ```rust
 let mut buff = Buff::Create(U32(100), |_| U32(rand::random::<u32>() % 128));
@@ -122,7 +122,7 @@ let quickSorter = buff.Arr().QuickSorter(|a, b| a > b);
 
 let atelier = Atelier::New(U32(4)); // Spawns 4 worker threads
 {
-    let meister = atelier.Meister();
+    let meister = atelier.MainMaestro();
     let mut jobId = meister.ConstructJob(atelier.Terminal(), quickSorter);
     meister.EnqueueJob(&mut jobId);
 }

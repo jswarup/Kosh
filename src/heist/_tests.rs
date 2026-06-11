@@ -36,10 +36,10 @@ fn	BuffBasicAtelierTest()
         println!( "Trial {}", maestro.MavenIndex());
     }
     let  	atelier = Atelier::New( U32( 4));
-    let  	meister = atelier.Meister();
-    let  	mut jobId = meister.ConstructJob( U16( 0), trialJob);
-    meister.EnqueueJob( &mut jobId);
-    drop( meister);
+    let  	mainMaestro = atelier.MainMaestro();
+    let  	mut jobId = mainMaestro.ConstructJob( U16( 0), trialJob);
+    mainMaestro.EnqueueJob( &mut jobId);
+    drop( mainMaestro);
     atelier.DoLaunch();
 }
 
@@ -108,11 +108,11 @@ fn	TestChoreBuds()
     budTree.Post( &worker);
 
     let  	atelier = Atelier::New( U32( 4));
-    let  	meister = atelier.Meister();
-    budTree.Post( &meister);
-    //let  	mut jobId = meister.ConstructJob( U16( 0), Box::new( chore));
-    //meister.EnqueueJob( &mut jobId);
-    drop( meister);
+    let  	mainMaestro = atelier.MainMaestro();
+    budTree.Post( &mainMaestro);
+    //let  	mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( chore));
+    //mainMaestro.EnqueueJob( &mut jobId);
+    drop( mainMaestro);
     atelier.DoLaunch();
 }
 
@@ -133,9 +133,9 @@ fn	TestDoQSort()
         let     quickSorter = buff.Arr().QuickSorter( |a, b| { a > b});
         let  	atelier = Atelier::New( U32( 4));
         {
-            let  	meister = atelier.Meister();
-            let  	mut jobId = meister.ConstructJob( atelier.Terminal(),  quickSorter);
-            meister.EnqueueJob( &mut jobId);
+            let  	mainMaestro = atelier.MainMaestro();
+            let  	mut jobId = mainMaestro.ConstructJob( atelier.Terminal(),  quickSorter);
+            mainMaestro.EnqueueJob( &mut jobId);
         }
         atelier.DoLaunch();
     };

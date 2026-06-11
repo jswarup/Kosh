@@ -52,7 +52,7 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Meister( &self) -> Maestro< '_>
+    pub fn	MainMaestro( &self) -> Maestro< '_> 
     {
         Maestro::New( self, U32( 0))
     }
