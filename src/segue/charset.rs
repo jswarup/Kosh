@@ -1,14 +1,12 @@
 //-- charset.rs -------------------------------------------------------------------------------------------------------------------
-
 use	std::sync::LazyLock;
-use	crate::segue::shard::Shard;
-use	crate::silo::uint::{ U8, U64 };
-use	crate::silo::arr::Arr;
-use	crate::silo::buff::Buff;
+use	crate::segue::Shard;
+use	crate::silo::{ Arr, Buff, U8, U64 };
+
 //---------------------------------------------------------------------------------------------------------------------------------
+
 /// A 256-bit filter for `U8` characters — one bit per byte value.
 /// Enables set algebra (union, intersection, negation) over character classes.
-
 #[derive( Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Charset
 {
@@ -24,7 +22,8 @@ impl Charset
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub const fn	New() -> Self { Self { _Bits: [U64::_0; Self::SZ] } }
+    pub const fn	New() -> Self { Self
+    { _Bits: [U64::_0; Self::SZ] } }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
@@ -63,8 +62,8 @@ impl Charset
     pub fn	Get< C: Into< U8>>( &self, c: C) -> bool
     {
         let  	c = c.into();
-        let  	idx = (c.AsUsize()) / Self::SZ_BITS as usize;
-        let  	bit = (c.AsU8() as u32) % Self::SZ_BITS;
+        let  	idx = ( c.AsUsize()) / Self::SZ_BITS as usize;
+        let  	bit = ( c.AsU8() as u32) % Self::SZ_BITS;
         ( self._Bits[idx] & U64( 1u64 << bit)) != 0u64
     }
 
@@ -73,8 +72,8 @@ impl Charset
     pub fn	SetChar< C: Into< U8>>( &mut self, c: C)
     {
         let  	c = c.into();
-        let  	idx = (c.AsUsize()) / Self::SZ_BITS as usize;
-        let  	bit = (c.AsU8() as u32) % Self::SZ_BITS;
+        let  	idx = ( c.AsUsize()) / Self::SZ_BITS as usize;
+        let  	bit = ( c.AsU8() as u32) % Self::SZ_BITS;
         self._Bits[idx] |= U64( 1u64 << bit);
     }
 
@@ -83,22 +82,22 @@ impl Charset
     pub fn	ClearChar< C: Into< U8>>( &mut self, c: C)
     {
         let  	c = c.into();
-        let  	idx = (c.AsUsize()) / Self::SZ_BITS as usize;
-        let  	bit = (c.AsU8() as u32) % Self::SZ_BITS;
+        let  	idx = ( c.AsUsize()) / Self::SZ_BITS as usize;
+        let  	bit = ( c.AsU8() as u32) % Self::SZ_BITS;
         self._Bits[idx] &= !U64( 1u64 << bit);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    /// Set the bit for byte `c` to `v`.
 
+    /// Set the bit for byte `c` to `v`.
     pub fn	Set< C: Into< U8>>( &mut self, c: C, v: bool)
     {
         if v { self.SetChar( c) } else { self.ClearChar( c) }
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    /// Set all bits in the inclusive range `start..=stop` to `value`.
 
+    /// Set all bits in the inclusive range `start..=stop` to `value`.
     pub fn	SetByteRange< C: Into< U8>>( &mut self, start: C, stop: C, value: bool)
     {
         let  	start = start.into().AsU8();
@@ -109,8 +108,8 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    /// Flip all 256 bits (complement).
 
+    /// Flip all 256 bits (complement).
     pub fn	Negate( &mut self)
     {
         for w in self._Bits.iter_mut() {
@@ -119,8 +118,8 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    /// Return a negated copy.
 
+    /// Return a negated copy.
     pub fn	Negative( &self) -> Self
     {
         let  	mut cpy = *self;
@@ -134,7 +133,7 @@ impl Charset
     pub fn	IsIntersect( &self, other: &Charset) -> bool
     {
         for i in 0..Self::SZ {
-            if (self._Bits[i] & other._Bits[i]) != 0u64 {
+            if ( self._Bits[i] & other._Bits[i]) != 0u64 {
                 return true;
             }
         }
@@ -142,8 +141,8 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    /// OR `other` into self.
 
+    /// OR `other` into self.
     pub fn	UnionWith( &mut self, other: &Charset)
     {
         for i in 0..Self::SZ {
@@ -152,8 +151,8 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    /// AND `other` into self.
 
+    /// AND `other` into self.
     pub fn	IntersectWith( &mut self, other: &Charset)
     {
         for i in 0..Self::SZ {
@@ -162,6 +161,7 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
+
     /// Return the union of self and `other`
     ///
     pub fn	Union( &self, other: &Charset) -> Self
@@ -181,8 +181,8 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    /// Lexicographic comparison of the four U64 words.
 
+    /// Lexicographic comparison of the four U64 words.
     pub fn	Compare( &self, other: &Charset) -> i32
     {
         match self.cmp( other) {
@@ -193,9 +193,9 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    /// Collect all byte-values whose bit is set.
 
-    pub fn	ListChars( &self) -> Buff<U8>
+    /// Collect all byte-values whose bit is set.
+    pub fn	ListChars( &self) -> Buff< U8>
     {
         let  	weight = self.Weight();
         let  	mut list = Buff::New( weight, U8( 0));
@@ -204,7 +204,7 @@ impl Charset
             let  	mut val = self._Bits[i].0;
             while val != 0 {
                 let  	tz = val.trailing_zeros();
-                list[idx] = U8( (( i as u32) * Self::SZ_BITS + tz) as u8);
+                list[idx] = U8( ( ( i as u32) * Self::SZ_BITS + tz) as u8);
                 idx += 1;
                 val &= val - 1;
             }
@@ -213,19 +213,19 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    /// Count of set bits (population count).
 
+    /// Count of set bits (population count).
     pub fn	Weight( &self) -> u32
     {
         self._Bits.iter().map( |w| w.0.count_ones()).sum()
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    // Predefined character classes
 
+    // Predefined character classes
     pub fn	All() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || Charset::New().Negative());
+        static VAL: LazyLock< Charset> = LazyLock::new( || Charset::New().Negative());
         &VAL
     }
 
@@ -233,7 +233,7 @@ impl Charset
 
     pub fn	Digit() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_digit()));
+        static VAL: LazyLock< Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_digit()));
         &VAL
     }
 
@@ -241,7 +241,7 @@ impl Charset
 
     pub fn	NonDigit() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || Charset::Digit().Negative());
+        static VAL: LazyLock< Charset> = LazyLock::new( || Charset::Digit().Negative());
         &VAL
     }
 
@@ -249,7 +249,7 @@ impl Charset
 
     pub fn	Word() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || {
+        static VAL: LazyLock< Charset> = LazyLock::new( || {
             let  	mut cs = Charset::New();
             cs.SetChar( b'_');
             cs.SetByteRange( b'a', b'z', true);
@@ -264,7 +264,7 @@ impl Charset
 
     pub fn	NonWord() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || Charset::Word().Negative());
+        static VAL: LazyLock< Charset> = LazyLock::new( || Charset::Word().Negative());
         &VAL
     }
 
@@ -272,7 +272,7 @@ impl Charset
 
     pub fn	AlphaNum() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_alphanumeric()));
+        static VAL: LazyLock< Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_alphanumeric()));
         &VAL
     }
 
@@ -280,7 +280,7 @@ impl Charset
 
     pub fn	Ascii() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii()));
+        static VAL: LazyLock< Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii()));
         &VAL
     }
 
@@ -288,7 +288,7 @@ impl Charset
 
     pub fn	Blank() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || {
+        static VAL: LazyLock< Charset> = LazyLock::new( || {
             let  	mut cs = Charset::New();
             cs.SetChar( b' ');
             cs.SetChar( b'\t');
@@ -301,7 +301,7 @@ impl Charset
 
     pub fn	EndLine() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || {
+        static VAL: LazyLock< Charset> = LazyLock::new( || {
             let  	mut cs = Charset::New();
             cs.SetChar( b'\n');
             cs
@@ -313,7 +313,7 @@ impl Charset
 
     pub fn	Cntrl() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_control()));
+        static VAL: LazyLock< Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_control()));
         &VAL
     }
 
@@ -321,7 +321,7 @@ impl Charset
 
     pub fn	Graph() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_graphic()));
+        static VAL: LazyLock< Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_graphic()));
         &VAL
     }
 
@@ -329,7 +329,7 @@ impl Charset
 
     pub fn	Print() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || Charset::FromFilter( |c| {
+        static VAL: LazyLock< Charset> = LazyLock::new( || Charset::FromFilter( |c| {
             c.is_ascii_graphic() || c == b' '
         }));
         &VAL
@@ -339,7 +339,7 @@ impl Charset
 
     pub fn	Punct() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_punctuation()));
+        static VAL: LazyLock< Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_punctuation()));
         &VAL
     }
 
@@ -347,7 +347,7 @@ impl Charset
 
     pub fn	Space() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_whitespace()));
+        static VAL: LazyLock< Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_whitespace()));
         &VAL
     }
 
@@ -355,7 +355,7 @@ impl Charset
 
     pub fn	NonSpace() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || Charset::Space().Negative());
+        static VAL: LazyLock< Charset> = LazyLock::new( || Charset::Space().Negative());
         &VAL
     }
 
@@ -363,7 +363,7 @@ impl Charset
 
     pub fn	Alpha() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_alphabetic()));
+        static VAL: LazyLock< Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_alphabetic()));
         &VAL
     }
 
@@ -371,7 +371,7 @@ impl Charset
 
     pub fn	Upper() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_uppercase()));
+        static VAL: LazyLock< Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_uppercase()));
         &VAL
     }
 
@@ -379,7 +379,7 @@ impl Charset
 
     pub fn	Lower() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_lowercase()));
+        static VAL: LazyLock< Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_lowercase()));
         &VAL
     }
 
@@ -387,7 +387,7 @@ impl Charset
 
     pub fn	XDigit() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_hexdigit()));
+        static VAL: LazyLock< Charset> = LazyLock::new( || Charset::FromFilter( |c| c.is_ascii_hexdigit()));
         &VAL
     }
 
@@ -402,23 +402,23 @@ impl Charset
 
     pub fn	DotAll() -> &'static Charset
     {
-        static VAL: LazyLock<Charset> = LazyLock::new( || Charset::New().Negative());
+        static VAL: LazyLock< Charset> = LazyLock::new( || Charset::New().Negative());
         &VAL
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    // Formatting helpers
 
+    // Formatting helpers
     fn	PrettyPrintChar( c: U8, chrClsFlg: bool, out: &mut String)
     {
-        let val = c.AsU8();
+        let  	val = c.AsU8();
         match val {
             b'\t' => { out.push_str( "\\t"); return; }
             b'\n' => { out.push_str( "\\n"); return; }
             b'\r' => { out.push_str( "\\r"); return; }
-            0x0C  => { out.push_str( "\\f"); return; }                     // form-feed
-            0x07  => { out.push_str( "\\a"); return; }                     // bell
-            0x0B  => { out.push_str( "\\v"); return; }                     // vertical tab
+            0x0C  => { out.push_str( "\\f"); return; }                 // form-feed
+            0x07  => { out.push_str( "\\a"); return; }                 // bell
+            0x0B  => { out.push_str( "\\v"); return; }                 // vertical tab
             _ => {}
         }
         let  	mut hex = false;
@@ -449,8 +449,8 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    /// Format as a bracket expression, optionally negated.
 
+    /// Format as a bracket expression, optionally negated.
     fn	ToBoxetString( &self, negFlg: bool) -> String
     {
         let  	chars = if negFlg {
@@ -500,7 +500,7 @@ impl Charset
 
 impl std::fmt::Display for Charset
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
         if self.Compare( Charset::Word()) == 0 {
             return write!( f, "[[Word]]");
@@ -516,7 +516,7 @@ impl std::fmt::Display for Charset
 
 impl std::fmt::Debug for Charset
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
         write!( f, "Charset({})", self)
     }
@@ -524,9 +524,9 @@ impl std::fmt::Debug for Charset
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::stalks::bud::IntoBud<Shard> for Charset
+impl crate::stalks::IntoBud< Shard> for Charset
 {
-    fn	IntoBud( self) -> Box<dyn crate::stalks::bud::Bud<Shard>>
+    fn	IntoBud( self) -> Box< dyn crate::stalks::Bud< Shard>>
     {
         Box::new( Shard::from( self))
     }
@@ -536,12 +536,11 @@ impl crate::stalks::bud::IntoBud<Shard> for Charset
 
 impl std::cmp::PartialOrd for Charset
 {
-    fn	partial_cmp( &self, other: &Self) -> Option<std::cmp::Ordering>
+    fn	partial_cmp( &self, other: &Self) -> Option< std::cmp::Ordering>
     {
         Some( self.cmp( other))
     }
 }
-
 impl std::cmp::Ord for Charset
 {
     fn	cmp( &self, other: &Self) -> std::cmp::Ordering
@@ -560,7 +559,6 @@ impl std::ops::Not for Charset
         self.Negative()
     }
 }
-
 impl std::ops::BitOr for Charset
 {
     type Output = Self;
@@ -569,7 +567,6 @@ impl std::ops::BitOr for Charset
         self.Union( &rhs)
     }
 }
-
 impl std::ops::BitAnd for Charset
 {
     type Output = Self;
@@ -578,7 +575,6 @@ impl std::ops::BitAnd for Charset
         self.Intersect( &rhs)
     }
 }
-
 impl std::ops::BitOrAssign for Charset
 {
     fn	bitor_assign( &mut self, rhs: Self)
@@ -586,7 +582,6 @@ impl std::ops::BitOrAssign for Charset
         self.UnionWith( &rhs);
     }
 }
-
 impl std::ops::BitAndAssign for Charset
 {
     fn	bitand_assign( &mut self, rhs: Self)

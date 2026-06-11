@@ -1,11 +1,7 @@
 //-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::heist::atelier::Atelier;
-use	crate::silo::buff::Buff;
-use	crate::silo::stash::Stash;
-use	crate::silo::stk::Stk;
-use	crate::silo::uint::{ U16, U32 };
-use	crate::stalks::atm::{ Atm, Spinlock };
-use	crate::stalks::work::{ IWorker, IntoWorkPtr, WorkPtr };
+use	crate::heist::Atelier;
+use	crate::silo::{ Buff, Stash, Stk, U16, U32 };
+use	crate::stalks::{ Atm, IWorker, IntoWorkPtr, Spinlock, WorkPtr };
 use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -21,9 +17,10 @@ pub struct Maestro< 'a>
     _CurSuccId: Atm< U16>,
     _TempQueue: Stash< U16>,
 }
-
-unsafe impl< 'a> Send for Maestro< 'a> {}
-unsafe impl< 'a> Sync for Maestro< 'a> {}
+unsafe impl< 'a> Send for Maestro< 'a>
+{ }
+unsafe impl< 'a> Sync for Maestro< 'a>
+{ }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -95,7 +92,7 @@ impl< 'a> Maestro< 'a>
 
     pub fn	ConstructEnqueueBulk( &self, succId: U16, buff: Buff< U16>) -> U16 
     {
-        self.ConstructJob(
+        self.ConstructJob( 
             succId,
             move |worker: &dyn IWorker| {
                 let  	maestro = Maestro::FromWorker( worker);

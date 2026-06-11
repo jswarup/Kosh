@@ -1,9 +1,7 @@
 //-- chore.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::heist::maestro::Maestro;
-use	crate::silo::stash::Stash;
-use	crate::silo::uint::U16;
-use	crate::stalks::bud::Bud;
-use	crate::stalks::work::{ IWork, IWorker };
+use	crate::heist::Maestro;
+use	crate::silo::{ Stash, U16 };
+use	crate::stalks::{ Bud, IWork, IWorker };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -59,7 +57,7 @@ impl crate::stalks::bud::BudOp for Chore
 {
     fn	IsOpAllowed( op: crate::stalks::bud::BudBinOp) -> bool
     {
-        matches!(
+        matches!( 
             op,
             crate::stalks::bud::BudBinOp::LT | crate::stalks::bud::BudBinOp::BOR
         )
@@ -85,7 +83,7 @@ where
     pub fn	Post( &self, worker: &dyn IWorker)
     {
         if worker.IsSequential() {
-            fn RunSequential< T>( node: &dyn Bud< T>, worker: &dyn IWorker)
+            fn	RunSequential< T>( node: &dyn Bud< T>, worker: &dyn IWorker)
             where
                 T: IWork + Clone + Default + 'static,
             {
@@ -95,19 +93,19 @@ where
                     return;
                 }
                 if node.Op() == "|" {
-                    if let Some( left) = node.Left() {
+                    if let  	Some( left) = node.Left() {
                         RunSequential( left, worker);
                     }
-                    if let Some( right) = node.Right() {
+                    if let  	Some( right) = node.Right() {
                         RunSequential( right, worker);
                     }
                     return;
                 }
                 if node.Op() == "<" {
-                    if let Some( left) = node.Left() {
+                    if let  	Some( left) = node.Left() {
                         RunSequential( left, worker);
                     }
-                    if let Some( right) = node.Right() {
+                    if let  	Some( right) = node.Right() {
                         RunSequential( right, worker);
                     }
                     return;
@@ -116,7 +114,6 @@ where
             RunSequential( self, worker);
             return;
         }
-
         let  	maestro: &Maestro< '_> = Maestro::FromWorker( worker);
         struct JobStash
         {
@@ -179,21 +176,20 @@ impl crate::stalks::bud::IntoBud< Chore> for fn( &dyn IWorker)
         Box::new( Chore::New( self))
     }
 }
+
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[macro_export]
 macro_rules! ChoreTree {
     // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
-    ( @feature_LT  $($args:tt)* ) => { $crate::BudTree!( @feature_LT  $($args)* ) };
-    ( @feature_BOR $($args:tt)* ) => { $crate::BudTree!( @feature_BOR $($args)* ) };
-    ( @feature_NEW $($args:tt)* ) => { $crate::BudTree!( @feature_NEW $($args)* ) };
-
+    ( @feature_LT  $( $args:tt)* ) => { $crate::BudTree!( @feature_LT  $( $args)* ) };
+    ( @feature_BOR $( $args:tt)* ) => { $crate::BudTree!( @feature_BOR $( $args)* ) };
+    ( @feature_NEW $( $args:tt)* ) => { $crate::BudTree!( @feature_NEW $( $args)* ) };
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
     // Forward unhandled internal callbacks to BudTree (e.g., disallowed features like @feature_SHL)
     ( @ $( $inner:tt )+ ) => {
         $crate::BudTree!( @ $( $inner )+ )
     };
-
     // Top-level entry (user code)
     ( $( $inner:tt)+ )  => { $crate::ChoreTree!( @cb [ $crate::ChoreTree ], Chore, $( $inner)+ ) };
 }

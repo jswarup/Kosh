@@ -1,7 +1,6 @@
 //-- arr.rs -----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::uint::{ U8, U32 };
-use	crate::silo::useg::USeg;
-use	crate::stalks::work::IWorker;
+use	crate::silo::{ U8, U32, USeg };
+use	crate::stalks::IWorker;
 use	std::marker::PhantomData;
 use	std::ops::{ Deref, DerefMut };
 use	std::ptr::NonNull;
@@ -107,7 +106,7 @@ impl< 'a, T> Arr< 'a, T>
     pub fn	SwapAt< I: Into< U32>, J: Into< U32>>( &self, i: I, j: J)
     {
         unsafe {
-            std::ptr::swap(
+            std::ptr::swap( 
                 self._Ptr.add( i.into().AsUsize()).as_ptr(),
                 self._Ptr.add( j.into().AsUsize()).as_ptr(),
             );
@@ -116,7 +115,7 @@ impl< 'a, T> Arr< 'a, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	SwapFrom< S: Into< U32>, D: Into< U32>>(
+    pub fn	SwapFrom< S: Into< U32>, D: Into< U32>>( 
         &self,
         dstStart: D,
         src: &Arr< '_, T>,
@@ -126,7 +125,7 @@ impl< 'a, T> Arr< 'a, T>
         T: Copy,
     {
         unsafe {
-            std::ptr::swap_nonoverlapping(
+            std::ptr::swap_nonoverlapping( 
                 src._Ptr.as_ptr().add( srcStart.into().AsUsize()),
                 self._Ptr.as_ptr().add( dstStart.into().AsUsize()),
                 count.AsUsize(),
@@ -139,7 +138,7 @@ impl< 'a, T> Arr< 'a, T>
     pub fn	LSnip< C: Into< U32>>( &self, count: C) -> Self
     {
         let  	cnt = count.into();
-        Arr::New(
+        Arr::New( 
             unsafe { self._Ptr.add( cnt.AsU32() as usize) },
             self.Size() - cnt,
         )
@@ -175,7 +174,7 @@ impl< 'a, T> Arr< 'a, T>
         let  	arr = *self;
         move |worker: &dyn IWorker| {
             let  	less = less.clone();
-            arr.USeg().DoQSort(
+            arr.USeg().DoQSort( 
                 worker,
                 move |i, j| less( arr.At( i), arr.At( j)),
                 move |i, j| {
@@ -187,7 +186,7 @@ impl< 'a, T> Arr< 'a, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub  fn     SortSanity< Less>( &self, less: Less) -> bool
+    pub  fn	SortSanity< Less>( &self, less: Less) -> bool
     where
         Less: Fn( &T, &T) -> bool + Send + Sync + Clone + 'a,
     {
@@ -195,6 +194,7 @@ impl< 'a, T> Arr< 'a, T>
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
+
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -281,7 +281,7 @@ impl< 'a, T> From< &'a [T]> for Arr< 'a, T>
     fn	from( slice: &'a [T]) -> Self
     {
         unsafe {
-            Arr::New(
+            Arr::New( 
                 NonNull::new_unchecked( slice.as_ptr() as *mut T),
                 slice.len(),
             )

@@ -1,6 +1,8 @@
 //-- mod.rs -----------------------------------------------------------------------------------------------------------------------
 pub mod charset;
 pub mod shard;
+pub use	charset::Charset;
+pub use	shard::Shard;
 #[cfg( test)]
 mod _tests;
 

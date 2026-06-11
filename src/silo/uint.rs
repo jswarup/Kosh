@@ -3,7 +3,7 @@
 use	crate::stalks::atm::AtomicInt;
 use	std::ops::{ Add, BitAnd, BitOr, BitXor, Deref, Div, Mul, Neg, Not, Rem, Shl, Shr, Sub };
 use	std::sync::atomic::{ AtomicU8, AtomicU16, AtomicU32, AtomicU64, Ordering };
-use	crate::silo::arr::Arr;
+use	crate::silo::Arr;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -58,263 +58,279 @@ impl U64
 
 macro_rules! ImplUIntTraits {
     ( $type:ident, $prim:ty, $atomic:ty, $asPrim:ident) => {
-        impl $type {
+        impl $type
+        {
             #[inline]
-            pub const fn From(v: $prim) -> Self {
-                $type(v)
+            pub const fn	From( v: $prim) -> Self
+            {
+                $type( v)
             }
-
             #[inline]
-            pub const fn $asPrim(self) -> $prim {
+            pub const fn	$asPrim( self) -> $prim
+            {
                 self.0
             }
-
             #[inline]
-            pub const fn AsUsize(self) -> usize {
+            pub const fn	AsUsize( self) -> usize
+            {
                 self.0 as usize
             }
-
             #[inline]
-            pub const fn FromUsize(v: usize) -> Self {
-                $type(v as $prim)
+            pub const fn	FromUsize( v: usize) -> Self
+            {
+                $type( v as $prim)
             }
-
             #[inline]
-            pub const fn Max() -> Self {
-                $type(<$prim>::MAX)
+            pub const fn	Max() -> Self
+            {
+                $type( <$prim>::MAX)
             }
-
             #[inline]
-            pub const fn Get(self) -> $prim {
+            pub const fn	Get( self) -> $prim
+            {
                 self.0
             }
-
             #[inline]
-            pub fn FromArr<'a>(arr: Arr<'a, $prim>) -> Arr<'a, Self> {
-                unsafe { std::mem::transmute(arr) }
+            pub fn	FromArr< 'a>(arr: Arr<'a, $prim>) -> Arr< 'a, Self> {
+                unsafe { std::mem::transmute( arr) }
             }
         }
-
         macro_rules! impl_binop {
-            ($trait:ident, $method:ident, $op:tt) => {
+            ( $trait:ident, $method:ident, $op:tt) => {
                 impl< T> $trait< T> for $type
                 where
                     T: Into< $type>,
                 {
                     type Output = $type;
                     #[inline]
-                    fn $method(self, rhs: T) -> Self::Output {
-                        $type(self.0 $op rhs.into().0)
+                    fn	$method( self, rhs: T) -> Self::Output
+                    {
+                        $type( self.0 $op rhs.into().0)
                     }
                 }
             };
         }
-
         impl< T> Add< T> for $type
         where
             T: Into< $type>,
         {
             type Output = $type;
             #[inline]
-            fn add(self, rhs: T) -> Self::Output {
-                $type(self.0.wrapping_add(rhs.into().0))
+            fn	add( self, rhs: T) -> Self::Output
+            {
+                $type( self.0.wrapping_add( rhs.into().0))
             }
         }
-
         impl< T> Sub< T> for $type
         where
             T: Into< $type>,
         {
             type Output = $type;
             #[inline]
-            fn sub(self, rhs: T) -> Self::Output {
-                $type(self.0.wrapping_sub(rhs.into().0))
+            fn	sub( self, rhs: T) -> Self::Output
+            {
+                $type( self.0.wrapping_sub( rhs.into().0))
             }
         }
-
-        impl_binop!(Mul, mul, *);
-        impl_binop!(Div, div, /);
-        impl_binop!(Rem, rem, %);
-        impl_binop!(BitAnd, bitand, &);
-        impl_binop!(BitOr, bitor, |);
-        impl_binop!(BitXor, bitxor, ^);
-        impl_binop!(Shl, shl, <<);
-        impl_binop!(Shr, shr, >>);
-
-        impl Neg for $type {
+        impl_binop!( Mul, mul, *);
+        impl_binop!( Div, div, /);
+        impl_binop!( Rem, rem, %);
+        impl_binop!( BitAnd, bitand, &);
+        impl_binop!( BitOr, bitor, |);
+        impl_binop!( BitXor, bitxor, ^);
+        impl_binop!( Shl, shl, <<);
+        impl_binop!( Shr, shr, >>);
+        impl Neg for $type
+        {
             type Output = $type;
             #[inline]
-            fn neg(self) -> Self::Output {
-                $type((0 as $prim).wrapping_sub(self.0))
+            fn	neg( self) -> Self::Output
+            {
+                $type( ( 0 as $prim).wrapping_sub( self.0))
             }
         }
-
-        impl Not for $type {
+        impl Not for $type
+        {
             type Output = $type;
             #[inline]
-            fn not(self) -> Self::Output {
-                $type(!self.0)
+            fn	not( self) -> Self::Output
+            {
+                $type( !self.0)
             }
         }
-
-        impl std::fmt::Display for $type {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{}", self.0)
+        impl std::fmt::Display for $type
+        {
+            fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result {
+                write!( f, "{}", self.0)
             }
         }
-
-        impl Deref for $type {
+        impl Deref for $type
+        {
             type Target = $prim;
             #[inline]
-            fn deref(&self) -> &Self::Target {
+            fn	deref( &self) -> &Self::Target
+            {
                 &self.0
             }
         }
-
-        impl AtomicInt for $type {
+        impl AtomicInt for $type
+        {
             type AtomicType = $atomic;
             #[inline]
-            fn IntoAtomic(self) -> Self::AtomicType {
-                <$atomic>::new(self.0)
+            fn	IntoAtomic( self) -> Self::AtomicType
+            {
+                <$atomic>::new( self.0)
             }
             #[inline]
-            fn Get(a: &Self::AtomicType, order: Ordering) -> Self {
-                $type(a.load(order))
+            fn	Get( a: &Self::AtomicType, order: Ordering) -> Self
+            {
+                $type( a.load( order))
             }
             #[inline]
-            fn Set(a: &Self::AtomicType, val: Self, order: Ordering) {
-                a.store(val.0, order);
+            fn	Set( a: &Self::AtomicType, val: Self, order: Ordering)
+            {
+                a.store( val.0, order);
             }
             #[inline]
-            fn FetchAdd(a: &Self::AtomicType, val: Self, order: Ordering) -> Self {
-                $type(a.fetch_add(val.0, order))
+            fn	FetchAdd( a: &Self::AtomicType, val: Self, order: Ordering) -> Self
+            {
+                $type( a.fetch_add( val.0, order))
             }
             #[inline]
-            fn CompareExchange(
+            fn	CompareExchange( 
                 a: &Self::AtomicType,
                 current: Self,
                 newVal: Self,
                 success: Ordering,
                 failure: Ordering,
             ) -> Result< Self, Self> {
-                a.compare_exchange(current.0, newVal.0, success, failure)
-                    .map($type)
-                    .map_err($type)
+                a.compare_exchange( current.0, newVal.0, success, failure)
+                    .map( $type)
+                    .map_err( $type)
             }
         }
-
-        impl From< $type> for $prim {
+        impl From< $type> for $prim
+        {
             #[inline]
-            fn from(v: $type) -> Self {
+            fn	from( v: $type) -> Self
+            {
                 v.0
             }
         }
-
-        impl From< $type> for i32 {
+        impl From< $type> for i32
+        {
             #[inline]
-            fn from(v: $type) -> Self {
+            fn	from( v: $type) -> Self
+            {
                 v.0 as i32
             }
         }
-
-        impl From< $type> for usize {
+        impl From< $type> for usize
+        {
             #[inline]
-            fn from(v: $type) -> Self {
+            fn	from( v: $type) -> Self
+            {
                 v.0 as usize
             }
         }
-
-        impl From< $prim> for $type {
+        impl From< $prim> for $type
+        {
             #[inline]
-            fn from(v: $prim) -> Self {
-                $type(v)
+            fn	from( v: $prim) -> Self
+            {
+                $type( v)
             }
         }
-
-        impl From< i32> for $type {
+        impl From< i32> for $type
+        {
             #[inline]
-            fn from(v: i32) -> Self {
-                $type(v as $prim)
+            fn	from( v: i32) -> Self
+            {
+                $type( v as $prim)
             }
         }
-
-        impl From< usize> for $type {
+        impl From< usize> for $type
+        {
             #[inline]
-            fn from(v: usize) -> Self {
-                $type(v as $prim)
+            fn	from( v: usize) -> Self
+            {
+                $type( v as $prim)
             }
         }
-
-        impl PartialEq< $prim> for $type {
+        impl PartialEq< $prim> for $type
+        {
             #[inline]
-            fn eq(&self, other: &$prim) -> bool {
+            fn	eq( &self, other: &$prim) -> bool
+            {
                 self.0 == *other
             }
         }
-
-        impl PartialEq< $type> for $prim {
+        impl PartialEq< $type> for $prim
+        {
             #[inline]
-            fn eq(&self, other: &$type) -> bool {
+            fn	eq( &self, other: &$type) -> bool
+            {
                 *self == other.0
             }
         }
-
-        impl PartialOrd< $prim> for $type {
+        impl PartialOrd< $prim> for $type
+        {
             #[inline]
-            fn partial_cmp(&self, other: &$prim) -> Option< std::cmp::Ordering> {
-                self.0.partial_cmp(other)
+            fn	partial_cmp( &self, other: &$prim) -> Option< std::cmp::Ordering>
+            {
+                self.0.partial_cmp( other)
             }
         }
-
-        impl PartialOrd< $type> for $prim {
+        impl PartialOrd< $type> for $prim
+        {
             #[inline]
-            fn partial_cmp(&self, other: &$type) -> Option< std::cmp::Ordering> {
-                self.partial_cmp(&other.0)
+            fn	partial_cmp( &self, other: &$type) -> Option< std::cmp::Ordering>
+            {
+                self.partial_cmp( &other.0)
             }
         }
-
         macro_rules! impl_assignop {
-            ($trait:ident, $method:ident, $op:tt) => {
+            ( $trait:ident, $method:ident, $op:tt) => {
                 impl< T> std::ops::$trait< T> for $type
                 where
                     T: Into< $type>,
                 {
                     #[inline]
-                    fn $method(&mut self, rhs: T) {
+                    fn	$method( &mut self, rhs: T)
+                    {
                         self.0 = self.0 $op rhs.into().0;
                     }
                 }
             };
         }
-
         impl< T> std::ops::AddAssign< T> for $type
         where
             T: Into< $type>,
         {
             #[inline]
-            fn add_assign(&mut self, rhs: T) {
-                self.0 = self.0.wrapping_add(rhs.into().0);
+            fn	add_assign( &mut self, rhs: T)
+            {
+                self.0 = self.0.wrapping_add( rhs.into().0);
             }
         }
-
         impl< T> std::ops::SubAssign< T> for $type
         where
             T: Into< $type>,
         {
             #[inline]
-            fn sub_assign(&mut self, rhs: T) {
-                self.0 = self.0.wrapping_sub(rhs.into().0);
+            fn	sub_assign( &mut self, rhs: T)
+            {
+                self.0 = self.0.wrapping_sub( rhs.into().0);
             }
         }
-
-        impl_assignop!(MulAssign, mul_assign, *);
-        impl_assignop!(DivAssign, div_assign, /);
-        impl_assignop!(RemAssign, rem_assign, %);
-        impl_assignop!(BitAndAssign, bitand_assign, &);
-        impl_assignop!(BitOrAssign, bitor_assign, |);
-        impl_assignop!(BitXorAssign, bitxor_assign, ^);
-        impl_assignop!(ShlAssign, shl_assign, <<);
-        impl_assignop!(ShrAssign, shr_assign, >>);
+        impl_assignop!( MulAssign, mul_assign, *);
+        impl_assignop!( DivAssign, div_assign, /);
+        impl_assignop!( RemAssign, rem_assign, %);
+        impl_assignop!( BitAndAssign, bitand_assign, &);
+        impl_assignop!( BitOrAssign, bitor_assign, |);
+        impl_assignop!( BitXorAssign, bitxor_assign, ^);
+        impl_assignop!( ShlAssign, shl_assign, <<);
+        impl_assignop!( ShrAssign, shr_assign, >>);
     };
 }
 
@@ -329,15 +345,16 @@ ImplUIntTraits!( U64, u64, AtomicU64, AsU64);
 
 macro_rules! ImplWiden {
     ( $src:ident, $dst:ident) => {
-        impl From< $src> for $dst {
+        impl From< $src> for $dst
+        {
             #[inline]
-            fn from(v: $src) -> Self {
-                $dst(v.0 as _)
+            fn	from( v: $src) -> Self
+            {
+                $dst( v.0 as _)
             }
         }
     };
 }
-
 ImplWiden!( U8, U16);
 ImplWiden!( U8, U32);
 ImplWiden!( U8, U64);

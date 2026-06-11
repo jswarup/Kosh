@@ -1,5 +1,5 @@
-use	crate::silo::uint::U32;
-use	crate::stalks::atm::Atm;
+use	crate::silo::U32;
+use	crate::stalks::Atm;
 use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------

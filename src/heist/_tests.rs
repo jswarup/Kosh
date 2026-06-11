@@ -1,15 +1,14 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::{
     heist::
-    { atelier::Atelier, maestro::Maestro },
-    silo::{
-        buff::Buff,
-        uint::
-        { U16, U32 },
-    },
-    stalks::work::
+    { Atelier, Maestro, Chore },
+    silo::
+    { Buff, U16, U32 },
+    stalks::
     { IWorker, Worker },
 };
+use	std::sync::{ Arc, Mutex };
+use	std::thread;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -41,8 +40,6 @@ fn	BuffBasicAtelierTest()
 #[test]
 fn	TestThreadSharedInteger()
 {
-    use	std::sync::{ Arc, Mutex };
-    use	std::thread;
     let  	shared = Arc::new( Mutex::new( 0));
     let  	mut handles = Buff::NewEmpty();
     for i in 0..4 {
@@ -81,7 +78,6 @@ fn	TestMaestroBasicOps()
 #[test]
 fn	TestChoreBuds()
 {
-    use	crate::heist::chore::Chore;
     let  	aChore = Chore::New( |_m| {
         print!( "{} ", 10);
     });

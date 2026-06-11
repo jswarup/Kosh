@@ -1,13 +1,8 @@
 //- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::arr::Arr;
-use	crate::silo::buff::Buff;
-use	crate::silo::instream::InStream;
-use	crate::silo::stash::Stash;
-use	crate::silo::stk::Stk;
-use	crate::silo::uint::{ U8, U16, U32, U64 };
-use	crate::silo::useg::USeg;
-use	crate::stalks::atm::Atm;
-use	crate::stalks::work::Worker;
+use	crate::silo::{ Arr, Buff, InStream, Stash, Stk, USeg, U8, U16, U32, U64 };
+use	crate::stalks::{ Atm, Worker };
+use	std::sync::Arc;
+use	std::thread;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -122,7 +117,6 @@ fn	TestArrFromArr()
     let  	arrSlice = Arr::from( sliceData);
     assert_eq!( arrSlice.len(), 4);
     assert_eq!( *arrSlice.At( 3), 4);
-
     // Test Arr<'a, U8>::Str()
     let  	arrU8Data = [U8( b'h'), U8( b'e'), U8( b'l'), U8( b'l'), U8( b'o')];
     let  	arrU8 = Arr::from( &arrU8Data);
@@ -243,7 +237,6 @@ fn	UIntTestArith()
     assert_eq!( ( a * b), 30);
     assert_eq!( ( a / b), 3);
     assert_eq!( ( a % b), 1);
-
     let  	mut x = U32::from( 10u32);
     x += b;
     assert_eq!( x, 13);
@@ -255,7 +248,6 @@ fn	UIntTestArith()
     assert_eq!( x, 10);
     x %= b;
     assert_eq!( x, 1);
-
     let  	mut y = U32::from( 6u32);
     y &= b;
     assert_eq!( y, 2);
@@ -431,8 +423,6 @@ fn	StackExportImportOps()
 #[test]
 fn	TestConcurrentStackOps()
 {
-    use	std::sync::Arc;
-    use	std::thread;
     // Create a shared destination stack of size 1000
     let  	dstStash = Arc::new( Stash::< U32>::New( 1000));
     let  	mut handles = Buff::NewEmpty();
@@ -451,7 +441,7 @@ fn	TestConcurrentStackOps()
         });
         handles.Push( handle);
     }
-    while let Some( handle) = handles.Pop() {
+    while let  	Some( handle) = handles.Pop() {
         handle.join().unwrap();
     }
     // Since 10 threads imported 10 elements each, dstStk size must be exactly 100
@@ -520,7 +510,7 @@ fn	TestDoQSort()
     let  	buff = Buff::Create( U32( 100), |_| rand::random::< f64>());
     let  	arr = buff.Arr();
     let  	worker = Worker::New();
-    arr.USeg().DoQSort(
+    arr.USeg().DoQSort( 
         &worker,
         |i, j| arr.At( i) > arr.At( j),
         |i, j| {
@@ -652,30 +642,22 @@ fn	TestInStream()
     let  	data = [U8( b'a'), U8( b'b'), U8( b'c')];
     let  	buff = Buff::Create( U32( 3), |i| data[i.AsUsize()]);
     let  	mut stream = InStream::New( buff);
-
     assert_eq!( stream.Curr(), U8( b'a'));
-
     assert!( stream.Next());
     assert_eq!( stream.Curr(), U8( b'b'));
-
     assert!( stream.Next());
     assert_eq!( stream.Curr(), U8( b'c'));
-
     assert!( !stream.Next());
     assert_eq!( stream.Curr(), U8::_0);
-
     stream.RollTo( U32( 1));
     assert_eq!( stream.Curr(), U8( b'b'));
-
     let  	rest1 = stream.Rest();
     assert_eq!( rest1.Size(), 2);
     assert_eq!( *rest1.At( 0), U8( b'b'));
     assert_eq!( *rest1.At( 1), U8( b'c'));
     assert_eq!( stream.Remaining(), "bc");
-
     stream.RollTo( U32( 5));
     assert_eq!( stream.Curr(), U8::_0);
-
     let  	rest5 = stream.Rest();
     assert_eq!( rest5.Size(), 0);
     assert_eq!( stream.Remaining(), "");

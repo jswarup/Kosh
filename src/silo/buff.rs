@@ -1,6 +1,5 @@
 //-- buff.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::arr::Arr;
-use	crate::silo::uint::U32;
+use	crate::silo::{ Arr, U32 };
 use	std::alloc::{ Layout, alloc, dealloc, handle_alloc_error };
 use	std::mem::swap;
 use	std::ops::{ Deref, DerefMut };
@@ -32,7 +31,6 @@ impl< T> Buff< T>
             _Ptr: NonNull::slice_from_raw_parts( NonNull::dangling(), 0),
         }
     }
-
     pub fn	Push( &mut self, val: T) 
     {
         let  	oldSize = self._Ptr.len();
@@ -59,7 +57,6 @@ impl< T> Buff< T>
             self._Ptr = NonNull::slice_from_raw_parts( nonNullPtr, newSize);
         }
     }
-
     pub fn	Pop( &mut self) -> Option< T> 
     {
         let  	oldSize = self._Ptr.len();

@@ -1,13 +1,11 @@
 //-- shard.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::stalks::bud::Bud;
-use	crate::stalks::work::{ IWork, IWorker };
-use	crate::segue::charset::Charset;
+use	crate::segue::Charset;
+use	crate::stalks::{ Bud, IWork, IWorker };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Clone, Debug)]
-pub enum Shard
-{
+pub enum Shard {
     Closure( fn( &dyn IWorker)),
     Char( char),
     String( String),
@@ -73,13 +71,13 @@ impl Bud< Shard> for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::stalks::bud::BudOp for Shard
+impl crate::stalks::BudOp for Shard
 {
-    fn	IsOpAllowed( op: crate::stalks::bud::BudBinOp) -> bool
+    fn	IsOpAllowed( op: crate::stalks::BudBinOp) -> bool
     {
-        matches!(
+        matches!( 
             op,
-            crate::stalks::bud::BudBinOp::LT | crate::stalks::bud::BudBinOp::BOR | crate::stalks::bud::BudBinOp::SHL
+            crate::stalks::BudBinOp::LT | crate::stalks::BudBinOp::BOR | crate::stalks::BudBinOp::SHL
         )
     }
 }
@@ -101,7 +99,7 @@ impl std::fmt::Display for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::stalks::bud::IntoBud< Shard> for fn( &dyn IWorker)
+impl crate::stalks::IntoBud< Shard> for fn( &dyn IWorker)
 {
     fn	IntoBud( self) -> Box< dyn Bud< Shard>>
     {
@@ -111,7 +109,7 @@ impl crate::stalks::bud::IntoBud< Shard> for fn( &dyn IWorker)
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::stalks::bud::IntoBud< Shard> for char
+impl crate::stalks::IntoBud< Shard> for char
 {
     fn	IntoBud( self) -> Box< dyn Bud< Shard>>
     {
@@ -121,7 +119,7 @@ impl crate::stalks::bud::IntoBud< Shard> for char
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::stalks::bud::IntoBud< Shard> for String
+impl crate::stalks::IntoBud< Shard> for String
 {
     fn	IntoBud( self) -> Box< dyn Bud< Shard>>
     {
@@ -131,18 +129,17 @@ impl crate::stalks::bud::IntoBud< Shard> for String
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::stalks::bud::IntoBud< Shard> for &'static str
+impl crate::stalks::IntoBud< Shard> for &'static str
 {
     fn	IntoBud( self) -> Box< dyn Bud< Shard>>
     {
         Box::new( Shard::from( self))
     }
-    fn	IntoBudAction( self, _act: Box<dyn Bud<Shard>>) -> Box<dyn Bud<Shard>>
+    fn	IntoBudAction( self, _act: Box< dyn Bud< Shard>>) -> Box< dyn Bud< Shard>>
     {
         Box::new( Shard::from( self))
     }
-
-    fn	IntoBudUniOp( self, _op: crate::stalks::bud::BudUniOp) -> Box<dyn Bud<Shard>>
+    fn	IntoBudUniOp( self, _op: crate::stalks::BudUniOp) -> Box< dyn Bud< Shard>>
     {
         Box::new( Shard::from( self))
     }
@@ -193,26 +190,23 @@ impl From< Charset> for Shard
 #[macro_export]
 macro_rules! ShardTree {
     // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
-    ( @feature_STAR   $($args:tt)* ) => { $crate::BudTree!( @feature_STAR   $($args)* ) };
-    ( @feature_PLUS   $($args:tt)* ) => { $crate::BudTree!( @feature_PLUS   $($args)* ) };
-    ( @feature_BANG   $($args:tt)* ) => { $crate::BudTree!( @feature_BANG   $($args)* ) };
-    ( @feature_LT     $($args:tt)* ) => { $crate::BudTree!( @feature_LT     $($args)* ) };
-    ( @feature_SHL    $($args:tt)* ) => { $crate::BudTree!( @feature_SHL    $($args)* ) };
-    ( @feature_BOR    $($args:tt)* ) => { $crate::BudTree!( @feature_BOR    $($args)* ) };
-    ( @feature_NEW    $($args:tt)* ) => { $crate::BudTree!( @feature_NEW    $($args)* ) };
-    ( @feature_ACTION $($args:tt)* ) => { $crate::BudTree!( @feature_ACTION $($args)* ) };
-
+    ( @feature_STAR   $( $args:tt)* ) => { $crate::BudTree!( @feature_STAR   $( $args)* ) };
+    ( @feature_PLUS   $( $args:tt)* ) => { $crate::BudTree!( @feature_PLUS   $( $args)* ) };
+    ( @feature_BANG   $( $args:tt)* ) => { $crate::BudTree!( @feature_BANG   $( $args)* ) };
+    ( @feature_LT     $( $args:tt)* ) => { $crate::BudTree!( @feature_LT     $( $args)* ) };
+    ( @feature_SHL    $( $args:tt)* ) => { $crate::BudTree!( @feature_SHL    $( $args)* ) };
+    ( @feature_BOR    $( $args:tt)* ) => { $crate::BudTree!( @feature_BOR    $( $args)* ) };
+    ( @feature_NEW    $( $args:tt)* ) => { $crate::BudTree!( @feature_NEW    $( $args)* ) };
+    ( @feature_ACTION $( $args:tt)* ) => { $crate::BudTree!( @feature_ACTION $( $args)* ) };
     // ── Custom: Boxet stringification (overrides BudTree default) ───────────────────────────────────
-    ( @feature_BOXET [ $($cb:tt)* ], $type:ident, $s:literal ) => {
-        $crate::stalks::bud::IntoBud::IntoBud( $type::NewCharset( $crate::segue::charset::Charset::FromBoxet( $crate::silo::uint::U8::FromArr( $crate::silo::arr::Arr::from( $s.as_bytes() ) ) ) ) )
+    ( @feature_BOXET [ $( $cb:tt)* ], $type:ident, $s:literal ) => {
+        $crate::stalks::IntoBud::IntoBud( $type::NewCharset( $crate::segue::Charset::FromBoxet( $crate::silo::U8::FromArr( $crate::silo::Arr::from( $s.as_bytes() ) ) ) ) )
     };
-
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
     // Forward unhandled internal callbacks to BudTree (e.g., disallowed features like @feature_SHR)
     ( @ $( $inner:tt )+ ) => {
         $crate::BudTree!( @ $( $inner )+ )
     };
-
     // Top-level entry (user code)
     ( $( $inner:tt)+ )  => { $crate::ShardTree!( @cb [ $crate::ShardTree ], Shard, $( $inner)+ ) };
 }

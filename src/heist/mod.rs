@@ -4,5 +4,8 @@ mod _tests;
 pub mod atelier;
 pub mod chore;
 pub mod maestro;
+pub use	atelier::Atelier;
+pub use	chore::Chore;
+pub use	maestro::Maestro;
 
 //---------------------------------------------------------------------------------------------------------------------------------

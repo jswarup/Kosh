@@ -1,9 +1,6 @@
 //-- stash.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::silo::arr::Arr;
-use	crate::silo::buff::Buff;
-use	crate::silo::stk::Stk;
-use	crate::silo::uint::U32;
-use	crate::stalks::atm::Atm;
+use	crate::silo::{ Arr, Buff, Stk, U32 };
+use	crate::stalks::Atm;
 use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------

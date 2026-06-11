@@ -1,14 +1,7 @@
 //-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::heist::maestro::Maestro;
-use	crate::silo::{
-    arr::Arr,
-    buff::Buff,
-    stash::Stash,
-    uint::
-    { U16, U32 },
-};
-use	crate::stalks::atm::{ Atm, Spinlock };
-use	crate::stalks::work::WorkPtr;
+use	crate::heist::Maestro;
+use	crate::silo::{ Arr, Buff, Stash, U16, U32 };
+use	crate::stalks::{ Atm, Spinlock, WorkPtr };
 use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -188,7 +181,7 @@ impl< 'a> Atelier< 'a>
                 maestro.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
                 let  	job = *self._JobBuff.Arr().At( jobId);
                 if !job.is_null() {
-                    ( job.func)( job.data, maestro);   // Run job
+                    ( job.func)( job.data, maestro);                   // Run job
                     self._JobBuff.Arr().SetAt( jobId, &WorkPtr::null());
                     maestro.FlushTempQueue();
                 }
