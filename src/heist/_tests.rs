@@ -97,7 +97,7 @@ fn	TestChoreBuds()
                 })))
     );
     println!( "ChoreTree: {:#?}", choreTree);
-    let  	choreTreeMacro = crate::ChoreTree!( 
+    let  	mut choreTreeMacro = crate::ChoreTree!( 
         ( cChore
             < ( bChore
                 | aChore

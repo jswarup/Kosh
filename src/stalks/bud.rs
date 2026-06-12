@@ -149,32 +149,31 @@ impl< T > dyn Bud< T > + '_
 where
     T: crate::stalks::IWork + Clone + Default + 'static,
 {
-    pub fn	Post( &self, worker: &dyn crate::stalks::IWorker)
+    pub fn	Post( &mut self, worker: &dyn crate::stalks::IWorker)
     {
         if worker.IsSequential() {
-            fn	RunSequential< T>( node: &dyn Bud< T>, worker: &dyn crate::stalks::IWorker)
+            fn	RunSequential< T>( node: &mut dyn Bud< T>, worker: &dyn crate::stalks::IWorker)
             where
                 T: crate::stalks::IWork + Clone + Default + 'static,
             {
                 if node.Left().is_none() && node.Right().is_none() {
-                    if let Some( val) = node.Val() {
-                        let mut val = val.clone();
+                    if let Some( val) = node.ValMut() {
                         val.DoWork( worker);
                     }
                     return;
                 }
                 if let Some( op) = node.BinOp() {
                     if op == BudBinOp::BOR || op == BudBinOp::LT {
-                        if let Some( left) = node.Left() {
+                        if let Some( left) = node.LeftMut() {
                             RunSequential( left, worker);
                         }
-                        if let Some( right) = node.Right() {
+                        if let Some( right) = node.RightMut() {
                             RunSequential( right, worker);
                         }
                     }
                 }
                 if let Some( _op) = node.UniOp() {
-                    if let Some( left) = node.Left() {
+                    if let Some( left) = node.LeftMut() {
                         RunSequential( left, worker);
                     }
                 }
@@ -233,7 +232,7 @@ where
         let  	mut jobStash = JobStash {
             _JobStash: crate::silo::Stash::New( 0),
         };
-        jobStash.Process( self, maestro, succId);
+        jobStash.Process( &*self, maestro, succId);
         let  	jobArr = jobStash._JobStash.Stk().Arr();
         jobArr.USeg().Traverse( |i| {
             maestro.EnqueueJob( jobArr.MutAt( i));
