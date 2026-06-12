@@ -43,12 +43,24 @@ impl BNodeUniOp
 
 pub trait IBNode< T> {
     fn	Val( &self) -> Option< &T>;
+    fn	ValMut( &mut self) -> Option< &mut T>
+    {
+        None
+    }
 
     fn	Left( &self) -> Option< &dyn IBNode< T>>
     {
         None
     }
+    fn	LeftMut( &mut self) -> Option< &mut dyn IBNode< T>>
+    {
+        None
+    }
     fn	Right( &self) -> Option< &dyn IBNode< T>>
+    {
+        None
+    }
+    fn	RightMut( &mut self) -> Option< &mut dyn IBNode< T>>
     {
         None
     }
@@ -175,6 +187,13 @@ macro_rules! BNodeTree {
                             _ => None,
                         }
                     }
+                    fn	ValMut( &mut self) -> Option< &mut $Arg>
+                    {
+                        match self {
+                            [<$Arg BNode>]::Leaf( value) => Some( value),
+                            _ => None,
+                        }
+                    }
                     fn	Left( &self) -> Option< &dyn $crate::stalks::bnode::IBNode< $Arg>>
                     {
                         match self {
@@ -183,10 +202,25 @@ macro_rules! BNodeTree {
                             _ => None,
                         }
                     }
+                    fn	LeftMut( &mut self) -> Option< &mut dyn $crate::stalks::bnode::IBNode< $Arg>>
+                    {
+                        match self {
+                            [<$Arg BNode>]::Node { _Left, .. } => Some( &mut **_Left),
+                            [<$Arg BNode>]::UniNode { _Child, .. } => Some( &mut **_Child),
+                            _ => None,
+                        }
+                    }
                     fn	Right( &self) -> Option< &dyn $crate::stalks::bnode::IBNode< $Arg>>
                     {
                         match self {
                             [<$Arg BNode>]::Node { _Right, .. } => Some( &**_Right),
+                            _ => None,
+                        }
+                    }
+                    fn	RightMut( &mut self) -> Option< &mut dyn $crate::stalks::bnode::IBNode< $Arg>>
+                    {
+                        match self {
+                            [<$Arg BNode>]::Node { _Right, .. } => Some( &mut **_Right),
                             _ => None,
                         }
                     }

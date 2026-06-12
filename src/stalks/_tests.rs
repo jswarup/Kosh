@@ -149,3 +149,33 @@ fn	TestBNodeUnary()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestBNodeMut()
+{
+    use crate::stalks::bnode::IBNode;
+    let mut root = BNodeTree!( U32, 10 < ( 20 | 30 ));
+    
+    // Mutate left child leaf value
+    {
+        let root_mut: &mut dyn IBNode<U32> = &mut root;
+        let left_mut = root_mut.LeftMut().unwrap();
+        let val_ref = left_mut.ValMut().unwrap();
+        assert_eq!( val_ref, &mut U32(10));
+        *val_ref = U32(99);
+    }
+    assert_eq!( root.Left().unwrap().Val(), Some( &U32(99)));
+
+    // Mutate nested right child leaf value
+    {
+        let root_mut: &mut dyn IBNode<U32> = &mut root;
+        let right_mut = root_mut.RightMut().unwrap();
+        let nested_right_mut = right_mut.RightMut().unwrap();
+        let nested_val_ref = nested_right_mut.ValMut().unwrap();
+        assert_eq!( nested_val_ref, &mut U32(30));
+        *nested_val_ref = U32(100);
+    }
+    assert_eq!( root.Right().unwrap().Right().unwrap().Val(), Some( &U32(100)));
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
