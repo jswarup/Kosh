@@ -89,15 +89,12 @@ fn	TestBNode()
 
     let root: &dyn IBNode<U32> = &rootFromLiterals;
     assert_eq!( root.Val(), None);
-    assert_eq!( root.Op(), "<");
     assert_eq!( root.BinOp(), Some(BNodeBinOp::LT));
     assert_eq!( root.UniOp(), None);
     assert!( root.Left().is_some());
     assert_eq!( root.Left().unwrap().Val(), Some(&U32(10)));
-    assert_eq!( root.Left().unwrap().Op(), "");
     assert_eq!( root.Left().unwrap().BinOp(), None);
     assert!( root.Right().is_some());
-    assert_eq!( root.Right().unwrap().Op(), "|");
     assert_eq!( root.Right().unwrap().BinOp(), Some(BNodeBinOp::BOR));
     assert_eq!( root.Right().unwrap().Left().unwrap().Val(), Some(&U32(20)));
     assert_eq!( root.Right().unwrap().Right().unwrap().Val(), Some(&U32(30)));
@@ -106,8 +103,12 @@ fn	TestBNode()
     root.TraverseDFS(&mut |node, event| {
         let node_repr = if let Some(val) = node.Val() {
             format!("{}", val.0)
+        } else if let Some(op) = node.BinOp() {
+            op.as_str().to_string()
+        } else if let Some(op) = node.UniOp() {
+            op.as_str().to_string()
         } else {
-            node.Op().to_string()
+            "".to_string()
         };
         visited.push((node_repr, event));
     });
@@ -139,7 +140,6 @@ fn	TestBNodeUnary()
     assert_eq!( root.Val(), None);
     assert_eq!( root.BinOp(), None);
     assert_eq!( root.UniOp(), Some(BNodeUniOp::BANG));
-    assert_eq!( root.Op(), "!");
     
     assert!( root.Left().is_some());
     let child = root.Left().unwrap();

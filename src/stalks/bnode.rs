@@ -60,16 +60,6 @@ pub trait IBNode< T> {
     {
         None
     }
-    fn	Op( &self) -> &str
-    {
-        if let Some( op) = self.BinOp() {
-            op.as_str()
-        } else if let Some( op) = self.UniOp() {
-            op.as_str()
-        } else {
-            ""
-        }
-    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
