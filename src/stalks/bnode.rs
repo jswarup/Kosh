@@ -130,7 +130,7 @@ macro_rules! BNodeTree {
     ( @wrap $leaf:expr ) => {
         Into::into( $leaf )
     };
-    ( $Arg:ident, $( $inner:tt )+ ) => {
+    ( @define [ $( $cb:tt )* ], $Arg:ident, $( $inner:tt )+ ) => {
         {
             paste::paste! {
                 #[derive( Debug, PartialEq, Clone)]
@@ -228,9 +228,12 @@ macro_rules! BNodeTree {
                         self
                     }
                 }
-                $crate::BNodeTree!( @cb [ $crate::BNodeTree ], $Arg, [<$Arg BNode>], $( $inner )+ )
+                $crate::BNodeTree!( @cb [ $( $cb)* ], $Arg, [<$Arg BNode>], $( $inner )+ )
             }
         }
+    };
+    ( $Arg:ident, $( $inner:tt )+ ) => {
+        $crate::BNodeTree!( @define [ $crate::BNodeTree ], $Arg, $( $inner )+ )
     };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $inner:tt)+ ) ) => { $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $inner)+ ) };
 
