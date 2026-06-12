@@ -127,27 +127,27 @@ impl From< Charset> for Shard
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[macro_export]
-macro_rules! ShardNodeTree {
+macro_rules! ShardTree {
     // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
-    ( @feature_STAR   $( $args:tt)* ) => { $crate::BNodeTree!( @feature_STAR   $( $args)* ) };
-    ( @feature_PLUS   $( $args:tt)* ) => { $crate::BNodeTree!( @feature_PLUS   $( $args)* ) };
-    ( @feature_BANG   $( $args:tt)* ) => { $crate::BNodeTree!( @feature_BANG   $( $args)* ) };
-    ( @feature_LT     $( $args:tt)* ) => { $crate::BNodeTree!( @feature_LT     $( $args)* ) };
-    ( @feature_SHL    $( $args:tt)* ) => { $crate::BNodeTree!( @feature_SHL    $( $args)* ) };
-    ( @feature_BOR    $( $args:tt)* ) => { $crate::BNodeTree!( @feature_BOR    $( $args)* ) };
-    ( @feature_NEW    $( $args:tt)* ) => { $crate::BNodeTree!( @feature_NEW    $( $args)* ) };
-    ( @feature_ACTION $( $args:tt)* ) => { $crate::BNodeTree!( @feature_ACTION $( $args)* ) };
-    // ── Custom: Boxet stringification (overrides BNodeTree default) ─────────────────────────────────
+    ( @feature_STAR   $( $args:tt)* ) => { $crate::BudTree!( @feature_STAR   $( $args)* ) };
+    ( @feature_PLUS   $( $args:tt)* ) => { $crate::BudTree!( @feature_PLUS   $( $args)* ) };
+    ( @feature_BANG   $( $args:tt)* ) => { $crate::BudTree!( @feature_BANG   $( $args)* ) };
+    ( @feature_LT     $( $args:tt)* ) => { $crate::BudTree!( @feature_LT     $( $args)* ) };
+    ( @feature_SHL    $( $args:tt)* ) => { $crate::BudTree!( @feature_SHL    $( $args)* ) };
+    ( @feature_BOR    $( $args:tt)* ) => { $crate::BudTree!( @feature_BOR    $( $args)* ) };
+    ( @feature_NEW    $( $args:tt)* ) => { $crate::BudTree!( @feature_NEW    $( $args)* ) };
+    ( @feature_ACTION $( $args:tt)* ) => { $crate::BudTree!( @feature_ACTION $( $args)* ) };
+    // ── Custom: Boxet stringification (overrides BudTree default) ─────────────────────────────────
     ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $s:literal ) => {
-        $crate::stalks::bnode::IntoBNode::< Shard, $Node >::IntoBNode( Shard::NewCharset( $crate::segue::Charset::FromBoxet( $crate::silo::U8::FromArr( $crate::silo::Arr::from( $s.as_bytes() ) ) ) ) )
+        $crate::stalks::bud::IntoBud::< Shard, $Node >::IntoBud( Shard::NewCharset( $crate::segue::Charset::FromBoxet( $crate::silo::U8::FromArr( $crate::silo::Arr::from( $s.as_bytes() ) ) ) ) )
     };
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
     ( @ $( $inner:tt )+ ) => {
-        $crate::BNodeTree!( @ $( $inner )+ )
+        $crate::BudTree!( @ $( $inner )+ )
     };
     // Top-level entry (user code)
     ( $( $inner:tt)+ )  => {
-        $crate::BNodeTree!( @define [ $crate::ShardNodeTree ], Shard, $( $inner)+ )
+        $crate::BudTree!( @define [ $crate::ShardTree ], Shard, $( $inner)+ )
     };
 }
 

@@ -5,7 +5,7 @@ use	crate::{
     silo::
     { Buff, U16, U32 },
     stalks::
-    { BNodeTree, IWorker, Worker, IBNode },
+    { BudTree, IWorker, Worker, Bud },
 };
 use	std::sync::{ Arc, Mutex };
 use	std::thread;
@@ -87,7 +87,7 @@ fn	TestChoreBuds()
     let  	cChore = Chore::New( |_m| {
         print!( "{} ", 40);
     });
-    let  	choreTree = BNodeTree!( 
+    let  	choreTree = BudTree!( 
         Chore,
         ( cChore
             < ( bChore
@@ -97,7 +97,7 @@ fn	TestChoreBuds()
                 })))
     );
     println!( "ChoreTree: {:#?}", choreTree);
-    let  	choreNodeTree = crate::ChoreNodeTree!( 
+    let  	choreTreeMacro = crate::ChoreTree!( 
         ( cChore
             < ( bChore
                 | aChore
@@ -105,23 +105,21 @@ fn	TestChoreBuds()
                     print!( "{} ", 50);
                 })))
     );
-    choreNodeTree.Print();
+    choreTreeMacro.Print();
     let  	worker = Worker::New();
     worker.Tender( aChore);
-    choreNodeTree.Post( &worker);
+    choreTreeMacro.Post( &worker);
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
     mainMaestro.Tender( aChore);
-    choreNodeTree.Post( mainMaestro);
-    //let  	mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( chore));
-    //mainMaestro.EnqueueJob( &mut jobId);
+    choreTreeMacro.Post( mainMaestro);
     atelier.DoLaunch();
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestChoreNodeTree()
+fn	TestChoreTree()
 {
     let  	aChore = Chore::New( |_m| {
         print!( "{} ", 10);
@@ -132,7 +130,7 @@ fn	TestChoreNodeTree()
     let  	cChore = Chore::New( |_m| {
         print!( "{} ", 40);
     });
-    let  	choreNodeTree = crate::ChoreNodeTree!( 
+    let  	choreTree = crate::ChoreTree!( 
         ( cChore
             < ( bChore
                 | aChore
@@ -140,8 +138,8 @@ fn	TestChoreNodeTree()
                     print!( "{} ", 50);
                 })))
     );
-    assert_eq!( choreNodeTree.CountLeaves(), 4);
-    println!( "ChoreNodeTree: {:#?}", choreNodeTree);
+    assert_eq!( choreTree.CountLeaves(), 4);
+    println!( "ChoreTree: {:#?}", choreTree);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

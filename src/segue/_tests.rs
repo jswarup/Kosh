@@ -4,7 +4,7 @@ use	crate::{
     segue::
     { Charset, Shard },
     silo::U32,
-    stalks::IBNode,
+    stalks::Bud,
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -21,7 +21,7 @@ fn	TestShardBuds()
     let  	cShard = Shard::New( |_m| {
         print!( "{} ", 40);
     });
-    let  	nodeTree = crate::ShardNodeTree!( 
+    let  	nodeTree = crate::ShardTree!( 
         ( cShard
             < ( bShard
                 | aShard
@@ -41,7 +41,7 @@ fn	TestShardBuds()
 #[test]
 fn	TestShardFromCharAndString()
 {
-    let  	nodeTree = crate::ShardNodeTree!( ( !"cShard" < !( 'b' < [ "a-z" ] < "aShard"[ |_m| {
+    let  	nodeTree = crate::ShardTree!( ( !"cShard" < !( 'b' < [ "a-z" ] < "aShard"[ |_m| {
                         print!( "{} ", 50);
                     }] )));
     nodeTree.Print();

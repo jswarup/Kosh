@@ -62,19 +62,19 @@ impl std::fmt::Display for Chore
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[macro_export]
-macro_rules! ChoreNodeTree {
+macro_rules! ChoreTree {
     // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
-    ( @feature_LT  $( $args:tt)* ) => { $crate::BNodeTree!( @feature_LT  $( $args)* ) };
-    ( @feature_BOR $( $args:tt)* ) => { $crate::BNodeTree!( @feature_BOR $( $args)* ) };
-    ( @feature_NEW $( $args:tt)* ) => { $crate::BNodeTree!( @feature_NEW $( $args)* ) };
+    ( @feature_LT  $( $args:tt)* ) => { $crate::BudTree!( @feature_LT  $( $args)* ) };
+    ( @feature_BOR $( $args:tt)* ) => { $crate::BudTree!( @feature_BOR $( $args)* ) };
+    ( @feature_NEW $( $args:tt)* ) => { $crate::BudTree!( @feature_NEW $( $args)* ) };
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
-    // Forward unhandled internal callbacks to BNodeTree (e.g., disallowed features like @feature_SHL)
+    // Forward unhandled internal callbacks to BudTree (e.g., disallowed features like @feature_SHL)
     ( @ $( $inner:tt )+ ) => {
-        $crate::BNodeTree!( @ $( $inner )+ )
+        $crate::BudTree!( @ $( $inner )+ )
     };
     // Top-level entry (user code)
     ( $( $inner:tt)+ )  => {
-        $crate::BNodeTree!( @define [ $crate::ChoreNodeTree ], Chore, $( $inner)+ )
+        $crate::BudTree!( @define [ $crate::ChoreTree ], Chore, $( $inner)+ )
     };
 }
 

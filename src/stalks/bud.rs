@@ -1,75 +1,75 @@
-//-- bnode.rs -------------------------------------------------------------------------------------------------------------------
+//-- bud.rs -------------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ Buff, U32 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BNodeBinOp {
+pub enum BudBinOp {
     LT,
     BOR,
     SHL,
     SHR,
 }
-impl BNodeBinOp
+impl BudBinOp
 {
     pub fn	as_str( &self) -> &'static str {
         match self {
-            BNodeBinOp::LT => "<",
-            BNodeBinOp::BOR => "|",
-            BNodeBinOp::SHL => "<<",
-            BNodeBinOp::SHR => ">>",
+            BudBinOp::LT => "<",
+            BudBinOp::BOR => "|",
+            BudBinOp::SHL => "<<",
+            BudBinOp::SHR => ">>",
         }
     }
 }
 #[derive( Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BNodeUniOp {
+pub enum BudUniOp {
     STAR,
     PLUS,
     MINUS,
     BANG,
 }
-impl BNodeUniOp
+impl BudUniOp
 {
     pub fn	as_str( &self) -> &'static str {
         match self {
-            BNodeUniOp::STAR => "*",
-            BNodeUniOp::PLUS => "+",
-            BNodeUniOp::MINUS => "-",
-            BNodeUniOp::BANG => "!",
+            BudUniOp::STAR => "*",
+            BudUniOp::PLUS => "+",
+            BudUniOp::MINUS => "-",
+            BudUniOp::BANG => "!",
         }
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IBNode< T> {
+pub trait Bud< T> {
     fn	Val( &self) -> Option< &T>;
     fn	ValMut( &mut self) -> Option< &mut T>
     {
         None
     }
 
-    fn	Left( &self) -> Option< &dyn IBNode< T>>
+    fn	Left( &self) -> Option< &dyn Bud< T>>
     {
         None
     }
-    fn	LeftMut( &mut self) -> Option< &mut dyn IBNode< T>>
+    fn	LeftMut( &mut self) -> Option< &mut dyn Bud< T>>
     {
         None
     }
-    fn	Right( &self) -> Option< &dyn IBNode< T>>
+    fn	Right( &self) -> Option< &dyn Bud< T>>
     {
         None
     }
-    fn	RightMut( &mut self) -> Option< &mut dyn IBNode< T>>
+    fn	RightMut( &mut self) -> Option< &mut dyn Bud< T>>
     {
         None
     }
-    fn	BinOp( &self) -> Option< BNodeBinOp>
+    fn	BinOp( &self) -> Option< BudBinOp>
     {
         None
     }
-    fn	UniOp( &self) -> Option< BNodeUniOp>
+    fn	UniOp( &self) -> Option< BudUniOp>
     {
         None
     }
@@ -86,9 +86,9 @@ pub enum TraversalEvent {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T> dyn IBNode< T> + '_
+impl< T> dyn Bud< T> + '_
 {
-    pub fn	TraverseDFS( &self, f: &mut dyn FnMut( &dyn IBNode< T>, TraversalEvent))
+    pub fn	TraverseDFS( &self, f: &mut dyn FnMut( &dyn Bud< T>, TraversalEvent))
     {
         let  	isLeaf = self.Left().is_none() && self.Right().is_none();
         f( self, TraversalEvent::Entry);
@@ -104,7 +104,7 @@ impl< T> dyn IBNode< T> + '_
     }
 }
 
-impl< T > dyn IBNode< T > + '_
+impl< T > dyn Bud< T > + '_
 where
     T: std::fmt::Display,
 {
@@ -145,14 +145,14 @@ where
     }
 }
 
-impl< T > dyn IBNode< T > + '_
+impl< T > dyn Bud< T > + '_
 where
     T: crate::stalks::IWork + Clone + Default + 'static,
 {
     pub fn	Post( &self, worker: &dyn crate::stalks::IWorker)
     {
         if worker.IsSequential() {
-            fn	RunSequential< T>( node: &dyn IBNode< T>, worker: &dyn crate::stalks::IWorker)
+            fn	RunSequential< T>( node: &dyn Bud< T>, worker: &dyn crate::stalks::IWorker)
             where
                 T: crate::stalks::IWork + Clone + Default + 'static,
             {
@@ -164,7 +164,7 @@ where
                     return;
                 }
                 if let Some( op) = node.BinOp() {
-                    if op == BNodeBinOp::BOR || op == BNodeBinOp::LT {
+                    if op == BudBinOp::BOR || op == BudBinOp::LT {
                         if let Some( left) = node.Left() {
                             RunSequential( left, worker);
                         }
@@ -189,7 +189,7 @@ where
         }
         impl JobStash
         {
-            fn	Process< T>( &mut self, node: &dyn IBNode< T>, maestro: &crate::heist::Maestro< '_>, succId: crate::silo::U16) -> crate::silo::U16
+            fn	Process< T>( &mut self, node: &dyn Bud< T>, maestro: &crate::heist::Maestro< '_>, succId: crate::silo::U16) -> crate::silo::U16
             where
                 T: crate::stalks::IWork + Clone + Default + 'static,
             {
@@ -202,12 +202,12 @@ where
                     return succId;
                 }
                 if let Some( op) = node.BinOp() {
-                    if op == BNodeBinOp::BOR {
+                    if op == BudBinOp::BOR {
                         let  _succR = self.Process( node.Right().unwrap(), maestro, succId);
                         let  _succL = self.Process( node.Left().unwrap(), maestro, succId);
                         return succId;
                     }
-                    if op == BNodeBinOp::LT {
+                    if op == BudBinOp::LT {
                         let  mark = self._JobStash.Size();
                         let  rJobId = self.Process( node.Right().unwrap(), maestro, succId);
                         let  jStk = self._JobStash.Stk();
@@ -244,39 +244,39 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IntoBNode< T, N: Sized > {
-    fn	IntoBNode( self ) -> N;
-    fn	IntoBNodeAction( self, _act: N ) -> N
+pub trait IntoBud< T, N: Sized > {
+    fn	IntoBud( self ) -> N;
+    fn	IntoBudAction( self, _act: N ) -> N
     where
         Self: Sized,
     {
-        self.IntoBNode()
+        self.IntoBud()
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[macro_export]
-macro_rules! BNodeTree {
-    // ---- FEATURE OPT-INS FOR BNodeTree ITSELF ----------------------------------------------------------------------------
-    // BNodeTree explicitly opts in to all features by delegating back to its own builders.
-    ( @feature_SHL [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, SHL, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_SHL [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, SHL, $l, $( $r)+ ) };
-    ( @feature_SHR [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, SHR, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_SHR [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, SHR, $l, $( $r)+ ) };
-    ( @feature_LT  [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, LT, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_LT  [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, LT, $l, $( $r)+ ) };
-    ( @feature_BOR [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, BOR, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_BOR [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, BOR, $l, $( $r)+ ) };
+macro_rules! BudTree {
+    // ---- FEATURE OPT-INS FOR BudTree ITSELF ----------------------------------------------------------------------------
+    // BudTree explicitly opts in to all features by delegating back to its own builders.
+    ( @feature_SHL [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $( $cb)* ], $Arg, $Node, SHL, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_SHL [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $( $cb)* ], $Arg, $Node, SHL, $l, $( $r)+ ) };
+    ( @feature_SHR [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $( $cb)* ], $Arg, $Node, SHR, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_SHR [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $( $cb)* ], $Arg, $Node, SHR, $l, $( $r)+ ) };
+    ( @feature_LT  [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $( $cb)* ], $Arg, $Node, LT, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_LT  [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $( $cb)* ], $Arg, $Node, LT, $l, $( $r)+ ) };
+    ( @feature_BOR [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BudTree!( @bg [ $( $cb)* ], $Arg, $Node, BOR, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_BOR [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BudTree!( @bl [ $( $cb)* ], $Arg, $Node, BOR, $l, $( $r)+ ) };
     ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, | $( $body:tt)+ ) => { $Node::New( $Arg::New( | $( $body)+ ) ) };
     ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, || $( $body:tt)+ ) => { $Node::New( $Arg::New( || $( $body)+ ) ) };
     ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move | $( $body:tt)+ ) => { $Node::New( $Arg::New( move | $( $body)+ ) ) };
     ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move || $( $body:tt)+ ) => { $Node::New( $Arg::New( move || $( $body)+ ) ) };
 
-    ( @feature_STAR  [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:tt $( $r:tt )* ) => { $crate::BNodeTree!( @uni [ $( $cb)* ], $Arg, $Node, STAR, $l $( $r )* ) };
-    ( @feature_PLUS  [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:tt $( $r:tt )* ) => { $crate::BNodeTree!( @uni [ $( $cb)* ], $Arg, $Node, PLUS, $l $( $r )* ) };
-    ( @feature_MINUS [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:tt $( $r:tt )* ) => { $crate::BNodeTree!( @uni [ $( $cb)* ], $Arg, $Node, MINUS, $l $( $r )* ) };
-    ( @feature_BANG  [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:tt $( $r:tt )* ) => { $crate::BNodeTree!( @uni [ $( $cb)* ], $Arg, $Node, BANG, $l $( $r )* ) };
+    ( @feature_STAR  [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:tt $( $r:tt )* ) => { $crate::BudTree!( @uni [ $( $cb)* ], $Arg, $Node, STAR, $l $( $r )* ) };
+    ( @feature_PLUS  [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:tt $( $r:tt )* ) => { $crate::BudTree!( @uni [ $( $cb)* ], $Arg, $Node, PLUS, $l $( $r )* ) };
+    ( @feature_MINUS [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:tt $( $r:tt )* ) => { $crate::BudTree!( @uni [ $( $cb)* ], $Arg, $Node, MINUS, $l $( $r )* ) };
+    ( @feature_BANG  [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:tt $( $r:tt )* ) => { $crate::BudTree!( @uni [ $( $cb)* ], $Arg, $Node, BANG, $l $( $r )* ) };
 
     ( @wrap $leaf:expr ) => {
         Into::into( $leaf )
@@ -285,35 +285,35 @@ macro_rules! BNodeTree {
         {
             paste::paste! {
                 #[derive( Debug, PartialEq, Clone)]
-                enum [<$Arg BNode>] {
+                enum [<$Arg Bud>] {
                     Leaf( $Arg),
                     Node {
-                        _BinOp: $crate::stalks::bnode::BNodeBinOp,
-                        _Left: Box< [<$Arg BNode>]>,
-                        _Right: Box< [<$Arg BNode>]>,
+                        _BinOp: $crate::stalks::bud::BudBinOp,
+                        _Left: Box< [<$Arg Bud>]>,
+                        _Right: Box< [<$Arg Bud>]>,
                     },
                     UniNode {
-                        _UniOp: $crate::stalks::bnode::BNodeUniOp,
-                        _Child: Box< [<$Arg BNode>]>,
+                        _UniOp: $crate::stalks::bud::BudUniOp,
+                        _Child: Box< [<$Arg Bud>]>,
                     }
                 }
-                impl [<$Arg BNode>]
+                impl [<$Arg Bud>]
                 {
                     fn	New( value: $Arg) -> Self
                     {
-                        [<$Arg BNode>]::Leaf( value)
+                        [<$Arg Bud>]::Leaf( value)
                     }
-                    fn	NewBranch( op: $crate::stalks::bnode::BNodeBinOp, left: Self, right: Self) -> Self
+                    fn	NewBranch( op: $crate::stalks::bud::BudBinOp, left: Self, right: Self) -> Self
                     {
-                        [<$Arg BNode>]::Node {
+                        [<$Arg Bud>]::Node {
                             _BinOp: op,
                             _Left: Box::new( left),
                             _Right: Box::new( right),
                         }
                     }
-                    fn	NewUni( op: $crate::stalks::bnode::BNodeUniOp, child: Self) -> Self
+                    fn	NewUni( op: $crate::stalks::bud::BudUniOp, child: Self) -> Self
                     {
-                        [<$Arg BNode>]::UniNode {
+                        [<$Arg Bud>]::UniNode {
                             _UniOp: op,
                             _Child: Box::new( child),
                         }
@@ -321,104 +321,104 @@ macro_rules! BNodeTree {
                     pub fn	CountLeaves( &self) -> usize
                     {
                         match self {
-                            [<$Arg BNode>]::Leaf( _) => 1,
-                            [<$Arg BNode>]::Node { _Left, _Right, .. } => _Left.CountLeaves() + _Right.CountLeaves(),
-                            [<$Arg BNode>]::UniNode { _Child, .. } => _Child.CountLeaves(),
+                            [<$Arg Bud>]::Leaf( _) => 1,
+                            [<$Arg Bud>]::Node { _Left, _Right, .. } => _Left.CountLeaves() + _Right.CountLeaves(),
+                            [<$Arg Bud>]::UniNode { _Child, .. } => _Child.CountLeaves(),
                         }
                     }
                 }
 
-                impl $crate::stalks::bnode::IBNode< $Arg> for [<$Arg BNode>]
+                impl $crate::stalks::bud::Bud< $Arg> for [<$Arg Bud>]
                 {
                     fn	Val( &self) -> Option< &$Arg>
                     {
                         match self {
-                            [<$Arg BNode>]::Leaf( value) => Some( value),
+                            [<$Arg Bud>]::Leaf( value) => Some( value),
                             _ => None,
                         }
                     }
                     fn	ValMut( &mut self) -> Option< &mut $Arg>
                     {
                         match self {
-                            [<$Arg BNode>]::Leaf( value) => Some( value),
+                            [<$Arg Bud>]::Leaf( value) => Some( value),
                             _ => None,
                         }
                     }
-                    fn	Left( &self) -> Option< &dyn $crate::stalks::bnode::IBNode< $Arg>>
+                    fn	Left( &self) -> Option< &dyn $crate::stalks::bud::Bud< $Arg>>
                     {
                         match self {
-                            [<$Arg BNode>]::Node { _Left, .. } => Some( &**_Left),
-                            [<$Arg BNode>]::UniNode { _Child, .. } => Some( &**_Child),
+                            [<$Arg Bud>]::Node { _Left, .. } => Some( &**_Left),
+                            [<$Arg Bud>]::UniNode { _Child, .. } => Some( &**_Child),
                             _ => None,
                         }
                     }
-                    fn	LeftMut( &mut self) -> Option< &mut dyn $crate::stalks::bnode::IBNode< $Arg>>
+                    fn	LeftMut( &mut self) -> Option< &mut dyn $crate::stalks::bud::Bud< $Arg>>
                     {
                         match self {
-                            [<$Arg BNode>]::Node { _Left, .. } => Some( &mut **_Left),
-                            [<$Arg BNode>]::UniNode { _Child, .. } => Some( &mut **_Child),
+                            [<$Arg Bud>]::Node { _Left, .. } => Some( &mut **_Left),
+                            [<$Arg Bud>]::UniNode { _Child, .. } => Some( &mut **_Child),
                             _ => None,
                         }
                     }
-                    fn	Right( &self) -> Option< &dyn $crate::stalks::bnode::IBNode< $Arg>>
+                    fn	Right( &self) -> Option< &dyn $crate::stalks::bud::Bud< $Arg>>
                     {
                         match self {
-                            [<$Arg BNode>]::Node { _Right, .. } => Some( &**_Right),
+                            [<$Arg Bud>]::Node { _Right, .. } => Some( &**_Right),
                             _ => None,
                         }
                     }
-                    fn	RightMut( &mut self) -> Option< &mut dyn $crate::stalks::bnode::IBNode< $Arg>>
+                    fn	RightMut( &mut self) -> Option< &mut dyn $crate::stalks::bud::Bud< $Arg>>
                     {
                         match self {
-                            [<$Arg BNode>]::Node { _Right, .. } => Some( &mut **_Right),
+                            [<$Arg Bud>]::Node { _Right, .. } => Some( &mut **_Right),
                             _ => None,
                         }
                     }
-                    fn	BinOp( &self) -> Option< $crate::stalks::bnode::BNodeBinOp>
+                    fn	BinOp( &self) -> Option< $crate::stalks::bud::BudBinOp>
                     {
                         match self {
-                            [<$Arg BNode>]::Node { _BinOp, .. } => Some( *_BinOp),
+                            [<$Arg Bud>]::Node { _BinOp, .. } => Some( *_BinOp),
                             _ => None,
                         }
                     }
-                    fn	UniOp( &self) -> Option< $crate::stalks::bnode::BNodeUniOp>
+                    fn	UniOp( &self) -> Option< $crate::stalks::bud::BudUniOp>
                     {
                         match self {
-                            [<$Arg BNode>]::UniNode { _UniOp, .. } => Some( *_UniOp),
+                            [<$Arg Bud>]::UniNode { _UniOp, .. } => Some( *_UniOp),
                             _ => None,
                         }
                     }
                 }
-                impl std::ops::Deref for [<$Arg BNode>] {
-                    type Target = dyn $crate::stalks::bnode::IBNode< $Arg >;
+                impl std::ops::Deref for [<$Arg Bud>] {
+                    type Target = dyn $crate::stalks::bud::Bud< $Arg >;
                     fn deref( &self) -> &Self::Target {
                         self
                     }
                 }
-                impl std::ops::DerefMut for [<$Arg BNode>] {
+                impl std::ops::DerefMut for [<$Arg Bud>] {
                     fn deref_mut( &mut self) -> &mut Self::Target {
                         self
                     }
                 }
-                impl< I > $crate::stalks::bnode::IntoBNode< $Arg, [<$Arg BNode>]> for I
+                impl< I > $crate::stalks::bud::IntoBud< $Arg, [<$Arg Bud>]> for I
                 where
                     I: Into< $Arg >,
                 {
-                    fn	IntoBNode( self) -> [<$Arg BNode>] {
-                        [<$Arg BNode>]::New( self.into() )
+                    fn	IntoBud( self) -> [<$Arg Bud>] {
+                        [<$Arg Bud>]::New( self.into() )
                     }
                 }
-                impl $crate::stalks::bnode::IntoBNode< $Arg, [<$Arg BNode>]> for [<$Arg BNode>] {
-                    fn	IntoBNode( self) -> [<$Arg BNode>] {
+                impl $crate::stalks::bud::IntoBud< $Arg, [<$Arg Bud>]> for [<$Arg Bud>] {
+                    fn	IntoBud( self) -> [<$Arg Bud>] {
                         self
                     }
                 }
-                $crate::BNodeTree!( @cb [ $( $cb)* ], $Arg, [<$Arg BNode>], $( $inner )+ )
+                $crate::BudTree!( @cb [ $( $cb)* ], $Arg, [<$Arg Bud>], $( $inner )+ )
             }
         }
     };
     ( $Arg:ident, $( $inner:tt )+ ) => {
-        $crate::BNodeTree!( @define [ $crate::BNodeTree ], $Arg, $( $inner )+ )
+        $crate::BudTree!( @define [ $crate::BudTree ], $Arg, $( $inner )+ )
     };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $inner:tt)+ ) ) => { $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $inner)+ ) };
 
@@ -471,12 +471,12 @@ macro_rules! BNodeTree {
 
     // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $leaf:expr ) => {
-        $crate::stalks::bnode::IntoBNode::< $Arg, $Node >::IntoBNode( $leaf )
+        $crate::stalks::bud::IntoBud::< $Arg, $Node >::IntoBud( $leaf )
     };
 
     // @uni : unary - OP rhs
     ( @uni [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $op:ident, $l:tt $( $r:tt)* ) => {
-        $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, ( $Node::NewUni( $crate::stalks::bnode::BNodeUniOp::$op, $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $l ) ) ) $( $r)* )
+        $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, ( $Node::NewUni( $crate::stalks::bud::BudUniOp::$op, $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $l ) ) ) $( $r)* )
     };
 
     // @feature_ACTION : matches literal/group followed by action brackets, parses the closure
@@ -489,31 +489,31 @@ macro_rules! BNodeTree {
 
     // @closure_match : resolves closure vs non-closure for action leaf
     ( @closure_match [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $base:expr, | $( $closure:tt )* ) => {
-        $crate::stalks::bnode::IntoBNode::< $Arg, $Node >::IntoBNodeAction( $base, $Node::New( $Arg::New( | $( $closure)* ) ) )
+        $crate::stalks::bud::IntoBud::< $Arg, $Node >::IntoBudAction( $base, $Node::New( $Arg::New( | $( $closure)* ) ) )
     };
     ( @closure_match [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $base:expr, || $( $closure:tt )* ) => {
-        $crate::stalks::bnode::IntoBNode::< $Arg, $Node >::IntoBNodeAction( $base, $Node::New( $Arg::New( || $( $closure)* ) ) )
+        $crate::stalks::bud::IntoBud::< $Arg, $Node >::IntoBudAction( $base, $Node::New( $Arg::New( || $( $closure)* ) ) )
     };
     ( @closure_match [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $base:expr, move | $( $closure:tt )* ) => {
-        $crate::stalks::bnode::IntoBNode::< $Arg, $Node >::IntoBNodeAction( $base, $Node::New( $Arg::New( move | $( $closure)* ) ) )
+        $crate::stalks::bud::IntoBud::< $Arg, $Node >::IntoBudAction( $base, $Node::New( $Arg::New( move | $( $closure)* ) ) )
     };
     ( @closure_match [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $base:expr, move || $( $closure:tt )* ) => {
-        $crate::stalks::bnode::IntoBNode::< $Arg, $Node >::IntoBNodeAction( $base, $Node::New( $Arg::New( move || $( $closure)* ) ) )
+        $crate::stalks::bud::IntoBud::< $Arg, $Node >::IntoBudAction( $base, $Node::New( $Arg::New( move || $( $closure)* ) ) )
     };
 
     // ---- Internal helpers ----------------------------------------------------------------------------------------------------
     // @bg : binary — (group) OP rhs
     ( @bg [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $op:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => {
         $Node::NewBranch( 
-            $crate::stalks::bnode::BNodeBinOp::$op,
+            $crate::stalks::bud::BudBinOp::$op,
             $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ),
             $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) )
     };
     // @bl : binary — leaf OP rhs
     ( @bl [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $op:ident, $l:expr, $( $r:tt)+ ) => {
         $Node::NewBranch( 
-            $crate::stalks::bnode::BNodeBinOp::$op,
-            $crate::stalks::bnode::IntoBNode::< $Arg, $Node >::IntoBNode( $l ),
+            $crate::stalks::bud::BudBinOp::$op,
+            $crate::stalks::bud::IntoBud::< $Arg, $Node >::IntoBud( $l ),
             $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) )
     };
 
@@ -530,6 +530,6 @@ macro_rules! BNodeTree {
     ( @feature_ACTION $( $args:tt )* ) => { compile_error!( "Action suffix [ closure ] is not enabled for this tree") };
     ( @feature_BOXET  $( $args:tt )* ) => { compile_error!( "Boxet [ ... ] is not enabled for this tree") };
 }
-pub use	crate::BNodeTree;
+pub use	crate::BudTree;
 
 //---------------------------------------------------------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 //-- _tests.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::silo::U32;
-use	crate::stalks::{ Atm, BNodeTree, IBNode };
+use	crate::stalks::{ Atm, BudTree, Bud };
 use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -33,7 +33,7 @@ fn	TestAtmBasicOps()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestBNodeBasicOps()
+fn	TestBudBasicOps()
 {
     let  	a = 1.8;
     let  	b = 5.7;
@@ -41,31 +41,31 @@ fn	TestBNodeBasicOps()
     let  	d = 20.7;
     let  	e = 1.5;
     let  	f = 8.1;
-    let  	x = BNodeTree!( f64, ( ( ( a | b) < c) | ( d | ( e < f))));
+    let  	x = BudTree!( f64, ( ( ( a | b) < c) | ( d | ( e < f))));
     x.Print();
-    let  	combined = BNodeTree!( f64, ( a | b) | ( c | d));
+    let  	combined = BudTree!( f64, ( a | b) | ( c | d));
     combined.Print();
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestBNode()
+fn	TestBud()
 {
-    use crate::stalks::bnode::{IBNode, TraversalEvent, BNodeBinOp};
-    let  	rootFromLiterals = BNodeTree!( U32, 10 < ( 20 | 30));
+    use crate::stalks::bud::{Bud, TraversalEvent, BudBinOp};
+    let  	rootFromLiterals = BudTree!( U32, 10 < ( 20 | 30));
     assert_eq!( rootFromLiterals.CountLeaves(), 3);
     println!( "Tree structure: {:#?}", rootFromLiterals);
 
-    let root: &dyn IBNode<U32> = &rootFromLiterals;
+    let root: &dyn Bud<U32> = &rootFromLiterals;
     assert_eq!( root.Val(), None);
-    assert_eq!( root.BinOp(), Some(BNodeBinOp::LT));
+    assert_eq!( root.BinOp(), Some(BudBinOp::LT));
     assert_eq!( root.UniOp(), None);
     assert!( root.Left().is_some());
     assert_eq!( root.Left().unwrap().Val(), Some(&U32(10)));
     assert_eq!( root.Left().unwrap().BinOp(), None);
     assert!( root.Right().is_some());
-    assert_eq!( root.Right().unwrap().BinOp(), Some(BNodeBinOp::BOR));
+    assert_eq!( root.Right().unwrap().BinOp(), Some(BudBinOp::BOR));
     assert_eq!( root.Right().unwrap().Left().unwrap().Val(), Some(&U32(20)));
     assert_eq!( root.Right().unwrap().Right().unwrap().Val(), Some(&U32(30)));
 
@@ -100,20 +100,20 @@ fn	TestBNode()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestBNodeUnary()
+fn	TestBudUnary()
 {
-    use crate::stalks::bnode::{IBNode, BNodeUniOp, BNodeBinOp};
-    let  	rootFromLiterals = BNodeTree!( U32, ! ( 10 | 20 ));
+    use crate::stalks::bud::{Bud, BudUniOp, BudBinOp};
+    let  	rootFromLiterals = BudTree!( U32, ! ( 10 | 20 ));
     assert_eq!( rootFromLiterals.CountLeaves(), 2);
     
-    let root: &dyn IBNode<U32> = &rootFromLiterals;
+    let root: &dyn Bud<U32> = &rootFromLiterals;
     assert_eq!( root.Val(), None);
     assert_eq!( root.BinOp(), None);
-    assert_eq!( root.UniOp(), Some(BNodeUniOp::BANG));
+    assert_eq!( root.UniOp(), Some(BudUniOp::BANG));
     
     assert!( root.Left().is_some());
     let child = root.Left().unwrap();
-    assert_eq!( child.BinOp(), Some(BNodeBinOp::BOR));
+    assert_eq!( child.BinOp(), Some(BudBinOp::BOR));
     assert_eq!( child.Left().unwrap().Val(), Some(&U32(10)));
     assert_eq!( child.Right().unwrap().Val(), Some(&U32(20)));
 }
@@ -121,14 +121,14 @@ fn	TestBNodeUnary()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestBNodeMut()
+fn	TestBudMut()
 {
-    use crate::stalks::bnode::IBNode;
-    let mut root = BNodeTree!( U32, 10 < ( 20 | 30 ));
+    use crate::stalks::bud::Bud;
+    let mut root = BudTree!( U32, 10 < ( 20 | 30 ));
     
     // Mutate left child leaf value
     {
-        let root_mut: &mut dyn IBNode<U32> = &mut root;
+        let root_mut: &mut dyn Bud<U32> = &mut root;
         let left_mut = root_mut.LeftMut().unwrap();
         let val_ref = left_mut.ValMut().unwrap();
         assert_eq!( val_ref, &mut U32(10));
@@ -138,7 +138,7 @@ fn	TestBNodeMut()
 
     // Mutate nested right child leaf value
     {
-        let root_mut: &mut dyn IBNode<U32> = &mut root;
+        let root_mut: &mut dyn Bud<U32> = &mut root;
         let right_mut = root_mut.RightMut().unwrap();
         let nested_right_mut = right_mut.RightMut().unwrap();
         let nested_val_ref = nested_right_mut.ValMut().unwrap();
