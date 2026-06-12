@@ -89,6 +89,20 @@ impl< T> dyn IBNode< T> + '_
 
 #[macro_export]
 macro_rules! BNodeTree {
+    // ---- FEATURE OPT-INS FOR BNodeTree ITSELF ----------------------------------------------------------------------------
+    // BNodeTree explicitly opts in to all features by delegating back to its own builders.
+    ( @feature_SHL [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, SHL, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_SHL [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, SHL, $l, $( $r)+ ) };
+    ( @feature_SHR [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, SHR, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_SHR [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, SHR, $l, $( $r)+ ) };
+    ( @feature_LT  [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, LT, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_LT  [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, LT, $l, $( $r)+ ) };
+    ( @feature_BOR [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, BOR, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_BOR [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, BOR, $l, $( $r)+ ) };
+    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, | $( $body:tt)+ ) => { $Node::New( $Arg::New( | $( $body)+ ) ) };
+    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, || $( $body:tt)+ ) => { $Node::New( $Arg::New( || $( $body)+ ) ) };
+    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move | $( $body:tt)+ ) => { $Node::New( $Arg::New( move | $( $body)+ ) ) };
+    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move || $( $body:tt)+ ) => { $Node::New( $Arg::New( move || $( $body)+ ) ) };
     ( @wrap $leaf:expr ) => {
         Into::into( $leaf )
     };
@@ -162,19 +176,54 @@ macro_rules! BNodeTree {
         }
     };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $inner:tt)+ ) ) => { $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $inner)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHL, $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHR, $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::LT,  $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::BOR, $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident << $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHL, $Node::New( $( $cb)* !( @wrap $l ) ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident >> $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHR, $Node::New( $( $cb)* !( @wrap $l ) ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident <  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::LT,  $Node::New( $( $cb)* !( @wrap $l ) ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident |  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::BOR, $Node::New( $( $cb)* !( @wrap $l ) ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal << $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHL, $Node::New( $( $cb)* !( @wrap $l ) ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal >> $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::SHR, $Node::New( $( $cb)* !( @wrap $l ) ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal <  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::LT,  $Node::New( $( $cb)* !( @wrap $l ) ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal |  $( $r:tt)+ ) => { $Node::NewBranch( $crate::stalks::bnode::BNodeBinOp::BOR, $Node::New( $( $cb)* !( @wrap $l ) ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) ) };
+    
+    // ── Binary: (group) OP rhs ──────────────────────────────────────────────────────────────────────
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
+    
+    // ── Binary: ident/literal OP rhs ────────────────────────────────────────────────────────────────
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
+    
+    // ── Closure literal ─────────────────────────────────────────────────────────────────────────────
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, | $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, $Node, | $( $body)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, || $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, $Node, || $( $body)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move | $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, $Node, move | $( $body)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move || $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, $Node, move || $( $body)+ ) };
+
+    // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $leaf:expr ) => { $Node::New( $( $cb)* !( @wrap $leaf ) ) };
+
+    // ---- Internal helpers ----------------------------------------------------------------------------------------------------
+    // @bg : binary — (group) OP rhs
+    ( @bg [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $op:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => {
+        $Node::NewBranch( 
+            $crate::stalks::bnode::BNodeBinOp::$op,
+            $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ),
+            $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) )
+    };
+    // @bl : binary — leaf OP rhs
+    ( @bl [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $op:ident, $l:expr, $( $r:tt)+ ) => {
+        $Node::NewBranch( 
+            $crate::stalks::bnode::BNodeBinOp::$op,
+            $Node::New( $( $cb)* !( @wrap $l ) ),
+            $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) )
+    };
+
+    // ---- DEFAULT FALLBACK ERRORS FOR DISABLED FEATURES -------------------------------------------------------------
+    ( @feature_SHL $( $args:tt )* ) => { compile_error!( "Binary SHL (<<) is not enabled for this tree"); };
+    ( @feature_SHR $( $args:tt )* ) => { compile_error!( "Binary SHR (>>) is not enabled for this tree"); };
+    ( @feature_LT  $( $args:tt )* ) => { compile_error!( "Binary LT (<) is not enabled for this tree"); };
+    ( @feature_BOR $( $args:tt )* ) => { compile_error!( "Binary BOR (|) is not enabled for this tree"); };
+    ( @feature_NEW $( $args:tt )* ) => { compile_error!( "Closure literal is not enabled for this tree"); };
 }
 pub use	crate::BNodeTree;
 

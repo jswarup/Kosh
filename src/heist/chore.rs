@@ -195,3 +195,88 @@ macro_rules! ChoreTree {
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[macro_export]
+macro_rules! ChoreNodeTree {
+    // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
+    ( @feature_LT  $( $args:tt)* ) => { $crate::BNodeTree!( @feature_LT  $( $args)* ) };
+    ( @feature_BOR $( $args:tt)* ) => { $crate::BNodeTree!( @feature_BOR $( $args)* ) };
+    ( @feature_NEW $( $args:tt)* ) => { $crate::BNodeTree!( @feature_NEW $( $args)* ) };
+    // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
+    // Forward unhandled internal callbacks to BNodeTree (e.g., disallowed features like @feature_SHL)
+    ( @ $( $inner:tt )+ ) => {
+        $crate::BNodeTree!( @ $( $inner )+ )
+    };
+    // Top-level entry (user code)
+    ( $( $inner:tt)+ )  => {
+        {
+            paste::paste! {
+                #[derive( Debug, PartialEq, Clone)]
+                enum [<Chore BNode>] {
+                    Leaf( Chore),
+                    Node {
+                        _BinOp: $crate::stalks::bnode::BNodeBinOp,
+                        _Left: Box< [<Chore BNode>]>,
+                        _Right: Box< [<Chore BNode>]>,
+                    }
+                }
+                impl [<Chore BNode>]
+                {
+                    fn	New( value: Chore) -> Self
+                    {
+                        [<Chore BNode>]::Leaf( value)
+                    }
+                    fn	NewBranch( op: $crate::stalks::bnode::BNodeBinOp, left: Self, right: Self) -> Self
+                    {
+                        [<Chore BNode>]::Node {
+                            _BinOp: op,
+                            _Left: Box::new( left),
+                            _Right: Box::new( right),
+                        }
+                    }
+                    pub fn	CountLeaves( &self) -> usize
+                    {
+                        match self {
+                            [<Chore BNode>]::Leaf( _) => 1,
+                            [<Chore BNode>]::Node { _Left, _Right, .. } => _Left.CountLeaves() + _Right.CountLeaves(),
+                        }
+                    }
+                }
+                impl $crate::stalks::bnode::IBNode< Chore> for [<Chore BNode>]
+                {
+                    fn	Val( &self) -> Option< &Chore>
+                    {
+                        match self {
+                            [<Chore BNode>]::Leaf( value) => Some( value),
+                            _ => None,
+                        }
+                    }
+                    fn	Left( &self) -> Option< &dyn $crate::stalks::bnode::IBNode< Chore>>
+                    {
+                        match self {
+                            [<Chore BNode>]::Leaf( _) => None,
+                            [<Chore BNode>]::Node { _Left, .. } => Some( &**_Left),
+                        }
+                    }
+                    fn	Right( &self) -> Option< &dyn $crate::stalks::bnode::IBNode< Chore>>
+                    {
+                        match self {
+                            [<Chore BNode>]::Leaf( _) => None,
+                            [<Chore BNode>]::Node { _Right, .. } => Some( &**_Right),
+                        }
+                    }
+                    fn	Op( &self) -> &str
+                    {
+                        match self {
+                            [<Chore BNode>]::Leaf( _) => "",
+                            [<Chore BNode>]::Node { _BinOp, .. } => _BinOp.as_str(),
+                        }
+                    }
+                }
+                $crate::ChoreNodeTree!( @cb [ $crate::ChoreNodeTree ], Chore, [<Chore BNode>], $( $inner)+ )
+            }
+        }
+    };
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------

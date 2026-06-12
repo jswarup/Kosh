@@ -121,6 +121,32 @@ fn	TestChoreBuds()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
+fn	TestChoreNodeTree()
+{
+    let  	aChore = Chore::New( |_m| {
+        print!( "{} ", 10);
+    });
+    let  	bChore = Chore::New( |_m| {
+        print!( "{} ", 20);
+    });
+    let  	cChore = Chore::New( |_m| {
+        print!( "{} ", 40);
+    });
+    let  	choreNodeTree = crate::ChoreNodeTree!( 
+        ( cChore
+            < ( bChore
+                | aChore
+                | ( |_m| {
+                    print!( "{} ", 50);
+                })))
+    );
+    assert_eq!( choreNodeTree.CountLeaves(), 4);
+    println!( "ChoreNodeTree: {:#?}", choreNodeTree);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
 fn	TestDoQSortWorkStealing()
 {
     let  	buff = Buff::Create( U32( 100), |_| U32( rand::random::<u32>() % 128));
