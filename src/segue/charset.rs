@@ -1,6 +1,5 @@
 //-- charset.rs -------------------------------------------------------------------------------------------------------------------
 use	std::sync::LazyLock;
-use	crate::segue::Shard;
 use	crate::silo::{ Arr, Buff, U8, U64 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -520,16 +519,6 @@ impl std::fmt::Debug for Charset
     fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
         write!( f, "Charset({})", self)
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl crate::stalks::IntoBud< Shard> for Charset
-{
-    fn	IntoBud( self) -> Box< dyn crate::stalks::Bud< Shard>>
-    {
-        Box::new( Shard::from( self))
     }
 }
 

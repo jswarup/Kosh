@@ -1,10 +1,10 @@
 //-- shard.rs -------------------------------------------------------------------------------------------------------------------------
 use	crate::segue::Charset;
-use	crate::stalks::{ Bud, IWork, IWorker };
+use	crate::stalks::{ IWork, IWorker };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Clone, Debug)]
+#[derive( Clone, Debug, PartialEq)]
 pub enum Shard {
     Closure( fn( &dyn IWorker)),
     Char( char),
@@ -61,29 +61,6 @@ impl IWork for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl Bud< Shard> for Shard
-{
-    fn	Val( &self) -> Shard
-    {
-        self.clone()
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl crate::stalks::BudOp for Shard
-{
-    fn	IsOpAllowed( op: crate::stalks::BudBinOp) -> bool
-    {
-        matches!( 
-            op,
-            crate::stalks::BudBinOp::LT | crate::stalks::BudBinOp::BOR | crate::stalks::BudBinOp::SHL
-        )
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
 impl std::fmt::Display for Shard
 {
     fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
@@ -99,49 +76,11 @@ impl std::fmt::Display for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::stalks::IntoBud< Shard> for fn( &dyn IWorker)
+impl From< fn( &dyn IWorker) > for Shard
 {
-    fn	IntoBud( self) -> Box< dyn Bud< Shard>>
+    fn	from( f: fn( &dyn IWorker)) -> Self
     {
-        Box::new( Shard::New( self))
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl crate::stalks::IntoBud< Shard> for char
-{
-    fn	IntoBud( self) -> Box< dyn Bud< Shard>>
-    {
-        Box::new( Shard::from( self))
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl crate::stalks::IntoBud< Shard> for String
-{
-    fn	IntoBud( self) -> Box< dyn Bud< Shard>>
-    {
-        Box::new( Shard::from( self))
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl crate::stalks::IntoBud< Shard> for &'static str
-{
-    fn	IntoBud( self) -> Box< dyn Bud< Shard>>
-    {
-        Box::new( Shard::from( self))
-    }
-    fn	IntoBudAction( self, _act: Box< dyn Bud< Shard>>) -> Box< dyn Bud< Shard>>
-    {
-        Box::new( Shard::from( self))
-    }
-    fn	IntoBudUniOp( self, _op: crate::stalks::BudUniOp) -> Box< dyn Bud< Shard>>
-    {
-        Box::new( Shard::from( self))
+        Self::New( f)
     }
 }
 
@@ -188,27 +127,28 @@ impl From< Charset> for Shard
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[macro_export]
-macro_rules! ShardTree {
+macro_rules! ShardNodeTree {
     // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
-    ( @feature_STAR   $( $args:tt)* ) => { $crate::BudTree!( @feature_STAR   $( $args)* ) };
-    ( @feature_PLUS   $( $args:tt)* ) => { $crate::BudTree!( @feature_PLUS   $( $args)* ) };
-    ( @feature_BANG   $( $args:tt)* ) => { $crate::BudTree!( @feature_BANG   $( $args)* ) };
-    ( @feature_LT     $( $args:tt)* ) => { $crate::BudTree!( @feature_LT     $( $args)* ) };
-    ( @feature_SHL    $( $args:tt)* ) => { $crate::BudTree!( @feature_SHL    $( $args)* ) };
-    ( @feature_BOR    $( $args:tt)* ) => { $crate::BudTree!( @feature_BOR    $( $args)* ) };
-    ( @feature_NEW    $( $args:tt)* ) => { $crate::BudTree!( @feature_NEW    $( $args)* ) };
-    ( @feature_ACTION $( $args:tt)* ) => { $crate::BudTree!( @feature_ACTION $( $args)* ) };
-    // ── Custom: Boxet stringification (overrides BudTree default) ───────────────────────────────────
-    ( @feature_BOXET [ $( $cb:tt)* ], $type:ident, $s:literal ) => {
-        $crate::stalks::IntoBud::IntoBud( $type::NewCharset( $crate::segue::Charset::FromBoxet( $crate::silo::U8::FromArr( $crate::silo::Arr::from( $s.as_bytes() ) ) ) ) )
+    ( @feature_STAR   $( $args:tt)* ) => { $crate::BNodeTree!( @feature_STAR   $( $args)* ) };
+    ( @feature_PLUS   $( $args:tt)* ) => { $crate::BNodeTree!( @feature_PLUS   $( $args)* ) };
+    ( @feature_BANG   $( $args:tt)* ) => { $crate::BNodeTree!( @feature_BANG   $( $args)* ) };
+    ( @feature_LT     $( $args:tt)* ) => { $crate::BNodeTree!( @feature_LT     $( $args)* ) };
+    ( @feature_SHL    $( $args:tt)* ) => { $crate::BNodeTree!( @feature_SHL    $( $args)* ) };
+    ( @feature_BOR    $( $args:tt)* ) => { $crate::BNodeTree!( @feature_BOR    $( $args)* ) };
+    ( @feature_NEW    $( $args:tt)* ) => { $crate::BNodeTree!( @feature_NEW    $( $args)* ) };
+    ( @feature_ACTION $( $args:tt)* ) => { $crate::BNodeTree!( @feature_ACTION $( $args)* ) };
+    // ── Custom: Boxet stringification (overrides BNodeTree default) ─────────────────────────────────
+    ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $s:literal ) => {
+        $crate::stalks::bnode::IntoBNode::< Shard, $Node >::IntoBNode( Shard::NewCharset( $crate::segue::Charset::FromBoxet( $crate::silo::U8::FromArr( $crate::silo::Arr::from( $s.as_bytes() ) ) ) ) )
     };
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
-    // Forward unhandled internal callbacks to BudTree (e.g., disallowed features like @feature_SHR)
     ( @ $( $inner:tt )+ ) => {
-        $crate::BudTree!( @ $( $inner )+ )
+        $crate::BNodeTree!( @ $( $inner )+ )
     };
     // Top-level entry (user code)
-    ( $( $inner:tt)+ )  => { $crate::ShardTree!( @cb [ $crate::ShardTree ], Shard, $( $inner)+ ) };
+    ( $( $inner:tt)+ )  => {
+        $crate::BNodeTree!( @define [ $crate::ShardNodeTree ], Shard, $( $inner)+ )
+    };
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

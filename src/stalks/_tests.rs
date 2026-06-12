@@ -1,6 +1,6 @@
 //-- _tests.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::silo::U32;
-use	crate::stalks::{ Atm, BNodeTree };
+use	crate::stalks::{ Atm, BNodeTree, IBNode };
 use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -33,7 +33,7 @@ fn	TestAtmBasicOps()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestBudBasicOps()
+fn	TestBNodeBasicOps()
 {
     let  	a = 1.8;
     let  	b = 5.7;
@@ -41,40 +41,10 @@ fn	TestBudBasicOps()
     let  	d = 20.7;
     let  	e = 1.5;
     let  	f = 8.1;
-    let  	x = crate::BudTree!( f64, ( ( ( a | b) < c) | ( d | ( e < f))));
+    let  	x = BNodeTree!( f64, ( ( ( a | b) < c) | ( d | ( e < f))));
     x.Print();
-    let  	left = crate::BudTree!( f64, a | b);
-    let  	right = crate::BudTree!( f64, c | d);
-    let  	combined = crate::BudTree!( f64, left | right);
+    let  	combined = BNodeTree!( f64, ( a | b) | ( c | d));
     combined.Print();
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[test]
-#[should_panic( expected = "Binary operation not supported for this type")]
-fn	TestUnsupportedOpPanic()
-{
-    #[derive( Clone, Default)]
-    struct Dummy;
-    impl crate::stalks::bud::Bud< Dummy> for Dummy
-    {
-        fn	Val( &self) -> Dummy
-        {
-            Self
-        }
-    }
-    impl crate::stalks::bud::BudOp for Dummy
-    {
-        fn	IsOpAllowed( _op: crate::stalks::bud::BudBinOp) -> bool
-        {
-            false
-        }
-    }
-    let  	left = Box::new( Dummy) as Box< dyn crate::stalks::bud::Bud< Dummy>>;
-    let  	right = Box::new( Dummy) as Box< dyn crate::stalks::bud::Bud< Dummy>>;
-    let  	_combined =
-        <Dummy as crate::stalks::bud::BudOp>::Create( crate::stalks::bud::BudBinOp::LT, left, right);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

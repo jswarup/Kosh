@@ -5,7 +5,7 @@ use	crate::{
     silo::
     { Buff, U16, U32 },
     stalks::
-    { BNodeTree, IWorker, Worker },
+    { BNodeTree, IWorker, Worker, IBNode },
 };
 use	std::sync::{ Arc, Mutex };
 use	std::thread;
@@ -97,7 +97,7 @@ fn	TestChoreBuds()
                 })))
     );
     println!( "ChoreTree: {:#?}", choreTree);
-    let  	budTree = crate::ChoreTree!( 
+    let  	choreNodeTree = crate::ChoreNodeTree!( 
         ( cChore
             < ( bChore
                 | aChore
@@ -105,14 +105,14 @@ fn	TestChoreBuds()
                     print!( "{} ", 50);
                 })))
     );
-    budTree.Print();
+    choreNodeTree.Print();
     let  	worker = Worker::New();
     worker.Tender( aChore);
-    budTree.Post( &worker);
+    choreNodeTree.Post( &worker);
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
     mainMaestro.Tender( aChore);
-    budTree.Post( mainMaestro);
+    choreNodeTree.Post( mainMaestro);
     //let  	mut jobId = mainMaestro.ConstructJob( U16( 0), Box::new( chore));
     //mainMaestro.EnqueueJob( &mut jobId);
     atelier.DoLaunch();
