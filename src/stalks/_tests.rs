@@ -82,7 +82,7 @@ fn	TestUnsupportedOpPanic()
 #[test]
 fn	TestBNode()
 {
-    use crate::stalks::bnode::{IBNode, TraversalEvent};
+    use crate::stalks::bnode::{IBNode, TraversalEvent, BNodeBinOp};
     let  	rootFromLiterals = BNodeTree!( U32, 10 < ( 20 | 30));
     assert_eq!( rootFromLiterals.CountLeaves(), 3);
     println!( "Tree structure: {:#?}", rootFromLiterals);
@@ -90,11 +90,15 @@ fn	TestBNode()
     let root: &dyn IBNode<U32> = &rootFromLiterals;
     assert_eq!( root.Val(), None);
     assert_eq!( root.Op(), "<");
+    assert_eq!( root.BinOp(), Some(BNodeBinOp::LT));
+    assert_eq!( root.UniOp(), None);
     assert!( root.Left().is_some());
     assert_eq!( root.Left().unwrap().Val(), Some(&U32(10)));
     assert_eq!( root.Left().unwrap().Op(), "");
+    assert_eq!( root.Left().unwrap().BinOp(), None);
     assert!( root.Right().is_some());
     assert_eq!( root.Right().unwrap().Op(), "|");
+    assert_eq!( root.Right().unwrap().BinOp(), Some(BNodeBinOp::BOR));
     assert_eq!( root.Right().unwrap().Left().unwrap().Val(), Some(&U32(20)));
     assert_eq!( root.Right().unwrap().Right().unwrap().Val(), Some(&U32(30)));
 
@@ -120,6 +124,28 @@ fn	TestBNode()
             ("<".to_string(), TraversalEvent::Exit),
         ]
     );
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestBNodeUnary()
+{
+    use crate::stalks::bnode::{IBNode, BNodeUniOp, BNodeBinOp};
+    let  	rootFromLiterals = BNodeTree!( U32, ! ( 10 | 20 ));
+    assert_eq!( rootFromLiterals.CountLeaves(), 2);
+    
+    let root: &dyn IBNode<U32> = &rootFromLiterals;
+    assert_eq!( root.Val(), None);
+    assert_eq!( root.BinOp(), None);
+    assert_eq!( root.UniOp(), Some(BNodeUniOp::BANG));
+    assert_eq!( root.Op(), "!");
+    
+    assert!( root.Left().is_some());
+    let child = root.Left().unwrap();
+    assert_eq!( child.BinOp(), Some(BNodeBinOp::BOR));
+    assert_eq!( child.Left().unwrap().Val(), Some(&U32(10)));
+    assert_eq!( child.Right().unwrap().Val(), Some(&U32(20)));
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

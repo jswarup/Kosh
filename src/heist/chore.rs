@@ -218,6 +218,10 @@ macro_rules! ChoreNodeTree {
                         _BinOp: $crate::stalks::bnode::BNodeBinOp,
                         _Left: Box< [<Chore BNode>]>,
                         _Right: Box< [<Chore BNode>]>,
+                    },
+                    UniNode {
+                        _UniOp: $crate::stalks::bnode::BNodeUniOp,
+                        _Child: Box< [<Chore BNode>]>,
                     }
                 }
                 impl [<Chore BNode>]
@@ -234,11 +238,19 @@ macro_rules! ChoreNodeTree {
                             _Right: Box::new( right),
                         }
                     }
+                    fn	NewUni( op: $crate::stalks::bnode::BNodeUniOp, child: Self) -> Self
+                    {
+                        [<Chore BNode>]::UniNode {
+                            _UniOp: op,
+                            _Child: Box::new( child),
+                        }
+                    }
                     pub fn	CountLeaves( &self) -> usize
                     {
                         match self {
                             [<Chore BNode>]::Leaf( _) => 1,
                             [<Chore BNode>]::Node { _Left, _Right, .. } => _Left.CountLeaves() + _Right.CountLeaves(),
+                            [<Chore BNode>]::UniNode { _Child, .. } => _Child.CountLeaves(),
                         }
                     }
                 }
@@ -254,23 +266,44 @@ macro_rules! ChoreNodeTree {
                     fn	Left( &self) -> Option< &dyn $crate::stalks::bnode::IBNode< Chore>>
                     {
                         match self {
-                            [<Chore BNode>]::Leaf( _) => None,
                             [<Chore BNode>]::Node { _Left, .. } => Some( &**_Left),
+                            [<Chore BNode>]::UniNode { _Child, .. } => Some( &**_Child),
+                            _ => None,
                         }
                     }
                     fn	Right( &self) -> Option< &dyn $crate::stalks::bnode::IBNode< Chore>>
                     {
                         match self {
-                            [<Chore BNode>]::Leaf( _) => None,
                             [<Chore BNode>]::Node { _Right, .. } => Some( &**_Right),
+                            _ => None,
                         }
                     }
-                    fn	Op( &self) -> &str
+                    fn	BinOp( &self) -> Option< $crate::stalks::bnode::BNodeBinOp>
                     {
                         match self {
-                            [<Chore BNode>]::Leaf( _) => "",
-                            [<Chore BNode>]::Node { _BinOp, .. } => _BinOp.as_str(),
+                            [<Chore BNode>]::Node { _BinOp, .. } => Some( *_BinOp),
+                            _ => None,
                         }
+                    }
+                    fn	UniOp( &self) -> Option< $crate::stalks::bnode::BNodeUniOp>
+                    {
+                        match self {
+                            [<Chore BNode>]::UniNode { _UniOp, .. } => Some( *_UniOp),
+                            _ => None,
+                        }
+                    }
+                }
+                impl< I > $crate::stalks::bnode::IntoBNode< Chore, [<Chore BNode>]> for I
+                where
+                    I: Into< Chore >,
+                {
+                    fn	IntoBNode( self) -> [<Chore BNode>] {
+                        [<Chore BNode>]::New( self.into() )
+                    }
+                }
+                impl $crate::stalks::bnode::IntoBNode< Chore, [<Chore BNode>]> for [<Chore BNode>] {
+                    fn	IntoBNode( self) -> [<Chore BNode>] {
+                        self
                     }
                 }
                 $crate::ChoreNodeTree!( @cb [ $crate::ChoreNodeTree ], Chore, [<Chore BNode>], $( $inner)+ )

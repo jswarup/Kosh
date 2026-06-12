@@ -52,9 +52,23 @@ pub trait IBNode< T> {
     {
         None
     }
+    fn	BinOp( &self) -> Option< BNodeBinOp>
+    {
+        None
+    }
+    fn	UniOp( &self) -> Option< BNodeUniOp>
+    {
+        None
+    }
     fn	Op( &self) -> &str
     {
-        ""
+        if let Some( op) = self.BinOp() {
+            op.as_str()
+        } else if let Some( op) = self.UniOp() {
+            op.as_str()
+        } else {
+            ""
+        }
     }
 }
 
@@ -85,6 +99,10 @@ impl< T> dyn IBNode< T> + '_
         }
     }
 }
+pub trait IntoBNode< T, N > {
+    fn	IntoBNode( self ) -> N;
+}
+
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[macro_export]
@@ -103,6 +121,12 @@ macro_rules! BNodeTree {
     ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, || $( $body:tt)+ ) => { $Node::New( $Arg::New( || $( $body)+ ) ) };
     ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move | $( $body:tt)+ ) => { $Node::New( $Arg::New( move | $( $body)+ ) ) };
     ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move || $( $body:tt)+ ) => { $Node::New( $Arg::New( move || $( $body)+ ) ) };
+
+    ( @feature_STAR  [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:tt $( $r:tt )* ) => { $crate::BNodeTree!( @uni [ $( $cb)* ], $Arg, $Node, STAR, $l $( $r )* ) };
+    ( @feature_PLUS  [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:tt $( $r:tt )* ) => { $crate::BNodeTree!( @uni [ $( $cb)* ], $Arg, $Node, PLUS, $l $( $r )* ) };
+    ( @feature_MINUS [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:tt $( $r:tt )* ) => { $crate::BNodeTree!( @uni [ $( $cb)* ], $Arg, $Node, MINUS, $l $( $r )* ) };
+    ( @feature_BANG  [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:tt $( $r:tt )* ) => { $crate::BNodeTree!( @uni [ $( $cb)* ], $Arg, $Node, BANG, $l $( $r )* ) };
+
     ( @wrap $leaf:expr ) => {
         Into::into( $leaf )
     };
@@ -116,6 +140,10 @@ macro_rules! BNodeTree {
                         _BinOp: $crate::stalks::bnode::BNodeBinOp,
                         _Left: Box< [<$Arg BNode>]>,
                         _Right: Box< [<$Arg BNode>]>,
+                    },
+                    UniNode {
+                        _UniOp: $crate::stalks::bnode::BNodeUniOp,
+                        _Child: Box< [<$Arg BNode>]>,
                     }
                 }
                 impl [<$Arg BNode>]
@@ -132,11 +160,19 @@ macro_rules! BNodeTree {
                             _Right: Box::new( right),
                         }
                     }
+                    fn	NewUni( op: $crate::stalks::bnode::BNodeUniOp, child: Self) -> Self
+                    {
+                        [<$Arg BNode>]::UniNode {
+                            _UniOp: op,
+                            _Child: Box::new( child),
+                        }
+                    }
                     pub fn	CountLeaves( &self) -> usize
                     {
                         match self {
                             [<$Arg BNode>]::Leaf( _) => 1,
                             [<$Arg BNode>]::Node { _Left, _Right, .. } => _Left.CountLeaves() + _Right.CountLeaves(),
+                            [<$Arg BNode>]::UniNode { _Child, .. } => _Child.CountLeaves(),
                         }
                     }
                 }
@@ -152,23 +188,44 @@ macro_rules! BNodeTree {
                     fn	Left( &self) -> Option< &dyn $crate::stalks::bnode::IBNode< $Arg>>
                     {
                         match self {
-                            [<$Arg BNode>]::Leaf( _) => None,
                             [<$Arg BNode>]::Node { _Left, .. } => Some( &**_Left),
+                            [<$Arg BNode>]::UniNode { _Child, .. } => Some( &**_Child),
+                            _ => None,
                         }
                     }
                     fn	Right( &self) -> Option< &dyn $crate::stalks::bnode::IBNode< $Arg>>
                     {
                         match self {
-                            [<$Arg BNode>]::Leaf( _) => None,
                             [<$Arg BNode>]::Node { _Right, .. } => Some( &**_Right),
+                            _ => None,
                         }
                     }
-                    fn	Op( &self) -> &str
+                    fn	BinOp( &self) -> Option< $crate::stalks::bnode::BNodeBinOp>
                     {
                         match self {
-                            [<$Arg BNode>]::Leaf( _) => "",
-                            [<$Arg BNode>]::Node { _BinOp, .. } => _BinOp.as_str(),
+                            [<$Arg BNode>]::Node { _BinOp, .. } => Some( *_BinOp),
+                            _ => None,
                         }
+                    }
+                    fn	UniOp( &self) -> Option< $crate::stalks::bnode::BNodeUniOp>
+                    {
+                        match self {
+                            [<$Arg BNode>]::UniNode { _UniOp, .. } => Some( *_UniOp),
+                            _ => None,
+                        }
+                    }
+                }
+                impl< I > $crate::stalks::bnode::IntoBNode< $Arg, [<$Arg BNode>]> for I
+                where
+                    I: Into< $Arg >,
+                {
+                    fn	IntoBNode( self) -> [<$Arg BNode>] {
+                        [<$Arg BNode>]::New( self.into() )
+                    }
+                }
+                impl $crate::stalks::bnode::IntoBNode< $Arg, [<$Arg BNode>]> for [<$Arg BNode>] {
+                    fn	IntoBNode( self) -> [<$Arg BNode>] {
+                        self
                     }
                 }
                 $crate::BNodeTree!( @cb [ $crate::BNodeTree ], $Arg, [<$Arg BNode>], $( $inner )+ )
@@ -176,6 +233,12 @@ macro_rules! BNodeTree {
         }
     };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $inner:tt)+ ) ) => { $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $inner)+ ) };
+
+    // ── Unary operators ─────────────────────────────────────────────────────────────────────────────
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, * $l:tt $( $r:tt)* ) => { $( $cb)* !( @feature_STAR [ $( $cb)* ], $Arg, $Node, $l $( $r )* ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, + $l:tt $( $r:tt)* ) => { $( $cb)* !( @feature_PLUS [ $( $cb)* ], $Arg, $Node, $l $( $r )* ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, - $l:tt $( $r:tt)* ) => { $( $cb)* !( @feature_MINUS [ $( $cb)* ], $Arg, $Node, $l $( $r )* ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ! $l:tt $( $r:tt)* ) => { $( $cb)* !( @feature_BANG [ $( $cb)* ], $Arg, $Node, $l $( $r )* ) };
     
     // ── Binary: (group) OP rhs ──────────────────────────────────────────────────────────────────────
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
@@ -200,7 +263,14 @@ macro_rules! BNodeTree {
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move || $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, $Node, move || $( $body)+ ) };
 
     // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $leaf:expr ) => { $Node::New( $( $cb)* !( @wrap $leaf ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $leaf:expr ) => {
+        $crate::stalks::bnode::IntoBNode::< $Arg, $Node >::IntoBNode( $leaf )
+    };
+
+    // @uni : unary - OP rhs
+    ( @uni [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $op:ident, $l:tt $( $r:tt)* ) => {
+        $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, ( $Node::NewUni( $crate::stalks::bnode::BNodeUniOp::$op, $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $l ) ) ) $( $r)* )
+    };
 
     // ---- Internal helpers ----------------------------------------------------------------------------------------------------
     // @bg : binary — (group) OP rhs
@@ -224,6 +294,10 @@ macro_rules! BNodeTree {
     ( @feature_LT  $( $args:tt )* ) => { compile_error!( "Binary LT (<) is not enabled for this tree"); };
     ( @feature_BOR $( $args:tt )* ) => { compile_error!( "Binary BOR (|) is not enabled for this tree"); };
     ( @feature_NEW $( $args:tt )* ) => { compile_error!( "Closure literal is not enabled for this tree"); };
+    ( @feature_STAR  $( $args:tt )* ) => { compile_error!( "Unary STAR (*) is not enabled for this tree"); };
+    ( @feature_PLUS  $( $args:tt )* ) => { compile_error!( "Unary PLUS (+) is not enabled for this tree"); };
+    ( @feature_MINUS $( $args:tt )* ) => { compile_error!( "Unary MINUS (-) is not enabled for this tree"); };
+    ( @feature_BANG  $( $args:tt )* ) => { compile_error!( "Unary BANG (!) is not enabled for this tree"); };
 }
 pub use	crate::BNodeTree;
 
