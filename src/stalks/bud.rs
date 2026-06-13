@@ -1,5 +1,5 @@
 //-- bud.rs -------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Buff, U32, U16 };
+use	crate::silo::{ Buff, Stash, U32, U16 };
 use	crate::stalks::{ IWork, IWorker };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -87,10 +87,43 @@ pub enum TraversalEvent {
     Exit,
 }
 
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+struct BudProbe<'a, T>
+{
+    _BudStash: Stash<&'a dyn Bud<T>>,
+}
+
+impl < 'a, T> BudProbe<'a, T> {
+
+    fn  New< Sz: Into< U32>>( sz: Sz, node : &'a dyn Bud<T>) -> Self
+    {
+        Self {
+            _BudStash: Stash::Create( sz, U32( 0), |_| node),
+        }
+    }
+
+    fn Push( &self, node : &'a dyn Bud<T>)
+    {
+        let mut temp = node;
+        self._BudStash.Stk().Push( &mut temp);
+    }
+
+    fn Pop( &self, node : &'a dyn Bud<T>)
+    {
+
+        let mut bud = node;
+        self._BudStash.Stk().Pop( &mut bud);
+    }
+}
+
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl< T> dyn Bud< T> + '_
 {
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	TraverseDF( &self, fnMut: &mut dyn FnMut( &dyn Bud< T>, TraversalEvent))
     {
 
@@ -103,17 +136,30 @@ impl< T> dyn Bud< T> + '_
         }
         fnMut( self, TraversalEvent::Exit);
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	DiveDf( &self, fnMut: &mut dyn FnMut( &dyn Bud< T>))
-    {
-        fnMut( self);
-        if let  	Some( left) = self.Left() {
-            left.DiveDf( fnMut);
-        }
-        if let  	Some( right) = self.Right() {
-            right.DiveDf( fnMut);
-        }
+    { 
+        let     budProbe = BudProbe::New( 1024, self);
+        self.TraverseDF( &mut |node, event|
+            match event {
+                TraversalEvent::Entry => {
+                    budProbe.Push( node);
+                    fnMut( node);
+                }
+                TraversalEvent::Exit => {
+                    budProbe.Pop( node);
+                }
+            }
+        );
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl< T > dyn Bud< T > + '_
 where
     T: std::fmt::Display,
