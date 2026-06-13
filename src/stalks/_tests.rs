@@ -80,7 +80,7 @@ fn	TestBud()
         };
         visited.Push( ( node_repr, event));
     });
-    assert_eq!( 
+    assert_eq!(
         &visited[..],
         &[
             ( "<".to_string(), TraversalEvent::Entry),
@@ -105,12 +105,12 @@ fn	TestBudUnary()
     use	crate::stalks::bud::{ Bud, BudUniOp, BudBinOp };
     let  	rootFromLiterals = BudTree!( U32, ! ( 10 | 20 ));
     assert_eq!( rootFromLiterals.CountLeaves(), 2);
-    
+
     let  	root: &dyn Bud< U32> = &rootFromLiterals;
     assert_eq!( root.Val(), None);
     assert_eq!( root.BinOp(), None);
     assert_eq!( root.UniOp(), Some( BudUniOp::BANG));
-    
+
     assert!( root.Left().is_some());
     let  	child = root.Left().unwrap();
     assert_eq!( child.BinOp(), Some( BudBinOp::BOR));
@@ -125,7 +125,7 @@ fn	TestBudMut()
 {
     use	crate::stalks::bud::Bud;
     let  	mut root = BudTree!( U32, 10 < ( 20 | 30 ));
-    
+
     // Mutate left child leaf value
     {
         let  	root_mut: &mut dyn Bud< U32> = &mut root;
@@ -156,26 +156,36 @@ fn	TestBudDiveDf()
     let  	rootFromLiterals = BudTree!( U32, 10 < ( 20 | 30));
     let  	root: &dyn Bud< U32> = &rootFromLiterals;
     let  	mut visited = Buff::NewEmpty();
-    root.DiveDf( &mut |node| {
-        let  	node_repr = if let  	Some( val) = node.Val() {
-            format!( "{}", val.0)
-        } else if let  	Some( op) = node.BinOp() {
-            op.as_str().to_string()
-        } else if let  	Some( op) = node.UniOp() {
-            op.as_str().to_string()
-        } else {
-            "".to_string()
-        };
-        visited.Push( node_repr);
+    root.DiveDf( &mut |probe| {
+        let mut path_str = String::new();
+        let arr = probe.Arr();
+        for i in 0..arr.Size().0 {
+            let node = *arr.At(i);
+            let repr = if let Some(val) = node.Val() {
+                format!("{}", val.0)
+            } else if let Some(op) = node.BinOp() {
+                op.as_str().to_string()
+            } else if let Some(op) = node.UniOp() {
+                op.as_str().to_string()
+            } else {
+                "".to_string()
+            };
+            if !path_str.is_empty() {
+                path_str.push_str(" -> ");
+            }
+            path_str.push_str(&repr);
+        }
+        println!( "{}", path_str);
+        visited.Push(path_str);
     });
     assert_eq!(
         &visited[..],
         &[
+            "< -> 10".to_string(),
+            "< -> | -> 20".to_string(),
+            "< -> | -> 30".to_string(),
+            "< -> |".to_string(),
             "<".to_string(),
-            "10".to_string(),
-            "|".to_string(),
-            "20".to_string(),
-            "30".to_string(),
         ]
     );
 }

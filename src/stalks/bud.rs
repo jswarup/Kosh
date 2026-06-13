@@ -1,5 +1,5 @@
 //-- bud.rs -------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Buff, Stash, U32, U16 };
+use	crate::silo::{ Buff, Stash, U32, U16, Arr };
 use	crate::stalks::{ IWork, IWorker };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -90,31 +90,36 @@ pub enum TraversalEvent {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-struct BudProbe<'a, T>
+pub struct BudProbe<'a, T>
 {
     _BudStash: Stash<&'a dyn Bud<T>>,
 }
 
 impl < 'a, T> BudProbe<'a, T> {
 
-    fn  New< Sz: Into< U32>>( sz: Sz, node : &'a dyn Bud<T>) -> Self
+    pub fn  New< Sz: Into< U32>>( sz: Sz, node : &'a dyn Bud<T>) -> Self
     {
         Self {
             _BudStash: Stash::Create( sz, U32( 0), |_| node),
         }
     }
 
-    fn Push( &self, node : &'a dyn Bud<T>)
+    pub fn Push( &self, node : &'a dyn Bud<T>)
     {
         let mut temp = node;
         self._BudStash.Stk().Push( &mut temp);
     }
 
-    fn Pop( &self, node : &'a dyn Bud<T>)
+    pub fn Pop( &self, node : &'a dyn Bud<T>)
     {
 
         let mut bud = node;
         self._BudStash.Stk().Pop( &mut bud);
+    }
+
+    pub fn  Arr( &self) -> Arr< '_, &'a dyn Bud< T>>
+    {
+        self._BudStash.Stk().Arr()
     }
 }
 
@@ -139,16 +144,16 @@ impl< T> dyn Bud< T> + '_
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	DiveDf( &self, fnMut: &mut dyn FnMut( &dyn Bud< T>))
+    pub fn	DiveDf( &self, fnMut: &mut dyn FnMut( &BudProbe<'_, T>))
     { 
         let     budProbe = BudProbe::New( 1024, self);
         self.TraverseDF( &mut |node, event|
             match event {
                 TraversalEvent::Entry => {
                     budProbe.Push( node);
-                    fnMut( node);
                 }
                 TraversalEvent::Exit => {
+                    fnMut( &budProbe);
                     budProbe.Pop( node);
                 }
             }

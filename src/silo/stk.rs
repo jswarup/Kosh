@@ -42,6 +42,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
+    /// Requires exclusive access (not thread-safe to call concurrently).
 
     pub fn	Arr( &self) -> Arr< 'b, T> 
     {
@@ -50,7 +51,6 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
  
-
     pub fn	Pop( &self, val: &mut T) -> bool 
     {
         let  	sz = self.Size();
@@ -71,8 +71,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-
-    /// CAS-decrement _Size ( Acquire), then read. Pairs with Push's Release.
+ 
     pub fn	Popback( &self) -> T
     where
         T: Default + Clone,
@@ -83,7 +82,8 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-
+    /// Requires exclusive access (not thread-safe to call concurrently).
+    
     pub fn	Push( &self, val: &mut T) -> bool
     {
         let  	sz = self.Size();
