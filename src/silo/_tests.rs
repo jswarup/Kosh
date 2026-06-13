@@ -375,7 +375,7 @@ fn	UIntBasicOps()
 #[allow( dead_code)]
 fn	StackExportImportOps()
 {
-    let  	srcStash = Stash::< U32>::New( 10);
+    let  	srcStash = Stash::< U32>::New( 10, 0, U32( 0));
     let  	srcStk = srcStash.Stk();
     for i in 1..=5u32 {
         let  	mut val = U32( i);
@@ -383,7 +383,7 @@ fn	StackExportImportOps()
     }
     assert_eq!( srcStk.Size(), 5);
     // Destination stack initially empty
-    let  	dstStash = Stash::< U32>::New( 10);
+    let  	dstStash = Stash::< U32>::New( 10, 0, U32(0));
     let  	dstStk = dstStash.Stk();
     assert_eq!( dstStk.Size(), 0);
     // Export from source to destination ( move all 5 elements)
@@ -424,13 +424,13 @@ fn	StackExportImportOps()
 fn	TestConcurrentStackOps()
 {
     // Create a shared destination stack of size 1000
-    let  	dstStash = Arc::new( Stash::< U32>::New( 1000));
+    let  	dstStash = Arc::new( Stash::< U32>::New( 1000, 0, U32(0)));
     let  	mut handles = Buff::NewEmpty();
     for t in 0..10 {
         let  	dstStkClone = dstStash.clone();
         let  	handle = thread::spawn( move || {
             // Create a thread-local source stack
-            let  	srcStash = Stash::< U32>::New( 10);
+            let  	srcStash = Stash::< U32>::New( 10, 0, U32(0));
             let  	srcStk = srcStash.Stk();
             for i in 0..10 {
                 let  	mut v = U32( t * 10 + i);
@@ -510,7 +510,7 @@ fn	TestDoQSort()
     let  	buff = Buff::Create( U32( 100), |_| rand::random::< f64>());
     let  	arr = buff.Arr();
     let  	worker = Worker::New();
-    arr.USeg().DoQSort( 
+    arr.USeg().DoQSort(
         &worker,
         |i, j| arr.At( i) > arr.At( j),
         |i, j| {
@@ -530,7 +530,7 @@ fn	TestDoQSort()
 fn	TestStashDynamicPushback()
 {
     // Test with initial size 2
-    let  	mut stash = Stash::< U32>::New( 2);
+    let  	mut stash = Stash::< U32>::New( 2, 0, U32( 8));
     assert_eq!( stash.Size(), 0);
     assert_eq!( stash.Size() + stash.Stk().SzVoid(), 2);
     // Push first element
@@ -573,7 +573,7 @@ fn	TestStashDynamicPushback()
     assert_eq!( out, 10);
     assert!( !stk.Pop( &mut out));
     // Test with initial size 0
-    let  	mut stash0 = Stash::< U32>::New( 0);
+    let  	mut stash0 = Stash::< U32>::New( 0, 0, U32(0));
     assert_eq!( stash0.Size(), 0);
     assert_eq!( stash0.Size() + stash0.Stk().SzVoid(), 0);
     let  	mut v = U32( 100);
@@ -592,7 +592,7 @@ fn	TestStashDynamicPushback()
 fn	TestStashAppend()
 {
     // Test with initial size 2
-    let  	mut stash = Stash::< U32>::New( 2);
+    let  	mut stash = Stash::< U32>::New( 2, 0, U32(0));
     // Create an Arr of elements to append
     let  	mut data = [U32( 10), U32( 20), U32( 30)];
     let  	arr = Arr::from( &mut data);

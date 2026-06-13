@@ -33,7 +33,7 @@ impl< 'a> Atelier< 'a>
             _SzPreds: Buff::Create( U32::_16Sz, |_i| Atm::New( U16::_0)),
             _SuccIds: Buff::< U16>::New( U32::_16Sz, U16::_0),
             _FreeJobLock: Spinlock::New(),
-            _FreeJobStash: Stash::< U16>::New( U32::_16Sz),
+            _FreeJobStash: Stash::< U16>::New( U32::_16Sz, 0, U16( 0)),
             _JobBuff: Buff::New( U32::_16Sz, WorkPtr::null()),
             _Terminal: U16( 0),
         };
@@ -44,7 +44,7 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	MainMaestro( &self) -> &Maestro< 'a> 
+    pub fn	MainMaestro( &self) -> &Maestro< 'a>
     {
         let  	maestro = self._Maestros.Arr().MutAt( U32( 0));
         maestro.SetAtelier( self);
@@ -213,7 +213,7 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	DoLaunch( &self) 
+    pub fn	DoLaunch( &self)
     {
         {
             let  	maestro0 = self._Maestros.Arr().MutAt( U32( 0));

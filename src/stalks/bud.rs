@@ -1,6 +1,6 @@
 //-- bud.rs -------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Buff, U32 };
-use	crate::stalks::{ IWork, IWorker };  
+use	crate::silo::{ Buff, U32, U16 };
+use	crate::stalks::{ IWork, IWorker };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -93,15 +93,15 @@ impl< T> dyn Bud< T> + '_
 {
     pub fn	TraverseDF( &self, fnMut: &mut dyn FnMut( &dyn Bud< T>, TraversalEvent))
     {
-        
+
         fnMut( self, TraversalEvent::Entry);
         if let  	Some( left) = self.Left() {
             left.TraverseDF( fnMut);
         }
         if let  	Some( right) = self.Right() {
             right.TraverseDF( fnMut);
-        } 
-        fnMut( self, TraversalEvent::Exit); 
+        }
+        fnMut( self, TraversalEvent::Exit);
     }
     pub fn	DiveDf( &self, fnMut: &mut dyn FnMut( &dyn Bud< T>))
     {
@@ -128,7 +128,7 @@ where
                         print!( " ");
                     }
                     *count += 1;
-                } 
+                }
                 if !node.IsLeaf() {
                     let  	op_str = if let  	Some( op) = node.BinOp() {
                         op.as_str()
@@ -194,7 +194,7 @@ where
         let  	maestro = crate::heist::Maestro::FromWorker( worker);
         struct JobStash
         {
-            _JobStash: crate::silo::Stash< crate::silo::U16 >,
+            _JobStash: crate::silo::Stash< U16 >,
         }
         impl JobStash
         {
@@ -224,7 +224,7 @@ where
                         if rSz == 1 {
                             return self.Process( node.Left().unwrap(), maestro, rJobId);
                         }
-                        let  	mut rXStash = crate::silo::Stash::< crate::silo::U16 >::New( rSz);
+                        let  	mut rXStash = crate::silo::Stash::< crate::silo::U16 >::New( rSz, 0, U16(0));
                         self._JobStash.Stk().Export( &rXStash.Stk(), rSz);
                         let  	branchId = maestro.ConstructEnqueueBulk( succId, rXStash.BuffOut());
                         let  	succL = self.Process( node.Left().unwrap(), maestro, branchId);
@@ -240,7 +240,7 @@ where
         }
         let  	succId = maestro.CurSuccId();
         let  	mut jobStash = JobStash {
-            _JobStash: crate::silo::Stash::New( 0),
+            _JobStash: crate::silo::Stash::New( 0, 0, U16(0)),
         };
         jobStash.Process( &*self, maestro, succId);
         let  	jobArr = jobStash._JobStash.Stk().Arr();
@@ -439,13 +439,13 @@ macro_rules! BudTree {
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, + $l:tt $( $r:tt)* ) => { $( $cb)* !( @feature_PLUS [ $( $cb)* ], $Arg, $Node, $l $( $r )* ) };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, - $l:tt $( $r:tt)* ) => { $( $cb)* !( @feature_MINUS [ $( $cb)* ], $Arg, $Node, $l $( $r )* ) };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ! $l:tt $( $r:tt)* ) => { $( $cb)* !( @feature_BANG [ $( $cb)* ], $Arg, $Node, $l $( $r )* ) };
-    
+
     // ── Binary: (group) OP rhs ──────────────────────────────────────────────────────────────────────
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
-    
+
     // ── Binary: ident/literal OP rhs ────────────────────────────────────────────────────────────────
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
@@ -455,7 +455,7 @@ macro_rules! BudTree {
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    
+
     // ── Closure literal ─────────────────────────────────────────────────────────────────────────────
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, | $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, $Node, | $( $body)+ ) };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, || $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, $Node, || $( $body)+ ) };
@@ -468,13 +468,13 @@ macro_rules! BudTree {
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $expr:tt)+ ) [ $( $inner:tt )* ] ) => {
         $( $cb)* !( @feature_ACTION [ $( $cb)* ], $Arg, $Node, ( $( $expr )+ ) [ $( $inner )* ] )
     };
-    
+
     // ── Binary: [ boxet ] OP rhs ────────────────────────────────────────────────────────────────────
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bg $Arg, $Node, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ) ), $( $r )+ ) };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bg $Arg, $Node, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ) ), $( $r )+ ) };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bg $Arg, $Node, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ) ), $( $r )+ ) };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bg $Arg, $Node, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ) ), $( $r )+ ) };
-    
+
     // ── Leaf Boxet ──────────────────────────────────────────────────────────────────────────────────
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] ) => {
         $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s )
@@ -510,14 +510,14 @@ macro_rules! BudTree {
     // ---- Internal helpers ----------------------------------------------------------------------------------------------------
     // @bg : binary — (group) OP rhs
     ( @bg [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $op:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => {
-        $Node::NewBranch( 
+        $Node::NewBranch(
             $crate::stalks::bud::BudBinOp::$op,
             $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ),
             $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) )
     };
     // @bl : binary — leaf OP rhs
     ( @bl [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $op:ident, $l:expr, $( $r:tt)+ ) => {
-        $Node::NewBranch( 
+        $Node::NewBranch(
             $crate::stalks::bud::BudBinOp::$op,
             $crate::stalks::bud::IntoBud::< $Arg, $Node >::IntoBud( $l ),
             $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) )

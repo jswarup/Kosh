@@ -7,31 +7,31 @@ use	std::ptr::NonNull;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct Buff< T> 
+pub struct Buff< T>
 {
     _Ptr: NonNull< [T]>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-unsafe impl< T: Send> Send for Buff< T> 
+unsafe impl< T: Send> Send for Buff< T>
 {
 }
-unsafe impl< T: Sync> Sync for Buff< T> 
+unsafe impl< T: Sync> Sync for Buff< T>
 {
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T> Buff< T> 
+impl< T> Buff< T>
 {
-    pub fn	NewEmpty() -> Self 
+    pub fn	NewEmpty() -> Self
     {
         Self {
             _Ptr: NonNull::slice_from_raw_parts( NonNull::dangling(), 0),
         }
     }
-    pub fn	Push( &mut self, val: T) 
+    pub fn	Push( &mut self, val: T)
     {
         let  	oldSize = self._Ptr.len();
         let  	newSize = oldSize + 1;
@@ -57,7 +57,10 @@ impl< T> Buff< T>
             self._Ptr = NonNull::slice_from_raw_parts( nonNullPtr, newSize);
         }
     }
-    pub fn	Pop( &mut self) -> Option< T> 
+
+    //---------------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	Pop( &mut self) -> Option< T>
     {
         let  	oldSize = self._Ptr.len();
         if oldSize == 0 {
@@ -92,14 +95,14 @@ impl< T> Buff< T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	IsEmpty( &self) -> bool 
+    pub fn	IsEmpty( &self) -> bool
     {
         self.is_empty()
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Size( &self) -> U32 
+    pub fn	Size( &self) -> U32
     {
         U32( self._Ptr.len() as u32)
     }
@@ -134,7 +137,7 @@ impl< T> Buff< T>
             let  	rawPtrT = rawPtr as *mut T;
             // Defuse Buff::drop in case of panic during initialization
             self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), 0);
-            struct ResizeGuard< T> 
+            struct ResizeGuard< T>
             {
                 _RawPtr: *mut u8,
                 _NewLayout: Layout,
@@ -142,14 +145,14 @@ impl< T> Buff< T>
                 _InitCount: usize,
                 _Phantom: std::marker::PhantomData< T>,
             }
-            impl< T> Drop for ResizeGuard< T> 
+            impl< T> Drop for ResizeGuard< T>
             {
-                fn	drop( &mut self) 
+                fn	drop( &mut self)
                 {
                     unsafe {
                         let  	totalValid = self._OldSize + self._InitCount;
                         if totalValid > 0 {
-                            let  	slicePtr = std::ptr::slice_from_raw_parts_mut( 
+                            let  	slicePtr = std::ptr::slice_from_raw_parts_mut(
                                 self._RawPtr as *mut T,
                                 totalValid,
                             );
@@ -196,15 +199,15 @@ impl< T> Buff< T>
                 handle_alloc_error( layout);
             }
             // Drop guard to prevent resource leaks if initialValue.clone() panics during loop
-            struct RawAllocationGuard< T> 
+            struct RawAllocationGuard< T>
             {
                 _Ptr: *mut T,
                 _Layout: Layout,
                 _InitCount: usize,
             }
-            impl< T> Drop for RawAllocationGuard< T> 
+            impl< T> Drop for RawAllocationGuard< T>
             {
-                fn	drop( &mut self) 
+                fn	drop( &mut self)
                 {
                     unsafe {
                         if self._InitCount > 0 {
@@ -240,7 +243,7 @@ impl< T> Buff< T>
         let  	sz = sz.into();
         Buff::Create( sz, |_| initialValue.clone())
     }
-    pub fn	Swap( &mut self, buff: &mut Buff< T>) 
+    pub fn	Swap( &mut self, buff: &mut Buff< T>)
     {
         swap( self, buff);
     }
@@ -248,15 +251,15 @@ impl< T> Buff< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T: Clone> Buff< T> 
+impl< T: Clone> Buff< T>
 {
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T> Buff< T> 
+impl< T> Buff< T>
 {
-    pub fn	Arr< 'a>( &self) -> Arr< 'a, T> 
+    pub fn	Arr< 'a>( &self) -> Arr< 'a, T>
     {
         Arr::New( self._Ptr.cast::< T>(), U32( self._Ptr.len() as u32))
     }
@@ -264,10 +267,10 @@ impl< T> Buff< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T> Deref for Buff< T> 
+impl< T> Deref for Buff< T>
 {
     type Target = [T];
-    fn	deref( &self) -> &Self::Target 
+    fn	deref( &self) -> &Self::Target
     {
         unsafe { self._Ptr.as_ref() }
     }
@@ -275,9 +278,9 @@ impl< T> Deref for Buff< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T> DerefMut for Buff< T> 
+impl< T> DerefMut for Buff< T>
 {
-    fn	deref_mut( &mut self) -> &mut Self::Target 
+    fn	deref_mut( &mut self) -> &mut Self::Target
     {
         unsafe { self._Ptr.as_mut() }
     }
@@ -285,9 +288,9 @@ impl< T> DerefMut for Buff< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T> Drop for Buff< T> 
+impl< T> Drop for Buff< T>
 {
-    fn	drop( &mut self) 
+    fn	drop( &mut self)
     {
         let  	size = self._Ptr.len();
         let  	isZst = std::mem::size_of::< T>() == 0;
@@ -306,9 +309,9 @@ impl< T> Drop for Buff< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T: Clone> Clone for Buff< T> 
+impl< T: Clone> Clone for Buff< T>
 {
-    fn	clone( &self) -> Self 
+    fn	clone( &self) -> Self
     {
         let  	size = self._Ptr.len();
         if size == 0 || std::mem::size_of::< T>() == 0 {
@@ -322,15 +325,15 @@ impl< T: Clone> Clone for Buff< T>
                 handle_alloc_error( layout);
             }
             // Panic guard – same pattern as Buff::new
-            struct CloneGuard< T> 
+            struct CloneGuard< T>
             {
                 _Ptr: *mut T,
                 _Layout: Layout,
                 _InitCount: usize,
             }
-            impl< T> Drop for CloneGuard< T> 
+            impl< T> Drop for CloneGuard< T>
             {
-                fn	drop( &mut self) 
+                fn	drop( &mut self)
                 {
                     unsafe {
                         if self._InitCount > 0 {
@@ -361,9 +364,9 @@ impl< T: Clone> Clone for Buff< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T: Clone> From< &[T]> for Buff< T> 
+impl< T: Clone> From< &[T]> for Buff< T>
 {
-    fn	from( slice: &[T]) -> Self 
+    fn	from( slice: &[T]) -> Self
     {
         let  	size = slice.len();
         if size == 0 || std::mem::size_of::< T>() == 0 {
@@ -376,15 +379,15 @@ impl< T: Clone> From< &[T]> for Buff< T>
             if rawPtr.is_null() {
                 handle_alloc_error( layout);
             }
-            struct InitGuard< T> 
+            struct InitGuard< T>
             {
                 _Ptr: *mut T,
                 _Layout: Layout,
                 _InitCount: usize,
             }
-            impl< T> Drop for InitGuard< T> 
+            impl< T> Drop for InitGuard< T>
             {
-                fn	drop( &mut self) 
+                fn	drop( &mut self)
                 {
                     unsafe {
                         if self._InitCount > 0 {
@@ -416,9 +419,9 @@ impl< T: Clone> From< &[T]> for Buff< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T: Clone, const N: usize> From< [T; N]> for Buff< T> 
+impl< T: Clone, const N: usize> From< [T; N]> for Buff< T>
 {
-    fn	from( arr: [T; N]) -> Self 
+    fn	from( arr: [T; N]) -> Self
     {
         Self::from( &arr[..])
     }

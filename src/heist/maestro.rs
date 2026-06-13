@@ -35,11 +35,11 @@ impl< 'a> Maestro< 'a>
             _Index: maestroInd,
             _Atelier: std::ptr::null(),
             _SzProcessed: U32::_0,
-            _JobCache: Stash::<U16>::New( U32( 256)),
-            _RunQueue: Stash::<U16>::New( U32( 1024)),
+            _JobCache: Stash::<U16>::New( U32( 256), 0, U16( 0)),
+            _RunQueue: Stash::<U16>::New( U32( 1024),0, U16( 0)),
             _RunQlock: Spinlock::New(),
             _CurSuccId: Atm::New( U16::_0),
-            _TempQueue: Stash::<U16>::New( U32( 64)),
+            _TempQueue: Stash::<U16>::New( U32( 64),0, U16( 0)),
         }
     }
 
@@ -195,7 +195,7 @@ impl< 'a> IWorker for Maestro< 'a>
         jobId = self.ConstructJob( jobId, job);
         self.EnqueueJob( &mut jobId);
     }
-    fn	AsRaw( &self) -> *const () 
+    fn	AsRaw( &self) -> *const ()
     {
         self as *const Self as *const ()
     }
