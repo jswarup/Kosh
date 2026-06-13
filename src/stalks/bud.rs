@@ -1,5 +1,6 @@
 //-- bud.rs -------------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ Buff, U32 };
+use	crate::stalks::{ IWork, IWorker };  
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -72,6 +73,10 @@ pub trait Bud< T> {
     {
         None
     }
+
+    fn  IsLeaf( &self) -> bool {
+        self.Left().is_none() && self.Right().is_none()
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -86,18 +91,26 @@ pub enum TraversalEvent {
 
 impl< T> dyn Bud< T> + '_
 {
-    pub fn	TraverseDF( &self, f: &mut dyn FnMut( &dyn Bud< T>, TraversalEvent))
+    pub fn	TraverseDF( &self, fnMut: &mut dyn FnMut( &dyn Bud< T>, TraversalEvent))
     {
-        let  	isLeaf = self.Left().is_none() && self.Right().is_none();
-        f( self, TraversalEvent::Entry);
+        
+        fnMut( self, TraversalEvent::Entry);
         if let  	Some( left) = self.Left() {
-            left.TraverseDF( f);
+            left.TraverseDF( fnMut);
         }
         if let  	Some( right) = self.Right() {
-            right.TraverseDF( f);
+            right.TraverseDF( fnMut);
+        } 
+        fnMut( self, TraversalEvent::Exit); 
+    }
+    pub fn	DiveDf( &self, fnMut: &mut dyn FnMut( &dyn Bud< T>))
+    {
+        fnMut( self);
+        if let  	Some( left) = self.Left() {
+            left.DiveDf( fnMut);
         }
-        if !isLeaf {
-            f( self, TraversalEvent::Exit);
+        if let  	Some( right) = self.Right() {
+            right.DiveDf( fnMut);
         }
     }
 }
@@ -115,9 +128,8 @@ where
                         print!( " ");
                     }
                     *count += 1;
-                }
-                let  	isLeaf = node.Left().is_none() && node.Right().is_none();
-                if !isLeaf {
+                } 
+                if !node.IsLeaf() {
                     let  	op_str = if let  	Some( op) = node.BinOp() {
                         op.as_str()
                     } else if let  	Some( op) = node.UniOp() {
@@ -134,8 +146,10 @@ where
                 }
             }
             TraversalEvent::Exit => {
-                childCounts.Pop();
-                print!( "]");
+                if !node.IsLeaf() {
+                    childCounts.Pop();
+                    print!( "]");
+                }
             }
         });
         println!();
@@ -143,14 +157,14 @@ where
 }
 impl< T > dyn Bud< T > + '_
 where
-    T: crate::stalks::IWork + Clone + Default + 'static,
+    T: IWork + Clone + Default + 'static,
 {
-    pub fn	Post( &mut self, worker: &dyn crate::stalks::IWorker)
+    pub fn	Post( &mut self, worker: &dyn IWorker)
     {
         if worker.IsSequential() {
-            fn	RunSequential< T>( node: &mut dyn Bud< T>, worker: &dyn crate::stalks::IWorker)
+            fn	RunSequential< T>( node: &mut dyn Bud< T>, worker: &dyn IWorker)
             where
-                T: crate::stalks::IWork + Clone + Default + 'static,
+                T: IWork + Clone + Default + 'static,
             {
                 if node.Left().is_none() && node.Right().is_none() {
                     if let  	Some( val) = node.ValMut() {
@@ -186,7 +200,7 @@ where
         {
             fn	Process< T>( &mut self, node: &dyn Bud< T>, maestro: &crate::heist::Maestro< '_>, succId: crate::silo::U16) -> crate::silo::U16
             where
-                T: crate::stalks::IWork + Clone + Default + 'static,
+                T: IWork + Clone + Default + 'static,
             {
                 if node.Left().is_none() && node.Right().is_none() {
                     if let  	Some( val) = node.Val() {

@@ -85,9 +85,12 @@ fn	TestBud()
         &[
             ( "<".to_string(), TraversalEvent::Entry),
             ( "10".to_string(), TraversalEvent::Entry),
+            ( "10".to_string(), TraversalEvent::Exit),
             ( "|".to_string(), TraversalEvent::Entry),
             ( "20".to_string(), TraversalEvent::Entry),
+            ( "20".to_string(), TraversalEvent::Exit),
             ( "30".to_string(), TraversalEvent::Entry),
+            ( "30".to_string(), TraversalEvent::Exit),
             ( "|".to_string(), TraversalEvent::Exit),
             ( "<".to_string(), TraversalEvent::Exit),
         ]
@@ -142,6 +145,39 @@ fn	TestBudMut()
         *nested_val_ref = U32( 100);
     }
     assert_eq!( root.Right().unwrap().Right().unwrap().Val(), Some( &U32( 100)));
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestBudDiveDf()
+{
+    use	crate::stalks::bud::Bud;
+    let  	rootFromLiterals = BudTree!( U32, 10 < ( 20 | 30));
+    let  	root: &dyn Bud< U32> = &rootFromLiterals;
+    let  	mut visited = Buff::NewEmpty();
+    root.DiveDf( &mut |node| {
+        let  	node_repr = if let  	Some( val) = node.Val() {
+            format!( "{}", val.0)
+        } else if let  	Some( op) = node.BinOp() {
+            op.as_str().to_string()
+        } else if let  	Some( op) = node.UniOp() {
+            op.as_str().to_string()
+        } else {
+            "".to_string()
+        };
+        visited.Push( node_repr);
+    });
+    assert_eq!(
+        &visited[..],
+        &[
+            "<".to_string(),
+            "10".to_string(),
+            "|".to_string(),
+            "20".to_string(),
+            "30".to_string(),
+        ]
+    );
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
