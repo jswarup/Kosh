@@ -13,24 +13,14 @@ pub struct Stash< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T: Default> Stash< T> 
+impl< T> Stash< T> 
 {
-
+    
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	New< S: Into< U32>>( sz: S) -> Self 
-    {
-        Self {
-            _Buff: Buff::Create( sz, |_| T::default()),
-            _Sz: Atm::New( U32( 0)),
-        }
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	Create< S1: Into< U32>, S2: Into< U32>, Dispenser>( 
-        sz: S1,
-        szStk: S2,
+    pub fn	Create< Sz: Into< U32>, SzStk: Into< U32>, Dispenser>( 
+        sz: Sz,
+        szStk: SzStk,
         dispenser: Dispenser,
     ) -> Self
     where
@@ -66,27 +56,17 @@ impl< T: Default> Stash< T>
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	BuffOut( &mut self) -> Buff< T>
-    where
-        T: Clone,
     {
-        let  	mut buff = Buff::New( 0, T::default());
+        let  	mut buff = Buff::NewEmpty();
         self._Buff.Swap( &mut buff);
         buff
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	DoIndexSetup( &self)
-    where
-        T: From< usize> + Clone,
-    {
-        let  	arr = self._Buff.Arr();
-        arr.USeg().Traverse( |i: U32| {
-            arr.SetAt( i, &T::from( i.AsUsize()));
-        });
-        self._Sz.Store( arr.Size(), Ordering::Release);
-    }
+ 
     pub fn	Pushback( &mut self, val: &mut T) 
+    where
+        T: Default,
     {
         while !self.Stk().Push( val) {
             if self.Size() == self._Buff.Size() {
@@ -101,8 +81,9 @@ impl< T: Default> Stash< T>
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-
     pub fn	Append( &mut self, arr: Arr< '_, T>) 
+    where
+        T: Default,
     {
         let  	n = arr.Size();
         if n == U32( 0) {
@@ -119,6 +100,35 @@ impl< T: Default> Stash< T>
         }
         self._Sz.Set( startSz + n);
     }
+}
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T: Default> Stash< T>
+{
+    pub fn	New< S: Into< U32>>( sz: S) -> Self
+    {
+        Self {
+            _Buff: Buff::Create( sz, |_| T::default()),
+            _Sz: Atm::New( U32( 0)),
+        }
+    }
+}
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T> Stash< T>
+where
+    T: From< usize> + Clone,
+{
+    //-----------------------------------------------------------------------------------------------------------------------------
+    pub fn	DoIndexSetup( &self)
+    {
+        let  	arr = self._Buff.Arr();
+        arr.USeg().Traverse( |i: U32| {
+            arr.SetAt( i, &T::from( i.AsUsize()));
+        });
+        self._Sz.Store( arr.Size(), Ordering::Release);
+    }
+    //-----------------------------------------------------------------------------------------------------------------------------
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

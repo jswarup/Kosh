@@ -49,11 +49,9 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
+ 
 
-    /// CAS-decrement _Size ( Acquire), then read. Pairs with Push's Release.
-    pub fn	Pop( &self, val: &mut T) -> bool
-    where
-        T: Default + Clone,
+    pub fn	Pop( &self, val: &mut T) -> bool 
     {
         let  	sz = self.Size();
         if ( sz == U32( 0))
@@ -86,11 +84,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    /// Write-then-publish: MoveAt data first, CAS-increment _Size ( Release).
-    /// On CAS failure, MoveAt rolls back the speculative write.
     pub fn	Push( &self, val: &mut T) -> bool
-    where
-        T: Default,
     {
         let  	sz = self.Size();
         if sz >= self._Arr.Size() {
