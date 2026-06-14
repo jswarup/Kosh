@@ -147,6 +147,25 @@ impl<'a> dyn INode + 'a {
 
 pub trait IntoBiNode< T, N: Sized > {
     fn	IntoBiNode( self ) -> N;
+    fn	IntoBiNodeAction< F >( self, _f: F ) -> N
+    where
+        Self: Sized,
+        F: Fn() + 'static,
+    {
+        self.IntoBiNode()
+    }
+}
+
+pub fn clone_attrib(attr: &Option<Attrib>) -> Option<Attrib> {
+    match attr {
+        None => None,
+        Some(Attrib::Inv(val)) => Some(Attrib::Inv(*val)),
+        Some(Attrib::Repeat(l, r)) => Some(Attrib::Repeat(*l, *r)),
+        Some(Attrib::Empty) => Some(Attrib::Empty),
+        Some(Attrib::Action(_)) => {
+            panic!("Cannot clone an INode with an Action attribute");
+        }
+    }
 }
 
 #[macro_export]
@@ -160,6 +179,45 @@ macro_rules! BiNodeTree {
     ( @feature_LT  [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BiNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Less, $l, $( $r)+ ) };
     ( @feature_BOR [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BiNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Bor, ( $( $l)+ ), $( $r)+ ) };
     ( @feature_BOR [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BiNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Bor, $l, $( $r)+ ) };
+    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, | $( $body:tt)+ ) => { $Node::New( $Arg::New( | $( $body)+ ) ) };
+    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, || $( $body:tt)+ ) => { $Node::New( $Arg::New( || $( $body)+ ) ) };
+    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move | $( $body:tt)+ ) => { $Node::New( $Arg::New( move | $( $body)+ ) ) };
+    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move || $( $body:tt)+ ) => { $Node::New( $Arg::New( move || $( $body)+ ) ) };
+
+    ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal [ $( $closure:tt )* ] ) => {
+        $( $cb)* !( @closure_match [ $( $cb)* ], $Arg, $Node, $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $l ), $( $closure )* )
+    };
+    ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $expr:tt)+ ) [ $( $closure:tt )* ] ) => {
+        $( $cb)* !( @closure_match [ $( $cb)* ], $Arg, $Node, $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, ( $( $expr )+ ) ), $( $closure )* )
+    };
+    ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] [ $( $closure:tt )* ] ) => {
+        $( $cb)* !( @closure_match [ $( $cb)* ], $Arg, $Node, $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ), $( $closure )* )
+    };
+
+    ( @closure_match [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $base:expr, | $( $closure:tt )* ) => {
+        $crate::stalks::node::IntoBiNode::< $Arg, $Node >::IntoBiNodeAction(
+            $base,
+            move | $( $closure)*
+        )
+    };
+    ( @closure_match [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $base:expr, || $( $closure:tt )* ) => {
+        $crate::stalks::node::IntoBiNode::< $Arg, $Node >::IntoBiNodeAction(
+            $base,
+            move || $( $closure)*
+        )
+    };
+    ( @closure_match [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $base:expr, move | $( $closure:tt )* ) => {
+        $crate::stalks::node::IntoBiNode::< $Arg, $Node >::IntoBiNodeAction(
+            $base,
+            move | $( $closure)*
+        )
+    };
+    ( @closure_match [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $base:expr, move || $( $closure:tt )* ) => {
+        $crate::stalks::node::IntoBiNode::< $Arg, $Node >::IntoBiNodeAction(
+            $base,
+            move || $( $closure)*
+        )
+    };
 
     ( @wrap $leaf:expr ) => {
         Into::into( $leaf )
@@ -170,11 +228,15 @@ macro_rules! BiNodeTree {
                 #[derive( Debug )]
                 #[allow(dead_code)]
                 enum [<$Arg BiNode>] {
-                    Leaf( $Arg),
+                    Leaf {
+                        _Val: $Arg,
+                        _Attrib: Option< $crate::stalks::Attrib >,
+                    },
                     Node {
                         _Op: $crate::stalks::ChildOp,
                         _Children: [Box< [<$Arg BiNode>]>; 2],
                         _Refs: [*const dyn $crate::stalks::INode; 2],
+                        _Attrib: Option< $crate::stalks::Attrib >,
                     }
                 }
                 unsafe impl Send for [<$Arg BiNode>] {}
@@ -185,7 +247,10 @@ macro_rules! BiNodeTree {
                 {
                     fn	New( value: $Arg) -> Self
                     {
-                        [<$Arg BiNode>]::Leaf( value)
+                        [<$Arg BiNode>]::Leaf {
+                            _Val: value,
+                            _Attrib: None,
+                        }
                     }
                     fn	NewBranch( op: $crate::stalks::ChildOp, left: Self, right: Self) -> Self
                     {
@@ -197,7 +262,24 @@ macro_rules! BiNodeTree {
                             _Op: op,
                             _Children: [left_box, right_box],
                             _Refs: [left_ptr, right_ptr],
+                            _Attrib: None,
                         }
+                    }
+                    fn	SetAttrib( &mut self, attr: Option< $crate::stalks::Attrib >)
+                    {
+                        match self {
+                            [<$Arg BiNode>]::Leaf { _Attrib, .. } => {
+                                *_Attrib = attr;
+                            }
+                            [<$Arg BiNode>]::Node { _Attrib, .. } => {
+                                *_Attrib = attr;
+                            }
+                        }
+                    }
+                    fn	WithAttrib( mut self, attr: Option< $crate::stalks::Attrib >) -> Self
+                    {
+                        self.SetAttrib( attr);
+                        self
                     }
                 }
                 impl Clone for [<$Arg BiNode>]
@@ -205,17 +287,29 @@ macro_rules! BiNodeTree {
                     fn	clone( &self) -> Self
                     {
                         match self {
-                            [<$Arg BiNode>]::Leaf( val) => [<$Arg BiNode>]::Leaf( val.clone()),
-                            [<$Arg BiNode>]::Node { _Op, _Children, .. } => {
+                            [<$Arg BiNode>]::Leaf { _Val, _Attrib } => [<$Arg BiNode>]::Leaf {
+                                _Val: _Val.clone(),
+                                _Attrib: $crate::stalks::node::clone_attrib( _Attrib ),
+                            },
+                            [<$Arg BiNode>]::Node { _Op, _Children, _Attrib, .. } => {
                                 let left = _Children[0].as_ref().clone();
                                 let right = _Children[1].as_ref().clone();
-                                [<$Arg BiNode>]::NewBranch( *_Op, left, right)
+                                let mut node = [<$Arg BiNode>]::NewBranch( *_Op, left, right);
+                                node.SetAttrib( $crate::stalks::node::clone_attrib( _Attrib ) );
+                                node
                             }
                         }
                     }
                 }
                 impl $crate::stalks::INode for [<$Arg BiNode>]
                 {
+                    fn	Attrib( &self) -> Option<& $crate::stalks::Attrib>
+                    {
+                        match self {
+                            [<$Arg BiNode>]::Leaf { _Attrib, .. } => _Attrib.as_ref(),
+                            [<$Arg BiNode>]::Node { _Attrib, .. } => _Attrib.as_ref(),
+                        }
+                    }
                     fn	ChildOp( &self) -> Option<$crate::stalks::ChildOp>
                     {
                         match self {
@@ -255,12 +349,24 @@ macro_rules! BiNodeTree {
                     {
                         [<$Arg BiNode>]::New( self.into() )
                     }
+                    fn	IntoBiNodeAction< F >( self, f: F) -> [<$Arg BiNode>]
+                    where
+                        F: Fn() + 'static,
+                    {
+                        [<$Arg BiNode>]::New( self.into() ).WithAttrib(Some($crate::stalks::Attrib::Action(Box::new(f))))
+                    }
                 }
                 impl $crate::stalks::node::IntoBiNode< $Arg, [<$Arg BiNode>]> for [<$Arg BiNode>]
                 {
                     fn	IntoBiNode( self) -> [<$Arg BiNode>]
                     {
                         self
+                    }
+                    fn	IntoBiNodeAction< F >( self, f: F) -> [<$Arg BiNode>]
+                    where
+                        F: Fn() + 'static,
+                    {
+                        self.WithAttrib(Some($crate::stalks::Attrib::Action(Box::new(f))))
                     }
                 }
                 $crate::BiNodeTree!( @cb [ $( $cb)* ], $Arg, [<$Arg BiNode>], $( $inner )+ )
@@ -271,6 +377,28 @@ macro_rules! BiNodeTree {
         $crate::BiNodeTree!( @define [ $crate::BiNodeTree ], $Arg, $( $inner )+ )
     };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $inner:tt)+ ) ) => { $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $inner)+ ) };
+
+    // ── Leaf [ action ] ────────────────────────────────────────────────────────────────────────────
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal [ $( $inner:tt )* ] ) => {
+        $( $cb)* !( @feature_ACTION [ $( $cb)* ], $Arg, $Node, $l [ $( $inner )* ] )
+    };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $expr:tt)+ ) [ $( $inner:tt )* ] ) => {
+        $( $cb)* !( @feature_ACTION [ $( $cb)* ], $Arg, $Node, ( $( $expr )+ ) [ $( $inner )* ] )
+    };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] [ $( $inner:tt )* ] ) => {
+        $( $cb)* !( @feature_ACTION [ $( $cb)* ], $Arg, $Node, [ $s ] [ $( $inner )* ] )
+    };
+
+    // ── Binary: [ boxet ] OP rhs ────────────────────────────────────────────────────────────────────
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bg $Arg, $Node, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ) ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bg $Arg, $Node, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ) ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bg $Arg, $Node, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ) ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bg $Arg, $Node, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ) ), $( $r )+ ) };
+
+    // ── Leaf Boxet ──────────────────────────────────────────────────────────────────────────────────
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] ) => {
+        $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s )
+    };
 
     // ── Binary: (group) OP rhs ──────────────────────────────────────────────────────────────────────
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
@@ -287,6 +415,12 @@ macro_rules! BiNodeTree {
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
+
+    // ── Closure literal ─────────────────────────────────────────────────────────────────────────────
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, | $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, $Node, | $( $body)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, || $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, $Node, || $( $body)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move | $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, $Node, move | $( $body)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move || $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, $Node, move || $( $body)+ ) };
 
     // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $leaf:expr ) => {
@@ -308,5 +442,10 @@ macro_rules! BiNodeTree {
             $crate::stalks::node::IntoBiNode::< $Arg, $Node >::IntoBiNode( $l ),
             $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) )
     };
+
+    // ---- DEFAULT FALLBACK ERRORS FOR DISABLED FEATURES -------------------------------------------------------------
+    ( @feature_NEW $( $args:tt )* ) => { compile_error!( "Closure literal is not enabled for this tree") };
+    ( @feature_BOXET  $( $args:tt )* ) => { compile_error!( "Boxet [ ... ] is not enabled for this tree") };
+    ( @feature_ACTION $( $args:tt )* ) => { compile_error!( "Action suffix [ closure ] is not enabled for this tree") };
 }
 pub use crate::BiNodeTree;
