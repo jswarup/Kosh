@@ -131,54 +131,27 @@ impl< T> dyn Bud< T> + '_
 
     pub fn	TraverseDF( &self, fnMut: &mut dyn FnMut( &dyn Bud< T>, TraversalEvent))
     {
-        enum Action<'a, T> {
-            Enter( &'a dyn Bud< T>),
-            Exit( &'a dyn Bud< T>),
-        }
-        impl<'a, T> Clone for Action<'a, T> {
-            fn clone( &self) -> Self {
-                *self
-            }
-        }
-        impl<'a, T> Copy for Action<'a, T> {}
-
-        let mut stash = Stash::<Option<Action<'_, T>>>::New( 16, 0, None);
-        let mut start = Some(Action::Enter(self));
-        stash.Pushback(&mut start);
-
-        while stash.Size() > U32(0) {
-            let mut curr = None;
-            stash.Stk().Pop(&mut curr);
-            if let Some(action) = curr {
-                match action {
-                    Action::Enter(node) => {
-                        fnMut(node, TraversalEvent::Entry);
-
-                        let mut exit_act = Some(Action::Exit(node));
-                        stash.Pushback(&mut exit_act);
-
-                        if let Some(right) = node.Right() {
-                            let mut right_act = Some(Action::Enter(right));
-                            stash.Pushback(&mut right_act);
-                        }
-
-                        if let Some(left) = node.Left() {
-                            let mut left_act = Some(Action::Enter(left));
-                            stash.Pushback(&mut left_act);
-                        }
-                    }
-                    Action::Exit(node) => {
-                        fnMut(node, TraversalEvent::Exit);
-                    }
+        let  mut   enterStash=  Stash::New( 1024, 1, self);
+        while enterStash.Size() > U32(0) {
+            let     mut node = self;
+            let     _res = enterStash.Pop(&mut node);
+            fnMut(self, TraversalEvent::Entry);
+            if !node.IsLeaf() {
+                if let Some(left) = node.Left() {
+                    enterStash.Push( left);
+                }
+                if let Some(right) = node.Right() {
+                    enterStash.Push( right);
                 }
             }
+            fnMut(node, TraversalEvent::Exit);
         }
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	DiveDf( &self, fnMut: &mut dyn FnMut( &BudProbe<'_, T>))
-    { 
+    {
         let     budProbe = BudProbe::New( 1024, self);
         self.TraverseDF( &mut |node, event|
             match event {
@@ -289,7 +262,7 @@ where
                 if node.Left().is_none() && node.Right().is_none() {
                     if let  	Some( val) = node.Val() {
                         let  	mut jobId = maestro.ConstructJob( succId, val.clone());
-                        self._JobStash.Pushback( &mut jobId);
+                        self._JobStash.PushX( &mut jobId);
                         return jobId;
                     }
                     return succId;

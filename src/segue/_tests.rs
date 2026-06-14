@@ -3,8 +3,7 @@ use	crate::{
     heist::Atelier,
     segue::
     { Charset, Shard },
-    silo::U32,
-    stalks::Bud,
+    silo::U32
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -21,7 +20,7 @@ fn	TestShardBuds()
     let  	cShard = Shard::New( |_m| {
         print!( "{} ", 40);
     });
-    let  	mut nodeTree = crate::ShardTree!( 
+    let  	mut nodeTree = crate::ShardTree!(
         ( cShard
             < ( bShard
                 | aShard

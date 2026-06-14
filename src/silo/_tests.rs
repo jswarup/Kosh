@@ -535,27 +535,27 @@ fn	TestStashDynamicPushback()
     assert_eq!( stash.Size() + stash.Stk().SzVoid(), 2);
     // Push first element
     let  	mut val1 = U32( 10);
-    stash.Pushback( &mut val1);
+    stash.PushX( &mut val1);
     assert_eq!( stash.Size(), 1);
     assert_eq!( stash.Size() + stash.Stk().SzVoid(), 2);
     // Push second element
     let  	mut val2 = U32( 20);
-    stash.Pushback( &mut val2);
+    stash.PushX( &mut val2);
     assert_eq!( stash.Size(), 2);
     assert_eq!( stash.Size() + stash.Stk().SzVoid(), 2);
     // Push third element ( should trigger resize to 4)
     let  	mut val3 = U32( 30);
-    stash.Pushback( &mut val3);
+    stash.PushX( &mut val3);
     assert_eq!( stash.Size(), 3);
     assert_eq!( stash.Size() + stash.Stk().SzVoid(), 4);
     // Push fourth element
     let  	mut val4 = U32( 40);
-    stash.Pushback( &mut val4);
+    stash.PushX( &mut val4);
     assert_eq!( stash.Size(), 4);
     assert_eq!( stash.Size() + stash.Stk().SzVoid(), 4);
     // Push fifth element ( should trigger resize to 8)
     let  	mut val5 = U32( 50);
-    stash.Pushback( &mut val5);
+    stash.PushX( &mut val5);
     assert_eq!( stash.Size(), 5);
     assert_eq!( stash.Size() + stash.Stk().SzVoid(), 8);
     // Pop and verify LIFO order and contents
@@ -577,11 +577,11 @@ fn	TestStashDynamicPushback()
     assert_eq!( stash0.Size(), 0);
     assert_eq!( stash0.Size() + stash0.Stk().SzVoid(), 0);
     let  	mut v = U32( 100);
-    stash0.Pushback( &mut v);
+    stash0.PushX( &mut v);
     assert_eq!( stash0.Size(), 1);
     assert_eq!( stash0.Size() + stash0.Stk().SzVoid(), 1);
     let  	mut v2 = U32( 200);
-    stash0.Pushback( &mut v2);
+    stash0.PushX( &mut v2);
     assert_eq!( stash0.Size(), 2);
     assert_eq!( stash0.Size() + stash0.Stk().SzVoid(), 2);
 }

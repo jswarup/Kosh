@@ -5,7 +5,7 @@ use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct Stk< 'a, 'b, T> 
+pub struct Stk< 'a, 'b, T>
 {
     _Size: &'a Atm< U32>,
     _Arr: Arr< 'b, T>,
@@ -13,30 +13,30 @@ pub struct Stk< 'a, 'b, T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, 'b, T> Stk< 'a, 'b, T> 
+impl< 'a, 'b, T> Stk< 'a, 'b, T>
 {
-    pub fn	Create( _Size: &'a Atm< U32>, _Arr: Arr< 'b, T>) -> Self 
+    pub fn	Create( _Size: &'a Atm< U32>, _Arr: Arr< 'b, T>) -> Self
     {
         Self { _Size, _Arr }
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Size( &self) -> U32 
+    pub fn	Size( &self) -> U32
     {
         self._Size.Load( Ordering::Acquire)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	SzVoid( &self) -> U32 
+    pub fn	SzVoid( &self) -> U32
     {
         self._Arr.Size() - self.Size()
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	USeg( &self) -> USeg 
+    pub fn	USeg( &self) -> USeg
     {
         USeg::Create( U32( 0), self.Size())
     }
@@ -44,20 +44,20 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
     //-----------------------------------------------------------------------------------------------------------------------------
     /// Requires exclusive access (not thread-safe to call concurrently).
 
-    pub fn	Arr( &self) -> Arr< 'b, T> 
+    pub fn	Arr( &self) -> Arr< 'b, T>
     {
         self._Arr.RSnip( self._Arr.Size() - self.Size())
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
- 
-    pub fn	Pop( &self, val: &mut T) -> bool 
+
+    pub fn	Pop( &self, val: &mut T) -> bool
     {
         let  	sz = self.Size();
         if ( sz == U32( 0))
             || ( self
                 ._Size
-                .CompareExchange( 
+                .CompareExchange(
                     sz,
                     sz - U32( 1),
                     std::sync::atomic::Ordering::Acquire,
@@ -71,19 +71,8 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
- 
-    pub fn	Popback( &self) -> T
-    where
-        T: Default + Clone,
-    {
-        let  	mut val = T::default();
-        self.Pop( &mut val);
-        return val;
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
     /// Requires exclusive access (not thread-safe to call concurrently).
-    
+
     pub fn	Push( &self, val: &mut T) -> bool
     {
         let  	sz = self.Size();
@@ -93,7 +82,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         self._Arr.MoveAt( sz, val);                                    // Write data BEFORE publishing
         if self
             ._Size
-            .CompareExchange( 
+            .CompareExchange(
                 sz,
                 sz + U32( 1),
                 std::sync::atomic::Ordering::Release,
