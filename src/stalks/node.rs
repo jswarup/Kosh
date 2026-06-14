@@ -126,8 +126,10 @@ impl<'a> dyn INode + 'a {
     pub fn DiveDf(&self, fnMut: &mut dyn FnMut(&NodeProbe<'_,>)) {
         let nodeProbe = NodeProbe::New(1024, self);
         traverse_df(self, &mut |node, event| match event {
-            TraversalEvent::Entry(_) => {
-                nodeProbe.Push(node);
+            TraversalEvent::Entry(idx) => {
+                if idx == U32(0) {
+                    nodeProbe.Push(node);
+                }
             }
             TraversalEvent::Exit => {
                 fnMut(&nodeProbe);

@@ -225,10 +225,38 @@ fn	TestINodeTraverse()
         &visited[..],
         &[
             ( 0, NodeTraversalEvent::Entry( U32( 0))),
+            ( 1, NodeTraversalEvent::Entry( U32( 0))),
             ( 1, NodeTraversalEvent::Exit),
             ( 0, NodeTraversalEvent::Entry( U32( 1))),
+            ( 2, NodeTraversalEvent::Entry( U32( 0))),
             ( 2, NodeTraversalEvent::Exit),
+            ( 0, NodeTraversalEvent::Entry( U32( 2))),
             ( 0, NodeTraversalEvent::Exit),
+        ]
+    );
+
+    // Test DiveDf
+    let mut visited2 = Buff::NewEmpty();
+    (&root as &dyn INode).DiveDf(&mut |probe| {
+        let mut path_str = String::new();
+        let arr = probe.Arr();
+        for i in 0..arr.Size().0 {
+            let node = *arr.At(i);
+            let test_node = unsafe { &*(node as *const dyn INode as *const TestNode<'_>) };
+            if !path_str.is_empty() {
+                path_str.push_str(" -> ");
+            }
+            path_str.push_str(&format!("{}", test_node.id));
+        }
+        visited2.Push(path_str);
+    });
+
+    assert_eq!(
+        &visited2[..],
+        &[
+            "0 -> 1".to_string(),
+            "0 -> 2".to_string(),
+            "0".to_string(),
         ]
     );
 }
