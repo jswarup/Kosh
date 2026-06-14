@@ -88,9 +88,52 @@ pub fn traverse_df(node: &dyn INode, fnMut: &mut dyn FnMut(&dyn INode, Traversal
             let child = *children.At(idx);
             stash.Push((child, U32(0)));
         } else {
-            
+            fnMut(n, TraversalEvent::Entry(sz));
             fnMut(n, TraversalEvent::Exit);
         }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub struct NodeProbe<'a> {
+    _NodeStash: crate::silo::Stash<&'a dyn INode>,
+}
+
+impl<'a> NodeProbe<'a> {
+    pub fn New< Sz: Into<U32>>( sz: Sz, node: &'a dyn INode) -> Self {
+        Self {
+            _NodeStash: crate::silo::Stash::Create( sz, U32(0), |_| node),
+        }
+    }
+
+    pub fn Push(&self, node: &'a dyn INode) {
+        let mut temp = node;
+        self._NodeStash.Stk().Push(&mut temp);
+    }
+
+    pub fn Pop(&self, node: &'a dyn INode) {
+        let mut temp = node;
+        self._NodeStash.Stk().Pop(&mut temp);
+    }
+
+    pub fn Arr(&self) -> Arr<'_, &'a dyn INode> {
+        self._NodeStash.Stk().Arr()
+    }
+}
+
+impl<'a> dyn INode + 'a {
+    pub fn DiveDf(&self, fnMut: &mut dyn FnMut(&NodeProbe<'_,>)) {
+        let nodeProbe = NodeProbe::New(1024, self);
+        traverse_df(self, &mut |node, event| match event {
+            TraversalEvent::Entry(_) => {
+                nodeProbe.Push(node);
+            }
+            TraversalEvent::Exit => {
+                fnMut(&nodeProbe);
+                nodeProbe.Pop(node);
+            }
+        });
     }
 }
 
