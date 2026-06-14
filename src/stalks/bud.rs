@@ -131,20 +131,25 @@ impl< T> dyn Bud< T> + '_
 
     pub fn	TraverseDF( &self, fnMut: &mut dyn FnMut( &dyn Bud< T>, TraversalEvent))
     {
-        let  mut   enterStash=  Stash::New( 1024, 1, self);
-        while enterStash.Size() > U32(0) {
-            let     mut node = self;
-            let     _res = enterStash.Pop(&mut node);
-            fnMut(self, TraversalEvent::Entry);
-            if !node.IsLeaf() {
-                if let Some(left) = node.Left() {
-                    enterStash.Push( left);
+        let mut stash = Stash::New(1024, 1, (self, U32( 0)));
+        while stash.Size() > U32(0) {
+            let mut curr = (self, U32( 0));
+            let _res = stash.Pop(&mut curr);
+            let (node, idx) = curr;
+            if idx == 0 {
+                fnMut(node, TraversalEvent::Entry);
+                stash.Push((node, U32( 1)));
+                if !node.IsLeaf() {
+                    if let Some(right) = node.Right() {
+                        stash.Push((right, U32( 0)));
+                    }
+                    if let Some(left) = node.Left() {
+                        stash.Push((left, U32( 0)));
+                    }
                 }
-                if let Some(right) = node.Right() {
-                    enterStash.Push( right);
-                }
+            } else {
+                fnMut(node, TraversalEvent::Exit);
             }
-            fnMut(node, TraversalEvent::Exit);
         }
     }
 
@@ -349,6 +354,7 @@ macro_rules! BudTree {
         {
             paste::paste! {
                 #[derive( Debug, Clone)]
+                #[allow(dead_code)]
                 enum [<$Arg Bud>] {
                     Leaf( $Arg),
                     Node {
@@ -361,6 +367,7 @@ macro_rules! BudTree {
                         _Child: Box< [<$Arg Bud>]>,
                     }
                 }
+                #[allow(dead_code)]
                 impl [<$Arg Bud>]
                 {
                     fn	New( value: $Arg) -> Self
