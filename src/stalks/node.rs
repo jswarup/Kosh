@@ -33,6 +33,14 @@ pub enum ChildOp {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TraversalEvent {
+    Entry(U32),
+    Exit,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub trait INode {
     fn Attrib(&self) -> Option<&Attrib> {
         None
@@ -46,6 +54,43 @@ pub trait INode {
 
     fn IsLeaf(&self) -> bool {
         self.Children().Size() == U32(0)
+    }
+
+    fn TraverseDF(&self, fnMut: &mut dyn FnMut(&dyn INode, TraversalEvent))
+    where
+        Self: Sized,
+    {
+        traverse_df(self, fnMut);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl<'a> dyn INode + 'a {
+    pub fn TraverseDF(&self, fnMut: &mut dyn FnMut(&dyn INode, TraversalEvent)) {
+        traverse_df(self, fnMut);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub fn traverse_df(node: &dyn INode, fnMut: &mut dyn FnMut(&dyn INode, TraversalEvent)) {
+    let mut stash = crate::silo::Stash::New(1024, 1, (node, U32(0)));
+    while stash.Size() > U32(0) {
+        let mut curr = (node, U32(0));
+        let _res = stash.Pop(&mut curr);
+        let (n, idx) = curr;
+        let children = n.Children();
+        let sz = children.Size();
+        if idx < sz {
+            fnMut(n, TraversalEvent::Entry(idx));
+            stash.Push((n, idx + U32(1)));
+            let child = *children.At(idx);
+            stash.Push((child, U32(0)));
+        } else {
+            
+            fnMut(n, TraversalEvent::Exit);
+        }
     }
 }
 

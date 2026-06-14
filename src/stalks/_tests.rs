@@ -191,3 +191,46 @@ fn	TestBudDiveDf()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestINodeTraverse()
+{
+    use	crate::stalks::{ INode, TraversalEvent as NodeTraversalEvent };
+    use	crate::silo::Arr;
+
+    struct TestNode<'a> {
+        id: u32,
+        children: &'a [&'a dyn INode],
+    }
+    impl<'a> INode for TestNode<'a> {
+        fn	Children<'b>( &'b self) -> Arr< 'b, &'b dyn INode> {
+            Arr::from( self.children)
+        }
+    }
+
+    let  	leaf1 = TestNode { id: 1, children: &[] };
+    let  	leaf2 = TestNode { id: 2, children: &[] };
+    let  	root = TestNode {
+        id: 0,
+        children: &[ &leaf1, &leaf2],
+    };
+
+    let  	mut visited = Buff::NewEmpty();
+    root.TraverseDF( &mut |node, event| {
+        let  	test_node = unsafe { &*( node as *const dyn INode as *const TestNode< '_>) };
+        visited.Push( ( test_node.id, event));
+    });
+
+    assert_eq!(
+        &visited[..],
+        &[
+            ( 0, NodeTraversalEvent::Entry( U32( 0))),
+            ( 1, NodeTraversalEvent::Exit),
+            ( 0, NodeTraversalEvent::Entry( U32( 1))),
+            ( 2, NodeTraversalEvent::Exit),
+            ( 0, NodeTraversalEvent::Exit),
+        ]
+    );
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------

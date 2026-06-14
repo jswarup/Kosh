@@ -7,7 +7,7 @@ pub mod node;
 pub mod work;
 pub use	atm::{ Atm, Spinlock };
 pub use	bud::{ BudTree, Bud };
-pub use	node::{ Attrib, ChildOp, INode };
+pub use	node::{ Attrib, ChildOp, INode, TraversalEvent };
 pub use	work::{ IWork, IWorker, IntoWorkPtr, JobFn, WorkFn, WorkPtr, WorkSlot, Worker };
 
 //---------------------------------------------------------------------------------------------------------------------------------
