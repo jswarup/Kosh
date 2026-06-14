@@ -4,7 +4,7 @@ use	crate::stalks::{ IWork, IWorker };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Clone, Debug, PartialEq)]
+#[derive( Clone, Debug)]
 pub enum Shard {
     Closure( fn( &dyn IWorker)),
     Char( char),

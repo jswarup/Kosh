@@ -131,15 +131,48 @@ impl< T> dyn Bud< T> + '_
 
     pub fn	TraverseDF( &self, fnMut: &mut dyn FnMut( &dyn Bud< T>, TraversalEvent))
     {
+        enum Action<'a, T> {
+            Enter( &'a dyn Bud< T>),
+            Exit( &'a dyn Bud< T>),
+        }
+        impl<'a, T> Clone for Action<'a, T> {
+            fn clone( &self) -> Self {
+                *self
+            }
+        }
+        impl<'a, T> Copy for Action<'a, T> {}
 
-        fnMut( self, TraversalEvent::Entry);
-        if let  	Some( left) = self.Left() {
-            left.TraverseDF( fnMut);
+        let mut stash = Stash::<Option<Action<'_, T>>>::New( 16, 0, None);
+        let mut start = Some(Action::Enter(self));
+        stash.Pushback(&mut start);
+
+        while stash.Size() > U32(0) {
+            let mut curr = None;
+            stash.Stk().Pop(&mut curr);
+            if let Some(action) = curr {
+                match action {
+                    Action::Enter(node) => {
+                        fnMut(node, TraversalEvent::Entry);
+
+                        let mut exit_act = Some(Action::Exit(node));
+                        stash.Pushback(&mut exit_act);
+
+                        if let Some(right) = node.Right() {
+                            let mut right_act = Some(Action::Enter(right));
+                            stash.Pushback(&mut right_act);
+                        }
+
+                        if let Some(left) = node.Left() {
+                            let mut left_act = Some(Action::Enter(left));
+                            stash.Pushback(&mut left_act);
+                        }
+                    }
+                    Action::Exit(node) => {
+                        fnMut(node, TraversalEvent::Exit);
+                    }
+                }
+            }
         }
-        if let  	Some( right) = self.Right() {
-            right.TraverseDF( fnMut);
-        }
-        fnMut( self, TraversalEvent::Exit);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -342,7 +375,7 @@ macro_rules! BudTree {
     ( @define [ $( $cb:tt )* ], $Arg:ident, $( $inner:tt )+ ) => {
         {
             paste::paste! {
-                #[derive( Debug, PartialEq, Clone)]
+                #[derive( Debug, Clone)]
                 enum [<$Arg Bud>] {
                     Leaf( $Arg),
                     Node {

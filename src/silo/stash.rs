@@ -75,7 +75,7 @@ impl< T: Copy> Stash< T>
     {
         Self {
             _Buff: Buff::Create( sz, |_| def),
-            _Sz: Atm::New( U32( 0)),
+            _Sz: Atm::New( szStk.into()),
         }
     }
 }

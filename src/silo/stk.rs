@@ -171,8 +171,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
             return U32( 0);
         }
         let  	szStk = stk._Size.FetchAdd( U32( 0) + szAlloc, Ordering::SeqCst);
-        stk._Arr
-            .SwapFrom( szStk, &self._Arr, oldSz - szAlloc, szAlloc);
+        stk._Arr.SwapFrom( szStk, &self._Arr, oldSz - szAlloc, szAlloc);
         szAlloc
     }
 }

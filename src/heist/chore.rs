@@ -3,7 +3,7 @@ use	crate::stalks::{ IWork, IWorker };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Copy, Clone, Debug, PartialEq)]
+#[derive( Copy, Clone, Debug)]
 pub struct Chore
 {
     _Closure: fn( &dyn IWorker),
