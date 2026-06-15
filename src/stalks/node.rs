@@ -1,5 +1,5 @@
 //-- node.rs -------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Arr, ISlice, U32 };
+use	crate::silo::{Arr, U32};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -54,10 +54,11 @@ pub trait INode {
         None
     }
 
-    fn Children<'a>(&'a self) -> Arr<'a, &'a dyn INode>;
+    fn NumChildren(&self) -> U32;
+    fn Child<'a>(&'a self, idx: U32) -> &'a dyn INode;
 
     fn IsLeaf(&self) -> bool {
-        self.Children().Size() == U32(0)
+        self.NumChildren() == U32(0)
     }
 
     fn TraverseDF(&self, fnMut: &mut dyn FnMut(&dyn INode, TraversalEvent))
@@ -84,15 +85,14 @@ pub fn traverse_df(node: &dyn INode, fnMut: &mut dyn FnMut(&dyn INode, Traversal
         let mut curr = (node, U32(0));
         let _res = stash.Pop(&mut curr);
         let (n, idx) = curr;
-        let children = n.Children();
-        let sz = children.Size();
-        if idx < sz {
+        let num_children = n.NumChildren();
+        if idx < num_children {
             fnMut(n, TraversalEvent::Entry(idx));
             stash.Push((n, idx + U32(1)));
-            let child = *children.At(idx);
+            let child = n.Child(idx);
             stash.Push((child, U32(0)));
         } else {
-            fnMut(n, TraversalEvent::Entry(sz));
+            fnMut(n, TraversalEvent::Entry(num_children));
             fnMut(n, TraversalEvent::Exit);
         }
     }
@@ -235,7 +235,6 @@ macro_rules! BiNodeTree {
                     Node {
                         _Op: $crate::stalks::ChildOp,
                         _Children: [Box< [<$Arg BiNode>]>; 2],
-                        _Refs: [*const dyn $crate::stalks::INode; 2],
                         _Attrib: Option< $crate::stalks::Attrib >,
                     }
                 }
@@ -256,12 +255,9 @@ macro_rules! BiNodeTree {
                     {
                         let left_box = Box::new( left);
                         let right_box = Box::new( right);
-                        let left_ptr = &*left_box as *const dyn $crate::stalks::INode;
-                        let right_ptr = &*right_box as *const dyn $crate::stalks::INode;
                         [<$Arg BiNode>]::Node {
                             _Op: op,
                             _Children: [left_box, right_box],
-                            _Refs: [left_ptr, right_ptr],
                             _Attrib: None,
                         }
                     }
@@ -317,19 +313,20 @@ macro_rules! BiNodeTree {
                             _ => None,
                         }
                     }
-                    fn	Children<'a>( &'a self) -> $crate::silo::Arr< 'a, &'a dyn $crate::stalks::INode>
+                    fn NumChildren(&self) -> $crate::silo::U32
                     {
                         match self {
-                            [<$Arg BiNode>]::Node { _Refs, .. } => {
-                                unsafe {
-                                    let slice = std::slice::from_raw_parts(
-                                        _Refs.as_ptr() as *const &'a dyn $crate::stalks::INode,
-                                        2
-                                    );
-                                    $crate::silo::Arr::from(slice)
-                                }
+                            [<$Arg BiNode>]::Node { .. } => $crate::silo::U32( 2),
+                            _ => $crate::silo::U32( 0),
+                        }
+                    }
+                    fn Child<'a>( &'a self, idx: $crate::silo::U32) -> &'a dyn $crate::stalks::INode
+                    {
+                        match self {
+                            [<$Arg BiNode>]::Node { _Children, .. } => {
+                                _Children[idx.0 as usize].as_ref()
                             }
-                            _ => $crate::silo::Arr::from(&[][..]),
+                            _ => panic!("Leaf nodes have no children"),
                         }
                     }
                 }

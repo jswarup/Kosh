@@ -37,7 +37,7 @@ fn	TestAtmBasicOps()
 fn	TestINodeTraverse()
 {
     use	crate::stalks::{ INode, Attrib, TraversalEvent as NodeTraversalEvent };
-    use	crate::silo::Arr;
+
 
     struct TestNode<'a> {
         id: u32,
@@ -48,8 +48,11 @@ fn	TestINodeTraverse()
         fn  Attrib(&self) -> Option<&Attrib> {
             self.attrib.as_ref()
         }
-        fn	Children<'b>( &'b self) -> Arr< 'b, &'b dyn INode> {
-            Arr::from( self.children)
+        fn  NumChildren(&self) -> crate::silo::U32 {
+            crate::silo::U32(self.children.len() as u32)
+        }
+        fn  Child<'b>(&'b self, idx: crate::silo::U32) -> &'b dyn INode {
+            self.children[idx.0 as usize]
         }
     }
 
@@ -121,26 +124,23 @@ fn	TestBiNodeTree()
 
     assert_eq!( root.ChildOp(), Some( ChildOp::Less));
 
-    let  	children = root.Children();
-    assert_eq!( children.Size().0, 2);
+    assert_eq!( root.NumChildren().0, 2);
 
-    let  	left = *children.At( 0);
-    let  	right = *children.At( 1);
+    let  	left = root.Child( crate::silo::U32( 0));
+    let  	right = root.Child( crate::silo::U32( 1));
 
     assert_eq!( left.ChildOp(), None);
     assert_eq!( right.ChildOp(), Some( ChildOp::Bor));
 
-    let  	right_children = right.Children();
-    assert_eq!( right_children.Size().0, 2);
-    assert_eq!( right_children.At( 0).ChildOp(), None);
-    assert_eq!( right_children.At( 1).ChildOp(), None);
+    assert_eq!( right.NumChildren().0, 2);
+    assert_eq!( right.Child( crate::silo::U32( 0)).ChildOp(), None);
+    assert_eq!( right.Child( crate::silo::U32( 1)).ChildOp(), None);
 
     // Test Clone implementation
     let  	cloned_root = root.clone();
     assert_eq!( cloned_root.ChildOp(), Some( ChildOp::Less));
-    let  	cloned_children = cloned_root.Children();
-    assert_eq!( cloned_children.Size().0, 2);
-    assert_eq!( cloned_children.At( 1).ChildOp(), Some( ChildOp::Bor));
+    assert_eq!( cloned_root.NumChildren().0, 2);
+    assert_eq!( cloned_root.Child( crate::silo::U32( 1)).ChildOp(), Some( ChildOp::Bor));
 
 }
 

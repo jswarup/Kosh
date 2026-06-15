@@ -1,6 +1,6 @@
 //-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::Maestro;
-use	crate::silo::{ Arr, Buff, ISlice, Stash, U16, U32 };
+use	crate::silo::{ Arr, Buff, ISlice, IArr, Stash, U16, U32 };
 use	crate::stalks::{ Atm, Spinlock, WorkPtr };
 use	std::sync::atomic::Ordering;
 
