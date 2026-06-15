@@ -163,30 +163,30 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
 
 impl< 'a, T> ISlice< T> for Arr< 'a, T>
 {
-    fn	Size( &self) -> U32
-    {
-        self._Size
-    }
+     fn	Size( &self) -> U32
+     {
+         self._Size
+     }
 
-    fn	Ptr( &self) -> NonNull< T>
-    {
-        self._Ptr
-    }
+     fn	Ptr( &self) -> NonNull< T>
+     {
+         self._Ptr
+     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl< T> ISlice< T> for Buff< T>
 {
-    fn	Size( &self) -> U32
-    {
-        U32( self._Ptr.len() as u32)
-    }
+     fn	Size( &self) -> U32
+     {
+         U32( self._Ptr.len() as u32)
+     }
 
-    fn	Ptr( &self) -> NonNull< T>
-    {
-        self._Ptr.cast::< T>()
-    }
+     fn	Ptr( &self) -> NonNull< T>
+     {
+         self._Ptr.cast::< T>()
+     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

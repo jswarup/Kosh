@@ -1,5 +1,5 @@
 //-- _tests.rs ---------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Buff, ISlice, U32 };
+use	crate::silo::{ Buff, U32 };
 use	crate::stalks::{ Atm, BudTree};
 use	std::sync::atomic::Ordering;
 
