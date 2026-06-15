@@ -145,47 +145,63 @@ impl USeg
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	QSort< 'a, LessAt, SwapAt>( &self, lessAt: &'a LessAt, swapAt: &'a mut SwapAt)
+    pub fn	QSort< 'a, LessAt, SwapAt>( &self, lessAt: LessAt, mut swapAt: SwapAt)
     where
-        LessAt: Fn( U32, U32) -> bool + 'a,
-        SwapAt: FnMut( U32, U32) + 'a,
+        LessAt: Fn( U32, U32) -> bool + 'a + Copy,
+        SwapAt: FnMut( U32, U32) + 'a + Copy,
     {
-        if self.Size() <= 1 {
-            return;
-        }
-        let  	pivot = self.Partition( lessAt, swapAt);
-        let  	useg1 = USeg::Create( self._First, pivot - self._First);
-        if useg1.Size() > 1 {
-            useg1.QSort( lessAt, swapAt);
-        }
-        let  	useg2 = USeg::Create( pivot + 1, self._Last - pivot);
-        if useg2.Size() > 1 {
-            useg2.QSort( lessAt, swapAt);
+        let  	mut currentSeg = *self;
+        while currentSeg.Size() > 1 {
+            let  	pivot = currentSeg.Partition( &lessAt, &mut swapAt);
+            let  	useg1 = USeg::Create( currentSeg._First, pivot - currentSeg._First);
+            let  	useg2 = USeg::Create( pivot + 1, currentSeg._Last - pivot);
+            
+            if useg1.Size() < useg2.Size() {
+                if useg1.Size() > 1 {
+                    useg1.QSort( lessAt, swapAt);
+                }
+                currentSeg = useg2;
+            } else {
+                if useg2.Size() > 1 {
+                    useg2.QSort( lessAt, swapAt);
+                }
+                currentSeg = useg1;
+            }
         }
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	DoQSort< 'a, LessAt, SwapAt>( &self, worker: &dyn IWorker, lessAt: &'a LessAt, swapAt: &'a SwapAt)
+    pub fn	DoQSort< 'a, LessAt, SwapAt>( &self, worker: &dyn IWorker, lessAt: LessAt, swapAt: SwapAt)
     where
-        LessAt: Fn( U32, U32) -> bool + Send + Sync + 'a,
-        SwapAt: Fn( U32, U32) + Send + Sync + 'a,
+        LessAt: Fn( U32, U32) -> bool + Send + Sync + 'a + Copy,
+        SwapAt: Fn( U32, U32) + Send + Sync + 'a + Copy,
     {
-        if self.Size() <= 1 {
-            return;
-        }
-        let  	pivot = self.Partition( lessAt, &mut |i, j| swapAt( i, j));
-        let  	useg1 = USeg::Create( self._First, pivot - self._First);
-        if useg1.Size() > 1 {
-            worker.Post( move |w: &dyn IWorker| {
-                useg1.DoQSort( w, lessAt, swapAt);
-            });
-        }
-        let  	useg2 = USeg::Create( pivot + 1, self._Last - pivot);
-        if useg2.Size() > 1 {
-            worker.Post( move |w: &dyn IWorker| {
-                useg2.DoQSort( w, lessAt, swapAt);
-            });
+        let  	mut currentSeg = *self;
+        while currentSeg.Size() > 1 {
+            if currentSeg.Size() < U32( 1024) {
+                currentSeg.QSort( lessAt, swapAt);
+                return;
+            }
+            let  	pivot = currentSeg.Partition( &lessAt, &mut |i, j| swapAt( i, j));
+            let  	useg1 = USeg::Create( currentSeg._First, pivot - currentSeg._First);
+            let  	useg2 = USeg::Create( pivot + 1, currentSeg._Last - pivot);
+            
+            if useg1.Size() > useg2.Size() {
+                if useg1.Size() > 1 {
+                    worker.Post( move |w: &dyn IWorker| {
+                        useg1.DoQSort( w, lessAt, swapAt);
+                    });
+                }
+                currentSeg = useg2;
+            } else {
+                if useg2.Size() > 1 {
+                    worker.Post( move |w: &dyn IWorker| {
+                        useg2.DoQSort( w, lessAt, swapAt);
+                    });
+                }
+                currentSeg = useg1;
+            }
         }
     }
 

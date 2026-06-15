@@ -469,7 +469,7 @@ fn	QSortTest()
     //let     buff =  Buff::New( 5, | i| i);
     let  	arr = buff.Arr();
     arr.USeg()
-        .QSort( &|i, j| arr.At( i) > arr.At( j), &mut |i, j| {
+        .QSort( |i, j| arr.At( i) > arr.At( j), |i, j| {
             arr.Swap( i, j);
         });
     print! { "{:?}\n", arr};
@@ -487,7 +487,7 @@ fn	TestQSortBoundaries()
     let  	arrEmpty = buffEmpty.Arr();
     arrEmpty
         .USeg()
-        .QSort( &|i, j| arrEmpty.At( i) > arrEmpty.At( j), &mut |i, j| {
+        .QSort( |i, j| arrEmpty.At( i) > arrEmpty.At( j), |i, j| {
             arrEmpty.Swap( i, j);
         });
     assert_eq!( arrEmpty.len(), 0);
@@ -496,7 +496,7 @@ fn	TestQSortBoundaries()
     let  	arrOne = buffOne.Arr();
     arrOne
         .USeg()
-        .QSort( &|i, j| arrOne.At( i) > arrOne.At( j), &mut |i, j| {
+        .QSort( |i, j| arrOne.At( i) > arrOne.At( j), |i, j| {
             arrOne.Swap( i, j);
         });
     assert_eq!( arrOne[0], 42);

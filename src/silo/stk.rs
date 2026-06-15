@@ -118,7 +118,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
             }
             if self
                 ._Size
-                .CompareExchange( sz, sz + szAlloc, Ordering::SeqCst, Ordering::SeqCst)
+                .CompareExchange( sz, sz + szAlloc, Ordering::AcqRel, Ordering::Acquire)
                 .is_ok() {
                 break ( szAlloc, sz);
             }
@@ -126,7 +126,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         if szAlloc == U32( 0) {
             return U32( 0);
         }
-        let  	stkSz = stk._Size.FetchAdd( U32( 0) - szAlloc, Ordering::SeqCst) - szAlloc;
+        let  	stkSz = stk._Size.FetchAdd( U32( 0) - szAlloc, Ordering::AcqRel) - szAlloc;
         self._Arr.SwapFrom( oldSz, &stk._Arr, stkSz, szAlloc);
         szAlloc
     }
@@ -151,7 +151,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
             }
             if self
                 ._Size
-                .CompareExchange( sz, sz - szAlloc, Ordering::SeqCst, Ordering::SeqCst)
+                .CompareExchange( sz, sz - szAlloc, Ordering::AcqRel, Ordering::Acquire)
                 .is_ok() {
                 break ( szAlloc, sz);
             }
@@ -159,7 +159,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         if szAlloc == U32( 0) {
             return U32( 0);
         }
-        let  	szStk = stk._Size.FetchAdd( U32( 0) + szAlloc, Ordering::SeqCst);
+        let  	szStk = stk._Size.FetchAdd( U32( 0) + szAlloc, Ordering::AcqRel);
         stk._Arr.SwapFrom( szStk, &self._Arr, oldSz - szAlloc, szAlloc);
         szAlloc
     }
