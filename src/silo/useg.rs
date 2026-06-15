@@ -121,10 +121,10 @@ impl USeg
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	Partition< LessAt, SwapAt>( &self, lessAt: &LessAt, swapAt: &mut SwapAt) -> U32
+    fn	Partition< 'a, LessAt, SwapAt>( &self, lessAt: &'a LessAt, swapAt: &'a mut SwapAt) -> U32
     where
-        LessAt: Fn( U32, U32) -> bool,
-        SwapAt: FnMut( U32, U32),
+        LessAt: Fn( U32, U32) -> bool + 'a,
+        SwapAt: FnMut( U32, U32) + 'a,
     {
         let  	mid = self.Mid();
         if lessAt( self._First, mid) {
@@ -145,10 +145,10 @@ impl USeg
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	QSort< LessAt, SwapAt>( &self, lessAt: &LessAt, swapAt: &mut SwapAt)
+    pub fn	QSort< 'a, LessAt, SwapAt>( &self, lessAt: &'a LessAt, swapAt: &'a mut SwapAt)
     where
-        LessAt: Fn( U32, U32) -> bool,
-        SwapAt: FnMut( U32, U32),
+        LessAt: Fn( U32, U32) -> bool + 'a,
+        SwapAt: FnMut( U32, U32) + 'a,
     {
         if self.Size() <= 1 {
             return;
@@ -166,29 +166,25 @@ impl USeg
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	DoQSort< 'a, LessAt, SwapAt>( &self, worker: &dyn IWorker, lessAt: LessAt, swapAt: SwapAt)
+    pub fn	DoQSort< 'a, LessAt, SwapAt>( &self, worker: &dyn IWorker, lessAt: &'a LessAt, swapAt: &'a SwapAt)
     where
-        LessAt: Fn( U32, U32) -> bool + Send + Sync + Clone + 'a,
-        SwapAt: Fn( U32, U32) + Send + Sync + Clone + 'a,
+        LessAt: Fn( U32, U32) -> bool + Send + Sync + 'a,
+        SwapAt: Fn( U32, U32) + Send + Sync + 'a,
     {
         if self.Size() <= 1 {
             return;
         }
-        let  	pivot = self.Partition( &lessAt, &mut |i, j| swapAt( i, j));
+        let  	pivot = self.Partition( lessAt, &mut |i, j| swapAt( i, j));
         let  	useg1 = USeg::Create( self._First, pivot - self._First);
         if useg1.Size() > 1 {
-            let  	lessAtClone = lessAt.clone();
-            let  	swapAtClone = swapAt.clone();
             worker.Post( move |w: &dyn IWorker| {
-                useg1.DoQSort( w, lessAtClone.clone(), swapAtClone.clone());
+                useg1.DoQSort( w, lessAt, swapAt);
             });
         }
         let  	useg2 = USeg::Create( pivot + 1, self._Last - pivot);
         if useg2.Size() > 1 {
-            let  	lessAtClone = lessAt.clone();
-            let  	swapAtClone = swapAt.clone();
             worker.Post( move |w: &dyn IWorker| {
-                useg2.DoQSort( w, lessAtClone.clone(), swapAtClone.clone());
+                useg2.DoQSort( w, lessAt, swapAt);
             });
         }
     }

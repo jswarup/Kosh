@@ -133,19 +133,14 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
 
     fn	QuickSorter< 'a, Less>( &'a self, less: Less) -> impl Fn( &dyn IWorker) + Send + Sync + 'a
     where
-        Less: Fn( &T, &T) -> bool + Send + Sync + Clone + 'a,
+        Less: Fn( &T, &T) -> bool + Send + Sync + 'a,
         T: Send + Sync + 'a,
     {
         let  	arr = Arr::New( self.Ptr(), self.Size());
         move |worker: &dyn IWorker| {
-            let  	less = less.clone();
-            arr.USeg().DoQSort( 
-                worker,
-                move |i, j| less( arr.At( i), arr.At( j)),
-                move |i, j| {
-                    arr.SwapAt( i, j);
-                },
-            );
+            let  	lessFn = |i, j| less( arr.At( i), arr.At( j));
+            let  	swapFn = |i, j| arr.SwapAt( i, j);
+            arr.USeg().DoQSort( worker, &lessFn, &swapFn);
         }
     }
 

@@ -124,19 +124,14 @@ impl< 'a, T> Arr< 'a, T>
 
     pub fn	QuickSorter< Less>( &self, less: Less) -> impl Fn( &dyn IWorker) + Send + Sync + 'a
     where
-        Less: Fn( &T, &T) -> bool + Send + Sync + Clone + 'a,
+        Less: Fn( &T, &T) -> bool + Send + Sync + 'a,
         T: Send + Sync + 'a,
     {
         let  	arr = *self;
         move |worker: &dyn IWorker| {
-            let  	less = less.clone();
-            arr.USeg().DoQSort( 
-                worker,
-                move |i, j| less( arr.At( i), arr.At( j)),
-                move |i, j| {
-                    arr.SwapAt( i, j);
-                },
-            );
+            let  	lessFn = |i, j| less( arr.At( i), arr.At( j));
+            let  	swapFn = |i, j| arr.SwapAt( i, j);
+            arr.USeg().DoQSort( worker, &lessFn, &swapFn);
         }
     }
 }
