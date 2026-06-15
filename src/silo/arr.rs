@@ -92,7 +92,7 @@ impl< 'a, T> Arr< 'a, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	MoveAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &'a T
+    pub fn	SwapAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &'a T
     {
         unsafe {
             let  	ptr = self._Ptr.as_ptr().add( k.into().AsUsize());

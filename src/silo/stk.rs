@@ -66,7 +66,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
                 .is_err()) {
             return false;
         }
-        self._Arr.MoveAt( sz - 1, val);
+        self._Arr.SwapAt( sz - 1, val);
         true
     }
 
@@ -79,7 +79,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         if sz >= self._Arr.Size() {
             return false;
         }
-        self._Arr.MoveAt( sz, val);                                    // Write data BEFORE publishing
+        self._Arr.SwapAt( sz, val);                                    // Write data BEFORE publishing
         if self
             ._Size
             .CompareExchange(
@@ -89,7 +89,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
                 std::sync::atomic::Ordering::Relaxed,
             )
             .is_err() {
-            self._Arr.MoveAt( sz, val);                                // Rollback: swap original value back
+            self._Arr.SwapAt( sz, val);                                // Rollback: swap original value back
             return false;
         }
         true

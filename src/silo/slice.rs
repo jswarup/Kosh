@@ -59,7 +59,7 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	MoveAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &T
+    fn	SwapAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &T
     {
         unsafe {
             let  	ptr = self.Ptr().as_ptr().add( k.into().AsUsize());

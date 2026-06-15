@@ -142,7 +142,7 @@ impl< T: Default> Stash< T>
         let  	startSz = self.Size();
         let  	arrBuff = self._Buff.Arr();
         for i in 0..usize::from( n) {
-            arrBuff.MoveAt( startSz + U32( i as u32), arr.MutAt( U32( i as u32)));
+            arrBuff.SwapAt( startSz + U32( i as u32), arr.MutAt( U32( i as u32)));
         }
         self._Sz.Set( startSz + n);
     }

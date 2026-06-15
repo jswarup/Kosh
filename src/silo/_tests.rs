@@ -75,9 +75,9 @@ fn	ArrBasicOpsTest()
         // Test SetAt
         arr.SetAt( 2, &200u32);
         assert_eq!( *arr.At( 2), 200);
-        // Test MoveAt
+        // Test SwapAt
         let  	mut val = 300;
-        arr.MoveAt( 0, &mut val);
+        arr.SwapAt( 0, &mut val);
         assert_eq!( *arr.At( 0), 300);
         // Test Swap
         arr.Swap( 0, 2);
