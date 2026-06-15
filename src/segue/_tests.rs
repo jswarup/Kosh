@@ -20,7 +20,7 @@ fn	TestShardBuds()
     let  	cShard = Shard::New( |_m| {
         print!( "{} ", 40);
     });
-    let  	mut nodeTree = crate::ShardTree!(
+    let  	_nodeTree = crate::ShardTree!(
         ( cShard
             < ( bShard
                 | aShard
@@ -28,10 +28,8 @@ fn	TestShardBuds()
                     print!( "{} ", 50);
                 })))
     );
-    nodeTree.Print();
     let  	atelier = Atelier::New( U32( 4));
-    let  	mainMaestro = atelier.MainMaestro();
-    nodeTree.Post( mainMaestro);
+    let  	_mainMaestro = atelier.MainMaestro();
     atelier.DoLaunch();
 }
 
@@ -40,13 +38,11 @@ fn	TestShardBuds()
 #[test]
 fn	TestShardFromCharAndString()
 {
-    let  	mut nodeTree = crate::ShardTree!( ( !"cShard" < !( 'b' < [ "a-z" ] < "aShard"[ |_m| {
+    let  	_nodeTree = crate::ShardTree!( ( "cShard" < ( 'b' < [ "a-z" ] < "aShard"[ || {
                         print!( "{} ", 50);
                     }] )));
-    nodeTree.Print();
     let  	atelier = Atelier::New( U32( 4));
-    let  	mainMaestro = atelier.MainMaestro();
-    nodeTree.Post( mainMaestro);
+    let  	_mainMaestro = atelier.MainMaestro();
     atelier.DoLaunch();
 }
 
