@@ -1,12 +1,12 @@
 //-- slice.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Arr, Buff, U32, USeg };
+use	crate::silo::{ Arr, U32, USeg };
 use	crate::stalks::IWorker;
 use	std::ops::{ Deref, DerefMut };
 use	std::ptr::NonNull;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
+pub trait ISlice< 'a, T: 'a>: Deref< Target = [T]> + DerefMut {
     fn	Size( &self) -> U32;
     fn	Ptr( &self) -> NonNull< T>;
 
@@ -26,7 +26,7 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	At< K: Into< U32>>( &self, k: K) -> &T
+    fn	At< K: Into< U32>>( &self, k: K) -> &'a T
     {
         unsafe {
             let  	ptr = self.Ptr().as_ptr().add( k.into().AsUsize());
@@ -36,7 +36,7 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	MutAt< K: Into< U32>>( &self, k: K) -> &mut T
+    fn	MutAt< K: Into< U32>>( &self, k: K) -> &'a mut T
     {
         unsafe {
             let  	ptr = self.Ptr().as_ptr().add( k.into().AsUsize());
@@ -46,7 +46,7 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	SetAt< K: Into< U32>>( &self, k: K, a: &T) -> &T
+    fn	SetAt< K: Into< U32>>( &self, k: K, a: &T) -> &'a T
     where
         T: Clone,
     {
@@ -59,7 +59,7 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	SwapAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &T
+    fn	SwapAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &'a T
     {
         unsafe {
             let  	ptr = self.Ptr().as_ptr().add( k.into().AsUsize());
@@ -102,7 +102,7 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	LSnip< C: Into< U32>>( &self, count: C) -> Arr< '_, T>
+    fn	LSnip< C: Into< U32>>( &self, count: C) -> Arr< 'a, T>
     {
         let  	cnt = count.into();
         Arr::New( 
@@ -113,7 +113,7 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	RSnip< C: Into< U32>>( &self, count: C) -> Arr< '_, T>
+    fn	RSnip< C: Into< U32>>( &self, count: C) -> Arr< 'a, T>
     {
         let  	cnt = count.into();
         Arr::New( self.Ptr(), self.Size() - cnt)
@@ -131,22 +131,22 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
         self.USeg().Span( |k| f( self.At( k)))
     }
 
-    fn	QuickSorter< 'a, Less>( &'a self, less: Less) -> impl Fn( &dyn IWorker) + Send + Sync + 'a
+    fn	QuickSorter< Less>( &self, less: Less) -> impl Fn( &dyn IWorker) + Send + Sync + 'a
     where
-        Less: Fn( &T, &T) -> bool + Send + Sync + 'a,
+        Less: Fn( &T, &T) -> bool + Send + Sync + 'a + Copy,
         T: Send + Sync + 'a,
     {
         let  	arr = Arr::New( self.Ptr(), self.Size());
         move |worker: &dyn IWorker| {
-            let  	lessFn = |i, j| less( arr.At( i), arr.At( j));
-            let  	swapFn = |i, j| arr.Swap( i, j);
-            arr.USeg().DoQSort( worker, &lessFn, &swapFn);
+            let  	lessFn = move |i, j| less( arr.At( i), arr.At( j));
+            let  	swapFn = move |i, j| arr.Swap( i, j);
+            arr.USeg().DoQSort( worker, lessFn, swapFn);
         }
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	SortSanity< 'a, Less>( &'a self, less: Less) -> bool
+    fn	SortSanity< Less>( &self, less: Less) -> bool
     where
         Less: Fn( &T, &T) -> bool + Send + Sync + Clone + 'a,
     {
@@ -156,7 +156,7 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T> ISlice< T> for Arr< 'a, T>
+impl< 'a, T> ISlice< 'a, T> for Arr< 'a, T>
 {
      fn	Size( &self) -> U32
      {
@@ -169,19 +169,4 @@ impl< 'a, T> ISlice< T> for Arr< 'a, T>
      }
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T> ISlice< T> for Buff< T>
-{
-     fn	Size( &self) -> U32
-     {
-         U32( self._Ptr.len() as u32)
-     }
-
-     fn	Ptr( &self) -> NonNull< T>
-     {
-         self._Ptr.cast::< T>()
-     }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------

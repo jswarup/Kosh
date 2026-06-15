@@ -1,6 +1,5 @@
 //-- arr.rs -----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ ISlice, U8, U32 };
-use	crate::stalks::IWorker;
+use	crate::silo::{ U8, U32 };
 use	std::marker::PhantomData;
 use	std::ops::{ Deref, DerefMut };
 use	std::ptr::NonNull;
@@ -36,104 +35,7 @@ impl< 'a, T> Arr< 'a, T>
         }
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Size( &self) -> U32
-    {
-        self._Size
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	Ptr( &self) -> NonNull< T>
-    {
-        self._Ptr
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	IsEmpty( &self) -> bool
-    {
-        self._Size == U32( 0)
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	At< K: Into< U32>>( &self, k: K) -> &'a T
-    {
-        unsafe {
-            let  	ptr = self._Ptr.as_ptr().add( k.into().AsUsize());
-            &*ptr
-        }
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	MutAt< K: Into< U32>>( &self, k: K) -> &'a mut T
-    {
-        unsafe {
-            let  	ptr = self._Ptr.as_ptr().add( k.into().AsUsize());
-            &mut *ptr
-        }
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	SetAt< K: Into< U32>>( &self, k: K, a: &T) -> &'a T
-    where
-        T: Clone,
-    {
-        unsafe {
-            let  	ptr = self._Ptr.as_ptr().add( k.into().AsUsize());
-            *ptr = a.clone();
-            &*ptr
-        }
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	SwapAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &'a T
-    {
-        unsafe {
-            let  	ptr = self._Ptr.as_ptr().add( k.into().AsUsize());
-            std::ptr::swap( ptr, a);
-            &*ptr
-        }
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	LSnip< C: Into< U32>>( &self, count: C) -> Arr< 'a, T>
-    {
-        let  	cnt = count.into();
-        Arr::New( 
-            unsafe { self._Ptr.add( cnt.AsU32() as usize) },
-            self._Size - cnt,
-        )
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	RSnip< C: Into< U32>>( &self, count: C) -> Arr< 'a, T>
-    {
-        let  	cnt = count.into();
-        Arr::New( self._Ptr, self._Size - cnt)
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	QuickSorter< Less>( &self, less: Less) -> impl Fn( &dyn IWorker) + Send + Sync + 'a
-    where
-        Less: Fn( &T, &T) -> bool + Send + Sync + 'a + Copy,
-        T: Send + Sync + 'a,
-    {
-        let  	arr = *self;
-        move |worker: &dyn IWorker| {
-            let  	lessFn = move |i, j| less( arr.At( i), arr.At( j));
-            let  	swapFn = move |i, j| arr.Swap( i, j);
-            arr.USeg().DoQSort( worker, lessFn, swapFn);
-        }
-    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
