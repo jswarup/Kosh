@@ -1,5 +1,5 @@
 //-- buff.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Arr, U32 };
+use	crate::silo::{ Arr, ISlice, U32 };
 use	std::alloc::{ Layout, alloc, dealloc, handle_alloc_error };
 use	std::mem::swap;
 use	std::ops::{ Deref, DerefMut };
@@ -424,6 +424,21 @@ impl< T: Clone, const N: usize> From< [T; N]> for Buff< T>
     fn	from( arr: [T; N]) -> Self
     {
         Self::from( &arr[..])
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T> ISlice< T> for Buff< T>
+{
+    fn	Size( &self) -> U32
+    {
+        U32( self._Ptr.len() as u32)
+    }
+
+    fn	Ptr( &self) -> NonNull< T>
+    {
+        self._Ptr.cast::< T>()
     }
 }
 

@@ -39,7 +39,7 @@ impl< 'a, T> Arr< 'a, T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IArr< 'a, T: 'a> {
+pub trait IArr< 'a, T: 'a>: Deref< Target = [T]> + DerefMut {
     fn	Size( &self) -> U32;
     fn	Ptr( &self) -> NonNull< T>;
 
@@ -126,7 +126,7 @@ pub trait IArr< 'a, T: 'a> {
     {
         unsafe {
             std::ptr::swap_nonoverlapping( 
-                src.Ptr().as_ptr().add( srcStart.into().AsUsize()),
+                IArr::Ptr( src).as_ptr().add( srcStart.into().AsUsize()),
                 self.Ptr().as_ptr().add( dstStart.into().AsUsize()),
                 count.AsUsize(),
             );
@@ -174,11 +174,11 @@ pub trait IArr< 'a, T: 'a> {
         let  	arr = Arr::New( self.Ptr(), self.Size());
         move |worker: &dyn IWorker| {
             let  	less = less.clone();
-            arr.USeg().DoQSort( 
+            IArr::USeg( &arr).DoQSort( 
                 worker,
-                move |i, j| less( arr.At( i), arr.At( j)),
+                move |i, j| less( IArr::At( &arr, i), IArr::At( &arr, j)),
                 move |i, j| {
-                    arr.SwapAt( i, j);
+                    IArr::SwapAt( &arr, i, j);
                 },
             );
         }
@@ -321,5 +321,99 @@ impl< 'a> Arr< 'a, U8>
         }
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
+    fn	Size( &self) -> U32;
+    fn	Ptr( &self) -> NonNull< T>;
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	IsEmpty( &self) -> bool
+    {
+        self.Size() == U32( 0)
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	USeg( &self) -> USeg
+    {
+        USeg::Create( U32( 0), self.Size())
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	At< K: Into< U32>>( &self, k: K) -> &T
+    {
+        unsafe {
+            let  	ptr = self.Ptr().as_ptr().add( k.into().AsUsize());
+            &*ptr
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	MutAt< K: Into< U32>>( &mut self, k: K) -> &mut T
+    {
+        unsafe {
+            let  	ptr = self.Ptr().as_ptr().add( k.into().AsUsize());
+            &mut *ptr
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	SetAt< K: Into< U32>>( &mut self, k: K, a: &T) -> &T
+    where
+        T: Clone,
+    {
+        unsafe {
+            let  	ptr = self.Ptr().as_ptr().add( k.into().AsUsize());
+            *ptr = a.clone();
+            &*ptr
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	MoveAt< K: Into< U32>>( &mut self, k: K, a: &mut T) -> &T
+    {
+        unsafe {
+            let  	ptr = self.Ptr().as_ptr().add( k.into().AsUsize());
+            std::ptr::swap( ptr, a);
+            &*ptr
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	SwapAt< I: Into< U32>, J: Into< U32>>( &mut self, i: I, j: J)
+    {
+        unsafe {
+            std::ptr::swap( 
+                self.Ptr().add( i.into().AsUsize()).as_ptr(),
+                self.Ptr().add( j.into().AsUsize()).as_ptr(),
+            );
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, T> ISlice< T> for Arr< 'a, T>
+{
+    fn	Size( &self) -> U32
+    {
+        self._Size
+    }
+
+    fn	Ptr( &self) -> NonNull< T>
+    {
+        self._Ptr
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------------------------------------------------------------
