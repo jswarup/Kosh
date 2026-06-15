@@ -130,7 +130,7 @@ impl< 'a, T> Arr< 'a, T>
         let  	arr = *self;
         move |worker: &dyn IWorker| {
             let  	lessFn = |i, j| less( arr.At( i), arr.At( j));
-            let  	swapFn = |i, j| arr.SwapAt( i, j);
+            let  	swapFn = |i, j| arr.Swap( i, j);
             arr.USeg().DoQSort( worker, &lessFn, &swapFn);
         }
     }

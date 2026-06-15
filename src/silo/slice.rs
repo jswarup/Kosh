@@ -70,7 +70,7 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	SwapAt< I: Into< U32>, J: Into< U32>>( &self, i: I, j: J)
+    fn	Swap< I: Into< U32>, J: Into< U32>>( &self, i: I, j: J)
     {
         unsafe {
             std::ptr::swap( 
@@ -139,7 +139,7 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
         let  	arr = Arr::New( self.Ptr(), self.Size());
         move |worker: &dyn IWorker| {
             let  	lessFn = |i, j| less( arr.At( i), arr.At( j));
-            let  	swapFn = |i, j| arr.SwapAt( i, j);
+            let  	swapFn = |i, j| arr.Swap( i, j);
             arr.USeg().DoQSort( worker, &lessFn, &swapFn);
         }
     }

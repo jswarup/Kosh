@@ -243,7 +243,7 @@ impl< T> Buff< T>
         let  	sz = sz.into();
         Buff::Create( sz, |_| initialValue.clone())
     }
-    pub fn	Swap( &mut self, buff: &mut Buff< T>)
+    pub fn	SwapBuff( &mut self, buff: &mut Buff< T>)
     {
         swap( self, buff);
     }

@@ -58,7 +58,7 @@ impl< T> Stash< T>
     pub fn	BuffOut( &mut self) -> Buff< T>
     {
         let  	mut buff = Buff::NewEmpty();
-        self._Buff.Swap( &mut buff);
+        self._Buff.SwapBuff( &mut buff);
         buff
     }
 

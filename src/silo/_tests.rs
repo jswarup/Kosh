@@ -79,8 +79,8 @@ fn	ArrBasicOpsTest()
         let  	mut val = 300;
         arr.MoveAt( 0, &mut val);
         assert_eq!( *arr.At( 0), 300);
-        // Test SwapAt
-        arr.SwapAt( 0, 2);
+        // Test Swap
+        arr.Swap( 0, 2);
         assert_eq!( *arr.At( 0), 200);
         assert_eq!( *arr.At( 2), 300);
     }
@@ -470,7 +470,7 @@ fn	QSortTest()
     let  	arr = buff.Arr();
     arr.USeg()
         .QSort( &|i, j| arr.At( i) > arr.At( j), &mut |i, j| {
-            arr.SwapAt( i, j);
+            arr.Swap( i, j);
         });
     print! { "{:?}\n", arr};
     let  	res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
@@ -488,7 +488,7 @@ fn	TestQSortBoundaries()
     arrEmpty
         .USeg()
         .QSort( &|i, j| arrEmpty.At( i) > arrEmpty.At( j), &mut |i, j| {
-            arrEmpty.SwapAt( i, j);
+            arrEmpty.Swap( i, j);
         });
     assert_eq!( arrEmpty.len(), 0);
     // Test QSort with size 1
@@ -497,7 +497,7 @@ fn	TestQSortBoundaries()
     arrOne
         .USeg()
         .QSort( &|i, j| arrOne.At( i) > arrOne.At( j), &mut |i, j| {
-            arrOne.SwapAt( i, j);
+            arrOne.Swap( i, j);
         });
     assert_eq!( arrOne[0], 42);
 }
@@ -512,9 +512,9 @@ fn	TestDoQSort()
     let  	worker = Worker::New();
     arr.USeg().DoQSort(
         &worker,
-        |i, j| arr.At( i) > arr.At( j),
-        |i, j| {
-            arr.SwapAt( i, j);
+        &|i, j| arr.At( i) > arr.At( j),
+        &|i, j| {
+            arr.Swap( i, j);
         },
     );
     let  	res = arr.USeg().RSnip( 1).Span( |k| arr.At( k) > arr.At( k + 1));
