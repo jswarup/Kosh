@@ -35,56 +35,56 @@ impl< 'a, T> Arr< 'a, T>
             _Marker: PhantomData,
         }
     }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait IArr< 'a, T: 'a> {
+    fn	Size( &self) -> U32;
+    fn	Ptr( &self) -> NonNull< T>;
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Size( &self) -> U32
-    {
-        self._Size
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	IsEmpty( &self) -> bool
+    fn	IsEmpty( &self) -> bool
     {
         self.Size() == U32( 0)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	USeg( &self) -> USeg
+    fn	USeg( &self) -> USeg
     {
         USeg::Create( U32( 0), self.Size())
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	At< K: Into< U32>>( &self, k: K) -> &'a T
+    fn	At< K: Into< U32>>( &self, k: K) -> &'a T
     {
         unsafe {
-            let  	ptr = self._Ptr.as_ptr().add( k.into().AsUsize());
+            let  	ptr = self.Ptr().as_ptr().add( k.into().AsUsize());
             &*ptr
         }
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	MutAt< K: Into< U32>>( &self, k: K) -> &'a mut T
+    fn	MutAt< K: Into< U32>>( &self, k: K) -> &'a mut T
     {
         unsafe {
-            let  	ptr = self._Ptr.as_ptr().add( k.into().AsUsize());
+            let  	ptr = self.Ptr().as_ptr().add( k.into().AsUsize());
             &mut *ptr
         }
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	SetAt< K: Into< U32>>( &self, k: K, a: &T) -> &'a T
+    fn	SetAt< K: Into< U32>>( &self, k: K, a: &T) -> &'a T
     where
         T: Clone,
     {
         unsafe {
-            let  	ptr = self._Ptr.as_ptr().add( k.into().AsUsize());
+            let  	ptr = self.Ptr().as_ptr().add( k.into().AsUsize());
             *ptr = a.clone();
             &*ptr
         }
@@ -92,10 +92,10 @@ impl< 'a, T> Arr< 'a, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	MoveAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &'a T
+    fn	MoveAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &'a T
     {
         unsafe {
-            let  	ptr = self._Ptr.as_ptr().add( k.into().AsUsize());
+            let  	ptr = self.Ptr().as_ptr().add( k.into().AsUsize());
             std::ptr::swap( ptr, a);
             &*ptr
         }
@@ -103,19 +103,19 @@ impl< 'a, T> Arr< 'a, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	SwapAt< I: Into< U32>, J: Into< U32>>( &self, i: I, j: J)
+    fn	SwapAt< I: Into< U32>, J: Into< U32>>( &self, i: I, j: J)
     {
         unsafe {
             std::ptr::swap( 
-                self._Ptr.add( i.into().AsUsize()).as_ptr(),
-                self._Ptr.add( j.into().AsUsize()).as_ptr(),
+                self.Ptr().add( i.into().AsUsize()).as_ptr(),
+                self.Ptr().add( j.into().AsUsize()).as_ptr(),
             );
         }
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	SwapFrom< S: Into< U32>, D: Into< U32>>( 
+    fn	SwapFrom< S: Into< U32>, D: Into< U32>>( 
         &self,
         dstStart: D,
         src: &Arr< '_, T>,
@@ -126,8 +126,8 @@ impl< 'a, T> Arr< 'a, T>
     {
         unsafe {
             std::ptr::swap_nonoverlapping( 
-                src._Ptr.as_ptr().add( srcStart.into().AsUsize()),
-                self._Ptr.as_ptr().add( dstStart.into().AsUsize()),
+                src.Ptr().as_ptr().add( srcStart.into().AsUsize()),
+                self.Ptr().as_ptr().add( dstStart.into().AsUsize()),
                 count.AsUsize(),
             );
         }
@@ -135,26 +135,26 @@ impl< 'a, T> Arr< 'a, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	LSnip< C: Into< U32>>( &self, count: C) -> Self
+    fn	LSnip< C: Into< U32>>( &self, count: C) -> Arr< 'a, T>
     {
         let  	cnt = count.into();
         Arr::New( 
-            unsafe { self._Ptr.add( cnt.AsU32() as usize) },
+            unsafe { self.Ptr().add( cnt.AsU32() as usize) },
             self.Size() - cnt,
         )
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	RSnip< C: Into< U32>>( &self, count: C) -> Self
+    fn	RSnip< C: Into< U32>>( &self, count: C) -> Arr< 'a, T>
     {
         let  	cnt = count.into();
-        Arr::New( self._Ptr, self.Size() - cnt)
+        Arr::New( self.Ptr(), self.Size() - cnt)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Span< F>( &self, mut f: F) -> bool
+    fn	Span< F>( &self, mut f: F) -> bool
     where
         F: FnMut( &T) -> bool,
     {
@@ -166,12 +166,12 @@ impl< 'a, T> Arr< 'a, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	QuickSorter< Less>( &self, less: Less) -> impl Fn( &dyn IWorker) + Send + Sync + 'a
+    fn	QuickSorter< Less>( &self, less: Less) -> impl Fn( &dyn IWorker) + Send + Sync + 'a
     where
         Less: Fn( &T, &T) -> bool + Send + Sync + Clone + 'a,
         T: Send + Sync + 'a,
     {
-        let  	arr = *self;
+        let  	arr = Arr::New( self.Ptr(), self.Size());
         move |worker: &dyn IWorker| {
             let  	less = less.clone();
             arr.USeg().DoQSort( 
@@ -186,15 +186,27 @@ impl< 'a, T> Arr< 'a, T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub  fn	SortSanity< Less>( &self, less: Less) -> bool
+    fn	SortSanity< Less>( &self, less: Less) -> bool
     where
         Less: Fn( &T, &T) -> bool + Send + Sync + Clone + 'a,
     {
         self.USeg().RSnip( 1).Span( |k| !less( self.At( k +1), self.At( k)))
     }
+}
 
-    //-----------------------------------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 
+impl< 'a, T> IArr< 'a, T> for Arr< 'a, T>
+{
+    fn	Size( &self) -> U32
+    {
+        self._Size
+    }
+
+    fn	Ptr( &self) -> NonNull< T>
+    {
+        self._Ptr
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

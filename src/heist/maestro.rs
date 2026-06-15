@@ -1,6 +1,6 @@
 //-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::Atelier;
-use	crate::silo::{ Buff, Stash, Stk, U16, U32 };
+use	crate::silo::{ Buff, IArr, Stash, Stk, U16, U32 };
 use	crate::stalks::{ Atm, IWorker, IntoWorkPtr, Spinlock, WorkPtr };
 use	std::sync::atomic::Ordering;
 

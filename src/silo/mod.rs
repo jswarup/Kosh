@@ -9,6 +9,7 @@ pub mod stk;
 pub mod uint;
 pub mod useg;
 pub use	arr::Arr;
+pub use	arr::IArr;
 pub use	buff::Buff;
 pub use	instream::InStream;
 pub use	stash::Stash;
