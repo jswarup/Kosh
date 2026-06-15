@@ -5,7 +5,7 @@ use	crate::stalks::IWorker;
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct USeg 
+pub struct USeg
 {
     pub _First: U32,
     pub _Last: U32,
@@ -13,9 +13,9 @@ pub struct USeg
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl USeg 
+impl USeg
 {
-    pub fn	Create< F: Into< U32>, S: Into< U32>>( first: F, sz: S) -> Self 
+    pub fn	Create< F: Into< U32>, S: Into< U32>>( first: F, sz: S) -> Self
     {
         let  	fst = first.into();
         let  	size = sz.into();
@@ -27,21 +27,21 @@ impl USeg
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	First( &self) -> U32 
+    pub fn	First( &self) -> U32
     {
         self._First
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Last( &self) -> U32 
+    pub fn	Last( &self) -> U32
     {
         self._Last
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Mid( &self) -> U32 
+    pub fn	Mid( &self) -> U32
     {
         // Compute mid as U32 using inner u32 arithmetic
         let  	sum = self._First.AsU32() + self._Last.AsU32();
@@ -51,7 +51,7 @@ impl USeg
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Size( &self) -> U32 
+    pub fn	Size( &self) -> U32
     {
         if self._Last >= self._First {
             self._Last + 1 - self._First
@@ -59,14 +59,14 @@ impl USeg
             U32::_0
         }
     }
-    pub fn	IsEmpty( &self) -> bool 
+    pub fn	IsEmpty( &self) -> bool
     {
         self.Size() == 0
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	LSnip< C: Into< U32>>( &self, count: C) -> Self 
+    pub fn	LSnip< C: Into< U32>>( &self, count: C) -> Self
     {
         let  	cnt = count.into();
         if self.Size() < cnt {
@@ -78,7 +78,7 @@ impl USeg
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	RSnip< C: Into< U32>>( &self, count: C) -> Self 
+    pub fn	RSnip< C: Into< U32>>( &self, count: C) -> Self
     {
         let  	cnt = count.into();
         if self.Size() < cnt {
@@ -155,7 +155,7 @@ impl USeg
             let  	pivot = currentSeg.Partition( &lessAt, &mut swapAt);
             let  	useg1 = USeg::Create( currentSeg._First, pivot - currentSeg._First);
             let  	useg2 = USeg::Create( pivot + 1, currentSeg._Last - pivot);
-            
+
             if useg1.Size() < useg2.Size() {
                 if useg1.Size() > 1 {
                     useg1.QSort( lessAt, swapAt);
@@ -179,14 +179,14 @@ impl USeg
     {
         let  	mut currentSeg = *self;
         while currentSeg.Size() > 1 {
-            if currentSeg.Size() < U32( 1024) {
+            if currentSeg.Size() < U32( 32) {
                 currentSeg.QSort( lessAt, swapAt);
                 return;
             }
             let  	pivot = currentSeg.Partition( &lessAt, &mut |i, j| swapAt( i, j));
             let  	useg1 = USeg::Create( currentSeg._First, pivot - currentSeg._First);
             let  	useg2 = USeg::Create( pivot + 1, currentSeg._Last - pivot);
-            
+
             if useg1.Size() > useg2.Size() {
                 if useg1.Size() > 1 {
                     worker.Post( move |w: &dyn IWorker| {

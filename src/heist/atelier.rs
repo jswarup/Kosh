@@ -155,7 +155,7 @@ impl< 'a> Atelier< 'a>
         let  	sz = maestros.len() as u32;
         *stealSeed = stealSeed.wrapping_mul( 2654435761).wrapping_add( 1);
         for mIdx in 0..sz {
-            let  	maestroIdx = U32( ( *stealSeed + mIdx) % sz);
+            let  	maestroIdx = U32( stealSeed.wrapping_add( mIdx) % sz);
             if maestroIdx == idx {
                 continue;
             }
@@ -180,12 +180,13 @@ impl< 'a> Atelier< 'a>
             while jobId != 0 {
                 maestro.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
                 let  	job = *self._JobBuff.Arr().At( jobId);
-                if !job.is_null() {
-                    ( job.func)( job.data, maestro);                   // Run job
-                    self._JobBuff.Arr().SetAt( jobId, &WorkPtr::null());
-                    maestro.FlushTempQueue();
-                }
+                assert!( !job.is_null(), "jobId {} is null!", jobId.AsU16());
+                
+                ( job.func)( job.data, maestro);                   // Run job
+                self._JobBuff.Arr().SetAt( jobId, &WorkPtr::null());
                 maestro.IncrSzProcessed( 1);
+                maestro.FlushTempQueue();
+                
                 let  	_res = self.FreeJob( maestroIdx, jobId);
                 let  	succId = maestro.CurSuccId();
                 if succId != U16( 0) {
@@ -199,6 +200,7 @@ impl< 'a> Atelier< 'a>
                 } else {
                     jobId = U16::_0;
                 }
+                
                 self.IncrSzSchedJob( -U32( 1));
             }
             jobId = maestro.PopJob();
@@ -206,6 +208,7 @@ impl< 'a> Atelier< 'a>
                 jobId = self.GrabJob( maestroIdx, &mut stealSeed);
             }
             if jobId == 0 {
+                std::hint::spin_loop();
                 std::thread::yield_now();
             }
         }

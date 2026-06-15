@@ -149,7 +149,7 @@ impl< 'a> Maestro< 'a>
     pub fn	EnqueueActiveJob( &self, jobId: &mut U16)
     {
         let  	_guard = self._RunQlock.Lock();
-        self._RunQueue.Stk().Push( jobId);
+        assert!( self._RunQueue.Stk().Push( jobId), "RunQueue overflow!");
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
