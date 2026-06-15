@@ -3,7 +3,7 @@ use	crate::{
     heist::
     { Atelier, Chore, Maestro },
     silo::
-    { Buff, IArr, U16, U32 },
+    { Buff, ISlice, U16, U32 },
     stalks::
     { BudTree, IWorker, Worker },
 };

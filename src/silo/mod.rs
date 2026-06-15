@@ -10,7 +10,6 @@ pub mod uint;
 pub mod useg;
 pub mod slice;
 pub use	arr::Arr;
-pub use	arr::IArr;
 pub use	slice::ISlice;
 pub use	buff::Buff;
 pub use	instream::InStream;

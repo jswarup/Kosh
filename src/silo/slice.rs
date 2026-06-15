@@ -1,5 +1,6 @@
 //-- slice.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ Arr, Buff, U32, USeg };
+use	crate::stalks::IWorker;
 use	std::ops::{ Deref, DerefMut };
 use	std::ptr::NonNull;
 
@@ -35,7 +36,7 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	MutAt< K: Into< U32>>( &mut self, k: K) -> &mut T
+    fn	MutAt< K: Into< U32>>( &self, k: K) -> &mut T
     {
         unsafe {
             let  	ptr = self.Ptr().as_ptr().add( k.into().AsUsize());
@@ -45,7 +46,7 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	SetAt< K: Into< U32>>( &mut self, k: K, a: &T) -> &T
+    fn	SetAt< K: Into< U32>>( &self, k: K, a: &T) -> &T
     where
         T: Clone,
     {
@@ -58,7 +59,7 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	MoveAt< K: Into< U32>>( &mut self, k: K, a: &mut T) -> &T
+    fn	MoveAt< K: Into< U32>>( &self, k: K, a: &mut T) -> &T
     {
         unsafe {
             let  	ptr = self.Ptr().as_ptr().add( k.into().AsUsize());
@@ -69,7 +70,7 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	SwapAt< I: Into< U32>, J: Into< U32>>( &mut self, i: I, j: J)
+    fn	SwapAt< I: Into< U32>, J: Into< U32>>( &self, i: I, j: J)
     {
         unsafe {
             std::ptr::swap( 
@@ -77,6 +78,84 @@ pub trait ISlice< T>: Deref< Target = [T]> + DerefMut {
                 self.Ptr().add( j.into().AsUsize()).as_ptr(),
             );
         }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	SwapFrom< S: Into< U32>, D: Into< U32>>( 
+        &self,
+        dstStart: D,
+        src: &Arr< '_, T>,
+        srcStart: S,
+        count: U32,
+    ) where
+        T: Copy,
+    {
+        unsafe {
+            std::ptr::swap_nonoverlapping( 
+                src.Ptr().as_ptr().add( srcStart.into().AsUsize()),
+                self.Ptr().as_ptr().add( dstStart.into().AsUsize()),
+                count.AsUsize(),
+            );
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	LSnip< C: Into< U32>>( &self, count: C) -> Arr< '_, T>
+    {
+        let  	cnt = count.into();
+        Arr::New( 
+            unsafe { self.Ptr().add( cnt.AsU32() as usize) },
+            self.Size() - cnt,
+        )
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	RSnip< C: Into< U32>>( &self, count: C) -> Arr< '_, T>
+    {
+        let  	cnt = count.into();
+        Arr::New( self.Ptr(), self.Size() - cnt)
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	Span< F>( &self, mut f: F) -> bool
+    where
+        F: FnMut( &T) -> bool,
+    {
+        if self.IsEmpty() {
+            return true;
+        }
+        self.USeg().Span( |k| f( self.At( k)))
+    }
+
+    fn	QuickSorter< 'a, Less>( &'a self, less: Less) -> impl Fn( &dyn IWorker) + Send + Sync + 'a
+    where
+        Less: Fn( &T, &T) -> bool + Send + Sync + Clone + 'a,
+        T: Send + Sync + 'a,
+    {
+        let  	arr = Arr::New( self.Ptr(), self.Size());
+        move |worker: &dyn IWorker| {
+            let  	less = less.clone();
+            arr.USeg().DoQSort( 
+                worker,
+                move |i, j| less( arr.At( i), arr.At( j)),
+                move |i, j| {
+                    arr.SwapAt( i, j);
+                },
+            );
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	SortSanity< 'a, Less>( &'a self, less: Less) -> bool
+    where
+        Less: Fn( &T, &T) -> bool + Send + Sync + Clone + 'a,
+    {
+        self.USeg().RSnip( 1).Span( |k| !less( self.At( k + 1), self.At( k)))
     }
 }
 
