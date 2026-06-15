@@ -20,7 +20,8 @@ fn	TestShardBuds()
     let  	cShard = Shard::New( |_m| {
         print!( "{} ", 40);
     });
-    let  	_nodeTree = crate::ShardTree!(
+    let arena = crate::stalks::node::NodeArena::New();
+    let  	_nodeTree = crate::ShardTree!( arena,
         ( cShard
             < ( bShard
                 | aShard
@@ -38,7 +39,8 @@ fn	TestShardBuds()
 #[test]
 fn	TestShardFromCharAndString()
 {
-    let  	_nodeTree = crate::ShardTree!( ( "cShard" < ( 'b' < [ "a-z" ] < "aShard"[ || {
+    let arena = crate::stalks::node::NodeArena::New();
+    let  	_nodeTree = crate::ShardTree!( arena, ( "cShard" < ( 'b' < [ "a-z" ] < "aShard"[ || {
                         print!( "{} ", 50);
                     }] )));
     let  	atelier = Atelier::New( U32( 4));

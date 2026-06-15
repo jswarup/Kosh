@@ -138,7 +138,7 @@ macro_rules! ShardTree {
     ( @feature_NEW    $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_NEW    $( $args)* ) };
     ( @feature_ACTION $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_ACTION $( $args)* ) };
     // ── Custom: Boxet stringification (overrides BudTree default) ─────────────────────────────────
-    ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $s:literal ) => {
+    ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $arena:ident, $s:literal ) => {
         $crate::stalks::node::IntoBiNode::< Shard, $Node >::IntoBiNode( Shard::NewCharset( $crate::segue::Charset::FromBoxet( $crate::silo::U8::FromArr( $crate::silo::Arr::from( $s.as_bytes() ) ) ) ) )
     };
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
@@ -146,8 +146,8 @@ macro_rules! ShardTree {
         $crate::BiNodeTree!( @ $( $inner )+ )
     };
     // Top-level entry (user code)
-    ( $( $inner:tt)+ )  => {
-        $crate::BiNodeTree!( @define [ $crate::ShardTree ], Shard, $( $inner)+ )
+    ( $arena:ident, $( $inner:tt)+ )  => {
+        $crate::BiNodeTree!( @define [ $crate::ShardTree ], Shard, $arena, $( $inner)+ )
     };
 }
 

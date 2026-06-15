@@ -87,7 +87,8 @@ fn	TestChoreBuds()
     let  	cChore = Chore::New( |_m| {
         print!( "{} ", 40);
     });
-    let  	_choreTreeMacro = crate::ChoreTree!(
+    let arena = crate::stalks::node::NodeArena::New();
+    let  	_choreTreeMacro = crate::ChoreTree!( arena,
         ( cChore
             < ( bChore
                 | aChore
@@ -117,7 +118,8 @@ fn	TestChoreTree()
     let  	cChore = Chore::New( |_m| {
         print!( "{} ", 40);
     });
-    let  	_choreTree = crate::ChoreTree!(
+    let arena = crate::stalks::node::NodeArena::New();
+    let  	_choreTree = crate::ChoreTree!( arena,
         ( cChore
             < ( bChore
                 | aChore
