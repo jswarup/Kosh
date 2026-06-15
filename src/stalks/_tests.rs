@@ -41,7 +41,7 @@ fn	TestINodeTraverse()
 
     struct TestNode<'a> {
         id: u32,
-        children: &'a [&'a (dyn INode<'a> + Send + Sync)],
+        children: &'a [&'a (dyn INode<'a> + Send + Sync + 'a)],
         attrib: Option<Attrib>,
     }
     unsafe impl<'a> Send for TestNode<'a> {}
@@ -51,8 +51,11 @@ fn	TestINodeTraverse()
         fn  Attrib(&self) -> Option<&Attrib> {
             self.attrib.as_ref()
         }
-        fn Children(&self) -> &[&'a (dyn INode<'a> + Send + Sync)] {
-            self.children
+        fn Size(&self) -> crate::silo::U32 {
+            crate::silo::U32(self.children.len() as u32)
+        }
+        fn At(&self, idx: crate::silo::U32) -> &(dyn INode<'a> + Send + Sync + 'a) {
+            self.children[idx.0 as usize]
         }
     }
 
@@ -120,22 +123,21 @@ fn	TestBiNodeTree()
 {
     use	crate::stalks::{ BiNodeTree, ChildOp, INode };
  
-    let arena = crate::stalks::node::NodeArena::New();
-    let  	root = BiNodeTree!( U32, arena, 10 < ( 20 | 30 ));
+    let  	root = BiNodeTree!( U32, 10 < ( 20 | 30 ));
 
     assert_eq!( root.ChildOp(), Some( ChildOp::Less));
 
-    assert_eq!( root.Children().len(), 2);
+    assert_eq!( root.Size(), crate::silo::U32(2));
 
-    let  	left = root.Children()[0];
-    let  	right = root.Children()[1];
+    let  	left = root.At(crate::silo::U32(0));
+    let  	right = root.At(crate::silo::U32(1));
 
     assert_eq!( left.ChildOp(), None);
     assert_eq!( right.ChildOp(), Some( ChildOp::Bor));
 
-    assert_eq!( right.Children().len(), 2);
-    assert_eq!( right.Children()[0].ChildOp(), None);
-    assert_eq!( right.Children()[1].ChildOp(), None);
+    assert_eq!( right.Size(), crate::silo::U32(2));
+    assert_eq!( right.At(crate::silo::U32(0)).ChildOp(), None);
+    assert_eq!( right.At(crate::silo::U32(1)).ChildOp(), None);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -149,21 +151,21 @@ fn	TestBiNodeTreeBoxetAction()
     use	std::sync::Arc;
 
     macro_rules! ShardBiNodeTree {
-        ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $arena:ident, $s:literal ) => {
+        ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $s:literal ) => {
             $crate::stalks::node::IntoBiNode::< Shard, $Node >::IntoBiNode( Shard::NewCharset( crate::segue::Charset::FromBoxet( crate::silo::U8::FromArr( crate::silo::Arr::from( $s.as_bytes() ) ) ) ) )
         };
-        ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $arena:ident, | $( $body:tt)+ ) => { $crate::BiNodeTree!( @feature_NEW [ $( $cb)* ], $Arg, $Node, $arena, | $( $body)+ ) };
-        ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $arena:ident, || $( $body:tt)+ ) => { $crate::BiNodeTree!( @feature_NEW [ $( $cb)* ], $Arg, $Node, $arena, || $( $body)+ ) };
-        ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $arena:ident, move | $( $body:tt)+ ) => { $crate::BiNodeTree!( @feature_NEW [ $( $cb)* ], $Arg, $Node, $arena, move | $( $body)+ ) };
-        ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $arena:ident, move || $( $body:tt)+ ) => { $crate::BiNodeTree!( @feature_NEW [ $( $cb)* ], $Arg, $Node, $arena, move || $( $body)+ ) };
-        ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $arena:ident, $l:literal [ $( $closure:tt )* ] ) => { $crate::BiNodeTree!( @feature_ACTION [ $( $cb)* ], $Arg, $Node, $arena, $l [ $( $closure )* ] ) };
-        ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $arena:ident, ( $( $expr:tt)+ ) [ $( $closure:tt )* ] ) => { $crate::BiNodeTree!( @feature_ACTION [ $( $cb)* ], $Arg, $Node, $arena, ( $( $expr )+ ) [ $( $closure )* ] ) };
-        ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $arena:ident, [ $s:literal ] [ $( $closure:tt )* ] ) => { $crate::BiNodeTree!( @feature_ACTION [ $( $cb)* ], $Arg, $Node, $arena, [ $s ] [ $( $closure )* ] ) };
+        ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, | $( $body:tt)+ ) => { $crate::BiNodeTree!( @feature_NEW [ $( $cb)* ], $Arg, $Node, | $( $body)+ ) };
+        ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, || $( $body:tt)+ ) => { $crate::BiNodeTree!( @feature_NEW [ $( $cb)* ], $Arg, $Node, || $( $body)+ ) };
+        ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move | $( $body:tt)+ ) => { $crate::BiNodeTree!( @feature_NEW [ $( $cb)* ], $Arg, $Node, move | $( $body)+ ) };
+        ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move || $( $body:tt)+ ) => { $crate::BiNodeTree!( @feature_NEW [ $( $cb)* ], $Arg, $Node, move || $( $body)+ ) };
+        ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal [ $( $closure:tt )* ] ) => { $crate::BiNodeTree!( @feature_ACTION [ $( $cb)* ], $Arg, $Node, $l [ $( $closure )* ] ) };
+        ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $expr:tt)+ ) [ $( $closure:tt )* ] ) => { $crate::BiNodeTree!( @feature_ACTION [ $( $cb)* ], $Arg, $Node, ( $( $expr )+ ) [ $( $closure )* ] ) };
+        ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] [ $( $closure:tt )* ] ) => { $crate::BiNodeTree!( @feature_ACTION [ $( $cb)* ], $Arg, $Node, [ $s ] [ $( $closure )* ] ) };
         ( @ $( $inner:tt )+ ) => {
             $crate::BiNodeTree!( @ $( $inner )+ )
         };
-        ( $arena:ident, $( $inner:tt)+ ) => {
-            $crate::BiNodeTree!( @define [ ShardBiNodeTree ], Shard, $arena, $( $inner)+ )
+        ( $( $inner:tt)+ ) => {
+            $crate::BiNodeTree!( @define [ ShardBiNodeTree ], Shard, $( $inner)+ )
         };
     }
 
@@ -171,8 +173,7 @@ fn	TestBiNodeTreeBoxetAction()
     let  	triggered_clone = triggered.clone();
     
     // Construct tree with a boxet leaf and an action suffix
-    let _arena = crate::stalks::node::NodeArena::New();
-    let  	root = ShardBiNodeTree!( arena, [ "a" ] [ move || {
+    let  	root = ShardBiNodeTree!( [ "a" ] [ move || {
         triggered_clone.store(true, Ordering::SeqCst);
     } ] );
 

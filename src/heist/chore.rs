@@ -73,8 +73,8 @@ macro_rules! ChoreTree {
         $crate::BiNodeTree!( @ $( $inner )+ )
     };
     // Top-level entry (user code)
-    ( $arena:ident, $( $inner:tt)+ )  => {
-        $crate::BiNodeTree!( @define [ $crate::ChoreTree ], Chore, $arena, $( $inner)+ )
+    ( $( $inner:tt)+ )  => {
+        $crate::BiNodeTree!( @define [ $crate::ChoreTree ], Chore, $( $inner)+ )
     };
 }
 
