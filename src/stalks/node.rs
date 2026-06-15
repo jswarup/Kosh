@@ -1,5 +1,5 @@
 //-- node.rs -------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{Arr, U32};
+use	crate::silo::{Arr, U32, Stash};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -46,13 +46,13 @@ pub enum TraversalEvent {
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub trait IAccess<T: ?Sized> {
-    fn Size(&self) -> crate::silo::U32;
-    fn At(&self, idx: crate::silo::U32) -> &T;
+    fn Size(&self) -> U32;
+    fn At(&self, idx: U32) -> &T;
 }
 
 pub trait INode<'a>: Send + Sync {
-    fn Size(&self) -> crate::silo::U32;
-    fn At(&self, idx: crate::silo::U32) -> &(dyn INode<'a> + Send + Sync + 'a);
+    fn Size(&self) -> U32;
+    fn At(&self, idx: U32) -> &(dyn INode<'a> + Send + Sync + 'a);
 
     fn Attrib(&self) -> Option<&Attrib> {
         None
@@ -63,7 +63,7 @@ pub trait INode<'a>: Send + Sync {
     }
 
     fn IsLeaf(&self) -> bool {
-        self.Size() == crate::silo::U32(0)
+        self.Size() == U32(0)
     }
 
     fn TraverseDF(&'a self, fnMut: &mut dyn FnMut(&'a (dyn INode<'a> + Send + Sync + 'a), TraversalEvent))
@@ -75,10 +75,10 @@ pub trait INode<'a>: Send + Sync {
 }
 
 impl<'a> IAccess<dyn INode<'a> + Send + Sync + 'a> for dyn INode<'a> + Send + Sync + 'a {
-    fn Size(&self) -> crate::silo::U32 {
+    fn Size(&self) -> U32 {
         INode::Size(self)
     }
-    fn At(&self, idx: crate::silo::U32) -> &(dyn INode<'a> + Send + Sync + 'a) {
+    fn At(&self, idx: U32) -> &(dyn INode<'a> + Send + Sync + 'a) {
         INode::At(self, idx)
     }
 }
@@ -92,20 +92,19 @@ impl<'a> dyn INode<'a> + Send + Sync + 'a {
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub fn traverse_df<'a>(node: &'a (dyn INode<'a> + Send + Sync + 'a), fnMut: &mut dyn FnMut(&'a (dyn INode<'a> + Send + Sync + 'a), TraversalEvent)) {
-    use crate::silo::U32;
-    let mut stash = crate::silo::Stash::New(1024, 1, (node, 0u32));
+    let mut stash = Stash::New(1024, 1, (node, 0u32));
     while stash.Size() > U32(0) {
         let mut curr = (node, 0u32);
         let _res = stash.Pop(&mut curr);
         let (n, idx) = curr;
         let num_children = n.Size().0;
         if idx < num_children {
-            fnMut(n, TraversalEvent::Entry(crate::silo::U32(idx)));
+            fnMut(n, TraversalEvent::Entry(U32(idx)));
             stash.Push((n, idx + 1));
-            let child = n.At(crate::silo::U32(idx));
+            let child = n.At(U32(idx));
             stash.Push((child, 0u32));
         } else {
-            fnMut(n, TraversalEvent::Entry(crate::silo::U32(num_children)));
+            fnMut(n, TraversalEvent::Entry(U32(num_children)));
             fnMut(n, TraversalEvent::Exit);
         }
     }
@@ -114,13 +113,13 @@ pub fn traverse_df<'a>(node: &'a (dyn INode<'a> + Send + Sync + 'a), fnMut: &mut
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub struct NodeProbe<'a> {
-    _NodeStash: crate::silo::Stash<&'a (dyn INode<'a> + Send + Sync)>,
+    _NodeStash: Stash<&'a (dyn INode<'a> + Send + Sync)>,
 }
 
 impl<'a> NodeProbe<'a> {
     pub fn New< Sz: Into<U32>>( sz: Sz, node: &'a (dyn INode<'a> + Send + Sync)) -> Self {
         Self {
-            _NodeStash: crate::silo::Stash::Create( sz, U32(0), |_| node),
+            _NodeStash: Stash::Create( sz, U32(0), |_| node),
         }
     }
 

@@ -1,7 +1,9 @@
 //-- _tests.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ Buff, ISlice, U32 };
-use	crate::stalks::Atm;
-use	std::sync::atomic::Ordering;
+use	crate::stalks::{ Atm, INode, Attrib, TraversalEvent as NodeTraversalEvent, BiNodeTree, ChildOp };
+use crate::segue::Shard;
+use	std::sync::Arc;
+use	std::sync::atomic::{ AtomicBool, Ordering };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -36,8 +38,6 @@ fn	TestAtmBasicOps()
 #[test]
 fn	TestINodeTraverse()
 {
-    use	crate::stalks::{ INode, Attrib, TraversalEvent as NodeTraversalEvent };
-
 
     struct TestNode<'a> {
         id: u32,
@@ -51,10 +51,10 @@ fn	TestINodeTraverse()
         fn  Attrib(&self) -> Option<&Attrib> {
             self.attrib.as_ref()
         }
-        fn Size(&self) -> crate::silo::U32 {
-            crate::silo::U32(self.children.len() as u32)
+        fn Size(&self) -> U32 {
+            U32(self.children.len() as u32)
         }
-        fn At(&self, idx: crate::silo::U32) -> &(dyn INode<'a> + Send + Sync + 'a) {
+        fn At(&self, idx: U32) -> &(dyn INode<'a> + Send + Sync + 'a) {
             self.children[idx.0 as usize]
         }
     }
@@ -121,23 +121,22 @@ fn	TestINodeTraverse()
 #[test]
 fn	TestBiNodeTree()
 {
-    use	crate::stalks::{ BiNodeTree, ChildOp, INode };
- 
+
     let  	root = BiNodeTree!( U32, 10 < ( 20 | 30 ));
 
     assert_eq!( root.ChildOp(), Some( ChildOp::Less));
 
-    assert_eq!( root.Size(), crate::silo::U32(2));
+    assert_eq!( root.Size(), U32(2));
 
-    let  	left = root.At(crate::silo::U32(0));
-    let  	right = root.At(crate::silo::U32(1));
+    let  	left = root.At(U32(0));
+    let  	right = root.At(U32(1));
 
     assert_eq!( left.ChildOp(), None);
     assert_eq!( right.ChildOp(), Some( ChildOp::Bor));
 
-    assert_eq!( right.Size(), crate::silo::U32(2));
-    assert_eq!( right.At(crate::silo::U32(0)).ChildOp(), None);
-    assert_eq!( right.At(crate::silo::U32(1)).ChildOp(), None);
+    assert_eq!( right.Size(), U32(2));
+    assert_eq!( right.At(U32(0)).ChildOp(), None);
+    assert_eq!( right.At(U32(1)).ChildOp(), None);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -145,10 +144,6 @@ fn	TestBiNodeTree()
 #[test]
 fn	TestBiNodeTreeBoxetAction()
 {
-    use	crate::stalks::{ INode, Attrib };
-    use	crate::segue::Shard;
-    use	std::sync::atomic::{ AtomicBool, Ordering };
-    use	std::sync::Arc;
 
     macro_rules! ShardBiNodeTree {
         ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $s:literal ) => {
