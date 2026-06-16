@@ -160,15 +160,15 @@ pub trait IArr< 'a, T: 'a>: ISlice< 'a, T> {
 
 impl< 'a, T> ISlice< 'a, T> for Arr< 'a, T>
 {
-     fn	Size( &self) -> U32
-     {
-         self._Size
-     }
+    fn	Size( &self) -> U32
+    {
+        self._Size
+    }
 
-     fn	Ptr( &self) -> *const T
-     {
-         self._Ptr.as_ptr()
-     }
+    fn	Ptr( &self) -> *const T
+    {
+        self._Ptr.as_ptr()
+    }
 }
 
 impl< 'a, T> IArr< 'a, T> for Arr< 'a, T> {}
@@ -177,12 +177,12 @@ impl< 'a, T> IArr< 'a, T> for Arr< 'a, T> {}
 
 impl< 'a, T: 'a> ISlice< 'a, T> for &'a [T]
 {
-    fn Size( &self) -> U32
+    fn	Size( &self) -> U32
     {
         U32( self.len() as u32)
     }
 
-    fn Ptr( &self) -> *const T
+    fn	Ptr( &self) -> *const T
     {
         self.as_ptr()
     }
@@ -192,14 +192,13 @@ impl< 'a, T: 'a> ISlice< 'a, T> for &'a [T]
 
 impl< 'a, T: 'a, const N: usize> ISlice< 'a, T> for &'a [T; N]
 {
-    fn Size( &self) -> U32
+    fn	Size( &self) -> U32
     {
         U32( N as u32)
     }
 
-    fn Ptr( &self) -> *const T
+    fn	Ptr( &self) -> *const T
     {
         self.as_ptr()
     }
 }
-

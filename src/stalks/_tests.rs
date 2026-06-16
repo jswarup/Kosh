@@ -1,7 +1,7 @@
 //-- _tests.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ Buff, ISlice, U32 };
 use	crate::stalks::{ Atm, INode, Attrib, TraversalEvent as NodeTraversalEvent, BiNodeTree, ChildOp };
-use crate::segue::Shard;
+use	crate::segue::Shard;
 use	std::sync::Arc;
 use	std::sync::atomic::{ AtomicBool, Ordering };
 
@@ -34,41 +34,46 @@ fn	TestAtmBasicOps()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-
 #[test]
 fn	TestINodeTraverse()
 {
-
-    struct TestNode<'a> {
+    struct TestNode< 'a>
+    {
         id: u32,
-        children: &'a [&'a (dyn INode<'a> + Send + Sync + 'a)],
-        attrib: Option<Attrib>,
+        children: &'a [&'a ( dyn INode< 'a> + Send + Sync + 'a)],
+        attrib: Option< Attrib>,
     }
-    unsafe impl<'a> Send for TestNode<'a> {}
-    unsafe impl<'a> Sync for TestNode<'a> {}
+    unsafe impl< 'a> Send for TestNode< 'a>
+    { }
+    unsafe impl< 'a> Sync for TestNode< 'a>
+    { }
 
-    impl<'a> INode<'a> for TestNode<'a> {
-        fn  Attrib(&self) -> Option<&Attrib> {
+    impl< 'a> INode< 'a> for TestNode< 'a>
+    {
+        fn	Attrib( &self) -> Option< &Attrib>
+        {
             self.attrib.as_ref()
         }
-        fn Size(&self) -> U32 {
-            U32(self.children.len() as u32)
+        fn	Size( &self) -> U32
+        {
+            U32( self.children.len() as u32)
         }
-        fn At(&self, idx: U32) -> &(dyn INode<'a> + Send + Sync + 'a) {
+        fn	At( &self, idx: U32) -> &( dyn INode< 'a> + Send + Sync + 'a)
+        {
             self.children[idx.0 as usize]
         }
     }
 
-    let  	leaf1 = TestNode { id: 1, children: &[], attrib: Some(Attrib::default()) };
+    let  	leaf1 = TestNode { id: 1, children: &[], attrib: Some( Attrib::default()) };
     let  	leaf2 = TestNode { id: 2, children: &[], attrib: None };
     let  	root = TestNode {
         id: 0,
-        children: &[ &leaf1 as &(dyn INode<'_> + Send + Sync), &leaf2 as &(dyn INode<'_> + Send + Sync)],
+        children: &[ &leaf1 as &( dyn INode< '_> + Send + Sync), &leaf2 as &( dyn INode< '_> + Send + Sync)],
         attrib: None,
     };
 
-    assert!(matches!(leaf1.Attrib(), Some(Attrib::Empty)));
-    assert!(leaf2.Attrib().is_none());
+    assert!( matches!( leaf1.Attrib(), Some( Attrib::Empty)));
+    assert!( leaf2.Attrib().is_none());
 
     let  	mut visited = Buff::NewEmpty();
     root.TraverseDF( &mut |node, event| {
@@ -91,19 +96,19 @@ fn	TestINodeTraverse()
     );
 
     // Test DiveDf
-    let mut visited2 = Buff::NewEmpty();
-    (&root as &(dyn INode + Send + Sync)).DiveDf(&mut |probe| {
-        let mut path_str = String::new();
-        let arr = probe.Arr();
+    let  	mut visited2 = Buff::NewEmpty();
+    ( &root as &( dyn INode + Send + Sync)).DiveDf( &mut |probe| {
+        let  	mut pathStr = String::new();
+        let  	arr = probe.Arr();
         for i in 0..arr.Size().0 {
-            let node = *arr.At(i);
-            let test_node = unsafe { &*(node as *const (dyn INode + Send + Sync) as *const TestNode<'_>) };
-            if !path_str.is_empty() {
-                path_str.push_str(" -> ");
+            let  	node = *arr.At( i);
+            let  	testNode = unsafe { &*( node as *const ( dyn INode + Send + Sync) as *const TestNode< '_>) };
+            if !pathStr.is_empty() {
+                pathStr.push_str( " -> ");
             }
-            path_str.push_str(&format!("{}", test_node.id));
+            pathStr.push_str( &format!( "{}", testNode.id));
         }
-        visited2.Push(path_str);
+        visited2.Push( pathStr);
     });
 
     assert_eq!(
@@ -121,7 +126,6 @@ fn	TestINodeTraverse()
 #[test]
 fn	TestBiNodeTree()
 {
-
     let  	root = BiNodeTree!( U32, 10 < ( 20 | 30 ));
 
     assert_eq!( root.ChildOp(), Some( ChildOp::Less));
@@ -144,7 +148,6 @@ fn	TestBiNodeTree()
 #[test]
 fn	TestBiNodeTreeBoxetAction()
 {
-
     macro_rules! ShardBiNodeTree {
         ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $s:literal ) => {
             $crate::stalks::node::IntoBiNode::< Shard, $Node >::IntoBiNode( Shard::NewCharset( crate::segue::Charset::FromBoxet( crate::silo::U8::FromArr( crate::silo::Arr::from( $s.as_bytes() ) ) ) ) )

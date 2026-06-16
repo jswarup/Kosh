@@ -1,4 +1,4 @@
-//- _tests.rs ----------------------------------------------------------------------------------------------------------------------
+//-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::{
     heist::
     { Atelier, Chore, Maestro },
@@ -25,13 +25,13 @@ fn	BuffBasicAtelierTest()
         jobId = maestro.ConstructJob( jobId, |w2: &dyn IWorker| {
             println!( "Trial2 {}", Maestro::FromWorker( w2).MaestroIndex());
         });
-        maestro.EnqueueJob( &mut jobId);
+        maestro.EnqueRunJob( &mut jobId);
         println!( "Trial {}", maestro.MaestroIndex());
     }
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
     let  	mut jobId = mainMaestro.ConstructJob( U16( 0), trialJob);
-    mainMaestro.EnqueueJob( &mut jobId);
+    mainMaestro.EnqueRunJob( &mut jobId);
     atelier.DoLaunch();
 }
 

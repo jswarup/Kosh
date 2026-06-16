@@ -78,13 +78,12 @@ impl< 'a> Maestro< 'a>
 
     pub fn	ConstructJob( &self, succId: U16, job: impl IntoWorkPtr< 'a>) -> U16
     {
-        self.Atelier()
-            .ConstructJob( self._Index, succId, job.IntoWorkPtr())
+        self.Atelier().ConstructJob( self._Index, succId, job.IntoWorkPtr())
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	EnqueueJob( &self, jobId: &mut U16)
+    pub fn	EnqueTempJob( &self, jobId: &mut U16)
     {
         assert!( self.TempQueueStk().Push( jobId));
     }
@@ -97,7 +96,7 @@ impl< 'a> Maestro< 'a>
             let  	maestro = Maestro::FromWorker( worker);
             let  	arr = buff.Arr();
             arr.USeg().Traverse( |i| {
-                maestro.Atelier().EnqueueJob( maestro._Index, arr.MutAt( i));
+                maestro.Atelier().EnqueRunJob( maestro._Index, arr.MutAt( i));
             });
         })
     }
@@ -124,7 +123,7 @@ impl< 'a> Maestro< 'a>
         arr.USeg().Traverse( |i| {
             let  	mut jobId = *arr.At( i);
             if jobId != 0 {
-                self.Atelier().EnqueueJob( self._Index, &mut jobId);
+                self.Atelier().EnqueRunJob( self._Index, &mut jobId);
             }
         });
         self._TempQueue.Clear();
@@ -146,7 +145,7 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	EnqueueActiveJob( &self, jobId: &mut U16)
+    pub fn	EnqueRunJob( &self, jobId: &mut U16)
     {
         let  	_guard = self._RunQlock.Lock();
         assert!( self._RunQueue.Stk().Push( jobId), "RunQueue overflow!");
@@ -193,7 +192,7 @@ impl< 'a> IWorker for Maestro< 'a>
     {
         let  	mut jobId = self.CurSuccId();
         jobId = self.ConstructJob( jobId, job);
-        self.EnqueueJob( &mut jobId);
+        self.EnqueTempJob( &mut jobId);
     }
     fn	AsRaw( &self) -> *const ()
     {

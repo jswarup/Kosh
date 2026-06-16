@@ -140,11 +140,11 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	EnqueueJob( &self, maestroIdx: U32, jobId: &mut U16)
+    pub fn	EnqueRunJob( &self, maestroIdx: U32, jobId: &mut U16)
     {
         self.IncrSzSchedJob( U32( 1));
         let  	maestro = self._Maestros.Arr().At( maestroIdx);
-        maestro.EnqueueActiveJob( jobId);
+        maestro.EnqueRunJob( jobId);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -153,7 +153,8 @@ impl< 'a> Atelier< 'a>
     {
         let  	maestros = self._Maestros.Arr();
         let  	sz = maestros.len() as u32;
-        *stealSeed = stealSeed.wrapping_mul( 2654435761).wrapping_add( 1);
+        let     knuthMultHash = 2654435761u32;
+        *stealSeed = stealSeed.wrapping_mul( knuthMultHash).wrapping_add( 1u32);
         for mIdx in 0..sz {
             let  	maestroIdx = U32( stealSeed.wrapping_add( mIdx) % sz);
             if maestroIdx == idx {

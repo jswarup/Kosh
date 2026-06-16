@@ -47,7 +47,7 @@ Defined in [maestro.rs](../src/heist/maestro.rs), a `Maestro` represents a worke
 
 > [!TIP]
 > **Contention Minimization**:
-> Jobs enqueued via `EnqueueJob` are first pushed to a thread-local `_TempQueue` during execution. They are only flushed to the target run queue once the current job finishes executing (`FlushTempQueue()`), drastically reducing spinlock contention.
+> Jobs enqueued via `EnqueRunJob` are first pushed to a thread-local `_TempQueue` during execution. They are only flushed to the target run queue once the current job finishes executing (`FlushTempQueue()`), drastically reducing spinlock contention.
 
 ### 3. Chore & ChoreTree (Dependency Graph)
 Defined in [chore.rs](../src/heist/chore.rs), `Chore` represents a unit of work that can be structured into a dependent tree (`dyn Bud<Chore>`) using the `ChoreTree!` macro.
@@ -85,7 +85,7 @@ jobId = mainMaestro.ConstructJob(
 );
 
 // Enqueue starting job (Job 2)
-mainMaestro.EnqueueJob(&mut jobId);
+mainMaestro.EnqueRunJob(&mut jobId);
 
 // Launch execution
 atelier.DoLaunch();
@@ -128,7 +128,7 @@ let quickSorter = buff.Arr().QuickSorter(|a, b| a > b);
 let atelier = Atelier::New(U32(4)); // Spawns 4 worker threads
 let mainMaestro = atelier.MainMaestro();
 let mut jobId = mainMaestro.ConstructJob(atelier.Terminal(), quickSorter);
-mainMaestro.EnqueueJob(&mut jobId);
+mainMaestro.EnqueRunJob(&mut jobId);
 atelier.DoLaunch(); // Runs quicksort in parallel
 ```
 

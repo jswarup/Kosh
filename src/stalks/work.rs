@@ -7,7 +7,7 @@ pub trait IWork: Send + Sync {
 }
 impl< F> IWork for F
 where
-    F: for< 'r> FnMut(&'r ( dyn IWorker + 'r)) + Send + Sync,
+    F: for< 'r> FnMut( &'r ( dyn IWorker + 'r)) + Send + Sync,
 {
     fn	DoWork( &mut self, worker: &dyn IWorker)
     {
@@ -25,11 +25,11 @@ pub struct WorkPtr< 'a> {
     pub func: JobFn,
     _marker: std::marker::PhantomData< &'a ()>,
 }
-unsafe impl< 'a> Send for WorkPtr<'a>
+unsafe impl< 'a> Send for WorkPtr< 'a>
 { }
-unsafe impl< 'a> Sync for WorkPtr<'a>
+unsafe impl< 'a> Sync for WorkPtr< 'a>
 { }
-impl< 'a> WorkPtr<'a>
+impl< 'a> WorkPtr< 'a>
 {
     pub fn	null() -> Self
     {
@@ -43,7 +43,7 @@ impl< 'a> WorkPtr<'a>
     {
         self.data.is_null()
     }
-    pub fn	FromRef< T: IWork + 'a>(inner: &'a mut T) -> Self
+    pub fn	FromRef< T: IWork + 'a>( inner: &'a mut T) -> Self
     {
         let  	data = inner as *mut T as *mut ();
         let  	func: JobFn = |dataPtr, worker| unsafe {
@@ -60,12 +60,12 @@ impl< 'a> WorkPtr<'a>
 pub trait IntoWorkPtr< 'a> {
     fn	IntoWorkPtr( self) -> WorkPtr< 'a>;
 }
-impl< 'a> IntoWorkPtr<'a> for WorkPtr< 'a> {
+impl< 'a> IntoWorkPtr< 'a> for WorkPtr< 'a> {
     fn	IntoWorkPtr( self) -> WorkPtr< 'a> {
         self
     }
 }
-impl< 'a, T> IntoWorkPtr<'a> for T
+impl< 'a, T> IntoWorkPtr< 'a> for T
 where
     T: IWork + 'a,
 {
@@ -96,7 +96,7 @@ impl< T: IWork> IWork for WorkSlot< T>
 }
 impl< T: IWork> WorkSlot< T>
 {
-    pub fn	New< 'a>(inner: T) -> WorkPtr<'a>
+    pub fn	New< 'a>( inner: T) -> WorkPtr< 'a>
     where
         T: 'a,
     {
@@ -126,7 +126,7 @@ pub trait IWorker {
     {
         false
     }
-    fn	Tender< 'a, J: IntoWorkPtr<'a>>( &self, job: J)
+    fn	Tender< 'a, J: IntoWorkPtr< 'a>>( &self, job: J)
     where
         Self: Sized {
         self.PostJob( job.IntoWorkPtr());
@@ -136,7 +136,7 @@ pub trait IWorker {
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl dyn IWorker + '_ {
-    pub fn	Post< 'a, J: IntoWorkPtr<'a>>( &self, job: J)
+    pub fn	Post< 'a, J: IntoWorkPtr< 'a>>( &self, job: J)
     {
         self.PostJob( job.IntoWorkPtr());
     }

@@ -45,53 +45,59 @@ pub enum TraversalEvent {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IAccess<T: ?Sized> {
-    fn Size(&self) -> U32;
-    fn At(&self, idx: U32) -> &T;
+pub trait IAccess< T: ?Sized> {
+    fn	Size( &self) -> U32;
+    fn	At( &self, idx: U32) -> &T;
 }
 
-pub trait INode<'a>: Send + Sync {
-    fn Size(&self) -> U32;
-    fn At(&self, idx: U32) -> &(dyn INode<'a> + Send + Sync + 'a);
+pub trait INode< 'a>: Send + Sync {
+    fn	Size( &self) -> U32;
+    fn	At( &self, idx: U32) -> &( dyn INode< 'a> + Send + Sync + 'a);
 
-    fn Attrib(&self) -> Option<&Attrib> {
+    fn	Attrib( &self) -> Option< &Attrib> {
         None
     }
 
-    fn ChildOp(&self) -> Option<ChildOp> {
+    fn	ChildOp( &self) -> Option< ChildOp> {
         None
     }
 
-    fn IsLeaf(&self) -> bool {
-        self.Size() == U32(0)
+    fn	IsLeaf( &self) -> bool {
+        self.Size() == U32( 0)
     }
 
-    fn TraverseDF(&'a self, fnMut: &mut dyn FnMut(&'a (dyn INode<'a> + Send + Sync + 'a), TraversalEvent))
+    fn	TraverseDF( &'a self, fnMut: &mut dyn FnMut( &'a ( dyn INode< 'a> + Send + Sync + 'a), TraversalEvent))
     where
         Self: Sized,
     {
-        traverse_df(self, fnMut);
+        TraverseDepthFirst( self, fnMut);
     }
 }
 
-impl<'a> IAccess<dyn INode<'a> + Send + Sync + 'a> for dyn INode<'a> + Send + Sync + 'a {
-    fn Size(&self) -> U32 {
-        INode::Size(self)
+impl< 'a> IAccess< dyn INode< 'a> + Send + Sync + 'a> for dyn INode< 'a> + Send + Sync + 'a
+{
+    fn	Size( &self) -> U32
+    {
+        INode::Size( self)
     }
-    fn At(&self, idx: U32) -> &(dyn INode<'a> + Send + Sync + 'a) {
-        INode::At(self, idx)
+    fn	At( &self, idx: U32) -> &( dyn INode< 'a> + Send + Sync + 'a)
+    {
+        INode::At( self, idx)
     }
 }
 
-impl<'a> dyn INode<'a> + Send + Sync + 'a {
-    pub fn TraverseDF(&'a self, fnMut: &mut dyn FnMut(&'a (dyn INode<'a> + Send + Sync + 'a), TraversalEvent)) {
-        traverse_df(self, fnMut);
+impl< 'a> dyn INode< 'a> + Send + Sync + 'a
+{
+    pub fn	TraverseDF( &'a self, fnMut: &mut dyn FnMut( &'a ( dyn INode< 'a> + Send + Sync + 'a), TraversalEvent))
+    {
+        TraverseDepthFirst( self, fnMut);
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub fn traverse_df<'a>(node: &'a (dyn INode<'a> + Send + Sync + 'a), fnMut: &mut dyn FnMut(&'a (dyn INode<'a> + Send + Sync + 'a), TraversalEvent)) {
+pub fn	TraverseDepthFirst< 'a>( node: &'a ( dyn INode< 'a> + Send + Sync + 'a), fnMut: &mut dyn FnMut( &'a ( dyn INode< 'a> + Send + Sync + 'a), TraversalEvent))
+{
     let mut stash = Stash::New(1024, 1, (node, 0u32));
     while stash.Size() > U32(0) {
         let mut curr = (node, 0u32);
@@ -112,44 +118,52 @@ pub fn traverse_df<'a>(node: &'a (dyn INode<'a> + Send + Sync + 'a), fnMut: &mut
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct NodeProbe<'a> {
-    _NodeStash: Stash<&'a (dyn INode<'a> + Send + Sync)>,
+pub struct NodeProbe< 'a>
+{
+    _NodeStash: Stash< &'a ( dyn INode< 'a> + Send + Sync)>,
 }
 
-impl<'a> NodeProbe<'a> {
-    pub fn New< Sz: Into<U32>>( sz: Sz, node: &'a (dyn INode<'a> + Send + Sync)) -> Self {
+impl< 'a> NodeProbe< 'a>
+{
+    pub fn	New< Sz: Into< U32>>( sz: Sz, node: &'a ( dyn INode< 'a> + Send + Sync)) -> Self
+    {
         Self {
-            _NodeStash: Stash::Create( sz, U32(0), |_| node),
+            _NodeStash: Stash::Create( sz, U32( 0), |_| node),
         }
     }
 
-    pub fn Push(&self, node: &'a (dyn INode<'a> + Send + Sync)) {
-        let mut temp = node;
-        self._NodeStash.Stk().Push(&mut temp);
+    pub fn	Push( &self, node: &'a ( dyn INode< 'a> + Send + Sync))
+    {
+        let  	mut temp = node;
+        self._NodeStash.Stk().Push( &mut temp);
     }
 
-    pub fn Pop(&self, node: &'a (dyn INode<'a> + Send + Sync)) {
-        let mut temp = node;
-        self._NodeStash.Stk().Pop(&mut temp);
+    pub fn	Pop( &self, node: &'a ( dyn INode< 'a> + Send + Sync))
+    {
+        let  	mut temp = node;
+        self._NodeStash.Stk().Pop( &mut temp);
     }
 
-    pub fn Arr(&self) -> Arr<'_, &'a (dyn INode<'a> + Send + Sync)> {
+    pub fn	Arr( &self) -> Arr< '_, &'a ( dyn INode< 'a> + Send + Sync)>
+    {
         self._NodeStash.Stk().Arr()
     }
 }
 
-impl<'a> dyn INode<'a> + Send + Sync + 'a {
-    pub fn DiveDf(&'a self, fnMut: &mut dyn FnMut(&NodeProbe<'a>)) {
-        let nodeProbe = NodeProbe::New(1024, self);
-        traverse_df(self, &mut |node, event| match event {
-            TraversalEvent::Entry(idx) => {
-                if idx == U32(0) {
-                    nodeProbe.Push(node);
+impl< 'a> dyn INode< 'a> + Send + Sync + 'a
+{
+    pub fn	DiveDf( &'a self, fnMut: &mut dyn FnMut( &NodeProbe< 'a>))
+    {
+        let  	nodeProbe = NodeProbe::New( 1024, self);
+        TraverseDepthFirst( self, &mut |node, event| match event {
+            TraversalEvent::Entry( idx) => {
+                if idx == U32( 0) {
+                    nodeProbe.Push( node);
                 }
             }
             TraversalEvent::Exit => {
-                fnMut(&nodeProbe);
-                nodeProbe.Pop(node);
+                fnMut( &nodeProbe);
+                nodeProbe.Pop( node);
             }
         });
     }
@@ -157,9 +171,9 @@ impl<'a> dyn INode<'a> + Send + Sync + 'a {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IntoBiNode< T, N: Sized > {
-    fn	IntoBiNode( self ) -> N;
-    fn	IntoBiNodeAction< F >( self, _f: F ) -> N
+pub trait IntoBiNode< T, N: Sized> {
+    fn	IntoBiNode( self) -> N;
+    fn	IntoBiNodeAction< F>( self, _f: F) -> N
     where
         Self: Sized,
         F: Fn() + 'static,
@@ -168,14 +182,15 @@ pub trait IntoBiNode< T, N: Sized > {
     }
 }
 
-pub fn clone_attrib(attr: &Option<Attrib>) -> Option<Attrib> {
+pub fn	clone_attrib( attr: &Option< Attrib>) -> Option< Attrib>
+{
     match attr {
         None => None,
-        Some(Attrib::Inv(val)) => Some(Attrib::Inv(*val)),
-        Some(Attrib::Repeat(l, r)) => Some(Attrib::Repeat(*l, *r)),
-        Some(Attrib::Empty) => Some(Attrib::Empty),
-        Some(Attrib::Action(_)) => {
-            panic!("Cannot clone an INode with an Action attribute");
+        Some( Attrib::Inv( val)) => Some( Attrib::Inv( *val)),
+        Some( Attrib::Repeat( l, r)) => Some( Attrib::Repeat( *l, *r)),
+        Some( Attrib::Empty) => Some( Attrib::Empty),
+        Some( Attrib::Action( _)) => {
+            panic!( "Cannot clone an INode with an Action attribute");
         }
     }
 }

@@ -92,7 +92,7 @@ impl< T: Copy> Stash< T>
 
     pub fn	Push( &mut self, v:  T)
     {
-        let mut val = v;
+        let  	mut val = v;
         while !self.Stk().Push( &mut val) {
             if self.Size() == self._Buff.Size() {
                 let  	newSz = if self._Buff.Size() == U32( 0) {
@@ -104,7 +104,6 @@ impl< T: Copy> Stash< T>
             }
         }
     }
-
 
 }
 
