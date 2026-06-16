@@ -42,7 +42,7 @@ Defined in [maestro.rs](../src/heist/maestro.rs), a `Maestro` represents a worke
 * A thread-local job stash (`_JobCache`) to recycle job IDs without global lock contention.
 * A synchronized run queue (`_RunQueue`) protected by a `Spinlock`.
 * **Work-Stealing capabilities**: If a worker's run queue is empty, it attempts to steal work from other Maestros using a randomized steal seed.
-* **Orchestration features**: Every job is executed inside a `Maestro` context. Jobs can use `Maestro` to dynamically spawn sub-tasks, construct successor dependencies (`ConstructJob`), or enqueue bulk work (`ConstructEnqueueBulk`).
+* **Orchestration features**: Every job is executed inside a `Maestro` context. Jobs can use `Maestro` to dynamically spawn sub-tasks, construct successor dependencies (`ConstructJob`), or enqueue bulk work (`ConstructEnqueBulk`).
 * **Tender Interface**: The `IWorker` trait defines the unified method `fn Tender<'a, J: IntoWorkPtr<'a>>(&self, job: J) where Self: Sized` (with a default implementation delegating to `PostJob`) to easily submit tasks to both sequential and parallel workers.
 
 > [!TIP]
@@ -84,7 +84,7 @@ jobId = mainMaestro.ConstructJob(
     },
 );
 
-// Enqueue starting job (Job 2)
+// Enque starting job (Job 2)
 mainMaestro.EnqueRunJob(&mut jobId);
 
 // Launch execution

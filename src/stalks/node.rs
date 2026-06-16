@@ -43,6 +43,7 @@ pub enum TraversalEvent {
     Exit,
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
 
 pub struct NodeChildren<'b, 'a>(pub &'b (dyn INode<'a> + Send + Sync + 'a));
 
@@ -54,6 +55,8 @@ impl<'b, 'a> IAccess<'b, dyn INode<'a> + Send + Sync + 'a> for NodeChildren<'b, 
         self.0._At(k.into())
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 pub trait INode< 'a>: Send + Sync {
     fn	_Size( &self) -> U32;
@@ -79,7 +82,7 @@ pub trait INode< 'a>: Send + Sync {
     }
 }
 
-
+//---------------------------------------------------------------------------------------------------------------------------------
 
 impl< 'a> dyn INode< 'a> + Send + Sync + 'a
 {
@@ -122,6 +125,8 @@ pub struct NodeProbe< 'a>
     _NodeStash: Stash< &'a ( dyn INode< 'a> + Send + Sync)>,
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl< 'a> NodeProbe< 'a>
 {
     pub fn	New< Sz: Into< U32>>( sz: Sz, node: &'a ( dyn INode< 'a> + Send + Sync)) -> Self
@@ -148,6 +153,8 @@ impl< 'a> NodeProbe< 'a>
         self._NodeStash.Stk().Arr()
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 impl< 'a> dyn INode< 'a> + Send + Sync + 'a
 {
@@ -181,6 +188,8 @@ pub trait IntoBiNode< T, N: Sized> {
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub fn	clone_attrib( attr: &Option< Attrib>) -> Option< Attrib>
 {
     match attr {
@@ -193,6 +202,8 @@ pub fn	clone_attrib( attr: &Option< Attrib>) -> Option< Attrib>
         }
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 #[macro_export]
 macro_rules! BiNodeTree {
@@ -248,6 +259,9 @@ macro_rules! BiNodeTree {
     ( @wrap $leaf:expr ) => {
         Into::into( $leaf )
     };
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     ( @define [ $( $cb:tt )* ], $Arg:ident, $( $inner:tt )+ ) => {
         {
             paste::paste! {
@@ -371,9 +385,13 @@ macro_rules! BiNodeTree {
             }
         }
     };
+    
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     ( $Arg:ident, $( $inner:tt )+ ) => {
         $crate::BiNodeTree!( @define [ $crate::BiNodeTree ], $Arg, $( $inner )+ )
     };
+    
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $inner:tt)+ ) ) => { $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $inner)+ ) };
 
     // ── Leaf [ action ] ────────────────────────────────────────────────────────────────────────────
@@ -446,4 +464,7 @@ macro_rules! BiNodeTree {
     ( @feature_BOXET  $( $args:tt )* ) => { compile_error!( "Boxet [ ... ] is not enabled for this tree") };
     ( @feature_ACTION $( $args:tt )* ) => { compile_error!( "Action suffix [ closure ] is not enabled for this tree") };
 }
+
 pub use crate::BiNodeTree;
+
+//-----------------------------------------------------------------------------------------------------------------------------

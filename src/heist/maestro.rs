@@ -90,7 +90,7 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ConstructEnqueueBulk( &self, succId: U16, buff: Buff< U16>) -> U16
+    pub fn	ConstructEnqueBulk( &self, succId: U16, buff: Buff< U16>) -> U16
     {
         self.ConstructJob( succId, move |worker: &dyn IWorker| {
             let  	maestro = Maestro::FromWorker( worker);
