@@ -4,3 +4,4 @@
 *.rs.bk
 tools/__pycache__/*
 scratch/
+./scratch.*
