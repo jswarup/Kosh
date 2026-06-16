@@ -429,14 +429,6 @@ impl< T: Clone, const N: usize> From< [T; N]> for Buff< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T: 'a> crate::silo::ISlice< 'a, T> for &'a Buff< T>
-{
-    fn	Ptr( &self) -> *const T
-    {
-        self._Ptr.cast::< T>().as_ptr()
-    }
-}
-
 impl< 'a, T: 'a> crate::silo::IAccess< 'a, T> for &'a Buff< T>
 {
     fn	Size( &self) -> U32
@@ -452,14 +444,6 @@ impl< 'a, T: 'a> crate::silo::IAccess< 'a, T> for &'a Buff< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T: 'a> crate::silo::ISlice< 'a, T> for &'a mut Buff< T>
-{
-    fn	Ptr( &self) -> *const T
-    {
-        self._Ptr.cast::< T>().as_ptr()
-    }
-}
-
 impl< 'a, T: 'a> crate::silo::IAccess< 'a, T> for &'a mut Buff< T>
 {
     fn	Size( &self) -> U32
@@ -473,5 +457,10 @@ impl< 'a, T: 'a> crate::silo::IAccess< 'a, T> for &'a mut Buff< T>
     }
 }
 
-impl< 'a, T: 'a> crate::silo::IArr< 'a, T> for &'a mut Buff< T> {}
+impl< 'a, T: 'a> crate::silo::IArr< 'a, T> for &'a mut Buff< T> {
+    fn	Ptr( &self) -> *const T
+    {
+        self._Ptr.cast::< T>().as_ptr()
+    }
+}
 

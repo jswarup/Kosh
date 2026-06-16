@@ -1,24 +1,27 @@
 //-- node.rs -------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{Arr, IAccess, Stash, U32};
+use	crate::silo::{ Arr, IAccess, Stash, U32 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive(Default)]
-pub enum Attrib {
-    Inv(bool),
-    Repeat(U32, U32),
-    Action(Box<dyn Fn()>),
+pub enum Attrib
+{
+    Inv( bool),
+    Repeat( U32, U32),
+    Action( Box< dyn Fn()>),
     #[default]
     Empty,
 }
 
-impl std::fmt::Debug for Attrib {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl std::fmt::Debug for Attrib
+{
+    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    {
         match self {
-            Attrib::Inv(value) => f.debug_tuple("Inv").field(value).finish(),
-            Attrib::Repeat(left, right) => f.debug_tuple("Repeat").field(left).field(right).finish(),
-            Attrib::Action(_) => f.write_str("Action(<closure>)"),
-            Attrib::Empty => f.write_str("Empty"),
+            Attrib::Inv( value) => f.debug_tuple( "Inv").field( value).finish(),
+            Attrib::Repeat( left, right) => f.debug_tuple( "Repeat").field( left).field( right).finish(),
+            Attrib::Action( _) => f.write_str( "Action(<closure>)"),
+            Attrib::Empty => f.write_str( "Empty"),
         }
     }
 }
@@ -26,7 +29,8 @@ impl std::fmt::Debug for Attrib {
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ChildOp {
+pub enum ChildOp
+{
     Sum,
     Prod,
     Less,
@@ -38,39 +42,47 @@ pub enum ChildOp {
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TraversalEvent {
-    Entry(U32),
+pub enum TraversalEvent
+{
+    Entry( U32),
     Exit,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct NodeChildren<'b, 'a>(pub &'b (dyn INode<'a> + Send + Sync + 'a));
+pub struct NodeChildren< 'b, 'a>( pub &'b ( dyn INode< 'a> + Send + Sync + 'a));
 
-impl<'b, 'a> IAccess<'b, dyn INode<'a> + Send + Sync + 'a> for NodeChildren<'b, 'a> {
-    fn Size(&self) -> U32 {
+impl< 'b, 'a> IAccess< 'b, dyn INode< 'a> + Send + Sync + 'a> for NodeChildren< 'b, 'a>
+{
+    fn	Size( &self) -> U32
+    {
         self.0._Size()
     }
-    fn At<K: Into<U32>>(&self, k: K) -> &'b (dyn INode<'a> + Send + Sync + 'a) {
-        self.0._At(k.into())
+    fn	At< K: Into< U32>>( &self, k: K) -> &'b ( dyn INode< 'a> + Send + Sync + 'a)
+    {
+        self.0._At( k.into())
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait INode< 'a>: Send + Sync {
+pub trait INode< 'a>: Send + Sync
+{
     fn	_Size( &self) -> U32;
     fn	_At( &self, idx: U32) -> &( dyn INode< 'a> + Send + Sync + 'a);
 
-    fn	Attrib( &self) -> Option< &Attrib> {
+    fn	Attrib( &self) -> Option< &Attrib>
+    {
         None
     }
 
-    fn	ChildOp( &self) -> Option< ChildOp> {
+    fn	ChildOp( &self) -> Option< ChildOp>
+    {
         None
     }
 
-    fn	IsLeaf( &self) -> bool {
+    fn	IsLeaf( &self) -> bool
+    {
         self._Size() == U32( 0)
     }
 
@@ -86,7 +98,8 @@ pub trait INode< 'a>: Send + Sync {
 
 impl< 'a> dyn INode< 'a> + Send + Sync + 'a
 {
-    pub fn	Children<'b>( &'b self) -> NodeChildren<'b, 'a> {
+    pub fn	Children< 'b>( &'b self) -> NodeChildren< 'b, 'a>
+    {
         NodeChildren( self)
     }
 
@@ -100,20 +113,20 @@ impl< 'a> dyn INode< 'a> + Send + Sync + 'a
 
 pub fn	TraverseDepthFirst< 'a>( node: &'a ( dyn INode< 'a> + Send + Sync + 'a), fnMut: &mut dyn FnMut( &'a ( dyn INode< 'a> + Send + Sync + 'a), TraversalEvent))
 {
-    let mut stash = Stash::New(1024, 1, (node, 0u32));
-    while stash.Size() > U32(0) {
-        let mut curr = (node, 0u32);
-        let _res = stash.Pop(&mut curr);
-        let (n, idx) = curr;
-        let num_children = n.Children().Size().0;
-        if idx < num_children {
-            fnMut(n, TraversalEvent::Entry(U32(idx)));
-            stash.Push((n, idx + 1));
-            let child = n.Children().At(U32(idx));
-            stash.Push((child, 0u32));
+    let  	mut stash = Stash::New( 1024, 1, ( node, U32( 0)));
+    while stash.Size() > U32( 0) {
+        let  	mut curr = ( node, U32( 0));
+        let  	_res = stash.Pop( &mut curr);
+        let  	( currNode, idx) = curr;
+        let  	numChildren = currNode.Children().Size();
+        if idx < numChildren {
+            fnMut( currNode, TraversalEvent::Entry( idx));
+            stash.Push( ( currNode, idx + U32( 1)));
+            let  	child = currNode.Children().At( idx);
+            stash.Push( ( child, U32( 0)));
         } else {
-            fnMut(n, TraversalEvent::Entry(U32(num_children)));
-            fnMut(n, TraversalEvent::Exit);
+            fnMut( currNode, TraversalEvent::Entry( numChildren));
+            fnMut( currNode, TraversalEvent::Exit);
         }
     }
 }
@@ -177,7 +190,8 @@ impl< 'a> dyn INode< 'a> + Send + Sync + 'a
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IntoBiNode< T, N: Sized> {
+pub trait IntoBiNode< T, N: Sized>
+{
     fn	IntoBiNode( self) -> N;
     fn	IntoBiNodeAction< F>( self, _f: F) -> N
     where

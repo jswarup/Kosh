@@ -1,5 +1,5 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Arr, Buff, IAccess, ISlice, IArr, InStream, Stash, Stk, USeg, U8, U16, U32, U64 };
+use	crate::silo::{ Arr, Buff, IAccess, IArr, InStream, Stash, Stk, USeg, U8, U16, U32, U64 };
 use	crate::stalks::{ Atm, Worker };
 use	std::sync::Arc;
 use	std::thread;
