@@ -116,15 +116,30 @@ fn	TestChoreTree()
     let  	cChore = Chore::New( |_m| {
         print!( "{} ", 40);
     });
-    let  	_choreTree = crate::ChoreTree!( ( cChore
+    let  	choreTree = crate::ChoreTree!( ( cChore
             < ( bChore
                 | aChore
                 | ( |_m| {
                     print!( "{} ", 50);
                 })))
     );
-    // CountLeaves is not supported by INode.
-    // println!( "ChoreTree: {:#?}", _choreTree);
+ 
+    let  	nodeRef: &crate::stalks::node::DynINode< '_> = &choreTree;
+    let  	mut stash = crate::silo::Stash::New( 1024, 1, ( nodeRef, U32( 0)));
+    while stash.Size() > U32( 0) {
+        let  	mut curr = ( nodeRef, U32( 0));
+        let  	_res = stash.Pop( &mut curr);
+        let  	( currNode, idx) = curr;
+        let  	numChildren = currNode.Children().Size();
+        if idx < numChildren {
+            stash.Push( ( currNode, idx + U32( 1)));
+            let  	child = currNode.Children().At( idx);
+            stash.Push( ( child, U32( 0)));
+        } else {
+            // Leaf or all children visited
+            println!( "DiveDf reached a path of depth: {}", stash.Size().0);
+        }
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

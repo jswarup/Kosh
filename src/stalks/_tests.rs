@@ -1,6 +1,6 @@
 //-- _tests.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ Buff, IAccess, U32 };
-use	crate::stalks::{ Atm, INode, Attrib, TraversalEvent as NodeTraversalEvent, BiNodeTree, ChildOp };
+use	crate::stalks::{ Atm, INode, DynINode, Attrib, TraversalEvent as NodeTraversalEvent, BiNodeTree, ChildOp };
 use	crate::segue::Shard;
 use	std::sync::Arc;
 use	std::sync::atomic::{ AtomicBool, Ordering };
@@ -40,7 +40,7 @@ fn	TestINodeTraverse()
     struct TestNode< 'a>
     {
         id: u32,
-        children: &'a [&'a ( dyn INode< 'a> + Send + Sync + 'a)],
+        children: &'a [&'a DynINode< 'a>],
         attrib: Option< Attrib>,
     }
     unsafe impl< 'a> Send for TestNode< 'a>
@@ -58,7 +58,7 @@ fn	TestINodeTraverse()
         {
             U32( self.children.len() as u32)
         }
-        fn	_At( &self, idx: U32) -> &( dyn INode< 'a> + Send + Sync + 'a)
+        fn	_At( &self, idx: U32) -> &DynINode< 'a>
         {
             self.children[idx.0 as usize]
         }
@@ -68,7 +68,7 @@ fn	TestINodeTraverse()
     let  	leaf2 = TestNode { id: 2, children: &[], attrib: None };
     let  	root = TestNode {
         id: 0,
-        children: &[ &leaf1 as &( dyn INode< '_> + Send + Sync), &leaf2 as &( dyn INode< '_> + Send + Sync)],
+        children: &[ &leaf1 as &DynINode< '_>, &leaf2 as &DynINode< '_>],
         attrib: None,
     };
 
@@ -77,7 +77,7 @@ fn	TestINodeTraverse()
 
     let  	mut visited = Buff::NewEmpty();
     root.TraverseDF( &mut |node, event| {
-        let  	test_node = unsafe { &*( node as *const dyn INode as *const TestNode< '_>) };
+        let  	test_node = unsafe { &*( node as *const DynINode< '_> as *const TestNode< '_>) };
         visited.Push( ( test_node.id, event));
     });
 
@@ -97,12 +97,12 @@ fn	TestINodeTraverse()
 
     // Test DiveDf
     let  	mut visited2 = Buff::NewEmpty();
-    ( &root as &( dyn INode + Send + Sync)).DiveDf( &mut |probe| {
+    ( &root as &DynINode< '_>).DiveDf( &mut |probe| {
         let  	mut pathStr = String::new();
         let  	arr = probe.Arr();
         for i in 0..arr.Size().0 {
             let  	node = *arr.At( i);
-            let  	testNode = unsafe { &*( node as *const ( dyn INode + Send + Sync) as *const TestNode< '_>) };
+            let  	testNode = unsafe { &*( node as *const DynINode< '_> as *const TestNode< '_>) };
             if !pathStr.is_empty() {
                 pathStr.push_str( " -> ");
             }
@@ -138,7 +138,7 @@ fn	TestBiNodeTree()
     assert_eq!( left.ChildOp(), None);
     assert_eq!( right.ChildOp(), Some( ChildOp::Bor));
 
-    let  	_left1: &dyn INode = root.Children().At(U32(0));
+    let  	_left1: &DynINode< '_> = root.Children().At(U32(0));
 
     assert_eq!( right.Children().Size(), U32(2));
     assert_eq!( right.Children().At(U32(0)).ChildOp(), None);

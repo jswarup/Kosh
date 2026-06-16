@@ -50,26 +50,31 @@ pub enum TraversalEvent
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct NodeChildren< 'b, 'a>( pub &'b ( dyn INode< 'a> + Send + Sync + 'a));
+pub type DynINode< 'a> = dyn INode< 'a> + Send + Sync + 'a;
 
-impl< 'b, 'a> IAccess< 'b, dyn INode< 'a> + Send + Sync + 'a> for NodeChildren< 'b, 'a>
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub struct NodeChildren< 'b, 'a>( pub &'b DynINode< 'a>);
+
+impl< 'b, 'a> IAccess< 'b, DynINode< 'a>> for NodeChildren< 'b, 'a>
 {
     fn	Size( &self) -> U32
     {
         self.0._Size()
     }
-    fn	At< K: Into< U32>>( &self, k: K) -> &'b ( dyn INode< 'a> + Send + Sync + 'a)
+    fn	At< K: Into< U32>>( &self, k: K) -> &'b DynINode< 'a>
     {
         self.0._At( k.into())
     }
 }
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub trait INode< 'a>: Send + Sync
 {
     fn	_Size( &self) -> U32;
-    fn	_At( &self, idx: U32) -> &( dyn INode< 'a> + Send + Sync + 'a);
+    fn	_At( &self, idx: U32) -> &DynINode< 'a>;
 
     fn	Attrib( &self) -> Option< &Attrib>
     {
@@ -86,7 +91,7 @@ pub trait INode< 'a>: Send + Sync
         self._Size() == U32( 0)
     }
 
-    fn	TraverseDF( &'a self, fnMut: &mut dyn FnMut( &'a ( dyn INode< 'a> + Send + Sync + 'a), TraversalEvent))
+    fn	TraverseDF( &'a self, fnMut: &mut dyn FnMut( &'a DynINode< 'a>, TraversalEvent))
     where
         Self: Sized,
     {
@@ -96,22 +101,38 @@ pub trait INode< 'a>: Send + Sync
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> dyn INode< 'a> + Send + Sync + 'a
+impl< 'a> DynINode< 'a>
 {
     pub fn	Children< 'b>( &'b self) -> NodeChildren< 'b, 'a>
     {
         NodeChildren( self)
     }
 
-    pub fn	TraverseDF( &'a self, fnMut: &mut dyn FnMut( &'a ( dyn INode< 'a> + Send + Sync + 'a), TraversalEvent))
+    pub fn	TraverseDF( &'a self, fnMut: &mut dyn FnMut( &'a DynINode< 'a>, TraversalEvent))
     {
         TraverseDepthFirst( self, fnMut);
+    }
+
+    pub fn	DiveDf( &'a self, fnMut: &mut dyn FnMut( &NodeProbe< 'a>))
+    {
+        let  	nodeProbe = NodeProbe::New( 1024, self);
+        TraverseDepthFirst( self, &mut |node, event| match event {
+            TraversalEvent::Entry( idx) => {
+                if idx == U32( 0) {
+                    nodeProbe.Push( node);
+                }
+            }
+            TraversalEvent::Exit => {
+                fnMut( &nodeProbe);
+                nodeProbe.Pop( node);
+            }
+        });
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub fn	TraverseDepthFirst< 'a>( node: &'a ( dyn INode< 'a> + Send + Sync + 'a), fnMut: &mut dyn FnMut( &'a ( dyn INode< 'a> + Send + Sync + 'a), TraversalEvent))
+pub fn	TraverseDepthFirst< 'a>( node: &'a DynINode< 'a>, fnMut: &mut dyn FnMut( &'a DynINode< 'a>, TraversalEvent))
 {
     let  	mut stash = Stash::New( 1024, 1, ( node, U32( 0)));
     while stash.Size() > U32( 0) {
@@ -135,58 +156,39 @@ pub fn	TraverseDepthFirst< 'a>( node: &'a ( dyn INode< 'a> + Send + Sync + 'a), 
 
 pub struct NodeProbe< 'a>
 {
-    _NodeStash: Stash< &'a ( dyn INode< 'a> + Send + Sync)>,
+    _NodeStash: Stash< &'a DynINode< 'a>>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl< 'a> NodeProbe< 'a>
 {
-    pub fn	New< Sz: Into< U32>>( sz: Sz, node: &'a ( dyn INode< 'a> + Send + Sync)) -> Self
+    pub fn	New< Sz: Into< U32>>( sz: Sz, node: &'a DynINode< 'a>) -> Self
     {
         Self {
             _NodeStash: Stash::Create( sz, U32( 0), |_| node),
         }
     }
 
-    pub fn	Push( &self, node: &'a ( dyn INode< 'a> + Send + Sync))
+    pub fn	Push( &self, node: &'a DynINode< 'a>)
     {
         let  	mut temp = node;
         self._NodeStash.Stk().Push( &mut temp);
     }
 
-    pub fn	Pop( &self, node: &'a ( dyn INode< 'a> + Send + Sync))
+    pub fn	Pop( &self, node: &'a DynINode< 'a>)
     {
         let  	mut temp = node;
         self._NodeStash.Stk().Pop( &mut temp);
     }
 
-    pub fn	Arr( &self) -> Arr< '_, &'a ( dyn INode< 'a> + Send + Sync)>
+    pub fn	Arr( &self) -> Arr< '_, &'a DynINode< 'a>>
     {
         self._NodeStash.Stk().Arr()
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
-impl< 'a> dyn INode< 'a> + Send + Sync + 'a
-{
-    pub fn	DiveDf( &'a self, fnMut: &mut dyn FnMut( &NodeProbe< 'a>))
-    {
-        let  	nodeProbe = NodeProbe::New( 1024, self);
-        TraverseDepthFirst( self, &mut |node, event| match event {
-            TraversalEvent::Entry( idx) => {
-                if idx == U32( 0) {
-                    nodeProbe.Push( node);
-                }
-            }
-            TraversalEvent::Exit => {
-                fnMut( &nodeProbe);
-                nodeProbe.Pop( node);
-            }
-        });
-    }
-}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -287,7 +289,7 @@ macro_rules! BiNodeTree {
                     },
                     Node {
                         _Op: $crate::stalks::ChildOp,
-                        _Children: [Box<dyn $crate::stalks::INode<'a> + Send + Sync + 'a>; 2],
+                        _Children: [Box<$crate::stalks::DynINode<'a>>; 2],
                         _Attrib: Option< $crate::stalks::Attrib >,
                     }
                 }
@@ -345,7 +347,7 @@ macro_rules! BiNodeTree {
                             _ => $crate::silo::U32(0),
                         }
                     }
-                    fn _At(&self, idx: $crate::silo::U32) -> &(dyn $crate::stalks::INode<'a> + Send + Sync + 'a) {
+                    fn _At(&self, idx: $crate::silo::U32) -> &$crate::stalks::DynINode<'a> {
                         match self {
                             [<$Arg BiNode>]::Node { _Children, .. } => &*_Children[idx.0 as usize],
                             _ => panic!("At called on Leaf"),
