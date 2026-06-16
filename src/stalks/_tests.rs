@@ -1,5 +1,5 @@
 //-- _tests.rs ---------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Arr, Buff, Stash, U32, U8 };
+use	crate::silo::{ Buff, IAccess, U32 };
 use	crate::stalks::{ Atm, INode, Attrib, TraversalEvent as NodeTraversalEvent, BiNodeTree, ChildOp };
 use	crate::segue::Shard;
 use	std::sync::Arc;
@@ -54,11 +54,11 @@ fn	TestINodeTraverse()
         {
             self.attrib.as_ref()
         }
-        fn	Size( &self) -> U32
+        fn	_Size( &self) -> U32
         {
             U32( self.children.len() as u32)
         }
-        fn	At( &self, idx: U32) -> &( dyn INode< 'a> + Send + Sync + 'a)
+        fn	_At( &self, idx: U32) -> &( dyn INode< 'a> + Send + Sync + 'a)
         {
             self.children[idx.0 as usize]
         }
@@ -130,19 +130,19 @@ fn	TestBiNodeTree()
 
     assert_eq!( root.ChildOp(), Some( ChildOp::Less));
 
-    assert_eq!( INode::Size(&root), U32(2));
+    assert_eq!( root.Children().Size(), U32(2));
 
-    let  	left = INode::At(&root, U32(0));
-    let  	right = INode::At(&root, U32(1));
+    let  	left = root.Children().At(U32(0));
+    let  	right = root.Children().At(U32(1));
 
     assert_eq!( left.ChildOp(), None);
     assert_eq!( right.ChildOp(), Some( ChildOp::Bor));
 
-    let  	left1: &dyn INode = INode::At(&root, U32(0));
+    let  	_left1: &dyn INode = root.Children().At(U32(0));
 
-    assert_eq!( INode::Size(right), U32(2));
-    assert_eq!( INode::At(right, U32(0)).ChildOp(), None);
-    assert_eq!( INode::At(right, U32(1)).ChildOp(), None);
+    assert_eq!( right.Children().Size(), U32(2));
+    assert_eq!( right.Children().At(U32(0)).ChildOp(), None);
+    assert_eq!( right.Children().At(U32(1)).ChildOp(), None);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

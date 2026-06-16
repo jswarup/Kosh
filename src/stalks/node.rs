@@ -1,5 +1,5 @@
 //-- node.rs -------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{Arr, Stash, U32};
+use	crate::silo::{Arr, IAccess, Stash, U32};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -44,9 +44,20 @@ pub enum TraversalEvent {
 }
 
 
+pub struct NodeChildren<'b, 'a>(pub &'b (dyn INode<'a> + Send + Sync + 'a));
+
+impl<'b, 'a> IAccess<'b, dyn INode<'a> + Send + Sync + 'a> for NodeChildren<'b, 'a> {
+    fn Size(&self) -> U32 {
+        self.0._Size()
+    }
+    fn At<K: Into<U32>>(&self, k: K) -> &'b (dyn INode<'a> + Send + Sync + 'a) {
+        self.0._At(k.into())
+    }
+}
+
 pub trait INode< 'a>: Send + Sync {
-    fn	Size( &self) -> U32;
-    fn	At( &self, idx: U32) -> &( dyn INode< 'a> + Send + Sync + 'a);
+    fn	_Size( &self) -> U32;
+    fn	_At( &self, idx: U32) -> &( dyn INode< 'a> + Send + Sync + 'a);
 
     fn	Attrib( &self) -> Option< &Attrib> {
         None
@@ -57,7 +68,7 @@ pub trait INode< 'a>: Send + Sync {
     }
 
     fn	IsLeaf( &self) -> bool {
-        self.Size() == U32( 0)
+        self._Size() == U32( 0)
     }
 
     fn	TraverseDF( &'a self, fnMut: &mut dyn FnMut( &'a ( dyn INode< 'a> + Send + Sync + 'a), TraversalEvent))
@@ -72,6 +83,10 @@ pub trait INode< 'a>: Send + Sync {
 
 impl< 'a> dyn INode< 'a> + Send + Sync + 'a
 {
+    pub fn	Children<'b>( &'b self) -> NodeChildren<'b, 'a> {
+        NodeChildren( self)
+    }
+
     pub fn	TraverseDF( &'a self, fnMut: &mut dyn FnMut( &'a ( dyn INode< 'a> + Send + Sync + 'a), TraversalEvent))
     {
         TraverseDepthFirst( self, fnMut);
@@ -87,11 +102,11 @@ pub fn	TraverseDepthFirst< 'a>( node: &'a ( dyn INode< 'a> + Send + Sync + 'a), 
         let mut curr = (node, 0u32);
         let _res = stash.Pop(&mut curr);
         let (n, idx) = curr;
-        let num_children = INode::Size(n).0;
+        let num_children = n.Children().Size().0;
         if idx < num_children {
             fnMut(n, TraversalEvent::Entry(U32(idx)));
             stash.Push((n, idx + 1));
-            let child = INode::At(n, U32(idx));
+            let child = n.Children().At(U32(idx));
             stash.Push((child, 0u32));
         } else {
             fnMut(n, TraversalEvent::Entry(U32(num_children)));
@@ -287,15 +302,22 @@ macro_rules! BiNodeTree {
                     }
                 }
 
+                impl<'a> [<$Arg BiNode>]<'a> {
+                    #[allow(dead_code)]
+                    pub fn Children<'b>(&'b self) -> $crate::stalks::node::NodeChildren<'b, 'a> {
+                        $crate::stalks::node::NodeChildren(self)
+                    }
+                }
+
                 impl<'a> $crate::stalks::INode<'a> for [<$Arg BiNode>]<'a>
                 {
-                    fn Size(&self) -> $crate::silo::U32 {
+                    fn _Size(&self) -> $crate::silo::U32 {
                         match self {
                             [<$Arg BiNode>]::Node { .. } => $crate::silo::U32(2),
                             _ => $crate::silo::U32(0),
                         }
                     }
-                    fn At(&self, idx: $crate::silo::U32) -> &(dyn $crate::stalks::INode<'a> + Send + Sync + 'a) {
+                    fn _At(&self, idx: $crate::silo::U32) -> &(dyn $crate::stalks::INode<'a> + Send + Sync + 'a) {
                         match self {
                             [<$Arg BiNode>]::Node { _Children, .. } => &*_Children[idx.0 as usize],
                             _ => panic!("At called on Leaf"),
