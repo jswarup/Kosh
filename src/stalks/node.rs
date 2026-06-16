@@ -108,12 +108,12 @@ impl< 'a> DynINode< 'a>
         NodeChildren( self)
     }
 
-    pub fn	TraverseDF( &'a self, fnMut: &mut dyn FnMut( &'a DynINode< 'a>, TraversalEvent))
+    pub fn	TraverseDF< 'b>( &'b self, fnMut: &mut dyn FnMut( &'b DynINode< 'a>, TraversalEvent))
     {
         TraverseDepthFirst( self, fnMut);
     }
 
-    pub fn	DiveDf( &'a self, fnMut: &mut dyn FnMut( &NodeProbe< 'a>))
+    pub fn	DiveDf< 'b>( &'b self, fnMut: &mut dyn FnMut( &NodeProbe< 'b, 'a>))
     {
         let  	nodeProbe = NodeProbe::New( 1024, self);
         TraverseDepthFirst( self, &mut |node, event| match event {
@@ -132,7 +132,7 @@ impl< 'a> DynINode< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub fn	TraverseDepthFirst< 'a>( node: &'a DynINode< 'a>, fnMut: &mut dyn FnMut( &'a DynINode< 'a>, TraversalEvent))
+pub fn	TraverseDepthFirst< 'b, 'a>( node: &'b DynINode< 'a>, fnMut: &mut dyn FnMut( &'b DynINode< 'a>, TraversalEvent))
 {
     let  	mut stash = Stash::New( 1024, 1, ( node, U32( 0)));
     while stash.Size() > U32( 0) {
@@ -154,35 +154,35 @@ pub fn	TraverseDepthFirst< 'a>( node: &'a DynINode< 'a>, fnMut: &mut dyn FnMut( 
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct NodeProbe< 'a>
+pub struct NodeProbe< 'b, 'a>
 {
-    _NodeStash: Stash< &'a DynINode< 'a>>,
+    _NodeStash: Stash< &'b DynINode< 'a>>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> NodeProbe< 'a>
+impl< 'b, 'a> NodeProbe< 'b, 'a>
 {
-    pub fn	New< Sz: Into< U32>>( sz: Sz, node: &'a DynINode< 'a>) -> Self
+    pub fn	New< Sz: Into< U32>>( sz: Sz, node: &'b DynINode< 'a>) -> Self
     {
         Self {
             _NodeStash: Stash::Create( sz, U32( 0), |_| node),
         }
     }
 
-    pub fn	Push( &self, node: &'a DynINode< 'a>)
+    pub fn	Push( &self, node: &'b DynINode< 'a>)
     {
         let  	mut temp = node;
         self._NodeStash.Stk().Push( &mut temp);
     }
 
-    pub fn	Pop( &self, node: &'a DynINode< 'a>)
+    pub fn	Pop( &self, node: &'b DynINode< 'a>)
     {
         let  	mut temp = node;
         self._NodeStash.Stk().Pop( &mut temp);
     }
 
-    pub fn	Arr( &self) -> Arr< '_, &'a DynINode< 'a>>
+    pub fn	Arr( &self) -> Arr< '_, &'b DynINode< 'a>>
     {
         self._NodeStash.Stk().Arr()
     }
