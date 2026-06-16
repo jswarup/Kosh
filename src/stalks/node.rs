@@ -1,5 +1,5 @@
 //-- node.rs -------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{Arr, U32, Stash};
+use	crate::silo::{Arr, IAccess, Stash, U32};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -43,12 +43,6 @@ pub enum TraversalEvent {
     Exit,
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-pub trait IAccess< T: ?Sized> {
-    fn	Size( &self) -> U32;
-    fn	At( &self, idx: U32) -> &T;
-}
 
 pub trait INode< 'a>: Send + Sync {
     fn	Size( &self) -> U32;
@@ -303,7 +297,7 @@ macro_rules! BiNodeTree {
                     }
                 }
 
-                impl<'a> $crate::stalks::node::IAccess<dyn $crate::stalks::INode<'a> + Send + Sync + 'a> for [<$Arg BiNode>]<'a> {
+                impl<'a> $crate::silo::IAccess<dyn $crate::stalks::INode<'a> + Send + Sync + 'a> for [<$Arg BiNode>]<'a> {
                     fn Size(&self) -> $crate::silo::U32 {
                         $crate::stalks::INode::Size(self)
                     }

@@ -1,6 +1,7 @@
 //-- silo/mod.rs ---------------------------------------------------------------------------------------------------------------------
 #[cfg( test)]
 mod _tests;
+pub mod access;
 pub mod arr;
 pub mod buff;
 pub mod instream;
@@ -9,6 +10,7 @@ pub mod stk;
 pub mod uint;
 pub mod useg;
 pub mod slice;
+pub use	access::IAccess;
 pub use	arr::Arr;
 pub use	slice::{ISlice, IArr};
 pub use	buff::Buff;
