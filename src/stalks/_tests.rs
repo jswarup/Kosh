@@ -1,5 +1,5 @@
 //-- _tests.rs ---------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Buff, ISlice, U32 };
+use	crate::silo::{ Arr, Buff, Stash, U32, U8 };
 use	crate::stalks::{ Atm, INode, Attrib, TraversalEvent as NodeTraversalEvent, BiNodeTree, ChildOp };
 use	crate::segue::Shard;
 use	std::sync::Arc;
@@ -130,17 +130,19 @@ fn	TestBiNodeTree()
 
     assert_eq!( root.ChildOp(), Some( ChildOp::Less));
 
-    assert_eq!( root.Size(), U32(2));
+    assert_eq!( INode::Size(&root), U32(2));
 
-    let  	left = root.At(U32(0));
-    let  	right = root.At(U32(1));
+    let  	left = INode::At(&root, U32(0));
+    let  	right = INode::At(&root, U32(1));
 
     assert_eq!( left.ChildOp(), None);
     assert_eq!( right.ChildOp(), Some( ChildOp::Bor));
 
-    assert_eq!( right.Size(), U32(2));
-    assert_eq!( right.At(U32(0)).ChildOp(), None);
-    assert_eq!( right.At(U32(1)).ChildOp(), None);
+    let  	left1: &dyn INode = INode::At(&root, U32(0));
+
+    assert_eq!( INode::Size(right), U32(2));
+    assert_eq!( INode::At(right, U32(0)).ChildOp(), None);
+    assert_eq!( INode::At(right, U32(1)).ChildOp(), None);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

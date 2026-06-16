@@ -1,5 +1,5 @@
 //-- stk.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Arr, ISlice, IArr, U32, USeg };
+use	crate::silo::{ Arr, IAccess, IArr, U32, USeg };
 use	crate::stalks::Atm;
 use	std::sync::atomic::Ordering;
 

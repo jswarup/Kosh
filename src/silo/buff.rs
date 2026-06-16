@@ -431,14 +431,22 @@ impl< T: Clone, const N: usize> From< [T; N]> for Buff< T>
 
 impl< 'a, T: 'a> crate::silo::ISlice< 'a, T> for &'a Buff< T>
 {
+    fn	Ptr( &self) -> *const T
+    {
+        self._Ptr.cast::< T>().as_ptr()
+    }
+}
+
+impl< 'a, T: 'a> crate::silo::IAccess< 'a, T> for &'a Buff< T>
+{
     fn	Size( &self) -> U32
     {
         U32( self._Ptr.len() as u32)
     }
 
-    fn	Ptr( &self) -> *const T
+    fn	At< K: Into< U32>>( &self, k: K) -> &'a T
     {
-        self._Ptr.cast::< T>().as_ptr()
+        unsafe { &*self._Ptr.cast::< T>().as_ptr().add( k.into().AsUsize()) }
     }
 }
 
@@ -446,14 +454,22 @@ impl< 'a, T: 'a> crate::silo::ISlice< 'a, T> for &'a Buff< T>
 
 impl< 'a, T: 'a> crate::silo::ISlice< 'a, T> for &'a mut Buff< T>
 {
+    fn	Ptr( &self) -> *const T
+    {
+        self._Ptr.cast::< T>().as_ptr()
+    }
+}
+
+impl< 'a, T: 'a> crate::silo::IAccess< 'a, T> for &'a mut Buff< T>
+{
     fn	Size( &self) -> U32
     {
         U32( self._Ptr.len() as u32)
     }
 
-    fn	Ptr( &self) -> *const T
+    fn	At< K: Into< U32>>( &self, k: K) -> &'a T
     {
-        self._Ptr.cast::< T>().as_ptr()
+        unsafe { &*self._Ptr.cast::< T>().as_ptr().add( k.into().AsUsize()) }
     }
 }
 

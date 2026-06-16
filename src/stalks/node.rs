@@ -1,5 +1,5 @@
 //-- node.rs -------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{Arr, IAccess, Stash, U32};
+use	crate::silo::{Arr, Stash, U32};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -68,17 +68,7 @@ pub trait INode< 'a>: Send + Sync {
     }
 }
 
-impl< 'a> IAccess< dyn INode< 'a> + Send + Sync + 'a> for dyn INode< 'a> + Send + Sync + 'a
-{
-    fn	Size( &self) -> U32
-    {
-        INode::Size( self)
-    }
-    fn	At( &self, idx: U32) -> &( dyn INode< 'a> + Send + Sync + 'a)
-    {
-        INode::At( self, idx)
-    }
-}
+
 
 impl< 'a> dyn INode< 'a> + Send + Sync + 'a
 {
@@ -97,11 +87,11 @@ pub fn	TraverseDepthFirst< 'a>( node: &'a ( dyn INode< 'a> + Send + Sync + 'a), 
         let mut curr = (node, 0u32);
         let _res = stash.Pop(&mut curr);
         let (n, idx) = curr;
-        let num_children = n.Size().0;
+        let num_children = INode::Size(n).0;
         if idx < num_children {
             fnMut(n, TraversalEvent::Entry(U32(idx)));
             stash.Push((n, idx + 1));
-            let child = n.At(U32(idx));
+            let child = INode::At(n, U32(idx));
             stash.Push((child, 0u32));
         } else {
             fnMut(n, TraversalEvent::Entry(U32(num_children)));
@@ -294,15 +284,6 @@ macro_rules! BiNodeTree {
                     {
                         self.SetAttrib( attr);
                         self
-                    }
-                }
-
-                impl<'a> $crate::silo::IAccess<dyn $crate::stalks::INode<'a> + Send + Sync + 'a> for [<$Arg BiNode>]<'a> {
-                    fn Size(&self) -> $crate::silo::U32 {
-                        $crate::stalks::INode::Size(self)
-                    }
-                    fn At(&self, idx: $crate::silo::U32) -> &(dyn $crate::stalks::INode<'a> + Send + Sync + 'a) {
-                        $crate::stalks::INode::At(self, idx)
                     }
                 }
 

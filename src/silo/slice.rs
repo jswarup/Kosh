@@ -4,8 +4,9 @@ use	crate::stalks::IWorker;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait ISlice< 'a, T: 'a> {
-    fn	Size( &self) -> U32;
+use	crate::silo::IAccess;
+
+pub trait ISlice< 'a, T: 'a>: IAccess< 'a, T> {
     fn	Ptr( &self) -> *const T;
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -22,15 +23,6 @@ pub trait ISlice< 'a, T: 'a> {
         USeg::Create( U32( 0), self.Size())
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    fn	At< K: Into< U32>>( &self, k: K) -> &'a T
-    {
-        unsafe {
-            let  	ptr = self.Ptr().add( k.into().AsUsize());
-            &*ptr
-        }
-    }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
@@ -160,14 +152,22 @@ pub trait IArr< 'a, T: 'a>: ISlice< 'a, T> {
 
 impl< 'a, T> ISlice< 'a, T> for Arr< 'a, T>
 {
+    fn	Ptr( &self) -> *const T
+    {
+        self._Ptr.as_ptr()
+    }
+}
+
+impl< 'a, T> IAccess< 'a, T> for Arr< 'a, T>
+{
     fn	Size( &self) -> U32
     {
         self._Size
     }
 
-    fn	Ptr( &self) -> *const T
+    fn	At< K: Into< U32>>( &self, k: K) -> &'a T
     {
-        self._Ptr.as_ptr()
+        unsafe { &*self.Ptr().add( k.into().AsUsize()) }
     }
 }
 
@@ -177,11 +177,6 @@ impl< 'a, T> IArr< 'a, T> for Arr< 'a, T> {}
 
 impl< 'a, T: 'a> ISlice< 'a, T> for &'a [T]
 {
-    fn	Size( &self) -> U32
-    {
-        U32( self.len() as u32)
-    }
-
     fn	Ptr( &self) -> *const T
     {
         self.as_ptr()
@@ -192,13 +187,22 @@ impl< 'a, T: 'a> ISlice< 'a, T> for &'a [T]
 
 impl< 'a, T: 'a, const N: usize> ISlice< 'a, T> for &'a [T; N]
 {
+    fn	Ptr( &self) -> *const T
+    {
+        self.as_ptr()
+    }
+}
+
+impl< 'a, T: 'a, const N: usize> IAccess< 'a, T> for &'a [T; N]
+{
     fn	Size( &self) -> U32
     {
         U32( N as u32)
     }
 
-    fn	Ptr( &self) -> *const T
+    fn	At< K: Into< U32>>( &self, k: K) -> &'a T
     {
-        self.as_ptr()
+        let  	idx = k.into().AsUsize();
+        unsafe { &*self.as_ptr().add( idx) }
     }
 }
