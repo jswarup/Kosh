@@ -1,8 +1,8 @@
 //-- work.rs -------------------------------------------------------------------------------------------------------------------------
-
 //---------------------------------------------------------------------------------------------------------------------------------
-
-pub trait IWork: Send + Sync {
+/// Represents a unit of work that can be executed concurrently.
+pub trait IWork: Send + Sync
+{
     fn	DoWork( &mut self, worker: &DynIWorker< '_>);
 }
 impl< F> IWork for F
@@ -16,22 +16,31 @@ where
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
+/// A dynamically typed trait object for `IWork`.
 pub type WorkFn< 'a> = dyn IWork + 'a;
+
+/// Function pointer type for executing a type-erased job.
 pub type JobFn = for< 'r> fn(data: *mut (), worker: &'r DynIWorker< 'r>);
+
+/// A type-erased pointer to a job and its associated execution function.
 #[derive( Copy, Clone)]
-pub struct WorkPtr< 'a> {
-    pub data: *mut (),
-    pub func: JobFn,
+pub struct WorkPtr< 'a>
+{
+    pub     data: *mut (),
+    pub     func: JobFn,
     _marker: std::marker::PhantomData< &'a ()>,
 }
+
 unsafe impl< 'a> Send for WorkPtr< 'a>
 { }
 unsafe impl< 'a> Sync for WorkPtr< 'a>
 { }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl< 'a> WorkPtr< 'a>
 {
-    pub fn	null() -> Self
+    pub fn	Null() -> Self
     {
         Self {
             data: std::ptr::null_mut(),
@@ -39,7 +48,7 @@ impl< 'a> WorkPtr< 'a>
             _marker: std::marker::PhantomData,
         }
     }
-    pub fn	is_null( &self) -> bool
+    pub fn	IsNull( &self) -> bool
     {
         self.data.is_null()
     }
@@ -57,11 +66,19 @@ impl< 'a> WorkPtr< 'a>
         }
     }
 }
-pub trait IntoWorkPtr< 'a> {
+//---------------------------------------------------------------------------------------------------------------------------------
+/// Trait for converting objects (like closures or `IWork` implementations) into a `WorkPtr`.
+pub trait IntoWorkPtr< 'a>
+{
     fn	IntoWorkPtr( self) -> WorkPtr< 'a>;
 }
-impl< 'a> IntoWorkPtr< 'a> for WorkPtr< 'a> {
-    fn	IntoWorkPtr( self) -> WorkPtr< 'a> {
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a> IntoWorkPtr< 'a> for WorkPtr< 'a>
+{
+    fn	IntoWorkPtr( self) -> WorkPtr< 'a>
+    {
         self
     }
 }
@@ -69,13 +86,14 @@ impl< 'a, T> IntoWorkPtr< 'a> for T
 where
     T: IWork + 'a,
 {
-    fn	IntoWorkPtr( self) -> WorkPtr< 'a> {
+    fn	IntoWorkPtr( self) -> WorkPtr< 'a>
+    {
         WorkSlot::New( self)
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
+/// A heap-allocated slot that holds a concrete `IWork` object, allowing it to be type-erased into a `WorkPtr`.
 pub struct WorkSlot< T: IWork>
 {
     _Inner: T,
@@ -84,6 +102,9 @@ unsafe impl< T: IWork> Send for WorkSlot< T>
 { }
 unsafe impl< T: IWork> Sync for WorkSlot< T>
 { }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl< T: IWork> IWork for WorkSlot< T>
 {
     fn	DoWork( &mut self, worker: &DynIWorker< '_>)
@@ -94,6 +115,9 @@ impl< T: IWork> IWork for WorkSlot< T>
         }
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl< T: IWork> WorkSlot< T>
 {
     pub fn	New< 'a>( inner: T) -> WorkPtr< 'a>
@@ -115,12 +139,13 @@ impl< T: IWork> WorkSlot< T>
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
+/// A thread-safe dynamic trait object for an `IWorker`.
 pub type DynIWorker< 'a> = dyn IWorker + Send + Sync + 'a;
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
-pub trait IWorker: Send + Sync {
+/// Represents an entity capable of receiving and executing jobs.
+pub trait IWorker: Send + Sync
+{
     fn	PostJob( &self, job: WorkPtr< '_>);
     fn	AsRaw( &self) -> *const ()
     {
@@ -132,15 +157,7 @@ pub trait IWorker: Send + Sync {
     }
     fn	Tender< 'a, J: IntoWorkPtr< 'a>>( &self, job: J)
     where
-        Self: Sized {
-        self.PostJob( job.IntoWorkPtr());
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl DynIWorker< '_> {
-    pub fn	Post< 'a, J: IntoWorkPtr< 'a>>( &self, job: J)
+        Self: Sized
     {
         self.PostJob( job.IntoWorkPtr());
     }
@@ -148,6 +165,16 @@ impl DynIWorker< '_> {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl DynIWorker< '_>
+{
+    pub fn	Post< 'a, J: IntoWorkPtr< 'a>>( &self, job: J)
+    {
+        self.PostJob( job.IntoWorkPtr());
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+/// A simple, sequential implementation of `IWorker` that executes jobs immediately on the current thread.
 pub struct Worker;
 impl Worker
 {
@@ -161,8 +188,9 @@ impl Worker
 
 impl IWorker for Worker
 {
-    fn	PostJob( &self, job: WorkPtr< '_>) {
-        if !job.is_null() {
+    fn	PostJob( &self, job: WorkPtr< '_>)
+    {
+        if !job.IsNull() {
             ( job.func)( job.data, self);
         }
     }

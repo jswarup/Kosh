@@ -34,11 +34,11 @@ impl< 'a> Atelier< 'a>
             _SuccIds: Buff::< U16>::New( U32::_16Sz, U16::_0),
             _FreeJobLock: Spinlock::New(),
             _FreeJobStash: Stash::< U16>::New( U32::_16Sz, 0, U16( 0)),
-            _JobBuff: Buff::New( U32::_16Sz, WorkPtr::null()),
+            _JobBuff: Buff::New( U32::_16Sz, WorkPtr::Null()),
             _Terminal: U16( 0),
         };
         atelier._FreeJobStash.DoIndexSetup();
-        atelier._Terminal = atelier.ConstructJob( U32( 0), U16( 0), WorkPtr::null());
+        atelier._Terminal = atelier.ConstructJob( U32( 0), U16( 0), WorkPtr::Null());
         atelier
     }
 
@@ -181,10 +181,10 @@ impl< 'a> Atelier< 'a>
             while jobId != 0 {
                 maestro.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
                 let  	job = *self._JobBuff.Arr().At( jobId);
-                assert!( !job.is_null(), "jobId {} is null!", jobId.AsU16());
+                assert!( !job.IsNull(), "jobId {} is null!", jobId.AsU16());
                 
                 ( job.func)( job.data, maestro);                   // Run job
-                self._JobBuff.Arr().SetAt( jobId, &WorkPtr::null());
+                self._JobBuff.Arr().SetAt( jobId, &WorkPtr::Null());
                 maestro.IncrSzProcessed( 1);
                 maestro.FlushTempQueue();
                 

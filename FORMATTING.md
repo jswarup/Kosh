@@ -19,7 +19,7 @@ All Rust source files (`.rs`) in this project must adhere to the following forma
 - **Naming Convention**: All local variables must be named using camelCase (e.g., `let  \tmyLocalVar = ...`).
 
 ## 5. Separator Lines
-- **Blank Lines**: An empty line must always precede and succeed every separator line (e.g., `//---------------------------------------------------------------------------------------------------------------------------------`).
+- **Blank Lines**: An empty line must always precede and succeed every separator line (e.g., `//---------------------------------------------------------------------------------------------------------------------------------`). The exception to this rule is when the line above starts with comment itself, in which case no empty line is required. If the line below is a comment and the line above is a separator line, no empty line is required.
 
 ## 6. In-line Comments
 - **Alignment**: All trailing/in-line comments (comments sharing a line with code, excluding full-line comments and separator lines) must be formatted to begin at column 72 onwards.
