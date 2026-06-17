@@ -1,7 +1,7 @@
 //-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::Atelier;
 use	crate::silo::{ Buff, IAccess, IArr, Stash, Stk, U16, U32 };
-use	crate::stalks::{ Atm, DynINode, DynIWorker, IWorker, IntoWorkPtr, Spinlock, WorkPtr };
+use	crate::stalks::{ Atm, DynINode, DynIWorker, IWorker, IntoWorkPtr, Spinlock, WorkPtr , ChildOp};
 use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -182,16 +182,35 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	PostNode( &self, node: &'a DynINode< 'a>)
+    pub fn	PostNode( &self, node: &DynINode< 'a>)
     {
+        let         jobStash = Stash::<U16>::New( U32( 1024), 0, U16( 0));
+        let         stk = jobStash.Stk();
+        let mut     groupOp = ChildOp::None;
         node.DiveDf( &mut |probe| {
             let  	curNode = probe.CurNode().unwrap();
-            match curNode.ChildOp() { 
-                _ => {}
+            let     curOp = curNode.ChildOp();
+            match curOp { 
+                ChildOp::None => {
+                    let  	job = curNode.Value().unwrap();
+                    let mut jobId = self.ConstructJob( U16( 0), job);
+                    stk.Push( &mut jobId); 
+                }
+                _ => {
+                    if ( groupOp != ChildOp::None) && ( groupOp != curOp) && ( groupOp == ChildOp::Less) {  
+                        assert!( curOp == ChildOp::Bor) 
+                    } 
+                    groupOp = curOp 
+                }
             }
         });
+        let     arr = stk.Arr(); 
+        arr.USeg().Traverse( |i| {
+            let  	mut jobId = *arr.At( i); 
+            self.EnqueRunJob( &mut jobId);  
+        });
     }
-}
+}   
 
 //---------------------------------------------------------------------------------------------------------------------------------
 

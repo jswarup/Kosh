@@ -128,6 +128,11 @@ fn	TestChoreTree()
         let  	arr = probe.Arr();
         println!( "DiveDf reached a path of depth: {}", arr.Size().0);
     });
+
+    
+    let  	atelier = Atelier::New( U32( 4));
+    let  	mainMaestro = atelier.MainMaestro(); 
+    mainMaestro.PostNode(  &choreTree);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
