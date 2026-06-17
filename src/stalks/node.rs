@@ -102,9 +102,9 @@ pub trait INode< 'a>: Send + Sync
         None
     }
 
-    fn	ChildOp( &self) -> Option< ChildOp>
+    fn	ChildOp( &self) -> ChildOp
     {
-        None
+        ChildOp::None
     }
 
     fn	IsLeaf( &self) -> bool
@@ -400,11 +400,11 @@ macro_rules! BiNodeTree {
                             [<$Arg BiNode>]::Node { _Attrib, .. } => _Attrib.as_ref(),
                         }
                     }
-                    fn	ChildOp( &self) -> Option< $crate::stalks::ChildOp>
+                    fn	ChildOp( &self) -> $crate::stalks::ChildOp
                     {
                         match self {
-                            [<$Arg BiNode>]::Leaf { .. } => None,
-                            [<$Arg BiNode>]::Node { _Op, .. } => Some( *_Op),
+                            [<$Arg BiNode>]::Leaf { .. } => $crate::stalks::ChildOp::None,
+                            [<$Arg BiNode>]::Node { _Op, .. } => *_Op,
                         }
                     }
                 }

@@ -128,21 +128,21 @@ fn	TestBiNodeTree()
 {
     let  	root = BiNodeTree!( U32, 10 < ( 20 | 30 ));
 
-    assert_eq!( root.ChildOp(), Some( ChildOp::Less));
+    assert_eq!( root.ChildOp(), ChildOp::Less);
 
     assert_eq!( root.Children().Size(), U32(2));
 
     let  	left = root.Children().At(U32(0));
     let  	right = root.Children().At(U32(1));
 
-    assert_eq!( left.ChildOp(), None);
-    assert_eq!( right.ChildOp(), Some( ChildOp::Bor));
+    assert_eq!( left.ChildOp(), ChildOp::None);
+    assert_eq!( right.ChildOp(), ChildOp::Bor);
 
     let  	_left1: &DynINode< '_> = root.Children().At(U32(0));
 
     assert_eq!( right.Children().Size(), U32(2));
-    assert_eq!( right.Children().At(U32(0)).ChildOp(), None);
-    assert_eq!( right.Children().At(U32(1)).ChildOp(), None);
+    assert_eq!( right.Children().At(U32(0)).ChildOp(), ChildOp::None);
+    assert_eq!( right.Children().At(U32(1)).ChildOp(), ChildOp::None);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
