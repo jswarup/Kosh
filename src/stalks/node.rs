@@ -134,17 +134,18 @@ impl< 'a> DynINode< 'a>
         TraverseDepthFirst( self, fnMut);
     }
 
-    pub fn	DiveDf< 'b>( &'b self, fnMut: &mut dyn FnMut( &NodeProbe< 'b, 'a>))
+    pub fn	DiveDf< 'b>( &'b self, fnMut: &mut dyn FnMut( &NodeProbe< 'b, 'a>, bool))
     {
         let  	nodeProbe = NodeProbe::New( 1024, self);
         TraverseDepthFirst( self, &mut |node, event| match event {
             TraversalEvent::Entry( idx) => {
                 if idx == U32( 0) {
                     nodeProbe.Push( node);
+                    fnMut( &nodeProbe, true);
                 }
             }
             TraversalEvent::Exit => {
-                fnMut( &nodeProbe);
+                fnMut( &nodeProbe, false);
                 nodeProbe.Pop( node);
             }
         });

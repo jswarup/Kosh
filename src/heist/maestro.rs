@@ -185,20 +185,31 @@ impl< 'a> Maestro< 'a>
     pub fn	PostNode( &self, node: &DynINode< 'a>)
     {
         let         jobStash = Stash::<U16>::New( U32( 1024), 0, U16( 0));
-        let         stk = jobStash.Stk();
+        let  mut    succId = self.CurSuccId();
+        let  mut    stk = jobStash.Stk();
         let mut     groupOp = ChildOp::None;
-        node.DiveDf( &mut |probe| {
+        node.DiveDf( &mut |probe, enterFlg| {
+            if enterFlg {
+                return;
+            }
             let  	curNode = probe.CurNode().unwrap();
             let     curOp = curNode.ChildOp();
             match curOp { 
                 ChildOp::None => {
                     let  	job = curNode.Value().unwrap();
-                    let mut jobId = self.ConstructJob( U16( 0), job);
+                    let mut jobId = self.ConstructJob( succId, job);
+                    if groupOp == ChildOp::Less {
+                        succId = jobId;
+                    }
                     stk.Push( &mut jobId); 
                 }
                 _ => {
                     if ( groupOp != ChildOp::None) && ( groupOp != curOp) && ( groupOp == ChildOp::Less) {  
-                        assert!( curOp == ChildOp::Bor) 
+                        assert!( curOp == ChildOp::Bor);
+                        let     arr = stk.Arr();
+                        let     buff = Buff::Create( arr.Size(), |i| *arr.At( i));
+                        succId = self.ConstructEnqueBulk( U16( 0),  buff);
+                        stk.SetSize( U32( 0));
                     } 
                     groupOp = curOp 
                 }

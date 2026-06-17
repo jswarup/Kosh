@@ -108,25 +108,41 @@ fn	TestChoreBuds()
 fn	TestChoreTree()
 {
     let  	aChore = Chore::New( |_m| {
-        print!( "{} ", 10);
+        print!( "{} ", "A");
     });
     let  	bChore = Chore::New( |_m| {
-        print!( "{} ", 20);
+        print!( "{} ", "B");
     });
     let  	cChore = Chore::New( |_m| {
-        print!( "{} ", 40);
+        print!( "{} ", "C");
     });
     let  	choreTree = crate::ChoreTree!( ( cChore
             < ( bChore
                 | aChore
                 | ( |_m| {
-                    print!( "{} ", 50);
-                })))
+                    print!( "{} ", "X"); 
+                })) < cChore)
     );
  
-    ( &choreTree as &DynINode< '_>).DiveDf( &mut |probe| {
-        let  	arr = probe.Arr();
-        println!( "DiveDf reached a path of depth: {}", arr.Size().0);
+    let     worker = Worker::New(); 
+    ( &choreTree as &DynINode< '_>).DiveDf( &mut |probe, enterFlg| {
+        let  	curNode = probe.CurNode().unwrap();
+        let     arr = probe.Arr();
+        let     curOp = curNode.ChildOp();
+        let     margin = String::from_utf8( vec![ b' '; 2 * arr.Size().AsUsize()]).unwrap();
+        if enterFlg {
+            if  curOp != crate::stalks::ChildOp::None {
+                println!( "{}( {:?}", margin, curOp); 
+            }
+            return;
+        }
+        print!( "{}", margin); 
+        if  curOp == crate::stalks::ChildOp::None {
+            curNode.Value().unwrap().DoWork( &worker);
+            println!();
+        } else {
+            println!(")");
+        }
     });
 
     

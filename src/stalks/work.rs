@@ -65,6 +65,13 @@ impl< 'a> WorkPtr< 'a>
             _marker: std::marker::PhantomData,
         }
     }
+
+    pub fn	DoWork( &self, worker: &DynIWorker< '_>)
+    { 
+        (self.func)( self.data, worker);
+    }
+
+
 }
 //---------------------------------------------------------------------------------------------------------------------------------
 /// Trait for converting objects (like closures or `IWork` implementations) into a `WorkPtr`.

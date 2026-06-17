@@ -97,7 +97,10 @@ fn	TestINodeTraverse()
 
     // Test DiveDf
     let  	mut visited2 = Buff::NewEmpty();
-    ( &root as &DynINode< '_>).DiveDf( &mut |probe| {
+    ( &root as &DynINode< '_>).DiveDf( &mut |probe, enterFlg| {
+        if enterFlg {
+            return;
+        }
         let  	mut pathStr = String::new();
         let  	arr = probe.Arr();
         for i in 0..arr.Size().0 {
@@ -108,6 +111,7 @@ fn	TestINodeTraverse()
             }
             pathStr.push_str( &format!( "{}", testNode.id));
         }
+        println!( "{}", pathStr);
         visited2.Push( pathStr);
     });
 
