@@ -1,12 +1,12 @@
 //-- shard.rs -------------------------------------------------------------------------------------------------------------------------
 use	crate::segue::Charset;
-use	crate::stalks::{ IWork, IWorker };
+use	crate::stalks::{ DynIWorker, IWork };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Clone, Debug)]
 pub enum Shard {
-    Closure( fn( &dyn IWorker)),
+    Closure( fn( &DynIWorker< '_>)),
     Char( char),
     String( String),
     Charset( Charset),
@@ -26,7 +26,7 @@ impl Default for Shard
 
 impl Shard
 {
-    pub fn	New( f: fn( &dyn IWorker)) -> Self
+    pub fn	New( f: fn( &DynIWorker< '_>)) -> Self
     {
         Self::Closure( f)
     }
@@ -48,7 +48,7 @@ impl Shard
 
 impl IWork for Shard
 {
-    fn	DoWork( &mut self, worker: &dyn IWorker)
+    fn	DoWork( &mut self, worker: &DynIWorker< '_>)
     {
         match self {
             Self::Closure( f) => ( f)( worker),
@@ -76,9 +76,9 @@ impl std::fmt::Display for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl From< fn( &dyn IWorker) > for Shard
+impl From< fn( &DynIWorker< '_>) > for Shard
 {
-    fn	from( f: fn( &dyn IWorker)) -> Self
+    fn	from( f: fn( &DynIWorker< '_>)) -> Self
     {
         Self::New( f)
     }

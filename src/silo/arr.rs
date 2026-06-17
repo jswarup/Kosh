@@ -1,6 +1,6 @@
 //-- arr.rs -----------------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ IAccess, U8, U32 };
-use	crate::stalks::IWorker;
+use	crate::stalks::DynIWorker;
 use	std::marker::PhantomData;
 use	std::ops::{ Deref, DerefMut };
 use	std::ptr::NonNull;
@@ -95,13 +95,13 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	QuickSorter< Less>( &self, less: Less) -> impl Fn( &dyn IWorker) + Send + Sync + 'a
+    fn	QuickSorter< Less>( &self, less: Less) -> impl Fn( &DynIWorker< '_>) + Send + Sync + 'a
     where
         Less: Fn( &T, &T) -> bool + Send + Sync + 'a + Copy,
         T: Send + Sync + 'a,
     {
         let  	arr = Arr::New( unsafe { std::ptr::NonNull::new_unchecked(self.Ptr().cast_mut()) }, self.Size());
-        move |worker: &dyn IWorker| {
+        move |worker: &DynIWorker< '_>| {
             let  	lessFn = move |i, j| less( arr.At( i), arr.At( j));
             let  	swapFn = move |i, j| arr.Swap( i, j);
             arr.USeg().DoQSort( worker, lessFn, swapFn);

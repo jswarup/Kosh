@@ -1,6 +1,6 @@
 //-- silo/useg.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::silo::U32;
-use	crate::stalks::IWorker;
+use	crate::stalks::DynIWorker;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -172,7 +172,7 @@ impl USeg
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	DoQSort< 'a, LessAt, SwapAt>( &self, worker: &dyn IWorker, lessAt: LessAt, swapAt: SwapAt)
+    pub fn	DoQSort< 'a, LessAt, SwapAt>( &self, worker: &DynIWorker< '_>, lessAt: LessAt, swapAt: SwapAt)
     where
         LessAt: Fn( U32, U32) -> bool + Send + Sync + 'a + Copy,
         SwapAt: Fn( U32, U32) + Send + Sync + 'a + Copy,
@@ -189,14 +189,14 @@ impl USeg
 
             if useg1.Size() > useg2.Size() {
                 if useg1.Size() > 1 {
-                    worker.Post( move |w: &dyn IWorker| {
+                    worker.Post( move |w: &DynIWorker< '_>| {
                         useg1.DoQSort( w, lessAt, swapAt);
                     });
                 }
                 currentSeg = useg2;
             } else {
                 if useg2.Size() > 1 {
-                    worker.Post( move |w: &dyn IWorker| {
+                    worker.Post( move |w: &DynIWorker< '_>| {
                         useg2.DoQSort( w, lessAt, swapAt);
                     });
                 }

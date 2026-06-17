@@ -1,7 +1,7 @@
 //-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::Atelier;
 use	crate::silo::{ Buff, IAccess, IArr, Stash, Stk, U16, U32 };
-use	crate::stalks::{ Atm, IWorker, IntoWorkPtr, Spinlock, WorkPtr };
+use	crate::stalks::{ Atm, DynIWorker, IWorker, IntoWorkPtr, Spinlock, WorkPtr };
 use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -67,7 +67,7 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	FromWorker( worker: &dyn IWorker) -> &Self
+    pub fn	FromWorker< 'w>( worker: &'w DynIWorker< '_>) -> &'w Self
     {
         let  	ptr = worker.AsRaw();
         assert!( !ptr.is_null());
@@ -92,7 +92,7 @@ impl< 'a> Maestro< 'a>
 
     pub fn	ConstructEnqueBulk( &self, succId: U16, buff: Buff< U16>) -> U16
     {
-        self.ConstructJob( succId, move |worker: &dyn IWorker| {
+        self.ConstructJob( succId, move |worker: &DynIWorker< '_>| {
             let  	maestro = Maestro::FromWorker( worker);
             let  	arr = buff.Arr();
             arr.USeg().Traverse( |i| {

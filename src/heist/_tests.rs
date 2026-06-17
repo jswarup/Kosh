@@ -5,7 +5,7 @@ use	crate::{
     silo::
     { Buff, IAccess, IArr, U16, U32 },
     stalks::
-    { DynINode, IWorker, Worker },
+    { DynINode, DynIWorker, IWorker, Worker },
 };
 use	std::sync::{ Arc, Mutex };
 use	std::thread;
@@ -15,14 +15,14 @@ use	std::thread;
 #[test]
 fn	BuffBasicAtelierTest()
 {
-    fn	trialJob( worker: &dyn IWorker)
+    fn	trialJob( worker: &DynIWorker< '_>)
     {
         let  	maestro = Maestro::FromWorker( worker);
         let  	mut jobId = maestro.CurSuccId();
-        jobId = maestro.ConstructJob( jobId, |w1: &dyn IWorker| {
+        jobId = maestro.ConstructJob( jobId, |w1: &DynIWorker< '_>| {
             println!( "Trial1 {}", Maestro::FromWorker( w1).MaestroIndex());
         });
-        jobId = maestro.ConstructJob( jobId, |w2: &dyn IWorker| {
+        jobId = maestro.ConstructJob( jobId, |w2: &DynIWorker< '_>| {
             println!( "Trial2 {}", Maestro::FromWorker( w2).MaestroIndex());
         });
         maestro.EnqueRunJob( &mut jobId);

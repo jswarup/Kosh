@@ -1,12 +1,12 @@
 //-- chore.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::stalks::{ IWork, IWorker };
+use	crate::stalks::{ DynIWorker, IWork };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Copy, Clone, Debug)]
 pub struct Chore
 {
-    _Closure: fn( &dyn IWorker),
+    _Closure: fn( &DynIWorker< '_>),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -23,7 +23,7 @@ impl Default for Chore
 
 impl Chore
 {
-    pub fn	New( f: fn( &dyn IWorker)) -> Self
+    pub fn	New( f: fn( &DynIWorker< '_>)) -> Self
     {
         Self { _Closure: f }
     }
@@ -33,7 +33,7 @@ impl Chore
 
 impl IWork for Chore
 {
-    fn	DoWork( &mut self, worker: &dyn IWorker)
+    fn	DoWork( &mut self, worker: &DynIWorker< '_>)
     {
         ( self._Closure)( worker);
     }
@@ -41,9 +41,9 @@ impl IWork for Chore
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl From< fn( &dyn IWorker) > for Chore
+impl From< fn( &DynIWorker< '_>) > for Chore
 {
-    fn	from( f: fn( &dyn IWorker)) -> Self
+    fn	from( f: fn( &DynIWorker< '_>)) -> Self
     {
         Self::New( f)
     }
