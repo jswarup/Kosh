@@ -37,6 +37,7 @@ pub enum ChildOp
     Bor,
     Shl,
     Shr,
+    None
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -71,10 +72,30 @@ impl< 'b, 'a> IAccess< 'b, DynINode< 'a>> for NodeChildren< 'b, 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+pub trait AsWorkPtr< 'a>
+{
+    fn	AsWorkPtr( &self) -> Option< crate::stalks::WorkPtr< 'a>>;
+}
+
+impl< 'a> AsWorkPtr< 'a> for crate::silo::U32
+{
+    fn	AsWorkPtr( &self) -> Option< crate::stalks::WorkPtr< 'a>>
+    {
+        None
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub trait INode< 'a>: Send + Sync
 {
     fn	_Size( &self) -> U32;
     fn	_At( &self, idx: U32) -> &DynINode< 'a>;
+
+    fn	Value( &self) -> Option< crate::stalks::WorkPtr< 'a>>
+    {
+        None
+    }
 
     fn	Attrib( &self) -> Option< &Attrib>
     {
@@ -186,6 +207,14 @@ impl< 'b, 'a> NodeProbe< 'b, 'a>
     {
         self._NodeStash.Stk().Arr()
     }
+    pub fn  CurNode( &self) -> Option< &'b DynINode< 'a>>
+    {
+        let  	sz = self._NodeStash.Size();
+        if sz > U32( 0) {
+            return Some( *self.Arr().At( sz - U32( 1)));
+        }
+        None
+    } 
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -351,6 +380,16 @@ macro_rules! BiNodeTree {
                         match self {
                             [<$Arg BiNode>]::Node { _Children, .. } => &*_Children[idx.0 as usize],
                             _ => panic!("At called on Leaf"),
+                        }
+                    }
+
+                    fn	Value( &self) -> Option< $crate::stalks::WorkPtr< 'a>>
+                    {
+                        match self {
+                            [<$Arg BiNode>]::Leaf { _Val, .. } => {
+                                $crate::stalks::node::AsWorkPtr::AsWorkPtr( _Val)
+                            }
+                            _ => None
                         }
                     }
 

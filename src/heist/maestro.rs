@@ -1,7 +1,7 @@
 //-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::Atelier;
 use	crate::silo::{ Buff, IAccess, IArr, Stash, Stk, U16, U32 };
-use	crate::stalks::{ Atm, DynIWorker, IWorker, IntoWorkPtr, Spinlock, WorkPtr };
+use	crate::stalks::{ Atm, DynINode, DynIWorker, IWorker, IntoWorkPtr, Spinlock, WorkPtr };
 use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -182,6 +182,15 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    pub fn	PostNode( &self, node: &'a DynINode< 'a>)
+    {
+        node.DiveDf( &mut |probe| {
+            let  	curNode = probe.CurNode().unwrap();
+            match curNode.ChildOp() { 
+                _ => {}
+            }
+        });
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
