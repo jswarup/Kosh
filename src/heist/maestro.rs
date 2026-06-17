@@ -184,16 +184,74 @@ impl< 'a> Maestro< 'a>
 
     pub fn	PostNode( &self, node: &DynINode< 'a>)
     {
+        let         jobStash = Stash::<U16>::New( U32( 1024), 0, U16( 0)); 
+        let  mut    jobStk = jobStash.Stk();
+        let         opStash = Stash::<ChildOp>::New( U32( 1024), 0, ChildOp::None); 
+        let         opStk = opStash.Stk();
+        let  mut    succId = self.CurSuccId();
+        node.DiveDf( &mut |probe, enterFlg| {
+            let  	    curNode = probe.CurNode().unwrap();
+            let mut     curOp = curNode.ChildOp(); 
+            if enterFlg {  
+                if  curOp == ChildOp::None { 
+                    return; 
+                }
+                opStk.Push( &mut curOp);
+                return;
+            }  
+            let     opArr = opStk.Arr();
+            let     biOp = if opArr.Size() != 0 { *opArr.Last()} else { ChildOp::None};
+            if  curOp == ChildOp::None { 
+                let mut     jobId = self.ConstructJob( succId, curNode.Value().unwrap());
+                if biOp == ChildOp::Less {
+                    if jobStk.Size() == 0 {
+                        jobStk.Pop( &mut succId);   
+                    }
+                    succId = jobId;
+                }
+                jobStk.Push( &mut jobId); 
+                return;
+            }  
+            opStk.Pop( &mut curOp);
+            if  curOp == ChildOp::Less { 
+                return;
+            }
+            if ( opStk.Arr().Size() != 0) && ( *opStk.Arr().Last() == ChildOp::Less) { 
+                succId =  self.ConstructEnqueBulk( succId, Buff::from( jobStk.Arr()));
+                jobStk.SetSize( U32( 0));
+                jobStk.Push( &mut succId);
+            }
+        });
+        let     arr = jobStk.Arr(); 
+        arr.USeg().Traverse( |i| {
+            let  	mut jobId = *arr.At( i); 
+            self.EnqueRunJob( &mut jobId);  
+        });
+    }
+    
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	PostNode1( &self, node: &DynINode< 'a>)
+    {
         let         jobStash = Stash::<U16>::New( U32( 1024), 0, U16( 0));
         let  mut    succId = self.CurSuccId();
         let  mut    stk = jobStash.Stk();
         let mut     groupOp = ChildOp::None;
         node.DiveDf( &mut |probe, enterFlg| {
-            if enterFlg {
-                return;
-            }
             let  	curNode = probe.CurNode().unwrap();
             let     curOp = curNode.ChildOp();
+            if enterFlg { 
+                let mut jobId = if curOp == ChildOp::None  {
+                    self.ConstructJob( U16( 0), curNode.Value().unwrap())
+                } else {
+                    U16( 0)
+                };
+                stk.Push( &mut jobId); 
+                return;
+            }
+            if curOp == ChildOp::Less {
+                  // 
+            }
             match curOp { 
                 ChildOp::None => {
                     let  	job = curNode.Value().unwrap();

@@ -15,7 +15,7 @@ pub struct USeg
 
 impl USeg
 {
-    pub fn	Create< F: Into< U32>, S: Into< U32>>( first: F, sz: S) -> Self
+    pub fn	Create< Idx: Into< U32>, Sz: Into< U32>>( first: Idx, sz: Sz) -> Self
     {
         let  	fst = first.into();
         let  	size = sz.into();
@@ -59,6 +59,9 @@ impl USeg
             U32::_0
         }
     }
+    
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	IsEmpty( &self) -> bool
     {
         self.Size() == 0

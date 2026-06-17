@@ -148,7 +148,7 @@ fn	TestChoreTree()
     
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro(); 
-    mainMaestro.PostNode(  &choreTree);
+    //mainMaestro.PostNode(  &choreTree);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

@@ -75,8 +75,8 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         }
         self._Arr.SwapAt( sz - 1, val);
         true
-    }
-
+    } 
+    
     //-----------------------------------------------------------------------------------------------------------------------------
     /// Requires exclusive access (not thread-safe to call concurrently).
 

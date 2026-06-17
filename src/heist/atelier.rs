@@ -83,10 +83,7 @@ impl< 'a> Atelier< 'a>
 
     pub fn	IncrPredAt< K: Into< U16>>( &self, jobId: U16, inc: K) -> U16
     {
-        self._SzPreds
-            .Arr()
-            .At( jobId)
-            .FetchAdd( inc, Ordering::SeqCst)
+        self._SzPreds.Arr().At( jobId).FetchAdd( inc, Ordering::SeqCst)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -124,6 +121,12 @@ impl< 'a> Atelier< 'a>
         }
     }
 
+    pub fn SetBefore( &self, jobId : U16, succId: U16)
+    {
+        self._SuccIds.Arr().SetAt( jobId, &succId);
+        self.IncrPredAt( succId, 1);
+    }
+
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	ConstructJob( &self, maestroIdx: U32, succId: U16, job: WorkPtr< 'a>) -> U16
@@ -133,8 +136,9 @@ impl< 'a> Atelier< 'a>
             return jobId;
         }
         self._JobBuff.Arr().SetAt( jobId, &job);
-        self._SuccIds.Arr().SetAt( jobId, &succId);
-        self.IncrPredAt( succId, 1);
+        if succId != 0 {
+             self.SetBefore( jobId, succId);
+        } 
         jobId
     }
 
