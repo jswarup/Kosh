@@ -38,7 +38,8 @@ impl< 'a> Atelier< 'a>
             _Terminal: U16( 0),
         };
         atelier._FreeJobStash.DoIndexSetup();
-        atelier._Terminal = atelier.ConstructJob( U32( 0), U16( 0), WorkPtr::Null());
+        atelier._Terminal = atelier.ConstructJob( U32( 0), U16( 0), WorkPtr::Dummy());
+        atelier._Maestros.Arr().MutAt( 0).SetCurSuccId( atelier._Terminal);
         atelier
     }
 
@@ -178,7 +179,8 @@ impl< 'a> Atelier< 'a>
     pub fn	ExecuteLoop( &self, maestroIdx: U32)
     {
         let  	maestro = self._Maestros.Arr().MutAt( maestroIdx);
-        maestro.SetAtelier( self );
+        maestro.SetAtelier( self ); 
+        maestro.FlushTempQueue();
         let  	mut jobId = U16( 0);
         let  	mut stealSeed = maestroIdx.AsU32();
         while self.SzSchedJob() != 0 {

@@ -48,6 +48,14 @@ impl< 'a> WorkPtr< 'a>
             _marker: std::marker::PhantomData,
         }
     }
+    pub fn	Dummy() -> Self
+    {
+        Self {
+            data: 1 as *mut (),
+            func: |_, _| {},
+            _marker: std::marker::PhantomData,
+        }
+    }
     pub fn	IsNull( &self) -> bool
     {
         self.data.is_null()
