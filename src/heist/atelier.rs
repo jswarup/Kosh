@@ -121,7 +121,7 @@ impl< 'a> Atelier< 'a>
         }
     }
 
-    pub fn SetBefore( &self, jobId : U16, succId: U16)
+    pub fn SetAfter( &self, jobId : U16, succId: U16)
     {
         self._SuccIds.Arr().SetAt( jobId, &succId);
         self.IncrPredAt( succId, 1);
@@ -137,7 +137,7 @@ impl< 'a> Atelier< 'a>
         }
         self._JobBuff.Arr().SetAt( jobId, &job);
         if succId != 0 {
-             self.SetBefore( jobId, succId);
+             self.SetAfter( jobId, succId);
         } 
         jobId
     }

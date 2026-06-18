@@ -124,6 +124,20 @@ impl USeg
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    pub fn	TraverseRev< F>( &self, mut lambda: F)
+    where
+        F: FnMut( U32),
+    {
+        if self.IsEmpty() {
+            return;
+        }
+        for i in self._First.AsU32()..=self._Last.AsU32() {
+            lambda( self._Last -U32( i))
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     fn	Partition< 'a, LessAt, SwapAt>( &self, lessAt: &'a LessAt, swapAt: &'a mut SwapAt) -> U32
     where
         LessAt: Fn( U32, U32) -> bool + 'a,

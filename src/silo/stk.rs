@@ -102,6 +102,12 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         true
     }
 
+    pub fn  PushX( &self, v:  T) -> bool
+    {
+        let mut val = v;
+        self.Push( &mut val)
+    }
+    
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	Import< M: Into< U32>>( &self, stk: &Stk< '_, '_, T>, maxMov: M) -> U32

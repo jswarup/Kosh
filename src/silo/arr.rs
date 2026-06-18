@@ -95,6 +95,13 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    fn	Subset< F: Into< U32>, Sz: Into< U32>>( &self, first: F, sz:  Sz) -> Arr< 'a, T>
+    { 
+        Arr::New( unsafe { std::ptr::NonNull::new_unchecked(self.Ptr().cast_mut().add( first.into().AsU32() as usize)) }, sz.into())
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     fn	QuickSorter< Less>( &self, less: Less) -> impl Fn( &DynIWorker< '_>) + Send + Sync + 'a
     where
         Less: Fn( &T, &T) -> bool + Send + Sync + 'a + Copy,

@@ -115,15 +115,17 @@ fn	TestChoreTree()
     });
     let  	cChore = Chore::New( |_m| {
         print!( "{} ", "C");
-    });
-    let  	choreTree = crate::ChoreTree!( ( cChore
-            < ( bChore
-                | aChore
-                | ( |_m| {
-                    print!( "{} ", "X"); 
-                })) < cChore)
-    );
+    }); 
  
+    let  	choreTree= crate::ChoreTree!( aChore < bChore < cChore);
+    let  	atelier = Atelier::New( U32( 4));
+    let  	mainMaestro = atelier.MainMaestro(); 
+    mainMaestro.PostNode(  &choreTree);
+    atelier.DoLaunch();
+
+    if 1 == 1 {
+        return;
+    }
     let     worker = Worker::New(); 
     ( &choreTree as &DynINode< '_>).DiveDf( &mut |probe, enterFlg| {
         let  	curNode = probe.CurNode().unwrap();
@@ -143,12 +145,9 @@ fn	TestChoreTree()
         } else {
             println!(")");
         }
-    });
+    }); 
 
     
-    let  	atelier = Atelier::New( U32( 4));
-    let  	mainMaestro = atelier.MainMaestro(); 
-    //mainMaestro.PostNode(  &choreTree);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
