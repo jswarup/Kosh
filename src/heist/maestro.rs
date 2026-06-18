@@ -227,8 +227,12 @@ impl< 'a> Maestro< 'a>
                 jobStk.PushX( currentSucc);
             } else {
                 assert!( curOp == ChildOp::Bor); 
-                let     jobId = self.ConstructEnqueBulk( currentSucc, arr.into());
-                jobStk.PushX( jobId);
+                arr.USeg().TraverseRev( |i| {
+                    let     jobId = *arr.At( i);
+                    self.Atelier().SetAfter( jobId, currentSucc);
+                });
+                currentSucc = self.ConstructEnqueBulk( currentSucc, arr.into());
+                jobStk.PushX( currentSucc);
             }   
             return;
         }); 

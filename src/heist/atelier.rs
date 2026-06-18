@@ -224,12 +224,7 @@ impl< 'a> Atelier< 'a>
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	DoLaunch( &self)
-    {
-        {
-            let  	maestro0 = self._Maestros.Arr().MutAt( U32( 0));
-            maestro0.SetAtelier( self );
-            maestro0.FlushTempQueue();
-        }
+    {  
         let  	maestros = self._Maestros.Arr();
         std::thread::scope( |s| {
             for maestroIdx in 1..maestros.len() {

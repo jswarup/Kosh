@@ -116,37 +116,39 @@ fn	TestChoreTree()
     let  	cChore = Chore::New( |_m| {
         print!( "{} ", "C");
     }); 
+    let  	dChore = Chore::New( |_m| {
+        print!( "{} ", "D");
+    }); 
  
-    let  	choreTree= crate::ChoreTree!( aChore < bChore < cChore);
+    let  	choreTree= crate::ChoreTree!( ( aChore | ( bChore | cChore ) < dChore));
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro(); 
+
+    if 1 == 1 { 
+        let     worker = Worker::New(); 
+        ( &choreTree as &DynINode< '_>).DiveDf( &mut |probe, enterFlg| {
+            let  	curNode = probe.CurNode().unwrap();
+            let     arr = probe.Arr();
+            let     curOp = curNode.ChildOp();
+            let     margin = String::from_utf8( vec![ b' '; 2 * arr.Size().AsUsize()]).unwrap();
+            if enterFlg {
+                if  curOp != crate::stalks::ChildOp::None {
+                    println!( "{}( {:?}", margin, curOp); 
+                }
+                return;
+            }
+            print!( "{}", margin); 
+            if  curOp == crate::stalks::ChildOp::None {
+                curNode.Value().unwrap().DoWork( &worker);
+                println!();
+            } else {
+                println!(")");
+            }
+        }); 
+    }
+    
     mainMaestro.PostNode(  &choreTree);
     atelier.DoLaunch();
-
-    if 1 == 1 {
-        return;
-    }
-    let     worker = Worker::New(); 
-    ( &choreTree as &DynINode< '_>).DiveDf( &mut |probe, enterFlg| {
-        let  	curNode = probe.CurNode().unwrap();
-        let     arr = probe.Arr();
-        let     curOp = curNode.ChildOp();
-        let     margin = String::from_utf8( vec![ b' '; 2 * arr.Size().AsUsize()]).unwrap();
-        if enterFlg {
-            if  curOp != crate::stalks::ChildOp::None {
-                println!( "{}( {:?}", margin, curOp); 
-            }
-            return;
-        }
-        print!( "{}", margin); 
-        if  curOp == crate::stalks::ChildOp::None {
-            curNode.Value().unwrap().DoWork( &worker);
-            println!();
-        } else {
-            println!(")");
-        }
-    }); 
-
     
 }
 
