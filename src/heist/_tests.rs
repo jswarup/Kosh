@@ -124,28 +124,8 @@ fn	TestChoreTree()
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro(); 
 
-    if 1 == 1 { 
-        let     worker = Worker::New(); 
-        ( &choreTree as &DynINode< '_>).DiveDf( &mut |probe, enterFlg| {
-            let  	curNode = probe.CurNode().unwrap();
-            let     arr = probe.Arr();
-            let     curOp = curNode.ChildOp();
-            let     margin = String::from_utf8( vec![ b' '; 2 * arr.Size().AsUsize()]).unwrap();
-            if enterFlg {
-                if  curOp != crate::stalks::ChildOp::None {
-                    println!( "{}( {:?}", margin, curOp); 
-                }
-                return;
-            }
-            print!( "{}", margin); 
-            if  curOp == crate::stalks::ChildOp::None {
-                curNode.Value().unwrap().DoWork( &worker);
-                println!();
-            } else {
-                println!(")");
-            }
-        }); 
-    }
+    // Note: Calling DoWork manually in DiveDf consumes the job, which causes 
+    // use-after-free panics when DoLaunch actually runs them asynchronously.
     
     mainMaestro.PostNode(  &choreTree);
     atelier.DoLaunch();

@@ -1,8 +1,9 @@
 //-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::Maestro;
-use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, U16, U32 };
+use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, Stk, U16, U32 };
 use	crate::stalks::{ Atm, Spinlock, WorkPtr };
 use	std::sync::atomic::Ordering;
+use std::collections::HashSet;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -122,7 +123,7 @@ impl< 'a> Atelier< 'a>
         }
     }
 
-    pub fn SetAfter( &self, jobId : U16, succId: U16)
+    pub fn	SetAfter( &self, jobId: U16, succId: U16)
     {
         self._SuccIds.Arr().SetAt( jobId, &succId);
         self.IncrPredAt( succId, 1);
@@ -139,7 +140,7 @@ impl< 'a> Atelier< 'a>
         self._JobBuff.Arr().SetAt( jobId, &job);
         if succId != 0 {
              self.SetAfter( jobId, succId);
-        } 
+        }
         jobId
     }
 
@@ -179,7 +180,7 @@ impl< 'a> Atelier< 'a>
     pub fn	ExecuteLoop( &self, maestroIdx: U32)
     {
         let  	maestro = self._Maestros.Arr().MutAt( maestroIdx);
-        maestro.SetAtelier( self ); 
+        maestro.SetAtelier( self );
         maestro.FlushTempQueue();
         let  	mut jobId = U16( 0);
         let  	mut stealSeed = maestroIdx.AsU32();
@@ -188,12 +189,12 @@ impl< 'a> Atelier< 'a>
                 maestro.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
                 let  	job = *self._JobBuff.Arr().At( jobId);
                 assert!( !job.IsNull(), "jobId {} is null!", jobId.AsU16());
-                
+
                 ( job.func)( job.data, maestro);                   // Run job
                 self._JobBuff.Arr().SetAt( jobId, &WorkPtr::Null());
                 maestro.IncrSzProcessed( 1);
                 maestro.FlushTempQueue();
-                
+
                 let  	_res = self.FreeJob( maestroIdx, jobId);
                 let  	succId = maestro.CurSuccId();
                 if succId != U16( 0) {
@@ -207,7 +208,7 @@ impl< 'a> Atelier< 'a>
                 } else {
                     jobId = U16::_0;
                 }
-                
+
                 self.IncrSzSchedJob( -U32( 1));
             }
             jobId = maestro.PopJob();
@@ -224,7 +225,7 @@ impl< 'a> Atelier< 'a>
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	DoLaunch( &self)
-    {  
+    {
         let  	maestros = self._Maestros.Arr();
         std::thread::scope( |s| {
             for maestroIdx in 1..maestros.len() {
@@ -242,6 +243,40 @@ impl< 'a> Atelier< 'a>
         println!( "]")
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	TraceJobs( &self, jobIds: Arr< U16>) -> ( Stash< U16>, Stash< U16>, Stash< U16>)
+    {
+        let mut jobSet = HashSet::< U16>::new();
+        let mut jobStash = Stash::< U16>::New( U32( 1024), 0, U16( 0));
+        let mut succStash = Stash::< U16>::New( U32( 1024), 0, U16( 0));
+        let mut predStash = Stash::< U16>::New( U32( 1024), 0, U16( 0));
+
+        let mut processStash = Stash::< U16>::New( U32( 1024), 0, U16( 0));
+        jobIds.Traverse( |jobId| {
+            processStash.Push( *jobId);
+        });
+         
+        let mut jobId = U16( 0);
+        while processStash.Pop( &mut jobId) {
+            if !jobSet.insert( jobId) {
+                continue;
+            }
+            jobStash.Push( jobId);
+            
+            let     succId = *self._SuccIds.Arr().At( jobId);
+            if succId != U16( 0) {
+                succStash.Push( succId);
+                processStash.Push( succId);
+            }
+            let     predId = self._SzPreds.Arr().At( jobId).Load(Ordering::SeqCst);
+            if predId != U16( 0) {
+                predStash.Push( predId);
+                processStash.Push( predId);
+            }
+        }
+        ( jobStash, succStash, predStash)
+    }
     //-----------------------------------------------------------------------------------------------------------------------------
 
 }

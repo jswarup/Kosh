@@ -184,38 +184,38 @@ impl< 'a> Maestro< 'a>
 
     pub fn	PostNode( &self, node: &DynINode< 'a>)
     {
-        let         jobStash = Stash::<U16>::New( U32( 1024), 0, U16( 0));  
+        let         jobStash = Stash::<U16>::New( U32( 1024), 0, U16( 0));
         let mut     jobStk = jobStash.Stk();
-        let         opStash = Stash::<(ChildOp, U32)>::New( U32( 1024), 0, (ChildOp::None, U32( 0))); 
-        let         opStk = opStash.Stk(); 
+        let         opStash = Stash::<(ChildOp, U32)>::New( U32( 1024), 0, (ChildOp::None, U32( 0)));
+        let         opStk = opStash.Stk();
         let mut     currentSucc = self.CurSuccId();
 
         node.DiveDf( &mut |probe, enterFlg| {
             let  	    curNode = probe.CurNode().unwrap();
-            let         curOp = curNode.ChildOp(); 
-            if enterFlg {  
-                if  curOp != ChildOp::None { 
+            let         curOp = curNode.ChildOp();
+            if enterFlg {
+                if  curOp != ChildOp::None {
                     opStk.PushX( ( curOp, jobStk.Size()));
-                    return; 
-                }   
-                let         job = curNode.Value().unwrap(); 
+                    return;
+                }
+                let         job = curNode.Value().unwrap();
                 let mut     jobId = self.ConstructJob( U16( 0), job);
                 jobStk.Push( &mut jobId);
-                return; 
-            }    
-            if  curOp == ChildOp::None { 
+                return;
+            }
+            if  curOp == ChildOp::None {
                 return;
             }
             let mut biOpTuple = ( ChildOp::None, U32( 0));
-            let     _res =  opStk.Pop( &mut biOpTuple);   
-            let     opArr = opStk.Arr(); 
+            let     _res =  opStk.Pop( &mut biOpTuple);
+            let     opArr = opStk.Arr();
             assert!( biOpTuple.0 == curOp);
             let     parentOp = if opArr.Size() != 0 { opArr.Last().0 } else { ChildOp::None};
             if parentOp == biOpTuple.0  {
-                return;    
+                return;
             }
-            let     startSz = biOpTuple.1; 
-            assert!( jobStk.Size() - startSz != U32( 0)); 
+            let     startSz = biOpTuple.1;
+            assert!( jobStk.Size() - startSz != U32( 0));
             let     arr = jobStk.Arr().Subset( startSz, jobStk.Size() - startSz);
             jobStk.SetSize( startSz);
             if curOp == ChildOp::Less {
@@ -226,23 +226,31 @@ impl< 'a> Maestro< 'a>
                 });
                 jobStk.PushX( currentSucc);
             } else {
-                assert!( curOp == ChildOp::Bor); 
+                assert!( curOp == ChildOp::Bor);
                 arr.USeg().TraverseRev( |i| {
                     let     jobId = *arr.At( i);
                     self.Atelier().SetAfter( jobId, currentSucc);
                 });
-                currentSucc = self.ConstructEnqueBulk( currentSucc, arr.into());
-                jobStk.PushX( currentSucc);
-            }   
+                let     jobId = self.ConstructEnqueBulk( U16( 0), arr.into());
+                jobStk.PushX( jobId);
+            }
             return;
-        }); 
+        });
+        let      ( jobStash, succStash,     predStash) = self.Atelier().TraceJobs( jobStk.Arr());
+        let     jobArr = jobStash.Stk().Arr();
+        let     succArr = succStash.Stk().Arr();
+        let     predArr = predStash.Stk().Arr();
+        jobArr.USeg().Traverse( |i| {
+            println!( "{} {} {}", *jobArr.At( i), *succArr.At( i), *predArr.At( i));
+        });
+        
         jobStk.Arr().Traverse( |jId| {
             let mut     jobId = *jId;
-            self.EnqueTempJob( &mut jobId);
-        }); 
+           // self.EnqueTempJob( &mut jobId);
+        });
         return;
     }
-    
+
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	PostNode1( &self, node: &DynINode< 'a>)
@@ -254,46 +262,46 @@ impl< 'a> Maestro< 'a>
         node.DiveDf( &mut |probe, enterFlg| {
             let  	curNode = probe.CurNode().unwrap();
             let     curOp = curNode.ChildOp();
-            if enterFlg { 
+            if enterFlg {
                 let mut jobId = if curOp == ChildOp::None  {
                     self.ConstructJob( U16( 0), curNode.Value().unwrap())
                 } else {
                     U16( 0)
                 };
-                stk.Push( &mut jobId); 
+                stk.Push( &mut jobId);
                 return;
             }
             if curOp == ChildOp::Less {
-                  // 
+                  //
             }
-            match curOp { 
+            match curOp {
                 ChildOp::None => {
                     let  	job = curNode.Value().unwrap();
                     let mut jobId = self.ConstructJob( succId, job);
                     if groupOp == ChildOp::Less {
                         succId = jobId;
                     }
-                    stk.Push( &mut jobId); 
+                    stk.Push( &mut jobId);
                 }
                 _ => {
-                    if ( groupOp != ChildOp::None) && ( groupOp != curOp) && ( groupOp == ChildOp::Less) {  
+                    if ( groupOp != ChildOp::None) && ( groupOp != curOp) && ( groupOp == ChildOp::Less) {
                         assert!( curOp == ChildOp::Bor);
                         let     arr = stk.Arr();
                         let     buff = Buff::Create( arr.Size(), |i| *arr.At( i));
                         succId = self.ConstructEnqueBulk( U16( 0),  buff);
                         stk.SetSize( U32( 0));
-                    } 
-                    groupOp = curOp 
+                    }
+                    groupOp = curOp
                 }
             }
         });
-        let     arr = stk.Arr(); 
+        let     arr = stk.Arr();
         arr.USeg().Traverse( |i| {
-            let  	mut jobId = *arr.At( i); 
-            self.EnqueRunJob( &mut jobId);  
+            let  	mut jobId = *arr.At( i);
+            self.EnqueRunJob( &mut jobId);
         });
     }
-}   
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
