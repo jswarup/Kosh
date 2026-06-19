@@ -11,15 +11,17 @@ pub enum Attrib
     Action( Box< dyn Fn()>),
     #[default]
     Empty,
-}
+} 
 
-impl std::fmt::Debug for Attrib
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl std::fmt::Display for Attrib
 {
     fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
         match self {
-            Attrib::Inv( value) => f.debug_tuple( "Inv").field( value).finish(),
-            Attrib::Repeat( left, right) => f.debug_tuple( "Repeat").field( left).field( right).finish(),
+            Attrib::Inv( value) => write!( f, "Inv({})", value),
+            Attrib::Repeat( left, right) => write!( f, "Repeat({}, {})", left.0, right.0),
             Attrib::Action( _) => f.write_str( "Action(<closure>)"),
             Attrib::Empty => f.write_str( "Empty"),
         }
@@ -28,7 +30,7 @@ impl std::fmt::Debug for Attrib
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive( Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ChildOp
 {
     Sum,
@@ -38,6 +40,24 @@ pub enum ChildOp
     Shl,
     Shr,
     None
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl std::fmt::Display for ChildOp
+{
+    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    {
+        match self {
+            ChildOp::Sum => f.write_str( "Sum"),
+            ChildOp::Prod => f.write_str( "Prod"),
+            ChildOp::Less => f.write_str( "Less"),
+            ChildOp::Bor => f.write_str( "Bor"),
+            ChildOp::Shl => f.write_str( "Shl"),
+            ChildOp::Shr => f.write_str( "Shr"),
+            ChildOp::None => f.write_str( "None"),
+        }
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

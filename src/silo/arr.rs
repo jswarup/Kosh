@@ -229,6 +229,16 @@ impl< 'a, T: std::fmt::Debug> std::fmt::Debug for Arr< 'a, T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl< 'a, T: std::fmt::Display> std::fmt::Display for Arr< 'a, T>
+{
+    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    {
+        std::fmt::Display::fmt( &(*self).Iter(), f)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl< 'a, T: PartialEq> PartialEq for Arr< 'a, T>
 {
     fn	eq( &self, other: &Self) -> bool
