@@ -59,6 +59,14 @@ pub trait IAccess< 'a, T: 'a + ?Sized> {
         }
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	SortSanity< Less>( &self, less: Less) -> bool
+    where
+        Less: Fn( &T, &T) -> bool + Send + Sync + Clone + 'a,
+    {
+        self.USeg().RSnip( 1).Span( |k| !less( self.At( k + 1), self.At( k)))
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -69,6 +77,8 @@ pub struct AccessIter< 'a, T: 'a + ?Sized, A>
     _index: U32,
     _marker: std::marker::PhantomData< &'a T>,
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 impl< 'a, T: 'a + ?Sized, A: IAccess< 'a, T>> Iterator for AccessIter< 'a, T, A>
 {

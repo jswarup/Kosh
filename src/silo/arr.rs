@@ -113,16 +113,7 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
             let  	swapFn = move |i, j| arr.Swap( i, j);
             arr.USeg().DoQSort( worker, lessFn, swapFn);
         }
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    fn	SortSanity< Less>( &self, less: Less) -> bool
-    where
-        Less: Fn( &T, &T) -> bool + Send + Sync + Clone + 'a,
-    {
-        self.USeg().RSnip( 1).Span( |k| !less( self.At( k + 1), self.At( k)))
-    }
+    } 
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -172,6 +163,8 @@ impl< 'a, T> IAccess< 'a, T> for Arr< 'a, T>
         unsafe { &*self.Ptr().add( k.into().AsUsize()) }
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 impl< 'a, T> IArr< 'a, T> for Arr< 'a, T> {
     fn	Ptr( &self) -> *const T
@@ -262,6 +255,9 @@ impl< 'a, T, const N: usize> From< &'a [T; N]> for Arr< 'a, T>
         unsafe { Arr::New( NonNull::new_unchecked( arr.as_ptr() as *mut T), N) }
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl< 'a, T, const N: usize> From< &'a mut [T; N]> for Arr< 'a, T>
 {
     fn	from( arr: &'a mut [T; N]) -> Self
@@ -269,6 +265,9 @@ impl< 'a, T, const N: usize> From< &'a mut [T; N]> for Arr< 'a, T>
         unsafe { Arr::New( NonNull::new_unchecked( arr.as_mut_ptr()), N) }
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl< 'a, T> From< &'a [T]> for Arr< 'a, T>
 {
     fn	from( slice: &'a [T]) -> Self
@@ -281,6 +280,9 @@ impl< 'a, T> From< &'a [T]> for Arr< 'a, T>
         }
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl< 'a, T> From< &'a mut [T]> for Arr< 'a, T>
 {
     fn	from( slice: &'a mut [T]) -> Self

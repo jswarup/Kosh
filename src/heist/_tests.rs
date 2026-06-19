@@ -144,11 +144,8 @@ fn	TestDoQSortWorkStealing()
     let  	mainMaestro = atelier.MainMaestro();
     mainMaestro.Tender( quickSorter);
     atelier.DoLaunch();
-    assert!( arr.SortSanity( |a, b| { a > b }));
-    arr.USeg().Traverse( |i| {
-        print!( "{} ", arr.At( i));
-    });
-    println!();
+    assert!( arr.SortSanity( |a, b| { a > b })); 
+    println!( "{} ", arr);  
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -160,11 +157,8 @@ fn	TestDoQSortSequential()
     let  	quickSorter = buff.Arr().QuickSorter( |a, b| a > b);
     let  	worker = Worker::New();
     worker.Tender( quickSorter);
-    assert!( buff.Arr().SortSanity( |a, b| { a > b }));
-    buff.Arr().USeg().Traverse( |i| {
-        print!( "{} ", buff.Arr().At( i));
-    });
-    println!();
+    assert!( buff.Arr().SortSanity( |a, b| { a > b })); 
+    println!( "{} ", buff.Arr());  
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
