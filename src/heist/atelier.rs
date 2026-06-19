@@ -256,20 +256,19 @@ impl< 'a> Atelier< 'a>
         jobIds.Traverse( |jobId| {
             processStash.Push( *jobId);
         });
-         
-        let mut jobId = U16( 0);
-        while processStash.Pop( &mut jobId) {
-            if !jobSet.insert( jobId) {
+          
+        for jobId in processStash.Stk().Arr().iter() {
+            if !jobSet.insert( *jobId) {
                 continue;
             }
-            jobStash.Push( jobId);
+            jobStash.Push( *jobId);
             
-            let     succId = *self._SuccIds.Arr().At( jobId);
+            let mut   succId = *self._SuccIds.Arr().At( *jobId);
             succStash.Push( succId);
             if succId != U16( 0) {
-                processStash.Push( succId);
+                processStash.Stk().Push( &mut succId);
             } 
-            predStash.Push( self._SzPreds.Arr().At( jobId).Load( Ordering::SeqCst));  
+            predStash.Push( self._SzPreds.Arr().At( *jobId).Load( Ordering::SeqCst));  
         }
         ( jobStash, succStash, predStash)
     }

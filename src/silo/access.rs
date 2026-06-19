@@ -87,6 +87,23 @@ impl< 'a, T: 'a + ?Sized, A: IAccess< 'a, T>> Iterator for AccessIter< 'a, T, A>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl< 'a, T: 'a + ?Sized + std::fmt::Display, A: IAccess< 'a, T>> std::fmt::Display for AccessIter< 'a, T, A>
+{
+    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    {
+        write!( f, "[")?;
+        for i in self._index.0 .. self._access.Size().0 {
+            if i > self._index.0 {
+                write!( f, ", ")?;
+            }
+            write!( f, "{}", self._access.At( U32( i)))?;
+        }
+        write!( f, "]")
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl< 'a, T> IAccess< 'a, T> for &'a [T]
 {
     fn	Size( &self) -> U32
