@@ -2,8 +2,8 @@
 use	crate::{
     heist::Atelier,
     segue::
-    { Charset, Shard },
-    silo::U32
+    { Charset, Shard, JsonListener, JsonOutStream, JsonValue },
+    silo::{ Arr, U32 }
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -71,3 +71,23 @@ fn	TestCharsetOps()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestJsonOutStream()
+{
+    let  	mut prices = vec![ 12.34_f32, 56.78, 90.12, 34.56, 78.90 ];
+    let  	ptr = std::ptr::NonNull::new( prices.as_mut_ptr()).unwrap();
+    let  	arr = Arr::New( ptr, U32( 5));
+    
+    let  	mut output = String::new();
+    let  	mut jsonStream = JsonOutStream::New( &mut output, true);
+    
+    jsonStream.OpenObject( "");
+    jsonStream.Array( "prices", &arr, |p| JsonValue::F64( *p as f64));
+    jsonStream.CloseObject();
+    
+    std::fs::write( "a.json", output).unwrap();
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
