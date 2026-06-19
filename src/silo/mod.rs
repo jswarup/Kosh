@@ -9,7 +9,7 @@ pub mod stash;
 pub mod stk;
 pub mod uint;
 pub mod useg;
-pub use	access::IAccess;
+pub use	access::{ IAccess, AccessIter};
 pub use	arr::{Arr, IArr};
 pub use	buff::Buff;
 pub use	instream::InStream;

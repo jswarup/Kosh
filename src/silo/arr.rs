@@ -1,5 +1,5 @@
 //-- arr.rs -----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ IAccess, U8, U32 };
+use	crate::silo::{ IAccess, AccessIter, U8, U32 };
 use	crate::stalks::DynIWorker;
 use	std::marker::PhantomData;
 use	std::ops::{ Deref, DerefMut };
@@ -290,6 +290,19 @@ impl< 'a> Arr< 'a, U8>
             let  	bytes: &'a [u8] = std::mem::transmute( sliceU8);
             std::str::from_utf8_unchecked( bytes)
         }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, T> IntoIterator for Arr< 'a, T>
+{
+    type Item = &'a T;
+    type IntoIter =  AccessIter< 'a, T, Self>;
+
+    fn	into_iter( self) -> Self::IntoIter
+    {
+        self.Iter()
     }
 }
 

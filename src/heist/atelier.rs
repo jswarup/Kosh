@@ -257,7 +257,7 @@ impl< 'a> Atelier< 'a>
             processStash.Push( *jobId);
         });
           
-        for jobId in processStash.Stk().Arr().iter() {
+        for jobId in processStash.Stk().Arr()  {
             if !jobSet.insert( *jobId) {
                 continue;
             }
