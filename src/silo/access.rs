@@ -6,6 +6,7 @@ use	crate::silo::{ U32, USeg};
 pub trait IAccess< 'a, T: 'a + ?Sized> {
     fn	Size( &self) -> U32;
     fn	At< K: Into< U32>>( &self, k: K) -> &'a T;
+
     //-----------------------------------------------------------------------------------------------------------------------------
 
     fn	IsEmpty( &self) -> bool
@@ -43,6 +44,44 @@ pub trait IAccess< 'a, T: 'a + ?Sized> {
         F: FnMut( &T),
     { 
         self.USeg().Traverse( |k| f( self.At( k)))
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	Iter( self) -> AccessIter< 'a, T, Self>
+    where
+        Self: Sized,
+    {
+        AccessIter {
+            _access: self,
+            _index: U32( 0),
+            _marker: std::marker::PhantomData,
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub struct AccessIter< 'a, T: 'a + ?Sized, A>
+{
+    _access: A,
+    _index: U32,
+    _marker: std::marker::PhantomData< &'a T>,
+}
+
+impl< 'a, T: 'a + ?Sized, A: IAccess< 'a, T>> Iterator for AccessIter< 'a, T, A>
+{
+    type Item = &'a T;
+
+    fn	next( &mut self) -> Option< Self::Item>
+    {
+        if self._index < self._access.Size() {
+            let  	item = self._access.At( self._index);
+            self._index = self._index + 1;
+            Some( item)
+        } else {
+            None
+        }
     }
 }
 

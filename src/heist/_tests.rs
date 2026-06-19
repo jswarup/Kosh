@@ -5,7 +5,7 @@ use	crate::{
     silo::
     { Buff, IAccess, IArr, U16, U32 },
     stalks::
-    { DynINode, DynIWorker, IWorker, Worker },
+    { DynIWorker, IWorker, Worker },
 };
 use	std::sync::{ Arc, Mutex };
 use	std::thread;

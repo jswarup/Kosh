@@ -181,6 +181,22 @@ impl< 'a> Maestro< 'a>
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
+    // PostNode method:
+    // This method traverses a dependency graph/tree (`DynINode`) using depth-first search (`DiveDf`) to convert it into
+    // executable jobs with correct execution ordering (sequential vs parallel).
+    //
+    // - Leaf nodes (`ChildOp::None`): Constructed as jobs and pushed onto the `jobStk`.
+    // - Operator nodes (`ChildOp::Less` for sequential, `ChildOp::Bor` for parallel):
+    //   - On entry (pre-visit), the operator and the current size of `jobStk` are saved on `opStk`.
+    //   - On exit (post-visit), the operator evaluates its children (all jobs added to `jobStk` since entry).
+    //   - Optimization: If the parent operator is identical to the current one (`parentOp == curOp`), it delays
+    //     processing to flatten the tree (e.g., A < (B < C) becomes A < B < C).
+    //   - For Sequential (`ChildOp::Less`): Sets up a chain where each job must complete before the next begins. The first
+    //     job in the chain is pushed back to `jobStk` to represent the entire sequence.
+    //   - For Parallel (`ChildOp::Bor`): All jobs share the same successor. A "bulk" job is created to enqueue all these
+    //     parallel jobs at once, and this bulk job is pushed back to `jobStk`.
+    // - After traversal, any remaining jobs on `jobStk` are linked to the current Maestro successor (`self.CurSuccId()`).
+    //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	PostNode( &self, node: &DynINode< 'a>)
     {
@@ -194,6 +210,7 @@ impl< 'a> Maestro< 'a>
             let  	    curNode = probe.CurNode().unwrap();
             let         curOp = curNode.ChildOp();
             if enterFlg {
+                // Pre-visit: Push operator and current job stack size, or construct job for leaf nodes.
                 if  curOp != ChildOp::None {
                     opStk.PushX( ( curOp, jobStk.Size()));
                     return;
@@ -203,7 +220,8 @@ impl< 'a> Maestro< 'a>
                 jobStk.Push( &mut jobId);
                 return;
             }
-            if  curOp == ChildOp::None {
+            // Post-visit: Leaf nodes have already been pushed on entry.
+            if  curOp == ChildOp::None {                                
                 return;
             }
             let mut biOpTuple = ( ChildOp::None, U32( 0));
@@ -211,6 +229,7 @@ impl< 'a> Maestro< 'a>
             let     opArr = opStk.Arr();
             assert!( biOpTuple.0 == curOp);
             let     parentOp = if opArr.Size() != 0 { opArr.Last().0 } else { ChildOp::None};
+            // Flatten identical adjacent operators (e.g. A < (B < C) becomes A < B < C)
             if parentOp == biOpTuple.0  {
                 return;
             }
@@ -219,34 +238,35 @@ impl< 'a> Maestro< 'a>
             let     arr = jobStk.Arr().Subset( startSz, jobStk.Size() - startSz);
             jobStk.SetSize( startSz);
             if curOp == ChildOp::Less {
+                // Sequential: Chain jobs such that each completes before the next one starts.
                 arr.USeg().TraverseRev( |i| {
                     let     jobId = *arr.At( i);
                     self.Atelier().SetAfter( jobId, currentSucc);
                     currentSucc = jobId;
                 });
                 jobStk.PushX( currentSucc);
-            } else {
-                assert!( curOp == ChildOp::Bor);
-                arr.USeg().TraverseRev( |i| {
-                    let     jobId = *arr.At( i);
-                    self.Atelier().SetAfter( jobId, currentSucc);
+                self.Atelier().PrintTraceJobs( jobStk.Arr());
+            } 
+            if curOp == ChildOp::Bor { 
+                // Parallel: All jobs run concurrently and share the same successor.
+                arr.USeg().TraverseRev( |i| { 
+                    self.Atelier().SetAfter( *arr.At( i), currentSucc);
                 });
-                let     jobId = self.ConstructEnqueBulk( U16( 0), arr.into());
+                // Create a bulk job to enqueue all parallel jobs at once.
+                let     jobId = self.ConstructEnqueBulk( currentSucc, arr.into());
                 jobStk.PushX( jobId);
+                self.Atelier().PrintTraceJobs( jobStk.Arr());
             }
             return;
         });
-        let      ( jobStash, succStash,     predStash) = self.Atelier().TraceJobs( jobStk.Arr());
-        let     jobArr = jobStash.Stk().Arr();
-        let     succArr = succStash.Stk().Arr();
-        let     predArr = predStash.Stk().Arr();
-        jobArr.USeg().Traverse( |i| {
-            println!( "{} {} {}", *jobArr.At( i), *succArr.At( i), *predArr.At( i));
+        jobStk.Arr().Traverse( |jId| { 
+            self.Atelier().SetAfter( *jId, currentSucc);
         });
+        self.Atelier().PrintTraceJobs( jobStk.Arr());
         
         jobStk.Arr().Traverse( |jId| {
-            let mut     jobId = *jId;
-           // self.EnqueTempJob( &mut jobId);
+            let mut     jobId = *jId; 
+           //self.EnqueTempJob( &mut jobId);
         });
         return;
     }

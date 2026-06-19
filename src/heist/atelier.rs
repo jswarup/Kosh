@@ -1,6 +1,6 @@
 //-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::Maestro;
-use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, Stk, U16, U32 };
+use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, U16, U32 };
 use	crate::stalks::{ Atm, Spinlock, WorkPtr };
 use	std::sync::atomic::Ordering;
 use std::collections::HashSet;
@@ -83,7 +83,7 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	IncrPredAt< K: Into< U16>>( &self, jobId: U16, inc: K) -> U16
+    pub fn	IncrSzPredAt< K: Into< U16>>( &self, jobId: U16, inc: K) -> U16
     {
         self._SzPreds.Arr().At( jobId).FetchAdd( inc, Ordering::SeqCst)
     }
@@ -126,7 +126,7 @@ impl< 'a> Atelier< 'a>
     pub fn	SetAfter( &self, jobId: U16, succId: U16)
     {
         self._SuccIds.Arr().SetAt( jobId, &succId);
-        self.IncrPredAt( succId, 1);
+        self.IncrSzPredAt( succId, 1);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -198,7 +198,7 @@ impl< 'a> Atelier< 'a>
                 let  	_res = self.FreeJob( maestroIdx, jobId);
                 let  	succId = maestro.CurSuccId();
                 if succId != U16( 0) {
-                    let  	szPred: U16 = self.IncrPredAt( succId, -U16( 1));
+                    let  	szPred: U16 = self.IncrSzPredAt( succId, -U16( 1));
                     if szPred == U16( 1) {
                         jobId = succId;
                         self.IncrSzSchedJob( U32( 1));
@@ -265,18 +265,31 @@ impl< 'a> Atelier< 'a>
             jobStash.Push( jobId);
             
             let     succId = *self._SuccIds.Arr().At( jobId);
+            succStash.Push( succId);
             if succId != U16( 0) {
-                succStash.Push( succId);
                 processStash.Push( succId);
-            }
-            let     predId = self._SzPreds.Arr().At( jobId).Load(Ordering::SeqCst);
-            if predId != U16( 0) {
-                predStash.Push( predId);
-                processStash.Push( predId);
-            }
+            } 
+            predStash.Push( self._SzPreds.Arr().At( jobId).Load( Ordering::SeqCst));  
         }
         ( jobStash, succStash, predStash)
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+    
+    pub fn	PrintTraceJobs( &self, jobIds: Arr< U16>) 
+    {
+        let     ( jobStash, succStash, predStash) = self.TraceJobs( jobIds);
+        let     jobArr = jobStash.Stk().Arr();
+        let     succArr = succStash.Stk().Arr();
+        let     predArr = predStash.Stk().Arr();
+        
+        println!( "-- {} -------------", jobIds.Size());
+        jobArr.USeg().Traverse( |i| {
+            println!( "{} {} {}", *jobArr.At( i), *succArr.At( i), *predArr.At( i)); 
+        });
+        return;
+    }
+
     //-----------------------------------------------------------------------------------------------------------------------------
 
 }
