@@ -115,7 +115,7 @@ impl< 'a> Atelier< 'a>
         let  	maestro = self._Maestros.Arr().At( maestroIdx);
         let  	jobCacheStk = maestro.JobCacheStk();
         loop {
-            if jobCacheStk.SzVoid() != 0 && jobCacheStk.Push( &mut jobId) {
+            if jobCacheStk.SzVoid() != 0 && jobCacheStk.PushX( &mut jobId) {
                 return true;
             }
             let  	_guard = self._FreeJobLock.Lock();
@@ -263,10 +263,10 @@ impl< 'a> Atelier< 'a>
             }
             jobStash.Push( *jobId);
             
-            let mut   succId = *self._SuccIds.Arr().At( *jobId);
+            let     succId = *self._SuccIds.Arr().At( *jobId);
             succStash.Push( succId);
             if succId != U16( 0) {
-                processStash.Stk().Push( &mut succId);
+                processStash.Stk().Push( succId);
             } 
             predStash.Push( self._SzPreds.Arr().At( *jobId).Load( Ordering::SeqCst));  
         }

@@ -200,8 +200,8 @@ fn	StackBasicOps()
     assert_eq!( stack.Size(), 0);
     // Push values 1..=5 onto the stack
     for i in 1..=5u32 {
-        let  	mut val = i;
-        assert!( stack.Push( &mut val), "push failed at {}", i);
+        let     val = i;
+        assert!( stack.Push( val), "push failed at {}", i);
     }
     assert_eq!( stack.Size(), 5);
     // Pop values and verify LIFO order
@@ -378,8 +378,8 @@ fn	StackExportImportOps()
     let  	srcStash = Stash::< U32>::New( 10, 0, U32( 0));
     let  	srcStk = srcStash.Stk();
     for i in 1..=5u32 {
-        let  	mut val = U32( i);
-        assert!( srcStk.Push( &mut val));
+        let     val = U32( i);
+        assert!( srcStk.Push( val));
     }
     assert_eq!( srcStk.Size(), 5);
     // Destination stack initially empty
@@ -400,8 +400,8 @@ fn	StackExportImportOps()
     assert_eq!( dstStk.Size(), 0);
     // Refill source stack for Import test
     for i in 10..=14u32 {
-        let  	mut v = U32( i);
-        assert!( srcStk.Push( &mut v));
+        let     v = U32( i);
+        assert!( srcStk.Push( v));
     }
     assert_eq!( srcStk.Size(), 5);
     // Import from source into destination ( move all 5 elements)
@@ -433,8 +433,8 @@ fn	TestConcurrentStackOps()
             let  	srcStash = Stash::< U32>::New( 10, 0, U32( 0));
             let  	srcStk = srcStash.Stk();
             for i in 0..10 {
-                let  	mut v = U32( t * 10 + i);
-                srcStk.Push( &mut v);
+                let  	v = U32( t * 10 + i);
+                srcStk.Push( v);
             }
             // Import elements from local srcStk to shared dstStk
             dstStkClone.Stk().Import( &srcStk, 10);

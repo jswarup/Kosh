@@ -89,10 +89,9 @@ impl< T: Copy> Stash< T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Push( &mut self, v:  T)
-    {
-        let  	mut val = v;
-        while !self.Stk().Push( &mut val) {
+    pub fn	Push( &mut self, val:  T)
+    { 
+        while !self.Stk().Push( val) {
             if self.Size() == self._Buff.Size() {
                 let  	newSz = if self._Buff.Size() == U32( 0) {
                     U32( 1)
@@ -114,7 +113,7 @@ impl< T: Default> Stash< T>
 
     pub fn	PushX( &mut self, val: &mut T)
     {
-        while !self.Stk().Push( val) {
+        while !self.Stk().PushX( val) {
             if self.Size() == self._Buff.Size() {
                 let  	newSz = if self._Buff.Size() == U32( 0) {
                     U32( 1)

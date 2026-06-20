@@ -83,7 +83,7 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	EnqueTempJob( &self, jobId: &mut U16)
+    pub fn	EnqueTempJob( &self, jobId: U16)
     {
         assert!( self.TempQueueStk().Push( jobId));
     }
@@ -145,10 +145,10 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	EnqueRunJob( &self, jobId: &mut U16)
+    pub fn	EnqueRunJob( &self, jobId: & U16)
     {
         let  	_guard = self._RunQlock.Lock();
-        assert!( self._RunQueue.Stk().Push( jobId), "RunQueue overflow!");
+        assert!( self._RunQueue.Stk().Push( *jobId), "RunQueue overflow!");
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -212,12 +212,12 @@ impl< 'a> Maestro< 'a>
             if enterFlg {
                 // Pre-visit: Push operator and current job stack size, or construct job for leaf nodes.
                 if  curOp != ChildOp::None {
-                    opStk.PushX( ( curOp, jobStk.Size()));
+                    opStk.Push( ( curOp, jobStk.Size()));
                     return;
                 }
                 let         job = curNode.Value().unwrap();
                 let mut     jobId = self.ConstructJob( U16( 0), job);
-                jobStk.Push( &mut jobId);
+                jobStk.PushX( &mut jobId);
                 return;
             }
             // Post-visit: Leaf nodes have already been pushed on entry.
@@ -244,7 +244,7 @@ impl< 'a> Maestro< 'a>
                     self.Atelier().SetAfter( jobId, currentSucc);
                     currentSucc = jobId;
                 });
-                jobStk.PushX( currentSucc);
+                jobStk.Push( currentSucc);
                 self.Atelier().PrintTraceJobs( jobStk.Arr());
             } 
             if curOp == ChildOp::Bor { 
@@ -254,7 +254,7 @@ impl< 'a> Maestro< 'a>
                 });
                 // Create a bulk job to enqueue all parallel jobs at once.
                 let     jobId = self.ConstructEnqueBulk( currentSucc, arr.into());
-                jobStk.PushX( jobId);
+                jobStk.Push( jobId);
                 self.Atelier().PrintTraceJobs( jobStk.Arr());
             }
             return;
@@ -264,63 +264,13 @@ impl< 'a> Maestro< 'a>
         });
         self.Atelier().PrintTraceJobs( jobStk.Arr());
         
-        jobStk.Arr().Traverse( |jId| {
-            let mut     jobId = *jId; 
-           //self.EnqueTempJob( &mut jobId);
+        jobStk.Arr().Traverse( |jobId| { 
+            self.EnqueTempJob( *jobId);
         });
         return;
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	PostNode1( &self, node: &DynINode< 'a>)
-    {
-        let         jobStash = Stash::<U16>::New( U32( 1024), 0, U16( 0));
-        let  mut    succId = self.CurSuccId();
-        let  mut    stk = jobStash.Stk();
-        let mut     groupOp = ChildOp::None;
-        node.DiveDf( &mut |probe, enterFlg| {
-            let  	curNode = probe.CurNode().unwrap();
-            let     curOp = curNode.ChildOp();
-            if enterFlg {
-                let mut jobId = if curOp == ChildOp::None  {
-                    self.ConstructJob( U16( 0), curNode.Value().unwrap())
-                } else {
-                    U16( 0)
-                };
-                stk.Push( &mut jobId);
-                return;
-            }
-            if curOp == ChildOp::Less {
-                  //
-            }
-            match curOp {
-                ChildOp::None => {
-                    let  	job = curNode.Value().unwrap();
-                    let mut jobId = self.ConstructJob( succId, job);
-                    if groupOp == ChildOp::Less {
-                        succId = jobId;
-                    }
-                    stk.Push( &mut jobId);
-                }
-                _ => {
-                    if ( groupOp != ChildOp::None) && ( groupOp != curOp) && ( groupOp == ChildOp::Less) {
-                        assert!( curOp == ChildOp::Bor);
-                        let     arr = stk.Arr();
-                        let     buff = Buff::Create( arr.Size(), |i| *arr.At( i));
-                        succId = self.ConstructEnqueBulk( U16( 0),  buff);
-                        stk.SetSize( U32( 0));
-                    }
-                    groupOp = curOp
-                }
-            }
-        });
-        let     arr = stk.Arr();
-        arr.USeg().Traverse( |i| {
-            let  	mut jobId = *arr.At( i);
-            self.EnqueRunJob( &mut jobId);
-        });
-    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -331,7 +281,7 @@ impl< 'a> IWorker for Maestro< 'a>
     {
         let  	mut jobId = self.CurSuccId();
         jobId = self.ConstructJob( jobId, job);
-        self.EnqueTempJob( &mut jobId);
+        self.EnqueTempJob( jobId);
     }
     fn	AsRaw( &self) -> *const ()
     {

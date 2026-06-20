@@ -213,9 +213,8 @@ impl< 'b, 'a> NodeProbe< 'b, 'a>
     }
 
     pub fn	Push( &self, node: &'b DynINode< 'a>)
-    {
-        let  	mut temp = node;
-        self._NodeStash.Stk().Push( &mut temp);
+    { 
+        self._NodeStash.Stk().Push( node);
     }
 
     pub fn	Pop( &self, node: &'b DynINode< 'a>)

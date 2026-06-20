@@ -80,7 +80,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
     //-----------------------------------------------------------------------------------------------------------------------------
     /// Requires exclusive access (not thread-safe to call concurrently).
 
-    pub fn	Push( &self, val: &mut T) -> bool
+    pub fn	PushX( &self, val: &mut T) -> bool
     {
         let  	sz = self.Size();
         if sz >= self._Arr.Size() {
@@ -101,11 +101,13 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
         }
         true
     }
+ 
+    //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn  PushX( &self, v:  T) -> bool
+    pub fn  Push( &self, v:  T) -> bool
     {
-        let mut val = v;
-        self.Push( &mut val)
+        let  	mut val = v;
+        self.PushX( &mut val)
     }
     
     //-----------------------------------------------------------------------------------------------------------------------------
