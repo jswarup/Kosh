@@ -78,15 +78,15 @@ fn	TestMaestroBasicOps()
 #[test]
 fn	TestChoreBuds()
 {
-    let  	aChore = Chore::New( |_m| {
+    let  	aChore = crate::Chore!( |_m| {
         print!( "{} ", 10);
-    });
-    let  	bChore = Chore::New( |_m| {
+    }, "10S");
+    let  	bChore = crate::Chore!( |_m| {
         print!( "{} ", 20);
-    });
-    let  	cChore = Chore::New( |_m| {
+    }, "20S");
+    let  	cChore = crate::Chore!( |_m| {
         print!( "{} ", 40);
-    });
+    }, "40S");
     let  	_choreTreeMacro = crate::ChoreTree!( ( cChore
             < ( bChore
                 | aChore
@@ -107,16 +107,16 @@ fn	TestChoreBuds()
 #[test]
 fn	TestChoreTree()
 {
-    let  	aChore = Chore::New( |_m| {
+    let  	aChore = crate::Chore!( |_m| {
         print!( "{} ", "A");
     });
-    let  	bChore = Chore::New( |_m| {
+    let  	bChore = crate::Chore!( |_m| {
         print!( "{} ", "B");
     });
-    let  	cChore = Chore::New( |_m| {
+    let  	cChore = crate::Chore!( |_m| {
         print!( "{} ", "C");
     }); 
-    let  	dChore = Chore::New( |_m| {
+    let  	dChore = crate::Chore!( |_m| {
         print!( "{} ", "D");
     }); 
  

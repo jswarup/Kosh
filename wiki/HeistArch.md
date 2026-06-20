@@ -97,9 +97,9 @@ You can construct complex tree-structured execution flows using the macro:
 ```rust
 use crate::heist::chore::Chore;
 
-let a = Chore::New(|_| { print!("A "); });
-let b = Chore::New(|_| { print!("B "); });
-let c = Chore::New(|_| { print!("C "); });
+let a = Chore!(|_| { print!("A "); });
+let b = Chore!(|_| { print!("B "); });
+let c = Chore!(|_| { print!("C "); });
 
 // c runs before both b and a
 let budTree = crate::ChoreTree!(

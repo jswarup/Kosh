@@ -6,6 +6,7 @@ use	crate::stalks::{ DynIWorker, IWork };
 #[derive( Copy, Clone, Debug)]
 pub struct Chore
 {
+    pub _DocStr: &'static str,
     _Closure: fn( &DynIWorker< '_>),
 }
 
@@ -15,7 +16,7 @@ impl Default for Chore
 {
     fn	default() -> Self
     {
-        Self { _Closure: |_| {} }
+        Self { _DocStr: "", _Closure: |_| {} }
     }
 }
 
@@ -25,7 +26,12 @@ impl Chore
 {
     pub fn	New( f: fn( &DynIWorker< '_>)) -> Self
     {
-        Self { _Closure: f }
+        Self { _DocStr: "", _Closure: f }
+    }
+
+    pub fn	NewDoc( f: fn( &DynIWorker< '_>), docStr: &'static str) -> Self
+    {
+        Self { _DocStr: docStr, _Closure: f }
     }
 }
 
@@ -55,8 +61,24 @@ impl std::fmt::Display for Chore
 {
     fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
-        write!( f, "Chore")
+        if self._DocStr.is_empty() {
+            write!( f, "Chore")
+        } else {
+            write!( f, "Chore: {}", self._DocStr)
+        }
     }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[macro_export]
+macro_rules! Chore {
+    ( $closure:expr) => {
+        $crate::heist::Chore::New( $closure)
+    };
+    ( $closure:expr, $doc:expr) => {
+        $crate::heist::Chore::NewDoc( $closure, $doc)
+    };
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
