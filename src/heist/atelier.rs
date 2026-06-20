@@ -16,6 +16,7 @@ pub struct Atelier< 'a>
     _FreeJobLock: Spinlock,
     _FreeJobStash: Stash< U16>,                                        // A Stack of free jobIds
     _JobBuff: Buff< WorkPtr< 'a>>,
+    _JobDocBuff: Buff< &'static str>,
     _Terminal: U16,
 }
 
@@ -36,10 +37,11 @@ impl< 'a> Atelier< 'a>
             _FreeJobLock: Spinlock::New(),
             _FreeJobStash: Stash::< U16>::New( U32::_16Sz, 0, U16( 0)),
             _JobBuff: Buff::New( U32::_16Sz, WorkPtr::Null()),
+            _JobDocBuff: Buff::New( U32::_16Sz, "Free"),
             _Terminal: U16( 0),
         };
         atelier._FreeJobStash.DoIndexSetup();
-        atelier._Terminal = atelier.ConstructJob( U32( 0), U16( 0), WorkPtr::Dummy());
+        atelier._Terminal = atelier.ConstructJob( U32( 0), U16( 0), WorkPtr::Dummy(), "Terminal");
         atelier._Maestros.Arr().MutAt( 0).SetCurSuccId( atelier._Terminal);
         atelier
     }
@@ -131,13 +133,14 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ConstructJob( &self, maestroIdx: U32, succId: U16, job: WorkPtr< 'a>) -> U16
+    pub fn	ConstructJob( &self, maestroIdx: U32, succId: U16, job: WorkPtr< 'a>, docStr: &'static str) -> U16
     {
         let  	jobId = self.AllocJob( maestroIdx);
         if jobId == 0 {
             return jobId;
         }
-        self._JobBuff.Arr().SetAt( jobId, &job);
+        self._JobBuff.Arr().SetAt( jobId, &job); 
+        self._JobDocBuff.Arr().SetAt( jobId, &docStr);
         if succId != 0 {
              self.SetAfter( jobId, succId);
         }

@@ -76,9 +76,9 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ConstructJob( &self, succId: U16, job: impl IntoWorkPtr< 'a>) -> U16
+    pub fn	ConstructJob( &self, succId: U16, job: impl IntoWorkPtr< 'a>, docStr: &'static str) -> U16
     {
-        self.Atelier().ConstructJob( self._Index, succId, job.IntoWorkPtr())
+        self.Atelier().ConstructJob( self._Index, succId, job.IntoWorkPtr(), docStr)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -98,7 +98,7 @@ impl< 'a> Maestro< 'a>
             arr.USeg().Traverse( |i| {
                 maestro.Atelier().EnqueRunJob( maestro._Index, arr.MutAt( i));
             });
-        })
+        }, "EnqueBulk")
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -216,7 +216,7 @@ impl< 'a> Maestro< 'a>
                     return;
                 }
                 let         job = curNode.Value().unwrap();
-                let mut     jobId = self.ConstructJob( U16( 0), job);
+                let mut     jobId = self.ConstructJob( U16( 0), job, "PostNode");
                 jobStk.PushX( &mut jobId);
                 return;
             }
@@ -280,7 +280,7 @@ impl< 'a> IWorker for Maestro< 'a>
     fn	PostJob( &self, job: WorkPtr< '_>)
     {
         let  	mut jobId = self.CurSuccId();
-        jobId = self.ConstructJob( jobId, job);
+        jobId = self.ConstructJob( jobId, job, "PostJob");
         self.EnqueTempJob( jobId);
     }
     fn	AsRaw( &self) -> *const ()

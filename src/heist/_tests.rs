@@ -21,16 +21,16 @@ fn	BuffBasicAtelierTest()
         let  	mut jobId = maestro.CurSuccId();
         jobId = maestro.ConstructJob( jobId, |w1: &DynIWorker< '_>| {
             println!( "Trial1 {}", Maestro::FromWorker( w1).MaestroIndex());
-        });
+        }, "TestJob1");
         jobId = maestro.ConstructJob( jobId, |w2: &DynIWorker< '_>| {
             println!( "Trial2 {}", Maestro::FromWorker( w2).MaestroIndex());
-        });
+        }, "TestJob2");
         maestro.EnqueRunJob( &mut jobId);
         println!( "Trial {}", maestro.MaestroIndex());
     }
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
-    let  	mut jobId = mainMaestro.ConstructJob( U16( 0), trialJob);
+    let  	mut jobId = mainMaestro.ConstructJob( U16( 0), trialJob, "TrialJob");
     mainMaestro.EnqueRunJob( &mut jobId);
     atelier.DoLaunch();
 }
