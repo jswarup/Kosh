@@ -92,18 +92,14 @@ impl< 'b, 'a> IAccess< 'b, DynINode< 'a>> for NodeChildren< 'b, 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait AsWorkPtr< 'a>
+impl< 'a> INode< 'a> for crate::silo::U32
 {
-    fn	AsWorkPtr( &self) -> Option< crate::stalks::WorkPtr< 'a>>;
+    fn	_Size( &self) -> crate::silo::U32 { crate::silo::U32(0) }
+    fn	_At( &self, _idx: crate::silo::U32) -> &DynINode< 'a> { panic!("Leaf") }
+    fn	Value( &self) -> Option< crate::stalks::WorkPtr< 'a>> { None }
     fn	DocStr( &self) -> &'static str { "" }
-}
-
-impl< 'a> AsWorkPtr< 'a> for crate::silo::U32
-{
-    fn	AsWorkPtr( &self) -> Option< crate::stalks::WorkPtr< 'a>>
-    {
-        None
-    }
+    fn	Attrib( &self) -> Option< &crate::stalks::Attrib> { None }
+    fn	ChildOp( &self) -> crate::stalks::ChildOp { crate::stalks::ChildOp::None }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -401,7 +397,7 @@ macro_rules! BiNodeTree {
                     {
                         match self {
                             [<$Arg BiNode>]::Leaf { _Val, .. } => {
-                                $crate::stalks::node::AsWorkPtr::AsWorkPtr( _Val)
+                                _Val.Value()
                             }
                             _ => None
                         }
@@ -411,7 +407,7 @@ macro_rules! BiNodeTree {
                     {
                         match self {
                             [<$Arg BiNode>]::Leaf { _Val, .. } => {
-                                $crate::stalks::node::AsWorkPtr::DocStr( _Val)
+                                _Val.DocStr()
                             }
                             _ => ""
                         }

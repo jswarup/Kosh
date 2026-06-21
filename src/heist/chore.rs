@@ -44,17 +44,7 @@ impl IWork for Chore
         ( self._Closure)( worker);
     }
 }
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl From< fn( &DynIWorker< '_>) > for Chore
-{
-    fn	from( f: fn( &DynIWorker< '_>)) -> Self
-    {
-        Self::New( f)
-    }
-}
-
+ 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl std::fmt::Display for Chore
@@ -102,12 +92,17 @@ macro_rules! ChoreTree {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> crate::stalks::node::AsWorkPtr< 'a> for Chore
+impl< 'a> crate::stalks::INode< 'a> for Chore
 {
-    fn	AsWorkPtr( &self) -> Option< crate::stalks::WorkPtr< 'a>>
+    fn	_Size( &self) -> crate::silo::U32 { crate::silo::U32(0) }
+    fn	_At( &self, _idx: crate::silo::U32) -> &crate::stalks::DynINode< 'a> { panic!("Leaf") }
+    fn	Value( &self) -> Option< crate::stalks::WorkPtr< 'a>>
     {
         Some( crate::stalks::IntoWorkPtr::IntoWorkPtr( *self))
     }
+    fn	DocStr( &self) -> &'static str { self._DocStr }
+    fn	Attrib( &self) -> Option< &crate::stalks::Attrib> { None }
+    fn	ChildOp( &self) -> crate::stalks::ChildOp { crate::stalks::ChildOp::None }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

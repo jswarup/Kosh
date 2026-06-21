@@ -153,12 +153,17 @@ macro_rules! ShardTree {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> crate::stalks::node::AsWorkPtr< 'a> for Shard
+impl< 'a> crate::stalks::INode< 'a> for Shard
 {
-    fn	AsWorkPtr( &self) -> Option< crate::stalks::WorkPtr< 'a>>
+    fn	_Size( &self) -> crate::silo::U32 { crate::silo::U32(0) }
+    fn	_At( &self, _idx: crate::silo::U32) -> &crate::stalks::DynINode< 'a> { panic!("Leaf") }
+    fn	Value( &self) -> Option< crate::stalks::WorkPtr< 'a>>
     {
         Some( crate::stalks::IntoWorkPtr::IntoWorkPtr( self.clone()))
     }
+    fn	DocStr( &self) -> &'static str { "" }
+    fn	Attrib( &self) -> Option< &crate::stalks::Attrib> { None }
+    fn	ChildOp( &self) -> crate::stalks::ChildOp { crate::stalks::ChildOp::None }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
