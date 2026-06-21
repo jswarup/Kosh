@@ -62,6 +62,18 @@ fn	TestINodeTraverse()
         {
             self.children[idx.0 as usize]
         }
+        fn	Value( &self) -> Option< crate::stalks::WorkPtr< 'a>>
+        {
+            None
+        }
+        fn	DocStr( &self) -> &'static str
+        {
+            ""
+        }
+        fn	ChildOp( &self) -> ChildOp
+        {
+            ChildOp::None
+        }
     }
 
     let  	leaf1 = TestNode { id: 1, children: &[], attrib: Some( Attrib::default()) };

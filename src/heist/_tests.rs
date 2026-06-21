@@ -109,16 +109,16 @@ fn	TestChoreTree()
 {
     let  	aChore = crate::Chore!( |_m| {
         print!( "{} ", "A");
-    });
+    }, "A");
     let  	bChore = crate::Chore!( |_m| {
         print!( "{} ", "B");
-    });
+    }, "B");
     let  	cChore = crate::Chore!( |_m| {
         print!( "{} ", "C");
-    }); 
+    }, "C"); 
     let  	dChore = crate::Chore!( |_m| {
         print!( "{} ", "D");
-    }); 
+    }, "D"); 
  
     let  	choreTree= crate::ChoreTree!( ( aChore | ( bChore | cChore ) < dChore));
     let  	atelier = Atelier::New( U32( 4));

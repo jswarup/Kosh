@@ -229,8 +229,8 @@ impl< 'a> Maestro< 'a>
                     self.Atelier().SetAfter( jobId, currentSucc);
                     currentSucc = jobId;
                 });
+                println!( "{}: {} {}", curOp, currentSucc, self.Atelier().TraceJobs( arr));
                 jobStk.Push( currentSucc);
-                println!( "{}: {}", curOp, self.Atelier().TraceJobs( arr));
             } 
             if curOp == ChildOp::Bor { 
                 // Parallel: All jobs run concurrently and share the same successor.
@@ -239,8 +239,8 @@ impl< 'a> Maestro< 'a>
                 });
                 // Create a bulk job to enqueue all parallel jobs at once.
                 let     jobId = self.ConstructEnqueArr( currentSucc, arr.into(), ""); 
-                jobStk.Push( jobId);
                 println!( "{}: {} {}", curOp, jobId, self.Atelier().TraceJobs( arr));
+                jobStk.Push( jobId);
             }
             return;
         });

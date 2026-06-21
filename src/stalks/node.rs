@@ -113,25 +113,13 @@ pub trait INode< 'a>: Send + Sync
     fn	_Size( &self) -> U32;
     fn	_At( &self, idx: U32) -> &DynINode< 'a>;
 
-    fn	Value( &self) -> Option< crate::stalks::WorkPtr< 'a>>
-    {
-        None
-    }
+    fn	Value( &self) -> Option< crate::stalks::WorkPtr< 'a>>;
 
-    fn	DocStr( &self) -> &'static str
-    {
-        ""
-    }
+    fn	DocStr( &self) -> &'static str;
 
-    fn	Attrib( &self) -> Option< &Attrib>
-    {
-        None
-    }
+    fn	Attrib( &self) -> Option< &Attrib>;
 
-    fn	ChildOp( &self) -> ChildOp
-    {
-        ChildOp::None
-    }
+    fn	ChildOp( &self) -> ChildOp;
 
     fn	IsLeaf( &self) -> bool
     {

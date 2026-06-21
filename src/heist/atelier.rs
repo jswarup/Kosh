@@ -257,7 +257,7 @@ impl< 'a> Atelier< 'a>
     pub fn	TraceJobs( &self, jobIds: Arr< U16>) -> AtelierInfo< 'a>
     {        
         let  	mut jobSet = HashSet::< U16>::new();
-        let  	mut info = AtelierInfo::New( self as *const _);
+        let  	mut info = AtelierInfo::New( self as *const _, jobIds.Size());
 
         let  	mut processStash = Stash::< U16>::New( U32( 1024), 0, U16( 0));
         jobIds.Traverse( |jobId| {
@@ -300,15 +300,17 @@ pub struct JobInfo
 pub struct AtelierInfo< 'a>
 {
     pub _Atelier: *const Atelier< 'a>,
+    pub _SzSeed: U32,
     pub _JobStash: Stash< JobInfo>,
 }
 
 impl< 'a> AtelierInfo< 'a>
 {
-    pub fn	New( atelier: *const Atelier< 'a>) -> Self
+    pub fn	New( atelier: *const Atelier< 'a>, szSeed: U32) -> Self
     {
         Self {   
             _Atelier: atelier, 
+            _SzSeed : szSeed,
             _JobStash: Stash::New( U32( 1024), 0, JobInfo { _JobId: U16( 0), _SuccId: U16( 0), _SzPred: U16( 0), _DocStr: "Free" }),
         }
     }
@@ -320,7 +322,7 @@ impl std::fmt::Display for JobInfo
 {
     fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
-        write!( f, "{{ JobId: {:2},  {:2},  {:2}, {:15}}} ", self._JobId, self._SuccId, self._SzPred, self._DocStr)
+        write!( f, "{{ JobId: {},  {}, {}, {}}} ", self._JobId, self._SuccId, self._SzPred, self._DocStr)
     }
 }
 
@@ -330,11 +332,11 @@ impl< 'a> std::fmt::Display for AtelierInfo< 'a>
 {
     fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
-        write!( f, "Atelier {{")?;
+        write!( f, "Atel[ {}: ", self._SzSeed)?;
         self._JobStash.Stk().Arr().Traverse( |jobId| { 
             let  	_ = write!( f, " {}", *jobId);
         });
-        write!( f, "}} ") 
+        write!( f, "] ") 
     }
 }
 
