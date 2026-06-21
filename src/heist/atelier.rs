@@ -114,6 +114,10 @@ impl< 'a> Atelier< 'a>
 
     fn	FreeJob( &self, maestroIdx: U32, mut jobId: U16) -> bool
     {
+        let     docArr = self._JobDocBuff.Arr();
+        assert!( *docArr.At( 0) == "Free");
+        docArr.SetAt( jobId, docArr.At( 0));
+
         let  	maestro = self._Maestros.Arr().At( maestroIdx);
         let  	jobCacheStk = maestro.JobCacheStk();
         loop {
@@ -124,6 +128,8 @@ impl< 'a> Atelier< 'a>
             self._FreeJobStash.Stk().Import( &jobCacheStk, U32::_X);
         }
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	SetAfter( &self, jobId: U16, succId: U16)
     {

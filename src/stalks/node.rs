@@ -95,6 +95,7 @@ impl< 'b, 'a> IAccess< 'b, DynINode< 'a>> for NodeChildren< 'b, 'a>
 pub trait AsWorkPtr< 'a>
 {
     fn	AsWorkPtr( &self) -> Option< crate::stalks::WorkPtr< 'a>>;
+    fn	DocStr( &self) -> &'static str { "" }
 }
 
 impl< 'a> AsWorkPtr< 'a> for crate::silo::U32
@@ -115,6 +116,11 @@ pub trait INode< 'a>: Send + Sync
     fn	Value( &self) -> Option< crate::stalks::WorkPtr< 'a>>
     {
         None
+    }
+
+    fn	DocStr( &self) -> &'static str
+    {
+        ""
     }
 
     fn	Attrib( &self) -> Option< &Attrib>
@@ -410,6 +416,16 @@ macro_rules! BiNodeTree {
                                 $crate::stalks::node::AsWorkPtr::AsWorkPtr( _Val)
                             }
                             _ => None
+                        }
+                    }
+
+                    fn	DocStr( &self) -> &'static str
+                    {
+                        match self {
+                            [<$Arg BiNode>]::Leaf { _Val, .. } => {
+                                $crate::stalks::node::AsWorkPtr::DocStr( _Val)
+                            }
+                            _ => ""
                         }
                     }
 

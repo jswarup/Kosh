@@ -1,7 +1,7 @@
 //-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::Atelier;
 use	crate::silo::{ Buff, IAccess, IArr, Stash, Stk, U16, U32 };
-use	crate::stalks::{ Atm, DynINode, DynIWorker, IWorker, IntoWorkPtr, Spinlock, WorkPtr, Worker, ChildOp};
+use	crate::stalks::{ Atm, DynINode, DynIWorker, IWorker, IntoWorkPtr, Spinlock, WorkPtr, ChildOp};
 use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -216,7 +216,8 @@ impl< 'a> Maestro< 'a>
                     return;
                 }
                 let         job = curNode.Value().unwrap();
-                let mut     jobId = self.ConstructJob( U16( 0), job, "PostNode");
+                let         docStr = curNode.DocStr();
+                let mut     jobId = self.ConstructJob( U16( 0), job, if docStr.is_empty() { "PostNode" } else { docStr });
                 jobStk.PushX( &mut jobId);
                 return;
             }
