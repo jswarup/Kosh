@@ -91,7 +91,7 @@ impl< 'a> Maestro< 'a>
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	ConstructEnqueArr( &self, succId: U16, buff: Buff< U16>, docStr: &'static str) -> U16
-    {
+    { 
         self.ConstructJob( succId, move |worker: &DynIWorker< '_>| {
             let  	maestro = Maestro::FromWorker( worker);
             let  	arr = buff.Arr();
@@ -181,23 +181,7 @@ impl< 'a> Maestro< 'a>
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    // PostNode method:
-    // This method traverses a dependency graph/tree (`DynINode`) using depth-first search (`DiveDf`) to convert it into
-    // executable jobs with correct execution ordering (sequential vs parallel).
-    //
-    // - Leaf nodes (`ChildOp::None`): Constructed as jobs and pushed onto the `jobStk`.
-    // - Operator nodes (`ChildOp::Less` for sequential, `ChildOp::Bor` for parallel):
-    //   - On entry (pre-visit), the operator and the current size of `jobStk` are saved on `opStk`.
-    //   - On exit (post-visit), the operator evaluates its children (all jobs added to `jobStk` since entry).
-    //   - Optimization: If the parent operator is identical to the current one (`parentOp == curOp`), it delays
-    //     processing to flatten the tree (e.g., A < (B < C) becomes A < B < C).
-    //   - For Sequential (`ChildOp::Less`): Sets up a chain where each job must complete before the next begins. The first
-    //     job in the chain is pushed back to `jobStk` to represent the entire sequence.
-    //   - For Parallel (`ChildOp::Bor`): All jobs share the same successor. A "bulk" job is created to enqueue all these
-    //     parallel jobs at once, and this bulk job is pushed back to `jobStk`.
-    // - After traversal, any remaining jobs on `jobStk` are linked to the current Maestro successor (`self.CurSuccId()`).
-    //-----------------------------------------------------------------------------------------------------------------------------
-
+     
     pub fn	PostNode( &self, node: &DynINode< 'a>)
     {
         let         jobStash = Stash::<U16>::New( U32( 1024), 0, U16( 0));
@@ -217,7 +201,7 @@ impl< 'a> Maestro< 'a>
                 }
                 let         job = curNode.Value().unwrap();
                 let         docStr = curNode.DocStr();
-                let mut     jobId = self.ConstructJob( U16( 0), job, if docStr.is_empty() { "PostNode" } else { docStr });
+                let mut     jobId = self.ConstructJob( U16( 0), job,  docStr);
                 jobStk.PushX( &mut jobId);
                 return;
             }
@@ -254,9 +238,9 @@ impl< 'a> Maestro< 'a>
                     self.Atelier().SetAfter( *arr.At( i), currentSucc);
                 });
                 // Create a bulk job to enqueue all parallel jobs at once.
-                let     jobId = self.ConstructEnqueArr( currentSucc, arr.into(), "EnqueArr");
+                let     jobId = self.ConstructEnqueArr( currentSucc, arr.into(), ""); 
                 jobStk.Push( jobId);
-                println!( "{}: {}", curOp, self.Atelier().TraceJobs( arr));
+                println!( "{}: {} {}", curOp, jobId, self.Atelier().TraceJobs( arr));
             }
             return;
         });

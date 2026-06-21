@@ -320,7 +320,7 @@ impl std::fmt::Display for JobInfo
 {
     fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
-        write!( f, "{:15} JobId: {:2}, SuccId: {:2}, SzPred: {:2}", self._DocStr, self._JobId, self._SuccId, self._SzPred)
+        write!( f, "{{ JobId: {:2},  {:2},  {:2}, {:15}}} ", self._JobId, self._SuccId, self._SzPred, self._DocStr)
     }
 }
 
@@ -330,13 +330,11 @@ impl< 'a> std::fmt::Display for AtelierInfo< 'a>
 {
     fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
-        let  	jobArr = self._JobStash.Stk().Arr();
-
-        jobArr.USeg().Traverse( |i| {
-            let  	jInfo = jobArr.At( i);
-            let  	_ = writeln!( f, "{}", jInfo);
+        write!( f, "Atelier {{")?;
+        self._JobStash.Stk().Arr().Traverse( |jobId| { 
+            let  	_ = write!( f, " {}", *jobId);
         });
-        Ok(())
+        write!( f, "}} ") 
     }
 }
 
