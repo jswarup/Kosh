@@ -254,14 +254,12 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	TraceJobs( &self, jobIds: Arr< U16>) -> ( Stash< U16>, Stash< U16>, Stash< U16>)
-    {
-        let mut jobSet = HashSet::< U16>::new();
-        let mut jobStash = Stash::< U16>::New( U32( 1024), 0, U16( 0));
-        let mut succStash = Stash::< U16>::New( U32( 1024), 0, U16( 0));
-        let mut predStash = Stash::< U16>::New( U32( 1024), 0, U16( 0));
+    pub fn	TraceJobs( &self, jobIds: Arr< U16>) -> AtelierInfo< 'a>
+    {        
+        let  	mut jobSet = HashSet::< U16>::new();
+        let  	mut info = AtelierInfo::New( self as *const _);
 
-        let mut processStash = Stash::< U16>::New( U32( 1024), 0, U16( 0));
+        let  	mut processStash = Stash::< U16>::New( U32( 1024), 0, U16( 0));
         jobIds.Traverse( |jobId| {
             processStash.Push( *jobId);
         });
@@ -270,36 +268,76 @@ impl< 'a> Atelier< 'a>
             if !jobSet.insert( *jobId) {
                 continue;
             }
-            jobStash.Push( *jobId);
             
-            let     succId = *self._SuccIds.Arr().At( *jobId);
-            succStash.Push( succId);
+            let  	succId = *self._SuccIds.Arr().At( *jobId);
             if succId != U16( 0) {
                 processStash.Stk().Push( succId);
             } 
-            predStash.Push( self._SzPreds.Arr().At( *jobId).Load( Ordering::SeqCst));  
+            let  	szPred = self._SzPreds.Arr().At( *jobId).Load( Ordering::SeqCst);  
+            let  	docStr = *self._JobDocBuff.Arr().At( *jobId);
+            
+            info._JobStash.Push( JobInfo { _JobId: *jobId, _SuccId: succId, _SzPred: szPred, _DocStr: docStr });
         }
-        ( jobStash, succStash, predStash)
+        info
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    
-    pub fn	PrintTraceJobs( &self, jobIds: Arr< U16>) 
+
+}
+
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[derive( Clone, Copy)]
+pub struct JobInfo
+{
+    pub _JobId: U16, 
+    pub _SuccId: U16,
+    pub _SzPred: U16,
+    pub _DocStr: &'static str,
+}
+
+pub struct AtelierInfo< 'a>
+{
+    pub _Atelier: *const Atelier< 'a>,
+    pub _JobStash: Stash< JobInfo>,
+}
+
+impl< 'a> AtelierInfo< 'a>
+{
+    pub fn	New( atelier: *const Atelier< 'a>) -> Self
     {
-        let     ( jobStash, succStash, predStash) = self.TraceJobs( jobIds);
-        let     jobArr = jobStash.Stk().Arr();
-        let     succArr = succStash.Stk().Arr();
-        let     predArr = predStash.Stk().Arr();
-        
-        println!( "-- {} -------------", jobIds.Size());
-        jobArr.USeg().Traverse( |i| {
-            println!( "{} {} {}", *jobArr.At( i), *succArr.At( i), *predArr.At( i)); 
-        });
-        return;
+        Self {   
+            _Atelier: atelier, 
+            _JobStash: Stash::New( U32( 1024), 0, JobInfo { _JobId: U16( 0), _SuccId: U16( 0), _SzPred: U16( 0), _DocStr: "Free" }),
+        }
     }
+}
 
-    //-----------------------------------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 
+impl std::fmt::Display for JobInfo
+{
+    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    {
+        write!( f, "{:15} JobId: {:2}, SuccId: {:2}, SzPred: {:2}", self._DocStr, self._JobId, self._SuccId, self._SzPred)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a> std::fmt::Display for AtelierInfo< 'a>
+{
+    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    {
+        let  	jobArr = self._JobStash.Stk().Arr();
+
+        jobArr.USeg().Traverse( |i| {
+            let  	jInfo = jobArr.At( i);
+            let  	_ = writeln!( f, "{}", jInfo);
+        });
+        Ok(())
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

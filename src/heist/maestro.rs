@@ -90,7 +90,7 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ConstructEnqueBulk( &self, succId: U16, buff: Buff< U16>) -> U16
+    pub fn	ConstructEnqueArr( &self, succId: U16, buff: Buff< U16>, docStr: &'static str) -> U16
     {
         self.ConstructJob( succId, move |worker: &DynIWorker< '_>| {
             let  	maestro = Maestro::FromWorker( worker);
@@ -98,7 +98,7 @@ impl< 'a> Maestro< 'a>
             arr.USeg().Traverse( |i| {
                 maestro.Atelier().EnqueRunJob( maestro._Index, arr.MutAt( i));
             });
-        }, "EnqueBulk")
+        }, docStr)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -246,7 +246,7 @@ impl< 'a> Maestro< 'a>
                     currentSucc = jobId;
                 });
                 jobStk.Push( currentSucc);
-                self.Atelier().PrintTraceJobs( jobStk.Arr());
+                println!( "{}: {}", curOp, self.Atelier().TraceJobs( arr));
             } 
             if curOp == ChildOp::Bor { 
                 // Parallel: All jobs run concurrently and share the same successor.
@@ -254,16 +254,16 @@ impl< 'a> Maestro< 'a>
                     self.Atelier().SetAfter( *arr.At( i), currentSucc);
                 });
                 // Create a bulk job to enqueue all parallel jobs at once.
-                let     jobId = self.ConstructEnqueBulk( currentSucc, arr.into());
+                let     jobId = self.ConstructEnqueArr( currentSucc, arr.into(), "EnqueArr");
                 jobStk.Push( jobId);
-                self.Atelier().PrintTraceJobs( jobStk.Arr());
+                println!( "{}: {}", curOp, self.Atelier().TraceJobs( arr));
             }
             return;
         });
         jobStk.Arr().Traverse( |jId| { 
             self.Atelier().SetAfter( *jId, currentSucc);
         });
-        self.Atelier().PrintTraceJobs( jobStk.Arr());
+        println!( "{}", self.Atelier().TraceJobs( jobStk.Arr()));
         
         jobStk.Arr().Traverse( |jobId| { 
             self.EnqueTempJob( *jobId);
