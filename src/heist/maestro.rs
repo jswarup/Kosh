@@ -184,11 +184,11 @@ impl< 'a> Maestro< 'a>
      
     pub fn	PostNode( &self, node: &DynINode< 'a>)
     {
-        let         jobStash = Stash::<U16>::New( U32( 1024), 0, U16( 0));
+        let         jobStash = Stash::<(U16, U16)>::New( U32( 1024), 0, (U16( 0), U16( 0)));
         let mut     jobStk = jobStash.Stk();
         let         opStash = Stash::<(ChildOp, U32)>::New( U32( 1024), 0, (ChildOp::None, U32( 0)));
         let         opStk = opStash.Stk();
-        let mut     currentSucc = self.CurSuccId();
+        let         currentSucc = self.CurSuccId();
 
         node.DiveDf( &mut |probe, enterFlg| {
             let  	    curNode = probe.CurNode().unwrap();
@@ -201,8 +201,8 @@ impl< 'a> Maestro< 'a>
                 }
                 let         job = curNode.Value().unwrap();
                 let         docStr = curNode.DocStr();
-                let mut     jobId = self.ConstructJob( U16( 0), job,  docStr);
-                jobStk.PushX( &mut jobId);
+                let         jobId = self.ConstructJob( U16( 0), job,  docStr);
+                jobStk.PushX( &mut (jobId, jobId));
                 return;
             }
             // Post-visit: Leaf nodes have already been pushed on entry.
@@ -224,33 +224,45 @@ impl< 'a> Maestro< 'a>
             jobStk.SetSize( startSz);
             if curOp == ChildOp::Less {
                 // Sequential: Chain jobs such that each completes before the next one starts.
-                arr.USeg().TraverseRev( |i| {
-                    let     jobId = *arr.At( i);
-                    self.Atelier().SetAfter( jobId, currentSucc);
-                    currentSucc = jobId;
-                });
-                println!( "{}: {} {}", curOp, currentSucc, self.Atelier().TraceJobs( arr));
-                jobStk.Push( currentSucc);
+                let     n = arr.Size().0;
+                for i in 0..n-1 {
+                    let  tail_i = arr.At( U32( i)).1;
+                    let  head_next = arr.At( U32( i+1)).0;
+                    self.Atelier().SetAfter( tail_i, head_next);
+                }
+                let     head = arr.At( U32( 0)).0;
+                let     tail = arr.At( U32( n-1)).1;
+                
+                let mut traceBuff = Buff::<U16>::NewEmpty();
+                arr.USeg().Traverse( |i| { traceBuff.Push( arr.At( i).0); });
+                println!( "{}: {} {}", curOp, head, self.Atelier().TraceJobs( traceBuff.Arr()));
+                jobStk.Push( (head, tail));
             } 
             if curOp == ChildOp::Bor { 
                 // Parallel: All jobs run concurrently and share the same successor.
-                arr.USeg().TraverseRev( |i| { 
-                    self.Atelier().SetAfter( *arr.At( i), currentSucc);
+                let     joinJobId = self.ConstructJob( U16( 0), |_worker: &DynIWorker< '_>| {}, "Join");
+                let mut headsBuff = Buff::<U16>::NewEmpty();
+                arr.USeg().Traverse( |i| {
+                    let  (head, tail) = *arr.At( i);
+                    headsBuff.Push( head);
+                    self.Atelier().SetAfter( tail, joinJobId);
                 });
-                // Create a bulk job to enqueue all parallel jobs at once.
-                let     jobId = self.ConstructEnqueArr( currentSucc, arr.into(), ""); 
-                println!( "{}: {} {}", curOp, jobId, self.Atelier().TraceJobs( arr));
-                jobStk.Push( jobId);
+                let     enqueJobId = self.ConstructEnqueArr( U16( 0), headsBuff.clone(), "BorEnq"); 
+                println!( "{}: {} {}", curOp, enqueJobId, self.Atelier().TraceJobs( headsBuff.Arr()));
+                jobStk.Push( (enqueJobId, joinJobId));
             }
             return;
         });
-        jobStk.Arr().Traverse( |jId| { 
-            self.Atelier().SetAfter( *jId, currentSucc);
-        });
-        println!( "{}", self.Atelier().TraceJobs( jobStk.Arr()));
         
-        jobStk.Arr().Traverse( |jobId| { 
-            self.EnqueTempJob( *jobId);
+        let mut traceBuff = Buff::<U16>::NewEmpty();
+        jobStk.Arr().Traverse( |j| { 
+            self.Atelier().SetAfter( j.1, currentSucc);
+            traceBuff.Push( j.0);
+        });
+        println!( "{}", self.Atelier().TraceJobs( traceBuff.Arr()));
+        
+        jobStk.Arr().Traverse( |j| { 
+            self.EnqueTempJob( j.0);
         });
         return;
     }

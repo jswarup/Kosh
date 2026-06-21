@@ -120,7 +120,19 @@ fn	TestChoreTree()
         print!( "{} ", "D");
     }, "D"); 
  
-    let  	choreTree= crate::ChoreTree!( ( aChore | ( bChore | cChore ) < dChore));
+    let  	eChore = crate::Chore!( |_m| {
+        print!( "{} ", "E");
+    }, "E"); 
+ 
+    let  	fChore = crate::Chore!( |_m| {
+        print!( "{} ", "F");
+    }, "F"); 
+ 
+    let  	gChore = crate::Chore!( |_m| {
+        print!( "{} ", "G");
+    }, "G"); 
+ 
+    let  	choreTree= crate::ChoreTree!( ((( ( aChore < bChore ) | ( cChore <  dChore)) < eChore) | fChore) < gChore);
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro(); 
 
