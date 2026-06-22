@@ -1,5 +1,5 @@
 //-- instream.rs -----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Arr, IAccess, IArr, U8, U32 };
+use	crate::silo::{ Arr, Buff, IAccess, IArr, U8, U32 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -64,6 +64,49 @@ impl< 'a> InStream< 'a>
     pub fn	Remaining( &self) -> &str 
     {
         self.Rest().Str()
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub struct InBuffStream 
+{
+    _Buff: Buff< U8>,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl InBuffStream 
+{
+    pub fn	FromFile< P: AsRef< std::path::Path>>( path: P) -> std::io::Result< Self> 
+    {
+        let  	bytes = std::fs::read( path)?;
+        let  	mut buff = Buff::NewEmpty();
+        for b in bytes {
+            buff.Push( U8( b));
+        }
+        Ok( Self { _Buff: buff })
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	FromStdin() -> std::io::Result< Self> 
+    {
+        use std::io::Read;
+        let  	mut bytes = Vec::new();
+        std::io::stdin().read_to_end( &mut bytes)?;
+        let  	mut buff = Buff::NewEmpty();
+        for b in bytes {
+            buff.Push( U8( b));
+        }
+        Ok( Self { _Buff: buff })
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	Stream( &self) -> InStream< '_> 
+    {
+        InStream::New( self._Buff.Arr())
     }
 }
 

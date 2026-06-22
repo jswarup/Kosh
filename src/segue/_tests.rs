@@ -2,7 +2,7 @@
 use	crate::{
     heist::Atelier,
     segue::
-    { Charset, InStream, Shard, JsonListener, JsonOutStream, JsonValue },
+    { Charset, InBuffStream, InStream, Shard, JsonListener, JsonOutStream, JsonValue },
     silo::{ Arr, IAccess, U8, U32 }
 };
 
@@ -115,6 +115,21 @@ fn	TestInStream()
     let  	rest5 = stream.Rest();
     assert_eq!( rest5.Size(), 0);
     assert_eq!( stream.Remaining(), "");
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestInBuffStream()
+{
+    let  	path = "test_inbuffstream.txt";
+    std::fs::write( path, b"hello").unwrap();
+    let  	buffStream = InBuffStream::FromFile( path).unwrap();
+    let  	mut stream = buffStream.Stream();
+    assert_eq!( stream.Curr(), U8( b'h'));
+    assert!( stream.Next());
+    assert_eq!( stream.Curr(), U8( b'e'));
+    std::fs::remove_file( path).unwrap();
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
