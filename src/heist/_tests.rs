@@ -140,7 +140,7 @@ fn	TestChoreTree()
     // Note: Calling DoWork manually in DiveDf consumes the job, which causes 
     // use-after-free panics when DoLaunch actually runs them asynchronously.
      
-    mainMaestro.PostNode(  &choreTree);
+    mainMaestro.PostChoreTree(  &choreTree);
     atelier.DoLaunch();
     
 }

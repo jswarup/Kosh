@@ -1,6 +1,6 @@
 //-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::Atelier;
-use	crate::silo::{ Buff, IAccess, IArr, Stash, Stk, U16, U32 };
+use	crate::silo::{ Buff, IAccess, IArr, Stash, Stk, USeg, U16, U32 };
 use	crate::stalks::{ Atm, DynINode, DynIWorker, IWorker, IntoWorkPtr, Spinlock, WorkPtr, ChildOp};
 use	std::sync::atomic::Ordering;
 
@@ -175,7 +175,7 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
      
-    pub fn	PostNode( &self, node: &DynINode< 'a>)
+    pub fn	PostChoreTree( &self, node: &DynINode< 'a>)
     {
         let         jobStash = Stash::<(U16, U16)>::New( U32( 1024), 0, (U16( 0), U16( 0)));
         let mut     jobStk = jobStash.Stk();
@@ -205,33 +205,24 @@ impl< 'a> Maestro< 'a>
             let     _res =  opStk.Pop( &mut biOpTuple);
             let     opArr = opStk.Arr();
             assert!( biOpTuple.0 == curOp);
-            let     parentOp = if opArr.Size() != 0 { opArr.Last().0 } else { ChildOp::None};
-            // Flatten identical adjacent operators (e.g. A < (B < C) becomes A < B < C)
+            let     parentOp = if opArr.Size() != 0 { opArr.Last().0 } else { ChildOp::None}; 
             if parentOp == biOpTuple.0  {
                 return;
             }
+
             let     startSz = biOpTuple.1;
             assert!( jobStk.Size() - startSz != U32( 0));
             let     arr = jobStk.Arr().Subset( startSz, jobStk.Size() - startSz);
             jobStk.SetSize( startSz);
-            if curOp == ChildOp::Less {
-                // Sequential: Chain jobs such that each completes before the next one starts.
-                let     n = arr.Size().0;
-                for i in 0..n-1 {
-                    let  tail_i = arr.At( U32( i)).1;
-                    let  head_next = arr.At( U32( i+1)).0;
-                    self.Atelier().SetSucc( tail_i, head_next);
-                }
-                let     head = arr.At( U32( 0)).0;
-                let     tail = arr.At( U32( n-1)).1;
-                
-                let mut traceBuff = Buff::<U16>::NewEmpty();
-                arr.USeg().Traverse( |i| { traceBuff.Push( arr.At( i).0); });
-                println!( "{}: {} {}", curOp, head, self.Atelier().TraceJobs( traceBuff.Arr()));
-                jobStk.Push( (head, tail));
+            if curOp == ChildOp::Less { 
+                let         lastInd = arr.Size().0 -1; 
+                USeg::Create( 0, lastInd).Traverse( |i| { 
+                    self.Atelier().SetSucc( arr.At( i).1, arr.At(  i+1).0);
+                });
+                let     arrow = ( arr.At( U32( 0)).0, arr.At( U32( lastInd)).1);   
+                jobStk.Push( arrow);
             } 
-            if curOp == ChildOp::Bor { 
-                // Parallel: All jobs run concurrently and share the same successor.
+            if curOp == ChildOp::Bor {  
                 let     joinJobId = self.ConstructJob( U16( 0), |_worker: &DynIWorker< '_>| {}, "Join");
                 let mut headsBuff = Buff::<U16>::NewEmpty();
                 arr.USeg().Traverse( |i| {
@@ -239,20 +230,15 @@ impl< 'a> Maestro< 'a>
                     headsBuff.Push( head);
                     self.Atelier().SetSucc( tail, joinJobId);
                 });
-                let     enqueJobId = self.ConstructEnqueArr( U16( 0), headsBuff.clone(), "BorEnq"); 
-                println!( "{}: {} {}", curOp, enqueJobId, self.Atelier().TraceJobs( headsBuff.Arr()));
+                let     enqueJobId = self.ConstructEnqueArr( U16( 0), headsBuff.clone(), "BorEnq");  
                 jobStk.Push( (enqueJobId, joinJobId));
             }
             return;
         });
-        
-        let mut traceBuff = Buff::<U16>::NewEmpty();
+         
         jobStk.Arr().Traverse( |j| { 
-            self.Atelier().SetSucc( j.1, currentSucc);
-            traceBuff.Push( j.0);
-        });
-        println!( "{}", self.Atelier().TraceJobs( traceBuff.Arr()));
-        
+            self.Atelier().SetSucc( j.1, currentSucc); 
+        });  
         jobStk.Arr().Traverse( |j| { 
             self.EnqueueJob( j.0);
         });
