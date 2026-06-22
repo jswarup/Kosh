@@ -15,7 +15,7 @@ pub struct USeg
 
 impl USeg
 {
-    pub fn	Create< Idx: Into< U32>, Sz: Into< U32>>( first: Idx, sz: Sz) -> Self
+    pub fn	New< Idx: Into< U32>, Sz: Into< U32>>( first: Idx, sz: Sz) -> Self
     {
         let  	fst = first.into();
         let  	size = sz.into();
@@ -73,9 +73,9 @@ impl USeg
     {
         let  	cnt = count.into();
         if self.Size() < cnt {
-            USeg::Create( U32::_X, 0)
+            USeg::New( U32::_X, 0)
         } else {
-            USeg::Create( self._First + cnt, self.Size() - cnt)
+            USeg::New( self._First + cnt, self.Size() - cnt)
         }
     }
 
@@ -85,9 +85,9 @@ impl USeg
     {
         let  	cnt = count.into();
         if self.Size() < cnt {
-            USeg::Create( U32::_X, 0)
+            USeg::New( U32::_X, 0)
         } else {
-            USeg::Create( self._First, self.Size() - cnt)
+            USeg::New( self._First, self.Size() - cnt)
         }
     }
 
@@ -170,8 +170,8 @@ impl USeg
         let  	mut currentSeg = *self;
         while currentSeg.Size() > 1 {
             let  	pivot = currentSeg.Partition( &lessAt, &mut swapAt);
-            let  	useg1 = USeg::Create( currentSeg._First, pivot - currentSeg._First);
-            let  	useg2 = USeg::Create( pivot + 1, currentSeg._Last - pivot);
+            let  	useg1 = USeg::New( currentSeg._First, pivot - currentSeg._First);
+            let  	useg2 = USeg::New( pivot + 1, currentSeg._Last - pivot);
 
             if useg1.Size() < useg2.Size() {
                 if useg1.Size() > 1 {
@@ -201,8 +201,8 @@ impl USeg
                 return;
             }
             let  	pivot = currentSeg.Partition( &lessAt, &mut |i, j| swapAt( i, j));
-            let  	useg1 = USeg::Create( currentSeg._First, pivot - currentSeg._First);
-            let  	useg2 = USeg::Create( pivot + 1, currentSeg._Last - pivot);
+            let  	useg1 = USeg::New( currentSeg._First, pivot - currentSeg._First);
+            let  	useg2 = USeg::New( pivot + 1, currentSeg._Last - pivot);
 
             if useg1.Size() > useg2.Size() {
                 if useg1.Size() > 1 {

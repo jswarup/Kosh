@@ -78,15 +78,15 @@ fn	TestMaestroBasicOps()
 #[test]
 fn	TestChoreBuds()
 {
-    let  	aChore = crate::Chore!( |_m| {
+    let  	aChore = crate::Chore!( "10S", |_m| {
         print!( "{} ", 10);
-    }, "10S");
-    let  	bChore = crate::Chore!( |_m| {
+    });
+    let  	bChore = crate::Chore!( "20S", |_m| {
         print!( "{} ", 20);
-    }, "20S");
-    let  	cChore = crate::Chore!( |_m| {
+    });
+    let  	cChore = crate::Chore!( "40S", |_m| {
         print!( "{} ", 40);
-    }, "40S");
+    });
     let  	_choreTreeMacro = crate::ChoreTree!( ( cChore
             < ( bChore
                 | aChore
@@ -107,32 +107,44 @@ fn	TestChoreBuds()
 #[test]
 fn	TestChoreTree()
 {
-    let  	aChore = crate::Chore!( |_m| {
+    let  	a  = crate::Chore!( "A", |_m| {
         print!( "{} ", "A");
-    }, "A");
-    let  	bChore = crate::Chore!( |_m| {
+    });
+    let  	b  = crate::Chore!( "B", |_m| {
         print!( "{} ", "B");
-    }, "B");
-    let  	cChore = crate::Chore!( |_m| {
+    });
+    let  	c = crate::Chore!( "C", |_m| {
         print!( "{} ", "C");
-    }, "C"); 
-    let  	dChore = crate::Chore!( |_m| {
+    }); 
+    let  	d = crate::Chore!( "D", |_m| {
         print!( "{} ", "D");
-    }, "D"); 
+    }); 
  
-    let  	eChore = crate::Chore!( |_m| {
+    let  	e = crate::Chore!( "E", |_m| {
         print!( "{} ", "E");
-    }, "E"); 
+    }); 
  
-    let  	fChore = crate::Chore!( |_m| {
+    let  	f = crate::Chore!( "F", |_m| {
         print!( "{} ", "F");
-    }, "F"); 
+    }); 
  
-    let  	gChore = crate::Chore!( |_m| {
+    let  	g = crate::Chore!( "G", |_m| {
         print!( "{} ", "G");
-    }, "G"); 
+    }); 
  
-    let  	choreTree= crate::ChoreTree!( ((( ( aChore < bChore ) | ( cChore <  dChore)) < eChore) | fChore) < gChore);
+    let  	h = crate::Chore!( "H", |_m| {
+        print!( "{} ", "H");
+    }); 
+ 
+    let  	i = crate::Chore!( "i", |_m| {
+        print!( "{} ", "I");
+    }); 
+ 
+    let  	j = crate::Chore!( "J", |_m| {
+        print!( "{} ", "J");
+    }); 
+    
+    let  	choreTree= crate::ChoreTree!( ((( ( a < b ) | ( c <  d)) < e) | ( ( f | g) < h)  | i) < j);
     //let  	choreTree= crate::ChoreTree!( ((( ( aChore | bChore ) < gChore))));
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro(); 

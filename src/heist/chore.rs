@@ -29,7 +29,7 @@ impl Chore
         Self { _DocStr: "", _Closure: f }
     }
 
-    pub fn	NewDoc( f: fn( &DynIWorker< '_>), docStr: &'static str) -> Self
+    pub fn	NewDoc( docStr: &'static str, f: fn( &DynIWorker< '_>)) -> Self
     {
         Self { _DocStr: docStr, _Closure: f }
     }
@@ -66,8 +66,8 @@ macro_rules! Chore {
     ( $closure:expr) => {
         $crate::heist::Chore::New( $closure)
     };
-    ( $closure:expr, $doc:expr) => {
-        $crate::heist::Chore::NewDoc( $closure, $doc)
+    ( $doc:expr, $closure:expr) => {
+        $crate::heist::Chore::NewDoc( $doc, $closure)
     };
 }
 

@@ -128,7 +128,7 @@ fn	TestArrFromArr()
 #[test]
 fn	USegBasicOpsTest()
 {
-    let  	seg = USeg::Create( 10, 11);
+    let  	seg = USeg::New( 10, 11);
     assert_eq!( seg.First(), 10);
     assert_eq!( seg.Last(), 20);
     assert_eq!( seg.Size(), 11);
@@ -140,7 +140,7 @@ fn	USegBasicOpsTest()
 #[test]
 fn	USegSnipTest()
 {
-    let  	seg = USeg::Create( 10, 11);
+    let  	seg = USeg::New( 10, 11);
     // Test LSnip
     let  	lSnipped = seg.LSnip( 5);
     assert_eq!( lSnipped.First(), 15);
@@ -166,7 +166,7 @@ fn	USegSnipTest()
 #[test]
 fn	USegSpanTest()
 {
-    let  	seg = USeg::Create( 10, 6);
+    let  	seg = USeg::New( 10, 6);
     // Case 1: All values return true
     let  	mut visited = Buff::NewEmpty();
     seg.Traverse( |val| {

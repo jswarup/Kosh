@@ -177,67 +177,79 @@ impl< 'a> Maestro< 'a>
      
     pub fn	PostChoreTree( &self, node: &DynINode< 'a>)
     {
-        let         jobStash = Stash::<(U16, U16)>::New( U32( 1024), 0, (U16( 0), U16( 0)));
-        let mut     jobStk = jobStash.Stk();
-        let         opStash = Stash::<(ChildOp, U32)>::New( U32( 1024), 0, (ChildOp::None, U32( 0)));
-        let         opStk = opStash.Stk();
-        let         currentSucc = self.CurSuccId();
+        let  	tailStash = Stash::<U16>::New( U32( 1024), 0, U16( 0));                 
+        let  	tailStk = tailStash.Stk();
+        let  	jobStash = Stash::<(U16, USeg)>::New( U32( 1024), 0, (U16( 0), USeg::New( 0, 0)));
+        let  	mut jobStk = jobStash.Stk();
+        let  	opStash = Stash::<(ChildOp, U32)>::New( U32( 1024), 0, (ChildOp::None, U32( 0)));
+        let  	opStk = opStash.Stk();
+        let  	currentSucc = self.CurSuccId();
 
         node.DiveDf( &mut |probe, enterFlg| {
-            let  	    curNode = probe.CurNode().unwrap();
-            let         curOp = curNode.ChildOp();
+            let  	curNode = probe.CurNode().unwrap();
+            let  	curOp = curNode.ChildOp();
             if enterFlg { 
                 if  curOp != ChildOp::None {
                     opStk.Push( ( curOp, jobStk.Size()));
                     return;
                 }
-                let         job = curNode.Value().unwrap();
-                let         docStr = curNode.DocStr();
-                let         jobId = self.ConstructJob( U16( 0), job,  docStr);
-                jobStk.PushX( &mut (jobId, jobId));
+                let  	job = curNode.Value().unwrap();
+                let  	docStr = curNode.DocStr();
+                let  	jobId = self.ConstructJob( U16( 0), job,  docStr); 
+                jobStk.Push( (jobId, USeg::New( tailStk.Size(), 1)));
+                tailStk.Push( jobId);
                 return;
             }
             // Post-visit: Leaf nodes have already been pushed on entry.
             if  curOp == ChildOp::None {                                
                 return;
             }
-            let mut biOpTuple = ( ChildOp::None, U32( 0));
-            let     _res =  opStk.Pop( &mut biOpTuple);
-            let     opArr = opStk.Arr();
+            let  	mut biOpTuple = ( ChildOp::None, U32( 0));
+            let  	_res =  opStk.Pop( &mut biOpTuple);
+            let  	opArr = opStk.Arr();
             assert!( biOpTuple.0 == curOp);
-            let     parentOp = if opArr.Size() != 0 { opArr.Last().0 } else { ChildOp::None}; 
+            let  	parentOp = if opArr.Size() != 0 { opArr.Last().0 } else { ChildOp::None}; 
             if parentOp == biOpTuple.0  {
                 return;
             }
 
-            let     startSz = biOpTuple.1;
+            let  	startSz = biOpTuple.1;
             assert!( jobStk.Size() - startSz != U32( 0));
-            let     arr = jobStk.Arr().Subset( startSz, jobStk.Size() - startSz);
+            let  	arr = jobStk.Arr().Subset( startSz, jobStk.Size() - startSz);
+            let     arrSz = arr.Size();
             jobStk.SetSize( startSz);
-            if curOp == ChildOp::Less { 
-                let         lastInd = arr.Size().0 -1; 
-                USeg::Create( 0, lastInd).Traverse( |i| { 
-                    self.Atelier().SetSucc( arr.At( i).1, arr.At(  i+1).0);
-                });
-                let     arrow = ( arr.At( U32( 0)).0, arr.At( U32( lastInd)).1);   
-                jobStk.Push( arrow);
+            if curOp == ChildOp::Less {  
+                USeg::New( 0, arrSz -1).Traverse( |i| { 
+                    let  	headNext = arr.At( i +1).0;
+                    arr.At( i).1.Traverse( |tailIdx| {
+                        self.Atelier().SetSucc( *tailStk.Arr().At( tailIdx), headNext);
+                    });
+                }); 
+                jobStk.Push( ( arr.First().0, arr.Last().1));
             } 
             if curOp == ChildOp::Bor {  
-                let     joinJobId = self.ConstructJob( U16( 0), |_worker: &DynIWorker< '_>| {}, "Join");
-                let mut headsBuff = Buff::<U16>::NewEmpty();
+                let  	mut headsBuff = Buff::<U16>::NewEmpty();
+                let  	newTailStart = tailStk.Size();
+                let  	mut newTailSz = U32( 0);
                 arr.USeg().Traverse( |i| {
-                    let  (head, tail) = *arr.At( i);
+                    let  	(head, tails) = *arr.At( i);
                     headsBuff.Push( head);
-                    self.Atelier().SetSucc( tail, joinJobId);
+                    tails.Traverse( |tailIdx| {
+                        tailStk.Push( *tailStk.Arr().At( tailIdx));
+                        newTailSz = newTailSz + 1;
+                    });
                 });
-                let     enqueJobId = self.ConstructEnqueArr( U16( 0), headsBuff.clone(), "BorEnq");  
-                jobStk.Push( (enqueJobId, joinJobId));
+                let  	enqueJobId = self.ConstructEnqueArr( U16( 0), headsBuff.clone(), "BorEnq");  
+                let  	newTails = USeg::New( newTailStart, newTailSz);
+                jobStk.Push( (enqueJobId, newTails));
             }
             return;
         });
          
         jobStk.Arr().Traverse( |j| { 
-            self.Atelier().SetSucc( j.1, currentSucc); 
+            j.1.Traverse( |tailIdx| {
+                self.Atelier().SetSucc( *tailStk.Arr().At( tailIdx), currentSucc); 
+            });
         });  
         jobStk.Arr().Traverse( |j| { 
             self.EnqueueJob( j.0);
