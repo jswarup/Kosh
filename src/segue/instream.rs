@@ -97,10 +97,20 @@ impl InBuffStream
 {
     pub fn	FromFile< P: AsRef< std::path::Path>>( path: P) -> std::io::Result< Self>
     {
-        let  	bytes = std::fs::read( path)?;
-        let  	mut buff = Buff::NewEmpty();
-        for b in bytes {
-            buff.Push( U8( b));
+        let  	file = std::fs::File::open( path)?;
+        Self::FromFileHandle( file)
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	FromFileHandle( mut file: std::fs::File) -> std::io::Result< Self>
+    {
+        use std::io::Read;
+        let  	size = file.metadata()?.len();
+        let  	mut buff = Buff::New( crate::silo::U32( size as u32), crate::silo::U8::_0);
+        unsafe {
+            let  	slice: &mut [u8] = std::slice::from_raw_parts_mut( buff.as_mut_ptr().cast::<u8>(), size as usize);
+            file.read_exact( slice)?;
         }
         Ok( Self { _Buff: buff })
     }
@@ -112,11 +122,8 @@ impl InBuffStream
         use std::io::Read;
         let  	mut bytes = Vec::new();
         std::io::stdin().read_to_end( &mut bytes)?;
-        let  	mut buff = Buff::NewEmpty();
-        for b in bytes {
-            buff.Push( U8( b));
-        }
-        Ok( Self { _Buff: buff })
+        let  	slice: &[U8] = unsafe { std::slice::from_raw_parts( bytes.as_ptr().cast::<crate::silo::U8>(), bytes.len()) };
+        Ok( Self { _Buff: Buff::from( slice) })
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
