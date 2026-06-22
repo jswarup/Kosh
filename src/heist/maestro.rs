@@ -192,8 +192,7 @@ impl< 'a> Maestro< 'a>
                 if curOp != ChildOp::None {
                     opStk.Push( ( curOp, arrowStk.Size()));
                     return;
-                }
-                // Leaf: single-element arrow
+                } 
                 let  	jobId = self.ConstructJob( U16( 0), curNode.Value().unwrap(), curNode.DocStr());
                 arrowStk.Push( (jobId, USeg::New( tailStk.Size(), 1)));
                 tailStk.Push( jobId);
@@ -204,6 +203,7 @@ impl< 'a> Maestro< 'a>
             }
             let  	mut opCtx = ( ChildOp::None, U32( 0));
             opStk.Pop( &mut opCtx); 
+
             let  	parentOp = if opStk.Size() != 0 { opStk.Arr().Last().0 } else { ChildOp::None };
             if parentOp == curOp { 
                 return; 
@@ -228,7 +228,7 @@ impl< 'a> Maestro< 'a>
                     headsBuff.Push( head);
                     tails.Traverse( |k| { tailStk.Push( *tailStk.Arr().At( k)); });
                 });
-                let  	enqId = self.ConstructEnqueArr( U16( 0), headsBuff.clone(), "BorEnq");
+                let  	enqId = self.ConstructEnqueArr( U16( 0), headsBuff.clone(), "EnqPar");
                 arrowStk.Push( (enqId, USeg::New( tailStart, tailStk.Size() - tailStart)));
             }
         }); 

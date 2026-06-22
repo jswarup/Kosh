@@ -23,6 +23,32 @@ impl InStream
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    pub fn	FromFile< P: AsRef< std::path::Path>>( path: P) -> std::io::Result< Self> 
+    {
+        let  	bytes = std::fs::read( path)?;
+        let  	mut buff = Buff::NewEmpty();
+        for b in bytes {
+            buff.Push( U8( b));
+        }
+        Ok( Self::New( buff))
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	FromStdin() -> std::io::Result< Self> 
+    {
+        use std::io::Read;
+        let  	mut bytes = Vec::new();
+        std::io::stdin().read_to_end( &mut bytes)?;
+        let  	mut buff = Buff::NewEmpty();
+        for b in bytes {
+            buff.Push( U8( b));
+        }
+        Ok( Self::New( buff))
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	Curr( &self) -> U8 
     {
         if self._Marker.AsUsize() < self._Buff.Size().AsUsize() {

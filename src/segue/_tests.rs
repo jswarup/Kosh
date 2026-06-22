@@ -2,8 +2,8 @@
 use	crate::{
     heist::Atelier,
     segue::
-    { Charset, Shard, JsonListener, JsonOutStream, JsonValue },
-    silo::{ Arr, U32 }
+    { Charset, InStream, Shard, JsonListener, JsonOutStream, JsonValue },
+    silo::{ Arr, Buff, IAccess, U8, U32 }
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -83,10 +83,39 @@ fn	TestJsonOutStream()
     let  	mut jsonStream = JsonOutStream::New( &mut output, true);
     
     jsonStream.OpenObject( "");
-    jsonStream.Array( "prices", &arr, |p| JsonValue::F64( *p as f64));
+    jsonStream.KeyArray( "prices", &arr, |p| JsonValue::F64( *p as f64));
     jsonStream.CloseObject();
     
     std::fs::write( "a.json", output).unwrap();
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestInStream()
+{
+    let  	data = [U8( b'a'), U8( b'b'), U8( b'c')];
+    let  	buff = Buff::Create( U32( 3), |i| data[i.AsUsize()]);
+    let  	mut stream = InStream::New( buff);
+    assert_eq!( stream.Curr(), U8( b'a'));
+    assert!( stream.Next());
+    assert_eq!( stream.Curr(), U8( b'b'));
+    assert!( stream.Next());
+    assert_eq!( stream.Curr(), U8( b'c'));
+    assert!( !stream.Next());
+    assert_eq!( stream.Curr(), U8::_0);
+    stream.RollTo( U32( 1));
+    assert_eq!( stream.Curr(), U8( b'b'));
+    let  	rest1 = stream.Rest();
+    assert_eq!( rest1.Size(), 2);
+    assert_eq!( *rest1.At( 0), U8( b'b'));
+    assert_eq!( *rest1.At( 1), U8( b'c'));
+    assert_eq!( stream.Remaining(), "bc");
+    stream.RollTo( U32( 5));
+    assert_eq!( stream.Curr(), U8::_0);
+    let  	rest5 = stream.Rest();
+    assert_eq!( rest5.Size(), 0);
+    assert_eq!( stream.Remaining(), "");
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

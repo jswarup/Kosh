@@ -1,5 +1,5 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Arr, Buff, IAccess, IArr, InStream, Stash, Stk, USeg, U8, U16, U32, U64 };
+use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, Stk, USeg, U8, U16, U32, U64 };
 use	crate::stalks::{ Atm, Worker };
 use	std::sync::Arc;
 use	std::thread;
@@ -634,31 +634,4 @@ fn	TestBuffResize()
     assert_eq!( buff[4].value, 100);
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
 
-#[test]
-fn	TestInStream()
-{
-    let  	data = [U8( b'a'), U8( b'b'), U8( b'c')];
-    let  	buff = Buff::Create( U32( 3), |i| data[i.AsUsize()]);
-    let  	mut stream = InStream::New( buff);
-    assert_eq!( stream.Curr(), U8( b'a'));
-    assert!( stream.Next());
-    assert_eq!( stream.Curr(), U8( b'b'));
-    assert!( stream.Next());
-    assert_eq!( stream.Curr(), U8( b'c'));
-    assert!( !stream.Next());
-    assert_eq!( stream.Curr(), U8::_0);
-    stream.RollTo( U32( 1));
-    assert_eq!( stream.Curr(), U8( b'b'));
-    let  	rest1 = stream.Rest();
-    assert_eq!( rest1.Size(), 2);
-    assert_eq!( *rest1.At( 0), U8( b'b'));
-    assert_eq!( *rest1.At( 1), U8( b'c'));
-    assert_eq!( stream.Remaining(), "bc");
-    stream.RollTo( U32( 5));
-    assert_eq!( stream.Curr(), U8::_0);
-    let  	rest5 = stream.Rest();
-    assert_eq!( rest5.Size(), 0);
-    assert_eq!( stream.Remaining(), "");
-}

@@ -51,7 +51,7 @@ pub trait JsonListener< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	Array< T: 'a, A, F>( &mut self, key: &str, access: &A, mut f: F) -> bool
+    fn	KeyArray< T: 'a, A, F>( &mut self, key: &str, access: &A, mut f: F) -> bool
     where
         Self: Sized,
         A: IAccess< 'a, T>,

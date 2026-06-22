@@ -14,6 +14,7 @@ This project has strict, non-standard Rust formatting rules defined in `FORMATTI
 5. **Separators**: All `//---...` separator lines MUST be padded with one blank line before and after.
 6. **Trailing Comments**: Must be aligned to column 72.
 7. **Use statements**: The `use` keyword MUST be followed by a tab (`\t`) (e.g., `use\tcrate::silo`).
+8. **return**: Must be on separate line
 
 When modifying files, please ensure you don't inadvertently reformat existing code that already complies with these rules. Be extremely careful when using automated formatting tools like `rustfmt`, as they will likely destroy these custom formatting rules.
 
