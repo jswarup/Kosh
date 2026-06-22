@@ -360,6 +360,29 @@ ImplWiden!( U8, U32);
 ImplWiden!( U8, U64);
 ImplWiden!( U16, U32);
 ImplWiden!( U16, U64);
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+macro_rules! Explode {
+    ( $src:ident, $dst:ident, $sz:expr, $method:ident) => {
+        impl $src
+        {
+            #[inline]
+            pub fn	$method( self) -> [$dst; $sz]
+            {
+                unsafe { std::mem::transmute( self) }
+            }
+        }
+    };
+}
+
+Explode!( U16, U8, 2, ExplodeToU8);
+Explode!( U32, U8, 4, ExplodeToU8);
+Explode!( U64, U8, 8, ExplodeToU8);
+Explode!( U32, U16, 2, ExplodeToU16);
+Explode!( U64, U16, 4, ExplodeToU16);
+Explode!( U64, U32, 2, ExplodeToU32);
+
 ImplWiden!( U32, U64);
 
 //---------------------------------------------------------------------------------------------------------------------------------

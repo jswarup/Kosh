@@ -109,12 +109,12 @@ fn	TestInStream()
     assert_eq!( rest1.Size(), 2);
     assert_eq!( *rest1.At( 0), U8( b'b'));
     assert_eq!( *rest1.At( 1), U8( b'c'));
-    assert_eq!( stream.Remaining(), "bc");
+    assert_eq!( stream.RemainingBytes(), b"bc");
     stream.RollTo( U32( 5));
     assert_eq!( stream.Curr(), U8::_0);
     let  	rest5 = stream.Rest();
     assert_eq!( rest5.Size(), 0);
-    assert_eq!( stream.Remaining(), "");
+    assert_eq!( stream.RemainingBytes(), b"");
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
