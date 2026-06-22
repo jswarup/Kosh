@@ -138,17 +138,10 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	SetSucc( &self, mut jobId: U16, succId: U16)  
-    { 
-        loop {
-            let  	currSucc = *self._SuccIds.Arr().At( jobId);
-            if currSucc == U16( 0) {
-                self._SuccIds.Arr().SetAt( jobId, &succId);
-                self.IncrSzPredAt( succId, 1);
-                return;
-            }
-            jobId = currSucc;
-        } 
+    pub fn	SetSucc( &self, jobId: U16, succId: U16)  
+    {  
+        self._SuccIds.Arr().SetAt( jobId, &succId);
+        self.IncrSzPredAt( succId, 1); 
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

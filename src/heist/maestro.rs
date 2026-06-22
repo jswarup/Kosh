@@ -76,14 +76,14 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ConstructJob< K: Into<U16>>( &self, succId: K, job: impl IntoWorkPtr< 'a>, docStr: &'static str) -> U16
+    pub fn	ConstructJob( &self, succId: U16, job: impl IntoWorkPtr< 'a>, docStr: &'static str) -> U16
     {
-        self.Atelier().ConstructJob( self._Index, succId.into(), job.IntoWorkPtr(), docStr)
+        self.Atelier().ConstructJob( self._Index, succId, job.IntoWorkPtr(), docStr)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	EnqueTempJob( &self, jobId: U16)
+    pub fn	EnqueueJob( &self, jobId: U16)
     {
         let     res = self._TempQueue.Stk().Push( jobId);
         assert!( res);
@@ -97,7 +97,7 @@ impl< 'a> Maestro< 'a>
             let  	maestro = Maestro::FromWorker( worker);
             let  	arr = buff.Arr();
             arr.Traverse( |jobId| {
-                maestro.EnqueTempJob( *jobId);
+                maestro.EnqueueJob( *jobId);
             });
         }, docStr)
     }
@@ -171,77 +171,7 @@ impl< 'a> Maestro< 'a>
     pub fn	SetCurSuccId< K: Into< U16>>( &self, val: K)
     {
         self._CurSuccId.Store( val, Ordering::Release);
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-     
-    pub fn	PostChoreTree( &self, node: &DynINode< 'a>)
-    {
-        let         nodeStash = Stash::New( 1024, 1, ( node, U32( 0), U32( 0)));
-        let         nodeStk = nodeStash.Stk();
-        let         jobStash = Stash::< U16>::New( U32( 1024), 0, U16( 0));
-        let  mut    jobStk = jobStash.Stk();
-        let  mut    currentSucc = self.CurSuccId();
-        while nodeStk.Size() > U32( 0) {
-            let  	mut curr = ( node, U32( 0), U32( 0));
-            let  	_res = nodeStk.Pop( &mut curr);
-            let  	( curNode, idx, jobStkFirst) = curr;
-            let  	szChild = curNode.Children().Size();
-            if szChild == 0 {
-                let         job = curNode.Value().unwrap();
-                let         docStr = curNode.DocStr();
-                let         jobId = self.ConstructJob( 0,  job,  docStr);
-                jobStk.Push( jobId);
-                continue;
-            }  
-            let     curOp = curNode.ChildOp();  
-            if idx < szChild { 
-                let     nxIdx = idx + U32( 1); 
-                nodeStk.Push( ( curNode, nxIdx, jobStk.Size())); 
-                let     k = if curOp == ChildOp::Less { szChild -idx -1} else { idx};
-                let     child = curNode.Children().At( k);
-                nodeStk.Push( ( child, U32( 0), jobStk.Size()));
-                continue;
-            }   
-            // When all children been visited
-            let     parentOp = if nodeStk.Size() != 0 { nodeStk.Arr().Last().0.ChildOp() } else { ChildOp::None} ;  
-            if curOp == parentOp {
-                continue;
-            }
-            let     startSz = if nodeStk.Size() != 0 { nodeStk.Arr().Last().2 } else { U32( 0)} ;  
-            let     arr = jobStk.Arr().Subset( startSz, jobStk.Size() - startSz); 
-            jobStk.SetSize( startSz);
-            if curOp == ChildOp::Bor {
-                arr.Traverse( | jobId| {
-                    self.Atelier().SetSucc( *jobId, currentSucc);
-                }); 
-                let     head = self.ConstructEnqueArr( currentSucc, arr.into(), "BorEnq"); 
-                println!( "{}: {} {}", curOp, head, self.Atelier().TraceJobs( arr));
-                jobStk.Push( head);
-            }
-            if curOp == ChildOp::Less {
-                arr.USeg().Traverse( | i| {
-                    let     jobId = arr.At( i);
-                    self.Atelier().SetSucc( *jobId, currentSucc);
-                    currentSucc = *jobId;
-                });
-                println!( "{}: {} {}", curOp, currentSucc, self.Atelier().TraceJobs( arr));
-                jobStk.Push( currentSucc);
-            } 
-                
-        }
-        jobStk.Arr().Traverse( | jobId| {
-            let     oldSuccId = self.Atelier().SuccId( *jobId);
-            if oldSuccId == 0 {
-                self.Atelier().SetSucc( *jobId, self.CurSuccId());
-            }
-        }); 
-        println!( "Enq: {}" , self.Atelier().TraceJobs( jobStk.Arr()));
-        jobStk.Arr().Traverse( |j| { 
-            self.EnqueTempJob( *j);
-        });
-        return; 
-    }
+    } 
 
     //-----------------------------------------------------------------------------------------------------------------------------
      
@@ -256,8 +186,7 @@ impl< 'a> Maestro< 'a>
         node.DiveDf( &mut |probe, enterFlg| {
             let  	    curNode = probe.CurNode().unwrap();
             let         curOp = curNode.ChildOp();
-            if enterFlg {
-                // Pre-visit: Push operator and current job stack size, or construct job for leaf nodes.
+            if enterFlg { 
                 if  curOp != ChildOp::None {
                     opStk.Push( ( curOp, jobStk.Size()));
                     return;
@@ -325,7 +254,7 @@ impl< 'a> Maestro< 'a>
         println!( "{}", self.Atelier().TraceJobs( traceBuff.Arr()));
         
         jobStk.Arr().Traverse( |j| { 
-            self.EnqueTempJob( j.0);
+            self.EnqueueJob( j.0);
         });
         return;
     }
@@ -341,7 +270,7 @@ impl< 'a> IWorker for Maestro< 'a>
     {
         let  	mut jobId = self.CurSuccId();
         jobId = self.ConstructJob( jobId, job, "PostJob");
-        self.EnqueTempJob( jobId);
+        self.EnqueueJob( jobId);
     }
     fn	AsRaw( &self) -> *const ()
     {
