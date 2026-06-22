@@ -1,58 +1,32 @@
 //-- instream.rs -----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Arr, Buff, IArr, U8, U32 };
+use	crate::silo::{ Arr, IAccess, IArr, U8, U32 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct InStream 
+pub struct InStream< 'a> 
 {
-    _Buff: Buff< U8>,
+    _Arr: Arr< 'a, U8>,
     _Marker: U32,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl InStream 
+impl< 'a> InStream< 'a> 
 {
-    pub fn	New( buff: Buff< U8>) -> Self 
+    pub fn	New( arr: Arr< 'a, U8>) -> Self 
     {
         Self {
-            _Buff: buff,
+            _Arr: arr,
             _Marker: U32( 0),
         }
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	FromFile< P: AsRef< std::path::Path>>( path: P) -> std::io::Result< Self> 
-    {
-        let  	bytes = std::fs::read( path)?;
-        let  	mut buff = Buff::NewEmpty();
-        for b in bytes {
-            buff.Push( U8( b));
-        }
-        Ok( Self::New( buff))
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	FromStdin() -> std::io::Result< Self> 
-    {
-        use std::io::Read;
-        let  	mut bytes = Vec::new();
-        std::io::stdin().read_to_end( &mut bytes)?;
-        let  	mut buff = Buff::NewEmpty();
-        for b in bytes {
-            buff.Push( U8( b));
-        }
-        Ok( Self::New( buff))
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
     pub fn	Curr( &self) -> U8 
     {
-        if self._Marker.AsUsize() < self._Buff.Size().AsUsize() {
-            self._Buff[self._Marker.AsUsize()]
+        if self._Marker.AsUsize() < self._Arr.Size().AsUsize() {
+            *self._Arr.At( self._Marker)
         } else {
             U8::_0
         }
@@ -63,7 +37,7 @@ impl InStream
     pub fn	Next( &mut self) -> bool 
     {
         self._Marker += U32( 1);
-        self._Marker.AsUsize() < self._Buff.Size().AsUsize()
+        self._Marker.AsUsize() < self._Arr.Size().AsUsize()
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -75,13 +49,13 @@ impl InStream
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Rest( &self) -> Arr< '_, U8> 
+    pub fn	Rest( &self) -> Arr< 'a, U8> 
     {
-        let  	sz = self._Buff.Size();
+        let  	sz = self._Arr.Size();
         if self._Marker < sz {
-            self._Buff.Arr().LSnip( self._Marker)
+            self._Arr.LSnip( self._Marker)
         } else {
-            self._Buff.Arr().LSnip( sz)
+            self._Arr.LSnip( sz)
         }
     }
 

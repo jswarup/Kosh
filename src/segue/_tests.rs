@@ -96,7 +96,7 @@ fn	TestInStream()
 {
     let  	data = [U8( b'a'), U8( b'b'), U8( b'c')];
     let  	buff = Buff::Create( U32( 3), |i| data[i.AsUsize()]);
-    let  	mut stream = InStream::New( buff);
+    let  	mut stream = InStream::New( buff.Arr());
     assert_eq!( stream.Curr(), U8( b'a'));
     assert!( stream.Next());
     assert_eq!( stream.Curr(), U8( b'b'));
