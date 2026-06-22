@@ -71,6 +71,13 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    pub fn  SuccId( &self, jobId: U16) -> U16
+    {
+        *self._SuccIds.Arr().At( jobId)
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     fn	IncrSzSchedJob( &self, inc: U32) -> U32
     {
         self._SzSchedJob.FetchAdd( inc, Ordering::SeqCst)
@@ -133,6 +140,10 @@ impl< 'a> Atelier< 'a>
 
     pub fn	SetAfter( &self, jobId: U16, succId: U16)
     {
+        let     oldSuccId = *self._SuccIds.Arr().At( jobId);
+        if oldSuccId != 0 {
+            self.IncrSzPredAt( oldSuccId, U16::_X);
+        }
         self._SuccIds.Arr().SetAt( jobId, &succId);
         self.IncrSzPredAt( succId, 1);
     }
@@ -272,11 +283,8 @@ impl< 'a> Atelier< 'a>
             let  	succId = *self._SuccIds.Arr().At( *jobId);
             if succId != U16( 0) {
                 processStash.Stk().Push( succId);
-            } 
-            let  	szPred = self._SzPreds.Arr().At( *jobId).Load( Ordering::SeqCst);  
-            let  	docStr = *self._JobDocBuff.Arr().At( *jobId);
-            
-            info._JobStash.Push( JobInfo { _JobId: *jobId, _SuccId: succId, _SzPred: szPred, _DocStr: docStr });
+            }  
+            info._JobStash.Push( JobInfo::New( self, *jobId));
         }
         info
     }
@@ -297,12 +305,31 @@ pub struct JobInfo
     pub _DocStr: &'static str,
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl JobInfo
+{
+    pub fn	New< 'a>( atelier: *const Atelier< 'a>, jobId: U16) -> Self
+    {
+        unsafe {
+            let  	succId = *( *atelier)._SuccIds.Arr().At( jobId);
+            let  	szPred = ( *atelier)._SzPreds.Arr().At( jobId).Load( Ordering::SeqCst);
+            let  	docStr = *( *atelier)._JobDocBuff.Arr().At( jobId);
+            Self { _JobId: jobId, _SuccId: succId, _SzPred: szPred, _DocStr: docStr }
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub struct AtelierInfo< 'a>
 {
     pub _Atelier: *const Atelier< 'a>,
     pub _SzSeed: U32,
     pub _JobStash: Stash< JobInfo>,
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 impl< 'a> AtelierInfo< 'a>
 {
