@@ -76,9 +76,9 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ConstructJob( &self, succId: U16, job: impl IntoWorkPtr< 'a>, docStr: &'static str) -> U16
+    pub fn	ConstructJob< K: Into<U16>>( &self, succId: K, job: impl IntoWorkPtr< 'a>, docStr: &'static str) -> U16
     {
-        self.Atelier().ConstructJob( self._Index, succId, job.IntoWorkPtr(), docStr)
+        self.Atelier().ConstructJob( self._Index, succId.into(), job.IntoWorkPtr(), docStr)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -190,7 +190,7 @@ impl< 'a> Maestro< 'a>
             if szChild == 0 {
                 let         job = curNode.Value().unwrap();
                 let         docStr = curNode.DocStr();
-                let         jobId = self.ConstructJob( self.CurSuccId(), job,  docStr);
+                let         jobId = self.ConstructJob( 0,  job,  docStr);
                 jobStk.Push( jobId);
                 continue;
             }  
@@ -198,12 +198,11 @@ impl< 'a> Maestro< 'a>
             if idx < szChild { 
                 let     nxIdx = idx + U32( 1); 
                 nodeStk.Push( ( curNode, nxIdx, jobStk.Size())); 
-                let     child = curNode.Children().At( szChild -idx -1);
+                let     k = if curOp == ChildOp::Less { szChild -idx -1} else { idx};
+                let     child = curNode.Children().At( k);
                 nodeStk.Push( ( child, U32( 0), jobStk.Size()));
                 continue;
-            } 
-
-
+            }   
             // When all children been visited
             let     parentOp = if nodeStk.Size() != 0 { nodeStk.Arr().Last().0.ChildOp() } else { ChildOp::None} ;  
             if curOp == parentOp {
@@ -214,7 +213,7 @@ impl< 'a> Maestro< 'a>
             jobStk.SetSize( startSz);
             if curOp == ChildOp::Bor {
                 arr.Traverse( | jobId| {
-                    self.Atelier().SetAfter( *jobId, currentSucc);
+                    self.Atelier().SetSucc( *jobId, currentSucc);
                 }); 
                 let     head = self.ConstructEnqueArr( currentSucc, arr.into(), "BorEnq"); 
                 println!( "{}: {} {}", curOp, head, self.Atelier().TraceJobs( arr));
@@ -223,9 +222,10 @@ impl< 'a> Maestro< 'a>
             if curOp == ChildOp::Less {
                 arr.USeg().Traverse( | i| {
                     let     jobId = arr.At( i);
-                    self.Atelier().SetAfter( *jobId, currentSucc);
+                    self.Atelier().SetSucc( *jobId, currentSucc);
                     currentSucc = *jobId;
                 });
+                println!( "{}: {} {}", curOp, currentSucc, self.Atelier().TraceJobs( arr));
                 jobStk.Push( currentSucc);
             } 
                 
@@ -233,9 +233,10 @@ impl< 'a> Maestro< 'a>
         jobStk.Arr().Traverse( | jobId| {
             let     oldSuccId = self.Atelier().SuccId( *jobId);
             if oldSuccId == 0 {
-                self.Atelier().SetAfter( *jobId, self.CurSuccId());
+                self.Atelier().SetSucc( *jobId, self.CurSuccId());
             }
         }); 
+        println!( "Enq: {}" , self.Atelier().TraceJobs( jobStk.Arr()));
         jobStk.Arr().Traverse( |j| { 
             self.EnqueTempJob( *j);
         });
@@ -290,7 +291,7 @@ impl< 'a> Maestro< 'a>
                 for i in 0..n-1 {
                     let  tail_i = arr.At( U32( i)).1;
                     let  head_next = arr.At( U32( i+1)).0;
-                    self.Atelier().SetAfter( tail_i, head_next);
+                    self.Atelier().SetSucc( tail_i, head_next);
                 }
                 let     head = arr.At( U32( 0)).0;
                 let     tail = arr.At( U32( n-1)).1;
@@ -307,7 +308,7 @@ impl< 'a> Maestro< 'a>
                 arr.USeg().Traverse( |i| {
                     let  (head, tail) = *arr.At( i);
                     headsBuff.Push( head);
-                    self.Atelier().SetAfter( tail, joinJobId);
+                    self.Atelier().SetSucc( tail, joinJobId);
                 });
                 let     enqueJobId = self.ConstructEnqueArr( U16( 0), headsBuff.clone(), "BorEnq"); 
                 println!( "{}: {} {}", curOp, enqueJobId, self.Atelier().TraceJobs( headsBuff.Arr()));
@@ -318,7 +319,7 @@ impl< 'a> Maestro< 'a>
         
         let mut traceBuff = Buff::<U16>::NewEmpty();
         jobStk.Arr().Traverse( |j| { 
-            self.Atelier().SetAfter( j.1, currentSucc);
+            self.Atelier().SetSucc( j.1, currentSucc);
             traceBuff.Push( j.0);
         });
         println!( "{}", self.Atelier().TraceJobs( traceBuff.Arr()));

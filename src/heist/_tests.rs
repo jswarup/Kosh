@@ -132,16 +132,16 @@ fn	TestChoreTree()
         print!( "{} ", "G");
     }, "G"); 
  
-    let  	choreTree= crate::ChoreTree!( ((( ( aChore < bChore ) | ( cChore <  dChore)) < eChore) | fChore) < gChore);
-    let  	choreTree= crate::ChoreTree!( ((( ( aChore |  bChore)))) < gChore);
+    //let  	choreTree= crate::ChoreTree!( ((( ( aChore < bChore ) | ( cChore <  dChore)) < eChore) | fChore) < gChore);
+    let  	choreTree= crate::ChoreTree!( ((( ( aChore | bChore ) < gChore))));
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro(); 
 
     // Note: Calling DoWork manually in DiveDf consumes the job, which causes 
     // use-after-free panics when DoLaunch actually runs them asynchronously.
     
-    //mainMaestro.PostChoreTree( &choreTree);
-    mainMaestro.PostNode(  &choreTree);
+    mainMaestro.PostChoreTree( &choreTree);
+    //mainMaestro.PostNode(  &choreTree);
     atelier.DoLaunch();
     
 }

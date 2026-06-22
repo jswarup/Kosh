@@ -138,7 +138,7 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	SetAfter( &self, jobId: U16, succId: U16)
+    pub fn	SetSucc( &self, jobId: U16, succId: U16)
     {
         let     oldSuccId = *self._SuccIds.Arr().At( jobId);
         if oldSuccId != 0 {
@@ -159,7 +159,7 @@ impl< 'a> Atelier< 'a>
         self._JobBuff.Arr().SetAt( jobId, &job); 
         self._JobDocBuff.Arr().SetAt( jobId, &docStr);
         if succId != 0 {
-             self.SetAfter( jobId, succId);
+             self.SetSucc( jobId, succId);
         }
         jobId
     }
