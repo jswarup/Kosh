@@ -7,7 +7,7 @@ use	crate::silo::Arr;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive( Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default, serde::Serialize, serde::Deserialize)]
 #[repr( transparent)]
 pub struct U8( pub u8);
 impl U8 
@@ -19,7 +19,7 @@ impl U8
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive( Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default, serde::Serialize, serde::Deserialize)]
 #[repr( transparent)]
 pub struct U32( pub u32);
 impl U32 
@@ -32,7 +32,7 @@ impl U32
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive( Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default, serde::Serialize, serde::Deserialize)]
 #[repr( transparent)]
 pub struct U16( pub u16);
 impl U16 
@@ -44,7 +44,7 @@ impl U16
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive( Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default, serde::Serialize, serde::Deserialize)]
 #[repr( transparent)]
 pub struct U64( pub u64);
 impl U64 

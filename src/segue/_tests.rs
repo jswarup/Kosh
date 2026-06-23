@@ -2,7 +2,7 @@
 use	crate::{
     heist::Atelier,
     segue::
-    { Charset, InBuffStream, InStream, Shard, JsonListener, JsonOutStream, JsonValue },
+    { Charset, InStream, Shard, JsonListener, JsonOutStream, JsonValue },
     silo::{ Arr, IAccess, U8, U32 }
 };
 
@@ -95,7 +95,7 @@ fn	TestJsonOutStream()
 fn	TestInStream()
 {
     let  	data = [U8( b'a'), U8( b'b'), U8( b'c')];
-    let  	mut stream = InStream::New( (&data).into());
+    let  	mut stream = InStream::FromArr( (&data).into());
     assert_eq!( stream.Curr(), U8( b'a'));
     assert!( stream.Next());
     assert_eq!( stream.Curr(), U8( b'b'));
@@ -120,16 +120,26 @@ fn	TestInStream()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestInBuffStream()
+fn	TestInStreamFromFile()
 {
     let  	path = "test_inbuffstream.txt";
     std::fs::write( path, b"hello").unwrap();
-    let  	buffStream = InBuffStream::FromFile( path).unwrap();
-    let  	mut stream = buffStream.Stream();
+    let  	mut stream = InStream::FromFile( path).unwrap();
     assert_eq!( stream.Curr(), U8( b'h'));
     assert!( stream.Next());
     assert_eq!( stream.Curr(), U8( b'e'));
     std::fs::remove_file( path).unwrap();
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestBincodeSerialization()
+{
+    let  	cs = *Charset::Word();
+    let  	serialized = bincode::serialize( &cs).unwrap();
+    let  	deserialized: Charset = bincode::deserialize( &serialized).unwrap();
+    assert_eq!( cs, deserialized);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

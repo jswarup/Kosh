@@ -6,7 +6,7 @@ use	crate::silo::{ Arr, Buff, U8, U64 };
 
 /// A 256-bit filter for `U8` characters — one bit per byte value.
 /// Enables set algebra (union, intersection, negation) over character classes.
-#[derive( Clone, Copy, PartialEq, Eq, Hash)]
+#[derive( Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Charset
 {
     _Bits: [U64; Self::SZ],

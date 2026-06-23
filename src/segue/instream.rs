@@ -1,32 +1,130 @@
 //-- instream.rs -----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Arr, Buff, IAccess, IArr, U8, U32, U64 };
+use	crate::silo::{ Arr, Buff, IAccess, IArr, U8, U32 };
+use std::io::Read;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct InStream< 'a>
+pub enum InSource< 'a, R: Read>
 {
-    _Arr: Arr< 'a, U8>,
+    Fixed( Arr< 'a, U8>),
+    Streaming( R, Buff< U8>),
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub struct InStream< 'a, R: Read = std::io::Empty>
+{
+    _Source: InSource< 'a, R>,
     _Marker: U32,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> InStream< 'a>
+impl< 'a> InStream< 'a, std::io::Empty>
 {
-    pub fn	New( arr: Arr< 'a, U8>) -> Self
+    pub fn	FromArr( arr: Arr< 'a, U8>) -> Self
     {
         Self {
-            _Arr: arr,
+            _Source: InSource::Fixed( arr),
             _Marker: U32( 0),
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, R: Read> InStream< 'a, R>
+{
+    pub fn	New( inner: R) -> Self
+    {
+        Self {
+            _Source: InSource::Streaming( inner, Buff::NewEmpty()),
+            _Marker: U32( 0),
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a> InStream< 'a, std::fs::File>
+{
+    pub fn	FromFile< P: AsRef< std::path::Path>>( path: P) -> std::io::Result< Self>
+    {
+        let  	file = std::fs::File::open( path)?;
+        Ok( Self::New( file))
+    }
+
+    pub fn	FromFileHandle( file: std::fs::File) -> std::io::Result< Self>
+    {
+        Ok( Self::New( file))
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a> InStream< 'a, std::io::Stdin>
+{
+    pub fn	FromStdin() -> std::io::Result< Self>
+    {
+        Ok( Self::New( std::io::stdin()))
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, R: Read> InStream< 'a, R>
+{
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	EnsureCached( &mut self, amt: usize) -> std::io::Result< ()>
+    {
+        if let InSource::Streaming( ref mut inner, ref mut buff) = self._Source {
+            let  	required = self._Marker.AsUsize() + amt;
+            let  	mut currSize = buff.Size().AsUsize();
+
+            while currSize < required {
+                let  	chunkSize = std::cmp::max( 4096, required - currSize);
+                let  	mut chunk = vec![ 0u8; chunkSize];
+                let  	readBytes = inner.read( &mut chunk)?;
+                
+                if readBytes == 0 {
+                    break;
+                }
+                
+                let  	newSize = currSize + readBytes;
+                buff.Resize( U32( newSize as u32), |_| U8::_0);
+                
+                unsafe {
+                    let  	ptr = buff.as_mut_ptr().cast::<u8>();
+                    let  	slice = std::slice::from_raw_parts_mut( ptr, newSize);
+                    slice[currSize..newSize].copy_from_slice( &chunk[..readBytes]);
+                }
+                currSize = newSize;
+            }
+        }
+        Ok( ())
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	Size( &self) -> usize
+    {
+        match &self._Source {
+            InSource::Fixed( arr) => arr.Size().AsUsize(),
+            InSource::Streaming( _, buff) => buff.Size().AsUsize(),
         }
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Curr( &self) -> U8
+    pub fn	Curr( &mut self) -> U8
     {
-        if self._Marker.AsUsize() < self._Arr.Size().AsUsize() {
-            *self._Arr.At( self._Marker)
+        let  	_ = self.EnsureCached( 1);
+        if self._Marker.AsUsize() < self.Size() {
+            match &self._Source {
+                InSource::Fixed( arr) => *arr.At( self._Marker),
+                InSource::Streaming( _, buff) => *buff.At( self._Marker),
+            }
         } else {
             U8::_0
         }
@@ -37,7 +135,8 @@ impl< 'a> InStream< 'a>
     pub fn	Next( &mut self) -> bool
     {
         self._Marker += U32( 1);
-        self._Marker.AsUsize() < self._Arr.Size().AsUsize()
+        let  	_ = self.EnsureCached( 1);
+        self._Marker.AsUsize() < self.Size()
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -49,20 +148,38 @@ impl< 'a> InStream< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Rest( &self) -> Arr< 'a, U8>
+    pub fn	Rest( &mut self) -> Arr< '_, U8>
     {
-        let  	sz = self._Arr.Size();
-        if self._Marker < sz {
-            self._Arr.LSnip( self._Marker)
+        if let InSource::Streaming( ref mut inner, ref mut buff) = self._Source {
+            let  	mut vec = Vec::new();
+            if inner.read_to_end( &mut vec).is_ok() && !vec.is_empty() {
+                let  	currSize = buff.Size().AsUsize();
+                let  	newSize = currSize + vec.len();
+                buff.Resize( U32( newSize as u32), |_| U8::_0);
+                unsafe {
+                    let  	ptr = buff.as_mut_ptr().cast::<u8>();
+                    let  	slice = std::slice::from_raw_parts_mut( ptr, newSize);
+                    slice[currSize..newSize].copy_from_slice( &vec);
+                }
+            }
+        }
+        
+        let  	sz = self.Size();
+        let  	arr = match &self._Source {
+            InSource::Fixed( arr) => *arr,
+            InSource::Streaming( _, buff) => buff.Arr(),
+        };
+
+        if self._Marker.AsUsize() < sz {
+            arr.LSnip( self._Marker)
         } else {
-            self._Arr.LSnip( sz)
+            arr.LSnip( U32( sz as u32))
         }
     }
 
-
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	RemainingBytes( &self) -> &'a [u8]
+    pub fn	RemainingBytes( &mut self) -> &[u8]
     {
         let  	rest = self.Rest();
         unsafe {
@@ -76,61 +193,53 @@ impl< 'a> InStream< 'a>
     where
         T: serde::de::DeserializeOwned
     {
-        let  	bytes = self.RemainingBytes();
-        let  	mut cursor = std::io::Cursor::new( bytes);
-        let  	result: T = bincode::deserialize_from( &mut cursor)?; 
-        self.RollTo( self._Marker + U64( cursor.position()).ExplodeToU32()[ 0]);
-        Ok( result)
+        bincode::deserialize_from( self)
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct InBuffStream
+impl< 'a, R: Read> Read for InStream< 'a, R>
 {
-    _Buff: Buff< U8>,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl InBuffStream
-{
-    pub fn	FromFile< P: AsRef< std::path::Path>>( path: P) -> std::io::Result< Self>
+    fn	read( &mut self, buf: &mut [u8]) -> std::io::Result< usize>
     {
-        let  	file = std::fs::File::open( path)?;
-        Self::FromFileHandle( file)
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	FromFileHandle( mut file: std::fs::File) -> std::io::Result< Self>
-    {
-        use std::io::Read;
-        let  	size = file.metadata()?.len();
-        let  	mut buff = Buff::New( crate::silo::U32( size as u32), crate::silo::U8::_0);
-        unsafe {
-            let  	slice: &mut [u8] = std::slice::from_raw_parts_mut( buff.as_mut_ptr().cast::<u8>(), size as usize);
-            file.read_exact( slice)?;
+        let  	amt = buf.len();
+        if amt == 0 {
+            return Ok( 0);
         }
-        Ok( Self { _Buff: buff })
-    }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
+        self.EnsureCached( amt)?;
 
-    pub fn	FromStdin() -> std::io::Result< Self>
-    {
-        use std::io::Read;
-        let  	mut bytes = Vec::new();
-        std::io::stdin().read_to_end( &mut bytes)?;
-        let  	slice: &[U8] = unsafe { std::slice::from_raw_parts( bytes.as_ptr().cast::<crate::silo::U8>(), bytes.len()) };
-        Ok( Self { _Buff: Buff::from( slice) })
-    }
+        let  	currSize = self.Size();
+        let  	marker = self._Marker.AsUsize();
 
-    //-----------------------------------------------------------------------------------------------------------------------------
+        if marker >= currSize {
+            return Ok( 0);
+        }
 
-    pub fn	Stream( &self) -> InStream< '_>
-    {
-        InStream::New( self._Buff.Arr())
+        let  	available = currSize - marker;
+        let  	len = std::cmp::min( available, amt);
+
+        match &self._Source {
+            InSource::Fixed( arr) => {
+                unsafe {
+                    let  	ptr = arr.Ptr().cast::<u8>();
+                    let  	slice = std::slice::from_raw_parts( ptr, currSize);
+                    buf[..len].copy_from_slice( &slice[marker..marker + len]);
+                }
+            },
+            InSource::Streaming( _, buff) => {
+                unsafe {
+                    // buff implements Deref<Target=[U8]>, as_ptr returns *const U8
+                    let  	ptr = buff.as_ptr().cast::<u8>();
+                    let  	slice = std::slice::from_raw_parts( ptr, currSize);
+                    buf[..len].copy_from_slice( &slice[marker..marker + len]);
+                }
+            }
+        }
+
+        self._Marker += U32( len as u32);
+        Ok( len)
     }
 }
 
