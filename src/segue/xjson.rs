@@ -68,7 +68,7 @@ pub trait JsonListener
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait ToJSon
+pub trait Xchange
 {
     fn	ToJSon< L: JsonListener>( &self, key: &str, listener: &mut L) -> bool;
 }

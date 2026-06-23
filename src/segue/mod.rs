@@ -9,7 +9,7 @@ pub use	charset::Charset;
 pub use	instream::InStream;
 pub use	outstream::OutStream;
 pub use	jsonoutstrm::JsonOutStream;
-pub use	xjson::{ JsonListener, JsonValue, ToJSon };
+pub use	xjson::{ JsonListener, JsonValue, Xchange };
 pub use	shard::Shard;
 #[cfg( test)]
 mod _tests;
