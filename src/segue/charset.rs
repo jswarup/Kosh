@@ -582,18 +582,19 @@ impl std::ops::BitAndAssign for Charset
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait XJSon
+pub trait ToJSon
 {
-    fn	ToXJSon( &self) -> String;
+    fn	ToJSon< L: crate::segue::JsonListener>( &self, key: &str, listener: &mut L) -> bool;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl XJSon for Charset
+impl ToJSon for Charset
 {
-    fn	ToXJSon( &self) -> String
+    fn	ToJSon< L: crate::segue::JsonListener>( &self, key: &str, listener: &mut L) -> bool
     {
-        format!( "{{\"_Bits\": \"{}\"}}", self.ToString())
+        let  	s = self.ToString();
+        listener.KeyValue( key, crate::segue::JsonValue::Str( &s))
     }
 }
 

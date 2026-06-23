@@ -14,9 +14,9 @@ pub enum JsonValue< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait JsonListener< 'a>
+pub trait JsonListener
 {
-    fn	KeyValue( &mut self, _key: &str, _value: JsonValue< 'a>) -> bool
+    fn	KeyValue( &mut self, _key: &str, _value: JsonValue< '_>) -> bool
     {
         true
     }
@@ -51,11 +51,11 @@ pub trait JsonListener< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	KeyArray< T: 'a, A, F>( &mut self, key: &str, access: &A, mut f: F) -> bool
+    fn	KeyArray< 'a, T: 'a, A, F>( &mut self, key: &str, access: &A, mut f: F) -> bool
     where
         Self: Sized,
         A: IAccess< 'a, T>,
-        F: FnMut( &'a T) -> JsonValue< 'a>,
+        F: FnMut( &'a T) -> JsonValue< '_>,
     {
         let mut res = self.OpenArray( key);
         let empty_key = "";
@@ -68,18 +68,17 @@ pub trait JsonListener< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct JsonOutStream< 'a, W: std::fmt::Write>
+pub struct JsonOutStream< W: std::fmt::Write>
 {
     _OStr: W,
     _Depth: u32,
     _EntryFlg: bool,
     _MultiLineFlg: bool,
-    _marker: std::marker::PhantomData< &'a ()>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, W: std::fmt::Write> JsonOutStream< 'a, W>
+impl< W: std::fmt::Write> JsonOutStream< W>
 {
     pub fn	New( ostr: W, multiLineFlg: bool) -> Self
     {
@@ -88,7 +87,6 @@ impl< 'a, W: std::fmt::Write> JsonOutStream< 'a, W>
             _Depth: 0,
             _EntryFlg: false,
             _MultiLineFlg: multiLineFlg,
-            _marker: std::marker::PhantomData,
         }
     }
 
@@ -113,9 +111,9 @@ impl< 'a, W: std::fmt::Write> JsonOutStream< 'a, W>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, W: std::fmt::Write> JsonListener< 'a> for JsonOutStream< 'a, W>
+impl< W: std::fmt::Write> JsonListener for JsonOutStream< W>
 {
-    fn	KeyValue( &mut self, key: &str, value: JsonValue< 'a>) -> bool
+    fn	KeyValue( &mut self, key: &str, value: JsonValue< '_>) -> bool
     {
         let _ = self.LineFeed();
         self._EntryFlg = true;
