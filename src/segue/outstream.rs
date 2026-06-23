@@ -1,42 +1,47 @@
 //-- outstream.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Buff, U8, U32 };
+use	crate::silo::{ Arr, Buff, IAccess, IArr, U8, U32 };
 use	std::io::{ Result, Write };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct OutStream
+pub enum OutSource< 'a, W: Write>
 {
-    _Buff: Buff< U8>,
+    Fixed( Arr< 'a, U8>),
+    Streaming( W, Buff< U8>),
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub struct OutStream< 'a, W: Write = std::io::Sink>
+{
+    _Source: OutSource< 'a, W>,
     _Marker: U32,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl OutStream
+impl< 'a> OutStream< 'a, std::io::Sink>
 {
-    pub fn	New() -> Self
+    pub fn	FromArr( arr: Arr< 'a, U8>) -> Self
     {
         Self {
-            _Buff: Buff::NewEmpty(),
+            _Source: OutSource::Fixed( arr),
             _Marker: U32( 0),
         }
     }
+}
 
-    //-----------------------------------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	FromBuff( buff: Buff< U8>) -> Self
+impl< 'a, W: Write> OutStream< 'a, W>
+{
+    pub fn	New( inner: W, cacheSize: usize) -> Self
     {
+        let  	buff = Buff::New( U32( cacheSize as u32), U8::_0);
         Self {
-            _Buff: buff,
+            _Source: OutSource::Streaming( inner, buff),
             _Marker: U32( 0),
         }
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	IntoBuff( self) -> Buff< U8>
-    {
-        self._Buff
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -56,34 +61,101 @@ impl OutStream
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl Write for OutStream
+impl< 'a, W: Write> Write for OutStream< 'a, W>
 {
     fn	write( &mut self, buf: &[u8]) -> Result< usize>
     {
-        let  	pos = self._Marker.AsUsize();
         let  	amt = buf.len();
-        let  	newPos = pos + amt;
-        let  	currSize = self._Buff.Size().AsUsize();
-
-        if newPos > currSize {
-            self._Buff.Resize( U32( newPos as u32), |_| U8::_0);
+        if amt == 0 {
+            return Ok( 0);
         }
 
-        unsafe {
-            let  	ptr = self._Buff.as_mut_ptr().cast::<u8>();
-            let  	slice = std::slice::from_raw_parts_mut( ptr, newPos);
-            slice[pos..newPos].copy_from_slice( buf);
-        }
+        match &mut self._Source {
+            OutSource::Fixed( arr) => {
+                let  	pos = self._Marker.AsUsize();
+                let  	currSize = arr.Size().AsUsize();
+                
+                if pos >= currSize {
+                    return Ok( 0);
+                }
+                
+                let  	available = currSize - pos;
+                let  	len = std::cmp::min( available, amt);
+                
+                unsafe {
+                    let  	ptr = arr.Ptr().cast_mut().cast::<u8>();
+                    let  	slice = std::slice::from_raw_parts_mut( ptr, currSize);
+                    slice[pos..pos + len].copy_from_slice( &buf[..len]);
+                }
+                
+                self._Marker += U32( len as u32);
+                Ok( len)
+            },
+            OutSource::Streaming( inner, buff) => {
+                let  	mut pos = self._Marker.AsUsize();
+                let  	cacheSize = buff.Size().AsUsize();
+                let  	mut written = 0;
 
-        self._Marker = U32( newPos as u32);
-        Ok( amt)
+                while written < amt {
+                    if pos == cacheSize {
+                        // Flush cache
+                        unsafe {
+                            let  	ptr = buff.as_ptr().cast::<u8>();
+                            let  	slice = std::slice::from_raw_parts( ptr, cacheSize);
+                            inner.write_all( slice)?;
+                        }
+                        pos = 0;
+                        self._Marker = U32( 0);
+                    }
+
+                    let  	available = cacheSize - pos;
+                    let  	len = std::cmp::min( available, amt - written);
+
+                    unsafe {
+                        let  	ptr = buff.as_mut_ptr().cast::<u8>();
+                        let  	slice = std::slice::from_raw_parts_mut( ptr, cacheSize);
+                        slice[pos..pos + len].copy_from_slice( &buf[written..written + len]);
+                    }
+
+                    pos += len;
+                    written += len;
+                    self._Marker = U32( pos as u32);
+                }
+
+                Ok( written)
+            }
+        }
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
     fn	flush( &mut self) -> Result< ()>
     {
-        Ok( ())
+        match &mut self._Source {
+            OutSource::Fixed( _) => Ok( ()),
+            OutSource::Streaming( inner, buff) => {
+                let  	pos = self._Marker.AsUsize();
+                if pos > 0 {
+                    unsafe {
+                        let  	ptr = buff.as_ptr().cast::<u8>();
+                        let  	slice = std::slice::from_raw_parts( ptr, pos);
+                        inner.write_all( slice)?;
+                    }
+                    self._Marker = U32( 0);
+                }
+                inner.flush()
+            }
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, W: Write> Drop for OutStream< 'a, W>
+{
+    fn	drop( &mut self)
+    {
+        let  	_ = self.flush();
     }
 }
 
