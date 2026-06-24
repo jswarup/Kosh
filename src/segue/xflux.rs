@@ -28,7 +28,7 @@ pub trait IXFlux
  
 pub trait IXFluxable
 {
-    fn	ToXFlux( &self, key: &str, flux: &mut dyn IXFlux) -> bool;
+    fn	ToXFlux( &self, flux: &mut dyn IXFlux, key: &str) -> bool;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
