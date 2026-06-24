@@ -1,13 +1,14 @@
 //-- jsonoutstrm.rs -------------------------------------------------------------------------------------------------------------------
 
 use	crate::segue::xflux::{ IXFlux, XField };
+use	crate::silo::U32;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub struct JsonOutStream< W: std::fmt::Write>
 {
     _OStr: W,
-    _Depth: u32,
+    _Depth: U32,
     _EntryFlg: bool,
     _MultiLineFlg: bool,
 }
@@ -20,7 +21,7 @@ impl< W: std::fmt::Write> JsonOutStream< W>
     {
         let  	mut outStream = Self {
             _OStr: ostr,
-            _Depth: 0,
+            _Depth: U32( 0),
             _EntryFlg: false,
             _MultiLineFlg: multiLineFlg,
         };
@@ -37,7 +38,7 @@ impl< W: std::fmt::Write> JsonOutStream< W>
         }
         if self._MultiLineFlg {
             write!( self._OStr, "\n")?;
-            for _ in 0..(self._Depth * 2) {
+            for _ in 0..(self._Depth.0 * 2) {
                 write!( self._OStr, " ")?;
             }
         } else {
@@ -161,6 +162,9 @@ impl< W: std::fmt::Write> IXFlux for JsonOutStream< W>
                 let  	_ = self.LineFeed();
                 self._EntryFlg = true;
                 let  	_ = write!( self._OStr, "}}");
+            },
+            XField::Fluxable( f) => {
+                let  	_ = f.ToXFlux( self);
             },
         }
     }

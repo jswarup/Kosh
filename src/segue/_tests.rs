@@ -1,7 +1,7 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::{
     heist::Atelier,
-    segue::{ Charset, InStream, Shard, JsonOutStream, xflux::XField, xflux::IXFlux },
+    segue::{ Charset, InStream, Shard, JsonOutStream, xflux::XField, IXFlux },
     silo::{ Arr, IAccess, U8, U32 }
 };
 
@@ -82,16 +82,7 @@ fn	TestJsonOutStream()
     {
         let  	mut jsonStream = JsonOutStream::New( &mut output, true);
         
-        let  	mut idx = 0;
-        jsonStream.KeyField( "prices", XField::Arr( &mut |item| {
-            if idx < arr.len() {
-                *item = XField::F64( *arr.At( idx) as f64);
-                idx += 1;
-                true
-            } else {
-                false
-            }
-        }));
+        jsonStream.KeyField( "prices", XField::Fluxable( &arr));
     }
     
     std::fs::write( "a.json", output).unwrap();
