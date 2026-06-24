@@ -2,7 +2,7 @@
 use	crate::{
     heist::Atelier,
     segue::
-    { Charset, InStream, Shard, JsonListener, JsonOutStream, JsonValue },
+    { Charset, InStream, Shard, JsonOutStream, xflux::XField, xflux::IXFlux },
     silo::{ Arr, IAccess, U8, U32 }
 };
 
@@ -83,7 +83,16 @@ fn	TestJsonOutStream()
     let  	mut jsonStream = JsonOutStream::New( &mut output, true);
     
     jsonStream.OpenObject( "");
-    jsonStream.KeyArray( "prices", &arr, |p| JsonValue::F64( *p as f64));
+    let  	mut idx = 0;
+    jsonStream.KeyField( "prices", XField::Arr( &mut |item| {
+        if idx < arr.len() {
+            *item = XField::F64( *arr.At( idx) as f64);
+            idx += 1;
+            true
+        } else {
+            false
+        }
+    }));
     jsonStream.CloseObject();
     
     std::fs::write( "a.json", output).unwrap();

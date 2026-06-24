@@ -1,7 +1,7 @@
 //-- charset.rs -------------------------------------------------------------------------------------------------------------------
 use	std::sync::LazyLock;
 use	crate::silo::{ Arr, Buff, U8, U64 };
-use	crate::segue::JSonIfc;
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -583,12 +583,12 @@ impl std::ops::BitAndAssign for Charset
  
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl JSonIfc for Charset
+impl crate::segue::IXFluxable for Charset
 {
-    fn	ToJSon< L: crate::segue::JsonListener>( &self, key: &str, listener: &mut L) -> bool
+    fn	ToXFlux( &self, key: &str, flux: &mut dyn crate::segue::IXFlux) -> bool
     {
         let  	s = self.ToString();
-        listener.KeyValue( key, crate::segue::JsonValue::Str( &s))
+        flux.KeyField( key, crate::segue::XField::Str( &s))
     }
 }
 
