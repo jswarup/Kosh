@@ -9,6 +9,7 @@ pub enum XField< 'a>
     F64( f64),
     Bool( bool),
     Arr( &'a mut dyn FnMut( &mut XField< 'a>) -> bool),
+    Obj( &'a mut dyn FnMut( &mut String, &mut XField< 'a>) -> bool),
     Null,
 }
 
