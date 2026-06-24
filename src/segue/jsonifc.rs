@@ -1,5 +1,5 @@
 //-- jsonifc.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ IAccess, U32 };
+use	crate::silo::{ IAccess };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -55,13 +55,13 @@ pub trait JsonListener
     where
         Self: Sized,
         A: IAccess< 'a, T>,
-        F: FnMut( &'a T) -> JsonValue< '_>,
+        F: FnMut( &T) -> JsonValue< '_>,
     {
         let mut res = self.OpenArray( key);
         let empty_key = "";
-        for i in 0..access.Size().0 {
-            res = res && self.KeyValue( empty_key, f( access.At( U32( i))));
-        }
+        access.Traverse( | val| {
+            res = res && self.KeyValue( empty_key, f( val));
+        });
         res && self.CloseArray()
     }
 }
