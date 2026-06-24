@@ -1,5 +1,6 @@
 //-- jsonoutstrm.rs -------------------------------------------------------------------------------------------------------------------
 use	crate::segue::{ JsonListener, JsonValue };
+use	crate::segue::xflux::{ IXFlux, XField };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -122,6 +123,54 @@ impl< W: std::fmt::Write> JsonListener for JsonOutStream< W>
         let _ = self.LineFeed();
         self._EntryFlg = true;
         let _ = write!( self._OStr, "}}");
+        true
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< W: std::fmt::Write> IXFlux for JsonOutStream< W>
+{
+    fn	OStream( &mut self) -> &mut dyn std::fmt::Write
+    {
+        &mut self._OStr
+    }
+ 
+    fn	Field( &mut self, field: XField) 
+    { 
+        match field {
+            XField::Str( s) => { let  	_ = write!( self._OStr, "\"{}\"", s); },
+            XField::U64( n) => { let  	_ = write!( self._OStr, "{}", n); },
+            XField::F64( f) => { 
+                if f.is_nan() || f.is_infinite() {
+                    let  	_ = write!( self._OStr, "\"null\"");
+                } else {
+                    let  	_ = write!( self._OStr, "{}", f);
+                }
+            },
+            XField::Bool( b) => { let  	_ = write!( self._OStr, "{}", if b { "true" } else { "false" }); },
+            XField::Null => { let  	_ = write!( self._OStr, "\"null\""); },
+            XField::Arr( arr) => {
+                let  	_ = write!( self._OStr, "[");
+                for ( i, v) in arr.iter().enumerate() {
+                    if i > 0 { let  	_ = write!( self._OStr, ", "); }
+                    self.Field( *v);
+                }
+                let  	_ = write!( self._OStr, "]");
+            },
+        }
+    }
+ 
+    fn	KeyField( &mut self, key: &str, value: XField< '_>) -> bool
+    {
+        let  	_ = self.LineFeed();
+        self._EntryFlg = true;
+        
+        if !key.is_empty() {
+            let  	_ = write!( self._OStr, "\"{}\": ", key);
+        }
+        
+        self.Field( value);
         true
     }
 }
