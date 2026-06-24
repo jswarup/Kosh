@@ -2,14 +2,13 @@
  
 //---------------------------------------------------------------------------------------------------------------------------------
  
-#[derive(Clone, Copy)]
 pub enum XField< 'a>
 {
     Str( &'a str),
     U64( u64),
     F64( f64),
     Bool( bool),
-    Arr( &'a [XField< 'a>]),
+    Arr( &'a mut dyn FnMut( &mut XField< 'a>) -> bool),
     Null,
 }
 

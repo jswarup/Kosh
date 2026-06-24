@@ -150,11 +150,16 @@ impl< W: std::fmt::Write> IXFlux for JsonOutStream< W>
             },
             XField::Bool( b) => { let  	_ = write!( self._OStr, "{}", if b { "true" } else { "false" }); },
             XField::Null => { let  	_ = write!( self._OStr, "\"null\""); },
-            XField::Arr( arr) => {
+            XField::Arr( arr_func) => {
                 let  	_ = write!( self._OStr, "[");
-                for ( i, v) in arr.iter().enumerate() {
-                    if i > 0 { let  	_ = write!( self._OStr, ", "); }
-                    self.Field( *v);
+                let  	mut is_first = true;
+                let  	mut item = XField::Null;
+                while arr_func( &mut item) {
+                    if !is_first { let  	_ = write!( self._OStr, ", "); }
+                    let  	mut next_item = XField::Null;
+                    std::mem::swap( &mut item, &mut next_item);
+                    self.Field( next_item);
+                    is_first = false;
                 }
                 let  	_ = write!( self._OStr, "]");
             },
