@@ -18,12 +18,14 @@ impl< W: std::fmt::Write> JsonOutStream< W>
 {
     pub fn	New( ostr: W, multiLineFlg: bool) -> Self
     {
-        Self {
+        let  	mut outStream = Self {
             _OStr: ostr,
             _Depth: 0,
             _EntryFlg: false,
             _MultiLineFlg: multiLineFlg,
-        }
+        };
+        outStream.OpenObject( "");
+        outStream
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -130,7 +132,9 @@ impl< W: std::fmt::Write> IXFlux for JsonOutStream< W>
                 let  	mut is_first = true;
                 let  	mut item = XField::Null;
                 while arr_func( &mut item) {
-                    if !is_first { let  	_ = write!( self._OStr, ", "); }
+                    if !is_first {
+                        let  	_ = write!( self._OStr, ", "); 
+                    }
                     let  	mut next_item = XField::Null;
                     std::mem::swap( &mut item, &mut next_item);
                     self.Field( next_item);
@@ -172,6 +176,16 @@ impl< W: std::fmt::Write> IXFlux for JsonOutStream< W>
         
         self.Field( value);
         true
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< W: std::fmt::Write> Drop for JsonOutStream< W>
+{
+    fn	drop( &mut self)
+    {
+        self.CloseObject();
     }
 }
 
