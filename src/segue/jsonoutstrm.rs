@@ -19,14 +19,12 @@ impl< W: std::fmt::Write> JsonOutStream< W>
 {
     pub fn	New( ostr: W, multiLineFlg: bool) -> Self
     {
-        let  	mut outStream = Self {
+        Self {
             _OStr: ostr,
             _Depth: U32( 0),
             _EntryFlg: false,
             _MultiLineFlg: multiLineFlg,
-        };
-        outStream.OpenObject( "");
-        outStream
+        }
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -46,61 +44,19 @@ impl< W: std::fmt::Write> JsonOutStream< W>
         }
         Ok(())
     }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< W: std::fmt::Write> JsonOutStream< W>
-{
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	OpenArray( &mut self, key: &str) -> bool
-    {
-        let _ = self.LineFeed();
-        self._EntryFlg = false;
-        if !key.is_empty() {
-            let _ = write!( self._OStr, "\"{}\": ", key);
-        }
-        let _ = write!( self._OStr, "[ ");
-        self._Depth += 1;
-        true
-    }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	CloseArray( &mut self) -> bool
+    pub fn	KeyField( &mut self, key: &str, value: XField< '_>) -> bool
     {
-        if self._Depth > 0 { self._Depth -= 1; }
-        self._EntryFlg = false;
-        let _ = self.LineFeed();
+        let  	_ = self.LineFeed();
         self._EntryFlg = true;
-        let _ = write!( self._OStr, "]");
-        true
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	OpenObject( &mut self, key: &str) -> bool
-    {
-        let _ = self.LineFeed();
-        self._EntryFlg = false;
+        
         if !key.is_empty() {
-            let _ = write!( self._OStr, "\"{}\": ", key);
+            let  	_ = write!( self._OStr, "\"{}\": ", key);
         }
-        let _ = write!( self._OStr, "{{");
-        self._Depth += 1;
-        true
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	CloseObject( &mut self) -> bool
-    {
-        if self._Depth > 0 { self._Depth -= 1; }
-        self._EntryFlg = false;
-        let _ = self.LineFeed();
-        self._EntryFlg = true;
-        let _ = write!( self._OStr, "}}");
+        
+        self.Field( value);
         true
     }
 }
@@ -109,11 +65,6 @@ impl< W: std::fmt::Write> JsonOutStream< W>
 
 impl< W: std::fmt::Write> IXFlux for JsonOutStream< W>
 {
-    fn	OStream( &mut self) -> &mut dyn std::fmt::Write
-    {
-        &mut self._OStr
-    }
- 
     fn	Field( &mut self, field: XField) 
     { 
         match field {
@@ -148,7 +99,6 @@ impl< W: std::fmt::Write> IXFlux for JsonOutStream< W>
                 let  	_ = write!( self._OStr, "{{");
                 self._Depth += 1;
                 
-                // Reset entry flag so the first child doesn't get a prefixed comma
                 self._EntryFlg = false;
 
                 let  	mut key = String::new();
@@ -171,29 +121,6 @@ impl< W: std::fmt::Write> IXFlux for JsonOutStream< W>
                 self.Field( field);
             },
         }
-    }
- 
-    fn	KeyField( &mut self, key: &str, value: XField< '_>) -> bool
-    {
-        let  	_ = self.LineFeed();
-        self._EntryFlg = true;
-        
-        if !key.is_empty() {
-            let  	_ = write!( self._OStr, "\"{}\": ", key);
-        }
-        
-        self.Field( value);
-        true
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< W: std::fmt::Write> Drop for JsonOutStream< W>
-{
-    fn	drop( &mut self)
-    {
-        self.CloseObject();
     }
 }
 

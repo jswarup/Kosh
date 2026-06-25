@@ -20,11 +20,7 @@ pub enum XField< 'a>
  
 pub trait IXFlux 
 {
-    fn	OStream( &mut self) -> &mut dyn std::fmt::Write;
-
     fn	Field( &mut self, field: XField); 
-
-    fn	KeyField( &mut self, _key: &str, _value: XField< '_>) -> bool;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -45,11 +41,11 @@ macro_rules! ImplIXFluxable
         {
             fn	ToXFlux< 'a>( &'a self, field: &mut $crate::segue::xflux::XField< 'a>)
             {
-                let  	mut step = U32( 0);
+                let  	mut step = 0u32;
                 let  	obj = self;
                 *field = $crate::segue::xflux::XField::Obj( Box::new( move |key, item| {
                     #[allow( unused_variables, unused_assignments)]
-                    let  	mut _curr_step = U32( 0);
+                    let  	mut _curr_step = 0u32;
                     $(
                         if step == _curr_step {
                             *key = stringify!( $field).to_string();
@@ -68,63 +64,43 @@ macro_rules! ImplIXFluxable
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxable for crate::silo::U8
+macro_rules! ImplIXFluxableUInt
 {
-    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>)
+    ( $( $T:ty ),+ ) =>
     {
-        *field = XField::U64( self.0 as u64);
-    }
+        $(
+            impl IXFluxable for $T
+            {
+                fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>)
+                {
+                    *field = XField::U64( self.0 as u64);
+                }
+            }
+        )+
+    };
 }
+
+ImplIXFluxableUInt!( crate::silo::U8, crate::silo::U16, crate::silo::U32, crate::silo::U64);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxable for crate::silo::U16
+macro_rules! ImplIXFluxableFloat
 {
-    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>)  
+    ( $( $T:ty ),+ ) =>
     {
-        *field = XField::U64( self.0 as u64);
-    }
+        $(
+            impl IXFluxable for $T
+            {
+                fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>)
+                {
+                    *field = XField::F64( *self as f64);
+                }
+            }
+        )+
+    };
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IXFluxable for crate::silo::U32
-{
-    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>) 
-    {
-        *field = XField::U64( self.0 as u64);
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IXFluxable for crate::silo::U64
-{
-    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>)
-    {
-        *field = XField::U64( self.0 as u64);
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IXFluxable for f32
-{
-    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>)
-    {
-        *field = XField::F64( *self as f64);
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IXFluxable for f64
-{
-    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>)
-    {
-        *field = XField::F64( *self);
-    }
-}
+ImplIXFluxableFloat!( f32, f64);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 

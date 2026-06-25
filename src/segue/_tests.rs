@@ -1,7 +1,7 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::{
     heist::Atelier,
-    segue::{ Charset, InStream, Shard, JsonOutStream, xflux::XField, IXFlux },
+    segue::{ Charset, InStream, Shard, JsonOutStream, xflux::XField },
     silo::{ Arr, IAccess, U8, U32 }
 };
 

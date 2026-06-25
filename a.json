@@ -1,4 +1,93 @@
-
 {
-  "prices": [12.34000015258789, 56.779998779296875, 90.12000274658203, 34.560001373291016, 78.9000015258789]
+  "Op": 2,
+  "LeftChild": {
+    "DocStr": "",
+    "ChildOp": 3,
+    "ChildrenSize": 2,
+    "Child_0": {
+      "DocStr": "",
+      "ChildOp": 2,
+      "ChildrenSize": 2,
+      "Child_0": {
+        "DocStr": "",
+        "ChildOp": 3,
+        "ChildrenSize": 2,
+        "Child_0": {
+          "DocStr": "",
+          "ChildOp": 2,
+          "ChildrenSize": 2,
+          "Child_0": {
+            "DocStr": "A",
+            "ChildOp": 6,
+            "ChildrenSize": 0
+          },
+          "Child_1": {
+            "DocStr": "B",
+            "ChildOp": 6,
+            "ChildrenSize": 0
+          }
+        },
+        "Child_1": {
+          "DocStr": "",
+          "ChildOp": 2,
+          "ChildrenSize": 2,
+          "Child_0": {
+            "DocStr": "C",
+            "ChildOp": 6,
+            "ChildrenSize": 0
+          },
+          "Child_1": {
+            "DocStr": "D",
+            "ChildOp": 6,
+            "ChildrenSize": 0
+          }
+        }
+      },
+      "Child_1": {
+        "DocStr": "E",
+        "ChildOp": 6,
+        "ChildrenSize": 0
+      }
+    },
+    "Child_1": {
+      "DocStr": "",
+      "ChildOp": 3,
+      "ChildrenSize": 2,
+      "Child_0": {
+        "DocStr": "",
+        "ChildOp": 2,
+        "ChildrenSize": 2,
+        "Child_0": {
+          "DocStr": "",
+          "ChildOp": 3,
+          "ChildrenSize": 2,
+          "Child_0": {
+            "DocStr": "F",
+            "ChildOp": 6,
+            "ChildrenSize": 0
+          },
+          "Child_1": {
+            "DocStr": "G",
+            "ChildOp": 6,
+            "ChildrenSize": 0
+          }
+        },
+        "Child_1": {
+          "DocStr": "H",
+          "ChildOp": 6,
+          "ChildrenSize": 0
+        }
+      },
+      "Child_1": {
+        "DocStr": "i",
+        "ChildOp": 6,
+        "ChildrenSize": 0
+      }
+    }
+  },
+  "RightChild": {
+    "DocStr": "J",
+    "ChildOp": 6,
+    "ChildrenSize": 0
+  }
 }
