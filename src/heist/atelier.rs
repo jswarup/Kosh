@@ -237,33 +237,7 @@ impl< 'a> Atelier< 'a>
         println!( "]")
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	TraceJobs( &self, jobIds: Arr< U16>) -> AtelierInfo
-    {        
-        let  	mut jobSet = HashSet::< U16>::new();
-        let  	mut info = AtelierInfo::New();
-
-        let  	mut processStash = Stash::< U16>::New( U32( 1024), 0, U16( 0));
-        jobIds.Traverse( |jobId| {
-            processStash.Push( *jobId);
-        });
-          
-        for jobId in processStash.Stk().Arr()  {
-            if !jobSet.insert( *jobId) {
-                continue;
-            }
-            
-            let  	succId = *self._SuccIds.Arr().At( *jobId);
-            if succId != U16( 0) {
-                processStash.Stk().Push( succId);
-            }  
-            info._JobStash.Push( JobInfo::New( self, *jobId));
-        }
-        info
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
 
 }
 
@@ -310,6 +284,30 @@ impl AtelierInfo
         Self {   
             _JobStash: Stash::New( U32( 1024), 0, JobInfo { _JobId: U16( 0), _SuccId: U16( 0), _SzPred: U16( 0), _DocStr: "Free" }),
         }
+    }
+
+    pub fn	TraceJobs( atelier: &Atelier< '_>, jobIds: Arr< U16>) -> AtelierInfo
+    {        
+        let  	mut jobSet = HashSet::< U16>::new();
+        let  	mut info = AtelierInfo::New();
+
+        let  	mut processStash = Stash::< U16>::New( U32( 1024), 0, U16( 0));
+        jobIds.Traverse( |jobId| {
+            processStash.Push( *jobId);
+        });
+          
+        for jobId in processStash.Stk().Arr()  {
+            if !jobSet.insert( *jobId) {
+                continue;
+            }
+            
+            let  	succId = *atelier._SuccIds.Arr().At( *jobId);
+            if succId != U16( 0) {
+                processStash.Stk().Push( succId);
+            }  
+            info._JobStash.Push( JobInfo::New( atelier as *const _, *jobId));
+        }
+        info
     }
 }
 
