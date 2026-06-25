@@ -155,9 +155,7 @@ where
     pub fn	DoIndexSetup( &self)
     {
         let  	arr = self._Buff.Arr();
-        arr.USeg().Traverse( |i: U32| {
-            arr.SetAt( i, &T::from( i.AsUsize()));
-        });
+        arr.DoIndexSetup();
         self._Sz.Store( arr.Size(), Ordering::Release);
     }
     //-----------------------------------------------------------------------------------------------------------------------------

@@ -1,6 +1,8 @@
+use tracing::info;
+
 //-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::Maestro;
-use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, U16, U32 };
+use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, U16, U32, USeg };
 use	crate::stalks::{ Atm, Spinlock, WorkPtr };
 use	std::sync::atomic::Ordering;
 use std::collections::HashSet;
@@ -309,6 +311,36 @@ impl AtelierInfo
             }  
             jobStash.Push( JobInfo::New( atelier as *const _, *jobId));
         } 
+    }
+
+    pub fn TraceHookedJobs( atelier: &Atelier< '_>) -> AtelierInfo
+    {
+        let  	mut info = AtelierInfo {
+            _HookedStash: Stash::New( U32( 1024), 0, JobInfo::default()),
+            _OrphanStash: Stash::New( U32( 1024), 0, JobInfo::default()),
+        };
+
+        let  	maestros = atelier.Maestros();
+        maestros.Traverse( |maestro| {
+            let  	runQueue = maestro.RunQueueArr();
+            Self::TraceJobs( atelier, runQueue, &mut info._HookedStash);
+        });
+        let     jobRefBuff = Buff::< U16>::New( U32::_16Sz, U16::_0);
+        let     jobRefs = jobRefBuff.Arr();
+        jobRefs.DoIndexSetup();
+        let     docArr = atelier._JobDocBuff.Arr();
+        
+        let  lessDocId = |d1: U16, d2: U16| { (*docArr.At( d1)).as_ptr() < (*docArr.At( d2)).as_ptr() };
+
+        jobRefs.USeg().QSort( |i, j| lessDocId( *jobRefs.At( i), *jobRefs.At( j)), |i, j| jobRefs.Swap( i, j));
+        let     freeSeg = jobRefs.USeg().LocateBound( |i| lessDocId( *jobRefs.At( i), U16( 0)));
+        freeSeg.Traverse( | i| { jobRefs.SetAt( i, &U16( 0)); });
+
+        let     hookedArr = info._HookedStash.Stk().Arr();
+        hookedArr.Traverse( |job| {
+            let     _lInd = jobRefs.USeg().LowerBound( |i| lessDocId( *jobRefs.At( i), job._JobId));
+        });
+        info
     }
 }
 

@@ -1,6 +1,6 @@
 //-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::Atelier;
-use	crate::silo::{ Buff, IAccess, IArr, Stash, Stk, USeg, U16, U32 };
+use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, Stk, USeg, U16, U32 };
 use	crate::stalks::{ Atm, DynINode, DynIWorker, IWorker, IntoWorkPtr, Spinlock, WorkPtr, ChildOp};
 use	std::sync::atomic::Ordering;
 
@@ -108,7 +108,15 @@ impl< 'a> Maestro< 'a>
     {
         self._JobCache.Stk()
     }
- //-----------------------------------------------------------------------------------------------------------------------------
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	RunQueueArr( &self) -> Arr< '_, U16>
+    {
+        self._RunQueue.Stk().Arr()
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	FlushTempQueue( &self)
     {

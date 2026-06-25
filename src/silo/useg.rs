@@ -223,6 +223,55 @@ impl USeg
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	LowerBound< LessFn>( &self, lessFn: LessFn) -> U32
+    where
+        LessFn: Fn( U32) -> bool,
+    {
+        let mut     l = self._First;
+        let mut     h = self._First + self.Size();
+        while l < h {
+            let  	mid = ( l + h) / U32( 2);
+            if lessFn( mid) {
+                l = mid + U32( 1);
+            } else {
+                h = mid;
+            }
+        }
+        l
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	UpperBound< LessFn>( &self, lessFn: LessFn) -> U32
+    where
+        LessFn: Fn( U32) -> bool,
+    {
+        let mut     l = self._First;
+        let mut     h = self._First + self.Size();
+        while l < h {
+            let  	mid = ( l + h) / U32( 2);
+            if lessFn( mid) {
+                h = mid;
+            } else {
+                l = mid + U32( 1);
+            }
+        }
+        l
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	LocateBound< LessFn>( &self, lessFn: LessFn) -> USeg
+    where
+        LessFn: Fn( U32) -> bool,
+    {
+        let     lo = self.LowerBound( &lessFn);
+        let     hi = self.UpperBound( &lessFn);
+        USeg::New( lo, hi -lo)
+    }
+    
+    //-----------------------------------------------------------------------------------------------------------------------------
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

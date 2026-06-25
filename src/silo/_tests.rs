@@ -468,8 +468,7 @@ fn	QSortTest()
     let  	buff = Buff::Create( U32( 256), |_| rand::random::< f64>());
     //let     buff =  Buff::New( 5, | i| i);
     let  	arr = buff.Arr();
-    arr.USeg()
-        .QSort( |i, j| arr.At( i) > arr.At( j), |i, j| {
+    arr.USeg().QSort( |i, j| arr.At( i) > arr.At( j), |i, j| {
             arr.Swap( i, j);
         });
     print! { "{:?}\n", arr};
