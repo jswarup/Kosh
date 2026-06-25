@@ -75,16 +75,12 @@ impl< 'a> Atelier< 'a>
     {
         *self._SuccIds.Arr().At( jobId)
     }
-
+ 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	IncrSzPredAt< K: Into< U16>>( &self, jobId: U16, inc: K) -> U16
+    pub fn	SzPred( &self, jobId: U16) -> &Atm< U16>
     {
-        self._SzPreds.Arr().At( jobId).FetchAdd( inc, Ordering::SeqCst)
+        self._SzPreds.Arr().At( jobId)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -131,7 +127,7 @@ impl< 'a> Atelier< 'a>
     pub fn	SetSucc( &self, jobId: U16, succId: U16)  
     {  
         self._SuccIds.Arr().SetAt( jobId, &succId);
-        self.IncrSzPredAt( succId, 1); 
+        self.SzPred( succId).Add( 1); 
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -196,10 +192,10 @@ impl< 'a> Atelier< 'a>
                 let  	_res = self.FreeJob( maestroIdx, jobId);
                 let  	succId = maestro.CurSuccId();
                 if succId != U16( 0) {
-                    let  	szPred: U16 = self.IncrSzPredAt( succId, -U16( 1));
+                    let  	szPred: U16 = self.SzPred( succId).Add( -U16( 1));
                     if szPred == U16( 1) {
                         jobId = succId;
-                        self._SzSchedJob.FetchAdd( U32( 1), Ordering::SeqCst);
+                        self._SzSchedJob.Add( U32( 1));
                     } else {
                         jobId = U16::_0;
                     }
@@ -207,7 +203,7 @@ impl< 'a> Atelier< 'a>
                     jobId = U16::_0;
                 }
 
-                self._SzSchedJob.FetchAdd( -U32( 1), Ordering::SeqCst);
+                self._SzSchedJob.Add( -U32( 1));
             }
             jobId = maestro.PopJob();
             if jobId == 0 {

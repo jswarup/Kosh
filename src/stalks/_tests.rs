@@ -16,7 +16,7 @@ fn	TestAtmBasicOps()
     atmVar.Set( 42);
     assert_eq!( atmVar.Get(), 42);
     // Test FetchAdd
-    let  	prevVal = atmVar.FetchAdd( 8, Ordering::SeqCst);
+    let  	prevVal = atmVar.Add( 8);
     assert_eq!( prevVal, 42);
     assert_eq!( atmVar.Get(), 50);
     // Test CompareExchange ( success)
@@ -28,7 +28,7 @@ fn	TestAtmBasicOps()
     assert_eq!( failureRes, Err( 100));
     assert_eq!( atmVar.Get(), 100);
     let  	atmVar1: Atm< U32> = Atm::New( U32( 0));
-    atmVar1.FetchAdd( 1, Ordering::SeqCst);
+    atmVar1.Add( 1);
     assert_eq!( atmVar1.Get(), 1);
 }
 

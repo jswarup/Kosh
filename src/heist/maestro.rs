@@ -116,7 +116,7 @@ impl< 'a> Maestro< 'a>
         arr.USeg().Traverse( |i| {
             let  	mut jobId = *arr.At( i);
             if jobId != 0 {
-                self.Atelier()._SzSchedJob.FetchAdd( U32( 1), Ordering::SeqCst);
+                self.Atelier()._SzSchedJob.Add( U32( 1));
                 self.EnqueRunJob( &mut jobId);
             }
         });

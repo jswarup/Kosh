@@ -114,6 +114,11 @@ impl< T: AtomicInt> Atm< T>
     {
         T::FetchAdd( &self._Val, v.into(), order)
     }
+    /// Convenience for sequential consistency fetch_add.
+    pub fn	Add< K: Into< T>>( &self, v: K) -> T 
+    {
+        self.FetchAdd( v, Ordering::SeqCst)
+    }
     /// Stores a value into the atomic integer if the current value is the same as the `current` value.
     pub fn	CompareExchange< K: Into< T>>( 
         &self,
