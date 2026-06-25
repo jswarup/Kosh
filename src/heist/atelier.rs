@@ -85,6 +85,15 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    pub fn	FreeDocStr( &self) -> &'static str
+    {
+        let     docStr = *self._JobDocBuff.Arr().At( 0);
+        assert!( docStr == "Free");
+        docStr
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     fn	AllocJob( &self, maestroIdx: U32) -> U16
     {
         let  	maestro = self._Maestros.Arr().At( maestroIdx);
@@ -107,11 +116,11 @@ impl< 'a> Atelier< 'a>
 
     fn	FreeJob( &self, maestroIdx: U32, mut jobId: U16) -> bool
     {
-        let     docArr = self._JobDocBuff.Arr();
-        assert!( *docArr.At( 0) == "Free");
-        docArr.SetAt( jobId, docArr.At( 0));
+        self._JobDocBuff.Arr().SetAt( jobId, &self.FreeDocStr());
 
         let  	maestro = self._Maestros.Arr().At( maestroIdx);
+        
+        maestro.FlushTempQueue();
         let  	jobCacheStk = maestro.JobCacheStk();
         loop {
             if jobCacheStk.SzVoid() != 0 && jobCacheStk.PushX( &mut jobId) {
@@ -187,7 +196,6 @@ impl< 'a> Atelier< 'a>
                 ( job.func)( job.data, maestro);                   // Run job
                 self._JobBuff.Arr().SetAt( jobId, &WorkPtr::Null());
                 maestro._SzProcessed += 1;
-                maestro.FlushTempQueue();
 
                 let  	_res = self.FreeJob( maestroIdx, jobId);
                 let  	succId = maestro.CurSuccId();
@@ -244,7 +252,7 @@ impl< 'a> Atelier< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Clone, Copy)]
+#[derive( Clone, Copy, Default)]
 pub struct JobInfo
 {
     pub _JobId: U16, 
@@ -271,26 +279,20 @@ impl JobInfo
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub struct AtelierInfo
-{
-    pub _JobStash: Stash< JobInfo>,
+{ 
+    
+    pub _HookedStash: Stash< JobInfo>,
+    pub _OrphanStash: Stash< JobInfo>
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl AtelierInfo
-{
-    pub fn	New() -> Self
-    {
-        Self {   
-            _JobStash: Stash::New( U32( 1024), 0, JobInfo { _JobId: U16( 0), _SuccId: U16( 0), _SzPred: U16( 0), _DocStr: "Free" }),
-        }
-    }
+{ 
 
-    pub fn	TraceJobs( atelier: &Atelier< '_>, jobIds: Arr< U16>) -> AtelierInfo
+    pub fn	TraceJobs( atelier: &Atelier< '_>, jobIds: Arr< U16>, jobStash: &mut Stash< JobInfo>  )
     {        
-        let  	mut jobSet = HashSet::< U16>::new();
-        let  	mut info = AtelierInfo::New();
-
+        let  	mut jobSet = HashSet::< U16>::new(); 
         let  	mut processStash = Stash::< U16>::New( U32( 1024), 0, U16( 0));
         jobIds.Traverse( |jobId| {
             processStash.Push( *jobId);
@@ -305,11 +307,12 @@ impl AtelierInfo
             if succId != U16( 0) {
                 processStash.Stk().Push( succId);
             }  
-            info._JobStash.Push( JobInfo::New( atelier as *const _, *jobId));
-        }
-        info
+            jobStash.Push( JobInfo::New( atelier as *const _, *jobId));
+        } 
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -327,9 +330,13 @@ impl std::fmt::Display for AtelierInfo
 {
     fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
-        write!( f, "Atel[ ")?;
-        self._JobStash.Stk().Arr().Traverse( |jobId| { 
-            let  	_ = write!( f, " {}", *jobId);
+        write!( f, "Atel[ Hooked:")?;
+        self._HookedStash.Stk().Arr().Traverse( |job| { 
+            let  	_ = write!( f, " {}", *job);
+        });
+        write!( f, " Orphan:")?;
+        self._OrphanStash.Stk().Arr().Traverse( |job| { 
+            let  	_ = write!( f, " {}", *job);
         });
         write!( f, "] ") 
     }
