@@ -24,6 +24,43 @@ impl Default for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl crate::segue::IXFluxable for Shard
+{
+    fn	ToXFlux< 'b>( &'b self, field: &mut crate::segue::xflux::XField< 'b>)
+    {
+        let  	mut step = 0u32;
+        let  	shard = self;
+        *field = crate::segue::xflux::XField::Obj( Box::new( move |key, item| {
+            if step == 0 {
+                match shard {
+                    Shard::Closure( _) => {
+                        *key = "Type".to_string();
+                        *item = crate::segue::xflux::XField::Str( "Closure");
+                    }
+                    Shard::Char( c) => {
+                        *key = "Char".to_string();
+                        *item = crate::segue::xflux::XField::String( c.to_string());
+                    }
+                    Shard::String( s) => {
+                        *key = "String".to_string();
+                        *item = crate::segue::xflux::XField::Str( s);
+                    }
+                    Shard::Charset( c) => {
+                        *key = "Charset".to_string();
+                        *item = crate::segue::xflux::XField::Fluxable( c);
+                    }
+                }
+                step += 1;
+                true
+            } else {
+                false
+            }
+        }));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl Shard
 {
     pub fn	New( f: fn( &DynIWorker< '_>)) -> Self

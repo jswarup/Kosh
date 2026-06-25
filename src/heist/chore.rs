@@ -22,6 +22,26 @@ impl Default for Chore
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl crate::segue::IXFluxable for Chore
+{
+    fn	ToXFlux< 'b>( &'b self, field: &mut crate::segue::xflux::XField< 'b>)
+    {
+        let  	mut step = 0u32;
+        *field = crate::segue::xflux::XField::Obj( Box::new( move |key, item| {
+            if step == 0 {
+                *key = "DocStr".to_string();
+                *item = crate::segue::xflux::XField::Str( self._DocStr);
+                step += 1;
+                true
+            } else {
+                false
+            }
+        }));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl Chore
 {
     pub fn	New( f: fn( &DynIWorker< '_>)) -> Self

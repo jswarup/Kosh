@@ -132,6 +132,40 @@ pub trait INode< 'a>: Send + Sync
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+pub fn FluxDynINode< 'b, 'a>( node: &'b DynINode< 'a>, field: &mut crate::segue::xflux::XField< 'b>)
+{
+    let  	mut step = 0u32;
+    *field = crate::segue::xflux::XField::Obj( Box::new( move |key, item| {
+        if step == 0 {
+            *key = "DocStr".to_string();
+            *item = crate::segue::xflux::XField::Str( node.DocStr());
+            step += 1;
+            true
+        } else if step == 1 {
+            *key = "ChildOp".to_string();
+            *item = crate::segue::xflux::XField::U64( node.ChildOp() as u64);
+            step += 1;
+            true
+        } else if step == 2 {
+            *key = "ChildrenSize".to_string();
+            *item = crate::segue::xflux::XField::U64( node._Size().0 as u64);
+            step += 1;
+            true
+        } else if step >= 3 && step < 3 + node._Size().0 {
+            let  	childIdx = step - 3;
+            *key = format!( "Child_{}", childIdx);
+            let  	child = node._At( crate::silo::U32( childIdx));
+            crate::stalks::node::FluxDynINode( child, item);
+            step += 1;
+            true
+        } else {
+            false
+        }
+    }));
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl< 'a> DynINode< 'a>
 {
     pub fn	Children< 'b>( &'b self) -> NodeChildren< 'b, 'a>
@@ -375,6 +409,53 @@ macro_rules! BiNodeTree {
                     #[allow(dead_code)]
                     pub fn Children<'b>(&'b self) -> $crate::stalks::node::NodeChildren<'b, 'a> {
                         $crate::stalks::node::NodeChildren(self)
+                    }
+                }
+
+                impl<'a> $crate::segue::IXFluxable for [<$Arg BiNode>]<'a>
+                where
+                    $Arg: $crate::segue::IXFluxable + 'a,
+                {
+                    fn	ToXFlux< 'b>( &'b self, field: &mut $crate::segue::xflux::XField< 'b>)
+                    {
+                        let  	mut step = $crate::silo::U32( 0);
+                        let  	node: &'b [<$Arg BiNode>]<'a> = self;
+                        *field = $crate::segue::xflux::XField::Obj( Box::new( move |key, item| {
+                            match node {
+                                [<$Arg BiNode>]::Leaf { _Val, .. } => {
+                                    if step == $crate::silo::U32( 0) {
+                                        *key = "Leaf".to_string();
+                                        *item = $crate::segue::xflux::XField::Fluxable( _Val);
+                                        step.0 += 1;
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                },
+                                [<$Arg BiNode>]::Node { _Op, _Children, .. } => {
+                                    if step == $crate::silo::U32( 0) {
+                                        *key = "Op".to_string();
+                                        *item = $crate::segue::xflux::XField::U64( *_Op as u64);
+                                        step.0 += 1;
+                                        true
+                                    } else if step == $crate::silo::U32( 1) {
+                                        *key = "LeftChild".to_string();
+                                        let  	child = &*_Children[0];
+                                        $crate::stalks::node::FluxDynINode( child, item);
+                                        step.0 += 1;
+                                        true
+                                    } else if step == $crate::silo::U32( 2) {
+                                        *key = "RightChild".to_string();
+                                        let  	child = &*_Children[1];
+                                        $crate::stalks::node::FluxDynINode( child, item);
+                                        step.0 += 1;
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                }
+                            }
+                        }));
                     }
                 }
 

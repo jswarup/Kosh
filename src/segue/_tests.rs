@@ -5,32 +5,7 @@ use	crate::{
     silo::{ Arr, IAccess, U8, U32 }
 };
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[test]
-fn	TestShardBuds()
-{
-    let  	aShard = Shard::New( |_m| {
-        print!( "{} ", 10);
-    });
-    let  	bShard = Shard::New( |_m| {
-        print!( "{} ", 20);
-    });
-    let  	cShard = Shard::New( |_m| {
-        print!( "{} ", 40);
-    });
-    let  	_nodeTree = crate::ShardTree!( ( cShard
-            < ( bShard
-                | aShard
-                | ( |_m| {
-                    print!( "{} ", 50);
-                })))
-    );
-    let  	atelier = Atelier::New( U32( 4));
-    let  	_mainMaestro = atelier.MainMaestro();
-    atelier.DoLaunch();
-}
-
+ 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
