@@ -147,15 +147,16 @@ impl< W: std::fmt::Write> IXFlux for JsonOutStream< W>
             XField::Obj( mut obj_func) => {
                 let  	_ = write!( self._OStr, "{{");
                 self._Depth += 1;
-                let  	mut is_first = true;
+                
+                // Reset entry flag so the first child doesn't get a prefixed comma
+                self._EntryFlg = false;
+
                 let  	mut key = String::new();
                 let  	mut item = XField::Null;
                 while obj_func( &mut key, &mut item) {
-                    if !is_first { let  	_ = write!( self._OStr, ","); }
                     let  	mut next_item = XField::Null;
                     std::mem::swap( &mut item, &mut next_item);
                     self.KeyField( &key, next_item);
-                    is_first = false;
                     key.clear();
                 }
                 if self._Depth > 0 { self._Depth -= 1; }

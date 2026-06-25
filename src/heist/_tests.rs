@@ -146,6 +146,15 @@ fn	TestChoreTree()
     
     let  	choreTree= crate::ChoreTree!( ((( ( a < b ) | ( c <  d)) < e) | ( ( f | g) < h)  | i) < j);
     //let  	choreTree= crate::ChoreTree!( ((( ( aChore | bChore ) < gChore))));
+    
+    let  	mut jsonStr = String::new();
+    {
+        let  	mut jsonOutStream = crate::segue::JsonOutStream::New( &mut jsonStr, true);
+        crate::segue::IXFlux::Field( &mut jsonOutStream, crate::segue::xflux::XField::Fluxable( &choreTree));
+    }
+    std::fs::write( "a.json", jsonStr).unwrap();
+
+    
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro(); 
 
