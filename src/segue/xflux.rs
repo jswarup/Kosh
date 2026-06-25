@@ -6,18 +6,19 @@ use	crate::silo::IAccess;
 pub enum XField< 'a>
 {
     Str( &'a str),
+    String( String),
     U64( u64),
     F64( f64),
     Bool( bool),
-    Arr( &'a mut dyn FnMut( &mut XField< 'a>) -> bool),
-    Obj( &'a mut dyn FnMut( &mut String, &mut XField< 'a>) -> bool),
+    Arr( Box< dyn FnMut( &mut XField< 'a>) -> bool + 'a>),
+    Obj( Box< dyn FnMut( &mut String, &mut XField< 'a>) -> bool + 'a>),
     Null,
     Fluxable( &'a dyn IXFluxable),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
  
-pub trait IXFlux
+pub trait IXFlux 
 {
     fn	OStream( &mut self) -> &mut dyn std::fmt::Write;
 
@@ -30,7 +31,7 @@ pub trait IXFlux
  
 pub trait IXFluxable
 {
-    fn	ToXFlux( &self, flux: &mut dyn IXFlux);
+    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -40,9 +41,9 @@ pub trait IXFluxable
 
 impl IXFluxable for crate::silo::U8
 {
-    fn	ToXFlux( &self, flux: &mut dyn IXFlux)
+    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>)
     {
-        flux.Field( XField::U64( self.0 as u64));
+        *field = XField::U64( self.0 as u64);
     }
 }
 
@@ -50,9 +51,9 @@ impl IXFluxable for crate::silo::U8
 
 impl IXFluxable for crate::silo::U16
 {
-    fn	ToXFlux( &self, flux: &mut dyn IXFlux)  
+    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>)  
     {
-        flux.Field( XField::U64( self.0 as u64));
+        *field = XField::U64( self.0 as u64);
     }
 }
 
@@ -60,9 +61,9 @@ impl IXFluxable for crate::silo::U16
 
 impl IXFluxable for crate::silo::U32
 {
-    fn	ToXFlux( &self, flux: &mut dyn IXFlux) 
+    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>) 
     {
-        flux.Field( XField::U64( self.0 as u64));
+        *field = XField::U64( self.0 as u64);
     }
 }
 
@@ -70,9 +71,9 @@ impl IXFluxable for crate::silo::U32
 
 impl IXFluxable for crate::silo::U64
 {
-    fn	ToXFlux( &self, flux: &mut dyn IXFlux)
+    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>)
     {
-        flux.Field( XField::U64( self.0 as u64));
+        *field = XField::U64( self.0 as u64);
     }
 }
 
@@ -80,9 +81,9 @@ impl IXFluxable for crate::silo::U64
 
 impl IXFluxable for f32
 {
-    fn	ToXFlux( &self, flux: &mut dyn IXFlux)
+    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>)
     {
-        flux.Field( XField::F64( *self as f64));
+        *field = XField::F64( *self as f64);
     }
 }
 
@@ -90,9 +91,9 @@ impl IXFluxable for f32
 
 impl IXFluxable for f64
 {
-    fn	ToXFlux( &self, flux: &mut dyn IXFlux)
+    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>)
     {
-        flux.Field( XField::F64( *self));
+        *field = XField::F64( *self);
     }
 }
 
@@ -102,11 +103,11 @@ impl<'a, T> IXFluxable for crate::silo::Arr<'a, T>
 where
     T: IXFluxable,
 {
-    fn	ToXFlux( &self, flux: &mut dyn IXFlux)
+    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut idx = 0u32;
         let  	arr = *self;
-        flux.Field( XField::Arr( &mut |item| {
+        *field = XField::Arr( Box::new( move |item| {
             if idx < arr.Size().0 {
                 *item = XField::Fluxable( arr.At( idx));
                 idx += 1;

@@ -118,6 +118,7 @@ impl< W: std::fmt::Write> IXFlux for JsonOutStream< W>
     { 
         match field {
             XField::Str( s) => { let  	_ = write!( self._OStr, "\"{}\"", s); },
+            XField::String( s) => { let  	_ = write!( self._OStr, "\"{}\"", s); },
             XField::U64( n) => { let  	_ = write!( self._OStr, "{}", n); },
             XField::F64( f) => { 
                 if f.is_nan() || f.is_infinite() {
@@ -128,7 +129,7 @@ impl< W: std::fmt::Write> IXFlux for JsonOutStream< W>
             },
             XField::Bool( b) => { let  	_ = write!( self._OStr, "{}", if b { "true" } else { "false" }); },
             XField::Null => { let  	_ = write!( self._OStr, "\"null\""); },
-            XField::Arr( arr_func) => {
+            XField::Arr( mut arr_func) => {
                 let  	_ = write!( self._OStr, "[");
                 let  	mut is_first = true;
                 let  	mut item = XField::Null;
@@ -143,7 +144,7 @@ impl< W: std::fmt::Write> IXFlux for JsonOutStream< W>
                 }
                 let  	_ = write!( self._OStr, "]");
             },
-            XField::Obj( obj_func) => {
+            XField::Obj( mut obj_func) => {
                 let  	_ = write!( self._OStr, "{{");
                 self._Depth += 1;
                 let  	mut is_first = true;
@@ -164,7 +165,9 @@ impl< W: std::fmt::Write> IXFlux for JsonOutStream< W>
                 let  	_ = write!( self._OStr, "}}");
             },
             XField::Fluxable( f) => {
-                let  	_ = f.ToXFlux( self);
+                let  	mut field = XField::Null;
+                f.ToXFlux( &mut field);
+                self.Field( field);
             },
         }
     }

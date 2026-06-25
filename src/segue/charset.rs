@@ -1,7 +1,7 @@
 //-- charset.rs -------------------------------------------------------------------------------------------------------------------
 use	std::sync::LazyLock;
 use	crate::silo::{ Arr, Buff, U8, U64 };
-use	crate::segue::{IXFlux, IXFluxable, XField};
+use	crate::segue::{IXFluxable, XField};
 
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -586,10 +586,10 @@ impl std::ops::BitAndAssign for Charset
 
 impl IXFluxable for Charset
 {
-    fn	ToXFlux( &self, flux: &mut dyn IXFlux) 
+    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>) 
     {
         let  	s = self.ToString();
-        flux.Field( XField::Str( &s));
+        *field = XField::String( s);
     }
 }
 
