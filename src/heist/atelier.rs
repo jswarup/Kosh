@@ -9,7 +9,7 @@ use std::collections::HashSet;
 
 pub struct Atelier< 'a>
 {
-    _SzSchedJob: Atm< U32>,                                            // Count of cumulative jobs in flight
+    pub( crate) _SzSchedJob: Atm< U32>,                                 // Count of cumulative jobs in flight
     _Maestros: Buff< Maestro< 'a>>,
     _SzPreds: Buff< Atm< U16>>,                                        // Count of predessors for job at the jobId
     _SuccIds: Buff< U16>,
@@ -78,17 +78,7 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	IncrSzSchedJob( &self, inc: U32) -> U32
-    {
-        self._SzSchedJob.FetchAdd( inc, Ordering::SeqCst)
-    }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    fn	SzSchedJob( &self) -> U32
-    {
-        self._SzSchedJob.Load( Ordering::Acquire)
-    }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
@@ -160,14 +150,6 @@ impl< 'a> Atelier< 'a>
         jobId
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	EnqueRunJob( &self, maestroIdx: U32, jobId: &mut U16)
-    {
-        self.IncrSzSchedJob( U32( 1));
-        let  	maestro = self._Maestros.Arr().At( maestroIdx);
-        maestro.EnqueRunJob( jobId);
-    }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
@@ -200,7 +182,7 @@ impl< 'a> Atelier< 'a>
         maestro.FlushTempQueue();
         let  	mut jobId = U16( 0);
         let  	mut stealSeed = maestroIdx.AsU32();
-        while self.SzSchedJob() != 0 {
+        while self._SzSchedJob.Load( Ordering::Acquire) != 0 {
             while jobId != 0 {
                 maestro.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
                 let  	job = *self._JobBuff.Arr().At( jobId);
@@ -208,7 +190,7 @@ impl< 'a> Atelier< 'a>
 
                 ( job.func)( job.data, maestro);                   // Run job
                 self._JobBuff.Arr().SetAt( jobId, &WorkPtr::Null());
-                maestro.IncrSzProcessed( 1);
+                maestro._SzProcessed += 1;
                 maestro.FlushTempQueue();
 
                 let  	_res = self.FreeJob( maestroIdx, jobId);
@@ -217,7 +199,7 @@ impl< 'a> Atelier< 'a>
                     let  	szPred: U16 = self.IncrSzPredAt( succId, -U16( 1));
                     if szPred == U16( 1) {
                         jobId = succId;
-                        self.IncrSzSchedJob( U32( 1));
+                        self._SzSchedJob.FetchAdd( U32( 1), Ordering::SeqCst);
                     } else {
                         jobId = U16::_0;
                     }
@@ -225,7 +207,7 @@ impl< 'a> Atelier< 'a>
                     jobId = U16::_0;
                 }
 
-                self.IncrSzSchedJob( -U32( 1));
+                self._SzSchedJob.FetchAdd( -U32( 1), Ordering::SeqCst);
             }
             jobId = maestro.PopJob();
             if jobId == 0 {
@@ -254,17 +236,17 @@ impl< 'a> Atelier< 'a>
         println!();
         print!( "Atelier[ ");
         maestros.USeg().Traverse( |maestroIdx| {
-            print!( "( Maestro-{}: {})", maestroIdx, maestros.At( maestroIdx).SzProcessed());
+            print!( "( Maestro-{}: {})", maestroIdx, maestros.At( maestroIdx)._SzProcessed);
         });
         println!( "]")
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	TraceJobs( &self, jobIds: Arr< U16>) -> AtelierInfo< 'a>
+    pub fn	TraceJobs( &self, jobIds: Arr< U16>) -> AtelierInfo
     {        
         let  	mut jobSet = HashSet::< U16>::new();
-        let  	mut info = AtelierInfo::New( self as *const _, jobIds.Size());
+        let  	mut info = AtelierInfo::New();
 
         let  	mut processStash = Stash::< U16>::New( U32( 1024), 0, U16( 0));
         jobIds.Traverse( |jobId| {
@@ -318,22 +300,18 @@ impl JobInfo
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct AtelierInfo< 'a>
+pub struct AtelierInfo
 {
-    pub _Atelier: *const Atelier< 'a>,
-    pub _SzSeed: U32,
     pub _JobStash: Stash< JobInfo>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> AtelierInfo< 'a>
+impl AtelierInfo
 {
-    pub fn	New( atelier: *const Atelier< 'a>, szSeed: U32) -> Self
+    pub fn	New() -> Self
     {
         Self {   
-            _Atelier: atelier, 
-            _SzSeed : szSeed,
             _JobStash: Stash::New( U32( 1024), 0, JobInfo { _JobId: U16( 0), _SuccId: U16( 0), _SzPred: U16( 0), _DocStr: "Free" }),
         }
     }
@@ -351,11 +329,11 @@ impl std::fmt::Display for JobInfo
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> std::fmt::Display for AtelierInfo< 'a>
+impl std::fmt::Display for AtelierInfo
 {
     fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
-        write!( f, "Atel[ {}: ", self._SzSeed)?;
+        write!( f, "Atel[ ")?;
         self._JobStash.Stk().Arr().Traverse( |jobId| { 
             let  	_ = write!( f, " {}", *jobId);
         });

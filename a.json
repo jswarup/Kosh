@@ -1,13 +1,9 @@
-{
-  "Op": 2,
-  "LeftChild": {
-    "DocStr": "",
-    "ChildOp": 3,
-    "ChildrenSize": 2,
-    "Child_0": {
-      "DocStr": "",
-      "ChildOp": 2,
-      "ChildrenSize": 2,
+
+"point": {
+  "_X": 10,
+  "_Y": 30.3
+},
+"prices": [12.34000015258789, 56.779998779296875, 90.12000274658203, 34.560001373291016, 78.9000015258789]      "ChildrenSize": 2,
       "Child_0": {
         "DocStr": "",
         "ChildOp": 3,

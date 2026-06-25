@@ -10,7 +10,7 @@ pub struct Maestro< 'a>
 {
     _Index: U32,
     _Atelier: *const Atelier< 'a>,
-    _SzProcessed: U32,
+    pub( crate) _SzProcessed: U32,
     _JobCache: Stash< U16>,
     _RunQueue: Stash< U16>,
     _RunQlock: Spinlock,
@@ -116,25 +116,14 @@ impl< 'a> Maestro< 'a>
         arr.USeg().Traverse( |i| {
             let  	mut jobId = *arr.At( i);
             if jobId != 0 {
-                self.Atelier().EnqueRunJob( self._Index, &mut jobId);
+                self.Atelier()._SzSchedJob.FetchAdd( U32( 1), Ordering::SeqCst);
+                self.EnqueRunJob( &mut jobId);
             }
         });
         self._TempQueue.Clear();
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	SzProcessed( &self) -> U32
-    {
-        self._SzProcessed
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	IncrSzProcessed< K: Into< U32>>( &mut self, k: K)
-    {
-        self._SzProcessed = self._SzProcessed + k.into();
-    }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
