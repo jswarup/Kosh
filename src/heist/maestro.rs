@@ -69,7 +69,7 @@ impl< 'a> Maestro< 'a>
 
     pub fn	FromWorker< 'w>( worker: &'w DynIWorker< '_>) -> &'w Self
     {
-        let  	ptr = worker.AsRaw();
+        let  	ptr = worker as *const DynIWorker< '_> as *const ();
         assert!( !ptr.is_null());
         unsafe { &*( ptr as *const Self) }
     }
@@ -252,10 +252,6 @@ impl< 'a> IWorker for Maestro< 'a>
         let  	mut jobId = self.CurSuccId();
         jobId = self.ConstructJob( jobId, job, "PostJob");
         self.EnqueueJob( jobId);
-    }
-    fn	AsRaw( &self) -> *const ()
-    {
-        self as *const Self as *const ()
     }
 }
 

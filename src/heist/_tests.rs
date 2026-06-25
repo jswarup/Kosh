@@ -5,7 +5,7 @@ use	crate::{
     silo::
     { Buff, IAccess, IArr, U16, U32 },
     stalks::
-    { DynIWorker, IWorker, Worker },
+    { DynIWorker, IWorker, Worker, IntoWorkPtr },
 };
 use	std::sync::{ Arc, Mutex };
 use	std::thread;
@@ -95,10 +95,10 @@ fn	TestChoreBuds()
                 })))
     );
     let  	worker = Worker::New();
-    worker.Tender( aChore);
+    worker.PostJob( aChore.IntoWorkPtr());
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
-    mainMaestro.Tender( aChore);
+    mainMaestro.PostJob( aChore.IntoWorkPtr());
     atelier.DoLaunch();
 }
 
@@ -167,7 +167,7 @@ fn	TestDoQSortWorkStealing()
     let  	quickSorter = arr.QuickSorter( |a, b| a > b);
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
-    mainMaestro.Tender( quickSorter);
+    mainMaestro.PostJob( quickSorter.IntoWorkPtr());
     atelier.DoLaunch();
     assert!( arr.SortSanity( |a, b| { a > b })); 
     println!( "{} ", arr);  
@@ -181,7 +181,7 @@ fn	TestDoQSortSequential()
     let  	buff = Buff::Create( U32( 100), |_| U32( rand::random::<u32>() % 128));
     let  	quickSorter = buff.Arr().QuickSorter( |a, b| a > b);
     let  	worker = Worker::New();
-    worker.Tender( quickSorter);
+    worker.PostJob( quickSorter.IntoWorkPtr());
     assert!( buff.Arr().SortSanity( |a, b| { a > b })); 
     println!( "{} ", buff.Arr());  
 }

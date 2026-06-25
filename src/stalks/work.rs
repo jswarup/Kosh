@@ -162,20 +162,6 @@ pub type DynIWorker< 'a> = dyn IWorker + Send + Sync + 'a;
 pub trait IWorker: Send + Sync
 {
     fn	PostJob( &self, job: WorkPtr< '_>);
-    fn	AsRaw( &self) -> *const ()
-    {
-        std::ptr::null()
-    }
-    fn	IsSequential( &self) -> bool
-    {
-        false
-    }
-    fn	Tender< 'a, J: IntoWorkPtr< 'a>>( &self, job: J)
-    where
-        Self: Sized
-    {
-        self.PostJob( job.IntoWorkPtr());
-    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -208,14 +194,6 @@ impl IWorker for Worker
         if !job.IsNull() {
             ( job.func)( job.data, self);
         }
-    }
-    fn	AsRaw( &self) -> *const ()
-    {
-        self as *const Self as *const ()
-    }
-    fn	IsSequential( &self) -> bool
-    {
-        true
     }
 }
 
