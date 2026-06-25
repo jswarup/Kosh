@@ -36,6 +36,35 @@ pub trait IXFluxable
 
 //---------------------------------------------------------------------------------------------------------------------------------
  
+#[macro_export]
+macro_rules! ImplIXFluxable 
+{
+    ( $struct_name:ident $( , $field:ident )* ) => 
+    {
+        impl $crate::segue::IXFluxable for $struct_name
+        {
+            fn	ToXFlux< 'a>( &'a self, field: &mut $crate::segue::xflux::XField< 'a>)
+            {
+                let  	mut step = U32( 0);
+                let  	obj = self;
+                *field = $crate::segue::xflux::XField::Obj( Box::new( move |key, item| {
+                    #[allow( unused_variables, unused_assignments)]
+                    let  	mut _curr_step = U32( 0);
+                    $(
+                        if step == _curr_step {
+                            *key = stringify!( $field).to_string();
+                            *item = $crate::segue::xflux::XField::Fluxable( &obj.$field);
+                            step += 1;
+                            return true;
+                        }
+                        _curr_step += 1;
+                    )*
+                    false
+                }));
+            }
+        }
+    };
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 

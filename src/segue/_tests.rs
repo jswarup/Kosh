@@ -71,17 +71,28 @@ fn	TestCharsetOps()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[test]
+struct Point 
+{
+    _X : f64,
+    _Y :f64,
+}
+
+crate::ImplIXFluxable!( Point, _X, _Y);
+
+#[test] 
 fn	TestJsonOutStream()
 {
     let  	mut prices = vec![ 12.34_f32, 56.78, 90.12, 34.56, 78.90 ];
     let  	ptr = std::ptr::NonNull::new( prices.as_mut_ptr()).unwrap();
     let  	arr = Arr::New( ptr, U32( 5));
     
+    let     pt = Point{ _X: 10.0, _Y: 30.3};
+    
     let  	mut output = String::new();
     {
         let  	mut jsonStream = JsonOutStream::New( &mut output, true);
-        
+
+        jsonStream.KeyField( "point", XField::Fluxable( &pt));
         jsonStream.KeyField( "prices", XField::Fluxable( &arr));
     }
     
