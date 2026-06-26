@@ -3,6 +3,7 @@ use tracing::info;
 //-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::Maestro;
 use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, U16, U32, USeg };
+use crate::silo::uint::Xplod;
 use	crate::stalks::{ Atm, Spinlock, WorkPtr };
 use	std::sync::atomic::Ordering;
 use std::collections::HashSet;
@@ -284,15 +285,14 @@ pub struct AtelierInfo
 { 
     
     pub _HookedStash: Stash< JobInfo>,
-    pub _OrphanStash: Stash< JobInfo>
+    pub _JobRefBuff: Buff< U16>
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl AtelierInfo
-{ 
-
-    pub fn	TraceJobs( atelier: &Atelier< '_>, jobIds: Arr< U16>, jobStash: &mut Stash< JobInfo>  )
+{  
+    pub fn	FetchConnectedJobs( atelier: &Atelier< '_>, jobIds: Arr< U16>, jobStash: &mut Stash< JobInfo>  )
     {        
         let  	mut jobSet = HashSet::< U16>::new(); 
         let  	mut processStash = Stash::< U16>::New( U32( 1024), 0, U16( 0));
@@ -313,38 +313,42 @@ impl AtelierInfo
         } 
     }
 
-    pub fn TraceHookedJobs( atelier: &Atelier< '_>) -> AtelierInfo
+    pub fn TraceJobs( atelier: &Atelier< '_>) -> AtelierInfo
     {
+        let     docArr = atelier._JobDocBuff.Arr();
+        let     freeDoc = atelier.FreeDocStr(); 
         let  	mut info = AtelierInfo {
             _HookedStash: Stash::New( U32( 1024), 0, JobInfo::default()),
-            _OrphanStash: Stash::New( U32( 1024), 0, JobInfo::default()),
+            _JobRefBuff: Buff::Create( U32::_16Sz, |i| if (*docArr.At( i)).as_ptr() == (*freeDoc).as_ptr() {  i.Xplod()[ 0]} else { U16::_X}),
         };
 
         let  	maestros = atelier.Maestros();
         maestros.Traverse( |maestro| {
             let  	runQueue = maestro.RunQueueArr();
-            Self::TraceJobs( atelier, runQueue, &mut info._HookedStash);
+            Self::FetchConnectedJobs( atelier, runQueue, &mut info._HookedStash);
         });
-        let     jobRefBuff = Buff::< U16>::New( U32::_16Sz, U16::_0);
-        let     jobRefs = jobRefBuff.Arr();
-        jobRefs.DoIndexSetup();
-        let     docArr = atelier._JobDocBuff.Arr();
-        
-        let  lessDocId = |d1: U16, d2: U16| { (*docArr.At( d1)).as_ptr() < (*docArr.At( d2)).as_ptr() };
-
-        jobRefs.USeg().QSort( |i, j| lessDocId( *jobRefs.At( i), *jobRefs.At( j)), |i, j| jobRefs.Swap( i, j));
-        let     freeSeg = jobRefs.USeg().LocateBound( |i| lessDocId( *jobRefs.At( i), U16( 0)));
-        freeSeg.Traverse( | i| { jobRefs.SetAt( i, &U16( 0)); });
-
+  
+        let     jobRefs = info._JobRefBuff.Arr();
+        let     jSeg = jobRefs.USeg();  
+        jSeg.QSort( |i, j| *jobRefs.At( i) < *jobRefs.At( j), |i, j| jobRefs.Swap( i, j));
         let     hookedArr = info._HookedStash.Stk().Arr();
-        hookedArr.Traverse( |job| {
-            let     _lInd = jobRefs.USeg().LowerBound( |i| lessDocId( *jobRefs.At( i), job._JobId));
+        let     mut tempStash = Stash::New( U32( 1024), 0, U16::_X);
+ 
+        hookedArr.Traverse( |job| { 
+            let     lInd = jSeg.LowerBound( | i| *jobRefs.At( i) < job._JobId);
+            if jSeg.IsWithin( lInd) && ( *jobRefs.At( lInd) == job._JobId) {
+                tempStash.Push( lInd.Xplod()[ 0]);
+            } 
         });
+        tempStash.Stk().Arr().Traverse( | jobId| { jobRefs.SetAt( *jobId, &U16::_X); });
+
+        jSeg.QSort( |i, j| *jobRefs.At( i) < *jobRefs.At( j), |i, j| jobRefs.Swap( i, j));
+        
+        let     lInd = jSeg.LowerBound( | i| *jobRefs.At( i) < U16::_X);    
+        jobRefs.RSnip( jobRefs.Size() -lInd);
         info
     }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
+} 
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -366,9 +370,9 @@ impl std::fmt::Display for AtelierInfo
         self._HookedStash.Stk().Arr().Traverse( |job| { 
             let  	_ = write!( f, " {}", *job);
         });
-        write!( f, " Orphan:")?;
-        self._OrphanStash.Stk().Arr().Traverse( |job| { 
-            let  	_ = write!( f, " {}", *job);
+        write!( f, " FreeJobs:")?;
+        self._JobRefBuff.Arr().Traverse( |jobId| { 
+            let  	_ = write!( f, " {}", *jobId);
         });
         write!( f, "] ") 
     }

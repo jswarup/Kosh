@@ -344,7 +344,7 @@ ImplUIntTraits!( U64, u64, AtomicU64, AsU64);
 //---------------------------------------------------------------------------------------------------------------------------------
 
 macro_rules! ImplWiden {
-    ( $src:ident, $dst:ident) => {
+    ( $src:ident, $dst:ident, $method:ident) => {
         impl From< $src> for $dst
         {
             #[inline]
@@ -353,22 +353,35 @@ macro_rules! ImplWiden {
                 $dst( v.0 as _)
             }
         }
-    };
-}
-ImplWiden!( U8, U16);
-ImplWiden!( U8, U32);
-ImplWiden!( U8, U64);
-ImplWiden!( U16, U32);
-ImplWiden!( U16, U64);
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-macro_rules! Explode {
-    ( $src:ident, $dst:ident, $sz:expr, $method:ident) => {
         impl $src
         {
             #[inline]
-            pub fn	$method( self) -> [$dst; $sz]
+            pub const fn $method( self) -> $dst
+            {
+                $dst( self.0 as _)
+            }
+        }
+    };
+}
+ImplWiden!( U8, U16, AsU16);
+ImplWiden!( U8, U32, AsU32);
+ImplWiden!( U8, U64, AsU64);
+ImplWiden!( U16, U32, AsU32);
+ImplWiden!( U16, U64, AsU64);
+ImplWiden!( U32, U64, AsU64);
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait Xplod< Dst, const N: usize> {
+    fn	Xplod( self) -> [Dst; N];
+}
+
+macro_rules! Xplod {
+    ( $src:ident, $dst:ident, $sz:expr) => {
+        impl Xplod< $dst, $sz> for $src
+        {
+            #[inline]
+            fn	Xplod( self) -> [$dst; $sz]
             {
                 unsafe { std::mem::transmute( self) }
             }
@@ -376,13 +389,11 @@ macro_rules! Explode {
     };
 }
 
-Explode!( U16, U8, 2, ExplodeToU8);
-Explode!( U32, U8, 4, ExplodeToU8);
-Explode!( U64, U8, 8, ExplodeToU8);
-Explode!( U32, U16, 2, ExplodeToU16);
-Explode!( U64, U16, 4, ExplodeToU16);
-Explode!( U64, U32, 2, ExplodeToU32);
-
-ImplWiden!( U32, U64);
+Xplod!( U16, U8, 2);
+Xplod!( U32, U8, 4);
+Xplod!( U64, U8, 8);
+Xplod!( U32, U16, 2);
+Xplod!( U64, U16, 4);
+Xplod!( U64, U32, 2);
 
 //---------------------------------------------------------------------------------------------------------------------------------
