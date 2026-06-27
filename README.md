@@ -1,6 +1,6 @@
 # Kosh
 
-Rust CLI development project.
+Rust CLI development project. The intention is to develop a fast geometry, Constraints and BRep kernel, using modern programing paradigms
 
 ## Documentation
 
