@@ -7,6 +7,7 @@ pub mod buff;
 pub mod stash;
 pub mod stk;
 pub mod uint;
+pub mod compre;
 pub mod useg;
 pub use	access::{ IAccess, AccessIter};
 pub use	arr::{Arr, IArr};

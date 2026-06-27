@@ -632,5 +632,12 @@ fn	TestBuffResize()
     assert_eq!( buff[3].value, 100);
     assert_eq!( buff[4].value, 100);
 }
+//---------------------------------------------------------------------------------------------------------------------------------
 
+#[test]
+fn	TestStashC()
+{
+    let  	v = crate::StashC![x * x; for x in 1..10; if x % 2 == 0];
+    println!( "{}", v.Stk().Arr());
+}
 
