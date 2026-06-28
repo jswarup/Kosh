@@ -1,6 +1,9 @@
 //-- exprrepos.rs -------------------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ IAccess, Stash, U32 };
 use	crate::fresco::varexpr::{ VarAttrib, VarExpr };
+use	crate::fresco::realexpr::RealExpr;
+use	crate::fresco::sumexpr::SumExpr;
+use	crate::fresco::prodexpr::ProdExpr;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -107,6 +110,67 @@ impl ExprRepos
     {
         let  	varInd = self.StoreVar( varStr);
         self.Store( Box::new( VarExpr::New( varInd)))
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	RealCreate( &mut self, val: f64) -> U32
+    {
+        self.Store( Box::new( RealExpr::New( val)))
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	SumCreate( &mut self, adds: &[ U32], subs: &[ U32]) -> U32
+    {
+        let  	mut childs = Vec::with_capacity( adds.len() + subs.len());
+        childs.extend_from_slice( adds);
+        childs.extend_from_slice( subs);
+
+        let  	mut sumExpr = SumExpr::New();
+        sumExpr._Poly.DoInitArr( U32( adds.len() as u32), childs);
+        self.Store( Box::new( sumExpr))
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	AddCreate( &mut self, tok0: U32, tok1: U32) -> U32
+    {
+        self.SumCreate( &[ tok0, tok1], &[])
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	DiffCreate( &mut self, tok0: U32, tok1: U32) -> U32
+    {
+        self.SumCreate( &[ tok0], &[ tok1])
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	ProdCreate( &mut self, numers: &[ U32], denoms: &[ U32]) -> U32
+    {
+        let  	mut childs = Vec::with_capacity( numers.len() + denoms.len());
+        childs.extend_from_slice( numers);
+        childs.extend_from_slice( denoms);
+
+        let  	mut prodExpr = ProdExpr::New();
+        prodExpr._Poly.DoInitArr( U32( numers.len() as u32), childs);
+        self.Store( Box::new( prodExpr))
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	MultCreate( &mut self, tok0: U32, tok1: U32) -> U32
+    {
+        self.ProdCreate( &[ tok0, tok1], &[])
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	DivCreate( &mut self, tok0: U32, tok1: U32) -> U32
+    {
+        self.ProdCreate( &[ tok0], &[ tok1])
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
