@@ -1,5 +1,6 @@
 //-- exprrepos.rs -------------------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ IAccess, Stash, U32 };
+use	crate::fresco::varexpr::{ VarAttrib, VarExpr };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -105,7 +106,7 @@ impl ExprRepos
     pub fn	VarCreate( &mut self, varStr: String, _reuseFlg: bool) -> U32
     {
         let  	varInd = self.StoreVar( varStr);
-        self.Store( Box::new( VarExpr { _VarIndex: varInd }))
+        self.Store( Box::new( VarExpr::New( varInd)))
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -137,87 +138,4 @@ impl ExprRepos
         self._VarAttribs.Stk().Arr().At( vInd)
     }
 }
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[derive( Copy, Clone, Debug, PartialEq, Eq)]
-pub enum VarKind
-{
-    Scalar = 0,
-    Prime = 1,
-    Control = 2,
-    Bridge = 3,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[derive( Clone, Debug)]
-pub struct VarAttrib
-{
-    pub _Name: String,
-    _DepTok: U32,
-    _AggrIndex: U32,
-    _VarFlags: U32,
-}
-
-impl Default for VarAttrib
-{
-    fn	default() -> Self
-    {
-        Self {
-            _Name: String::new(),
-            _DepTok: U32::_X,
-            _AggrIndex: U32::_X,
-            _VarFlags: U32( 0),
-        }
-    }
-}
-
-impl VarAttrib
-{
-    pub fn	IsAggregate( &self) -> bool
-    {
-        self._AggrIndex != U32::_X
-    }
-
-    pub fn	IsIndependent( &self) -> bool
-    {
-        !self.IsAggregate() && self._DepTok == U32::_X
-    }
-
-    pub fn	IsDependent( &self) -> bool
-    {
-        !self.IsAggregate() && self._DepTok != U32::_X
-    }
-
-    pub fn	HasBits( &self, bit: VarKind) -> bool
-    {
-        ( self._VarFlags.Get() & ( 1 << ( bit as u32))) != 0
-    }
- 
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[derive( Clone)]
-pub struct VarExpr
-{
-    _VarIndex: U32,
-}
-
-impl BaseExpr for VarExpr
-{
-    fn	CloneBox( &self) -> Box< dyn BaseExpr>
-    {
-        Box::new( self.clone())
-    }
-
-    fn	AsAny( &self) -> &dyn Any
-    {
-        self
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
 

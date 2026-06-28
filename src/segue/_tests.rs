@@ -116,15 +116,6 @@ fn	TestInStreamFromFile()
     std::fs::remove_file( path).unwrap();
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
 
-#[test]
-fn	TestBincodeSerialization()
-{
-    let  	cs = *Charset::Word();
-    let  	serialized = bincode::serialize( &cs).unwrap();
-    let  	deserialized: Charset = bincode::deserialize( &serialized).unwrap();
-    assert_eq!( cs, deserialized);
-}
 
 //---------------------------------------------------------------------------------------------------------------------------------

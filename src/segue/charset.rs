@@ -8,7 +8,7 @@ use	crate::segue::{IXFluxable, XField};
 
 /// A 256-bit filter for `U8` characters — one bit per byte value.
 /// Enables set algebra (union, intersection, negation) over character classes.
-#[derive( Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive( Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Charset
 {
     _Bits: [U64; Self::SZ],

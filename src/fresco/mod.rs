@@ -1,6 +1,9 @@
 //-- fresco/mod.rs ---------------------------------------------------------------------------------------------------------------------
 pub mod exprrepos;
-pub use	exprrepos::{ BaseExpr, ExprEntry, ExprRepos, VarExpr };
+pub mod varexpr;
+
+pub use	exprrepos::{ BaseExpr, ExprEntry, ExprRepos };
+pub use	varexpr::{ VarAttrib, VarExpr, VarKind };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
