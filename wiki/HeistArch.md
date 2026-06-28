@@ -19,9 +19,9 @@ Heist is built around three central concepts:
 
 ```mermaid
 graph TD
-    Atelier[Atelier: Central Scheduler & Job Storage]
-    Maestro[Maestro: Worker Threads, Local Queues & Orchestrator]
-    Chore[Chore: High-Level Dependency Graph]
+    Atelier["Atelier: Central Scheduler & Job Storage"]
+    Maestro["Maestro: Worker Threads, Local Queues & Orchestrator"]
+    Chore["Chore: High-Level Dependency Graph"]
 
     Atelier -->|spawns & manages| Maestro
     Chore -->|compiled into| Atelier
@@ -32,6 +32,7 @@ Defined in [atelier.rs](../src/heist/atelier.rs), `Atelier` is the central coord
 * Manages a fixed-size thread pool running multiple `Maestro` workers.
 * Stores scheduled jobs in a cache-friendly, pre-allocated array of type-erased job pointers (`WorkPtr`s).
 * Tracks predecessors (`_SzPreds`) and successor job IDs (`_SuccIds`) to execute task DAGs (Directed Acyclic Graphs).
+* Provides `TraceJobs` (via `AtelierInfo`) to introspect the state of all hooked and free jobs in the system.
 
 > [!NOTE]
 > **Dependency Resolution Mechanism**:
@@ -41,51 +42,44 @@ Defined in [atelier.rs](../src/heist/atelier.rs), `Atelier` is the central coord
 Defined in [maestro.rs](../src/heist/maestro.rs), a `Maestro` represents a worker thread and thread-local context wrapper that implements the `IWorker` trait. It has:
 * A thread-local job stash (`_JobCache`) to recycle job IDs without global lock contention.
 * A synchronized run queue (`_RunQueue`) protected by a `Spinlock`.
-* **Work-Stealing capabilities**: If a worker's run queue is empty, it attempts to steal work from other Maestros using a randomized steal seed.
-* **Orchestration features**: Every job is executed inside a `Maestro` context. Jobs can use `Maestro` to dynamically spawn sub-tasks, construct successor dependencies (`ConstructJob`), or enqueue bulk work (`ConstructEnqueBulk`).
-* **Tender Interface**: The `IWorker` trait defines the unified method `fn Tender<'a, J: IntoWorkPtr<'a>>(&self, job: J) where Self: Sized` (with a default implementation delegating to `PostJob`) to easily submit tasks to both sequential and parallel workers.
+* **Work-Stealing capabilities**: If a worker's run queue is empty, it attempts to steal work from other Maestros using a randomized Knuth multiplicative hash steal seed.
+* **Orchestration features**: Every job is executed inside a `Maestro` context. Jobs can use `Maestro` to dynamically spawn sub-tasks, construct successor dependencies (`ConstructJob`), or enqueue bulk work (`ConstructEnqueArr`).
+* **Post Interface**: The `IWorker` trait defines the method `fn PostJob(&self, job: WorkPtr<'_>)`. The convenience method `Post` on `DynIWorker` accepts any `IntoWorkPtr` to easily submit tasks to both sequential and parallel workers.
 
 > [!TIP]
 > **Contention Minimization**:
-> Jobs enqueued via `EnqueRunJob` are first pushed to a thread-local `_TempQueue` during execution. They are only flushed to the target run queue once the current job finishes executing (`FlushTempQueue()`), drastically reducing spinlock contention.
+> Jobs enqueued via `EnqueueJob` are first pushed to a thread-local `_TempQueue` during execution. They are only flushed to the target run queue once the current job finishes executing (`FlushTempQueue()`), drastically reducing spinlock contention.
 
 ### 3. Chore & ChoreTree (Dependency Graph)
-Defined in [chore.rs](../src/heist/chore.rs), `Chore` represents a unit of work that can be structured into a dependent tree (`dyn Bud<Chore>`) using the `ChoreTree!` macro.
+Defined in [chore.rs](../src/heist/chore.rs), `Chore` represents a unit of work that can be structured into a dependent tree (`dyn INode`) using the `ChoreTree!` macro.
 * **Operators**:
   * `a | b`: Parallel execution (OR dependency).
   * `a < b`: Sequencing (a runs before b).
-* When a chore tree is posted (`budTree.Post(maestro)`), it compiles the tree into `WorkPtr`s with correct successor chains, and schedules them onto the `Atelier`.
+* When a chore tree is posted (`maestro.PostChoreTree(&choreTree)`), it compiles the tree into `WorkPtr`s with correct successor chains, and schedules them onto the `Atelier`.
 
 ---
 
 ## Example Usage
 
 ### 1. Basic Inline Job Construction
-Jobs can be created directly by passing closures to `ConstructJob`:
+Jobs can be created directly by passing closures to `ConstructJob`. Note that `ConstructJob` takes a successor ID, a closure, and a doc string:
 
 ```rust
-let atelier = Atelier::New(U32(4));       // Create Atelier with 4 worker threads
-let mainMaestro = atelier.MainMaestro();  // Access the main worker thread Maestro
-let mut jobId = U16(0);
+let atelier = Atelier::New( U32( 4));        // Create Atelier with 4 worker threads
+let mainMaestro = atelier.MainMaestro();      // Access the main worker thread Maestro
 
-// Define job 1
-jobId = mainMaestro.ConstructJob(
-    jobId, // Successor dependency (0 means no successor)
-    |_worker: &dyn IWorker| {
-        println!("Job 1 executed!");
-    },
-);
+// Define a job (no successor dependency, U16(0) means terminal)
+let mut jobId = mainMaestro.ConstructJob( U16( 0), |_worker: &DynIWorker<'_>| {
+    println!( "Job 1 executed!");
+}, "Job1");
 
-// Define job 2 (Job 1 will only run after Job 2 completes)
-jobId = mainMaestro.ConstructJob(
-    jobId, // Job 1 is successor
-    |_worker: &dyn IWorker| {
-        println!("Job 2 executed!");
-    },
-);
+// Define job 2, chained so that job 1 runs after job 2 completes
+jobId = mainMaestro.ConstructJob( jobId, |_worker: &DynIWorker<'_>| {
+    println!( "Job 2 executed!");
+}, "Job2");
 
-// Enque starting job (Job 2)
-mainMaestro.EnqueRunJob(&mut jobId);
+// Enqueue the starting job (Job 2)
+mainMaestro.EnqueRunJob( &jobId);
 
 // Launch execution
 atelier.DoLaunch();
@@ -95,23 +89,21 @@ atelier.DoLaunch();
 You can construct complex tree-structured execution flows using the macro:
 
 ```rust
-use crate::heist::chore::Chore;
-
-let a = Chore!(|_| { print!("A "); });
-let b = Chore!(|_| { print!("B "); });
-let c = Chore!(|_| { print!("C "); });
+let a = Chore!( "A", |_| { print!( "A "); });
+let b = Chore!( "B", |_| { print!( "B "); });
+let c = Chore!( "C", |_| { print!( "C "); });
 
 // c runs before both b and a
-let budTree = crate::ChoreTree!(
+let choreTree = crate::ChoreTree!(
     c < (b | a)
 );
 
-let atelier = Atelier::New(U32(4));
+let atelier = Atelier::New( U32( 4));
 let mainMaestro = atelier.MainMaestro();
 
-budTree.Post(mainMaestro);
+mainMaestro.PostChoreTree( &choreTree);
 
-atelier.DoLaunch(); // Will print C A B (or C B A)
+atelier.DoLaunch(); // Will print C then A B (or C then B A)
 ```
 
 ### 3. QuickSorter 2-Way Execution (Threaded vs. Unthreaded)
@@ -119,16 +111,15 @@ atelier.DoLaunch(); // Will print C A B (or C B A)
 A concrete application of the framework's versatility is `QuickSorter` (defined on `Arr` in [arr.rs](../src/silo/arr.rs)). It produces a job closure that can be run either sequentially on a single thread or in parallel using the work-stealing thread pool:
 
 #### A. Threaded Execution (Work-Stealing)
-Using `Atelier` and a `MainMaestro` context, the sorting tasks are scheduled dynamically across multiple worker threads to enable multi-threaded execution based on machine capability and performance:
+Using `Atelier` and a `MainMaestro` context, the sorting tasks are scheduled dynamically across multiple worker threads:
 
 ```rust
-let buff = Buff::Create(U32(100), |_| U32(rand::random::<u32>() % 128));
-let quickSorter = buff.Arr().QuickSorter(|a, b| a > b);
+let buff = Buff::Create( U32( 100), |_| U32( rand::random::<u32>() % 128));
+let quickSorter = buff.Arr().QuickSorter( |a, b| a > b);
 
-let atelier = Atelier::New(U32(4)); // Spawns 4 worker threads
+let atelier = Atelier::New( U32( 4)); // Spawns 4 worker threads
 let mainMaestro = atelier.MainMaestro();
-let mut jobId = mainMaestro.ConstructJob(atelier.Terminal(), quickSorter);
-mainMaestro.EnqueRunJob(&mut jobId);
+mainMaestro.PostJob( quickSorter.IntoWorkPtr());
 atelier.DoLaunch(); // Runs quicksort in parallel
 ```
 
@@ -136,9 +127,9 @@ atelier.DoLaunch(); // Runs quicksort in parallel
 Using a synchronous ZST `Worker` instance, the same `quickSorter` job executes sequentially and immediately on the caller's main thread, enabling simple algorithm development and debugging in an unthreaded environment:
 
 ```rust
-let buff = Buff::Create(U32(100), |_| U32(rand::random::<u32>() % 128));
-let quickSorter = buff.Arr().QuickSorter(|a, b| a > b);
+let buff = Buff::Create( U32( 100), |_| U32( rand::random::<u32>() % 128));
+let quickSorter = buff.Arr().QuickSorter( |a, b| a > b);
 
 let worker = Worker::New();
-quickSorter(&worker); // Runs quicksort sequentially on the current thread
+worker.PostJob( quickSorter.IntoWorkPtr()); // Runs quicksort sequentially
 ```
