@@ -33,16 +33,24 @@ fn	TestTermTree()
     let  	x = 'x';
     let  	y = 'y';
     let  	z = "z";
-    let  	nodeTree = crate::TermTree!(  x + y *z); 
+    let  	nodeTree = crate::TermTree!(  x + y *( z + "a" +"b" +"c" +"d")); 
     
     let  	mut output = String::new();
     {
         let  	mut jsonStream = JsonOutStream::New( &mut output, true);
         jsonStream.KeyField( "nodeTree", XField::Fluxable( &nodeTree));
     }
+    println!( "{}", output);
+    
     let         mut exprRepos = ExprRepos::NewEmpty();
     exprRepos.PostTermTree( &nodeTree);
-    println!( "{}", output);
+
+    let  	mut repoOutput = String::new();
+    {
+        let  	mut jsonStream = JsonOutStream::New( &mut repoOutput, true);
+        jsonStream.KeyField( "exprRepos", XField::Fluxable( &exprRepos));
+    }
+    println!( "{}", repoOutput);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

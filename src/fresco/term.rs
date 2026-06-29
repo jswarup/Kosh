@@ -7,6 +7,7 @@ use	crate::stalks::{ DynIWorker, IWork };
 #[derive( Clone, Debug)]
 pub enum Term {  
     String( String), 
+    Real( f64),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -34,6 +35,10 @@ impl crate::segue::IXFluxable for Term
                         *key = "String".to_string();
                         *item = crate::segue::xflux::XField::Str( s);
                     } 
+                    Term::Real( v) => {
+                        *key = "Real".to_string();
+                        *item = crate::segue::xflux::XField::F64( *v);
+                    }
                 }
                 step += 1;
                 true
@@ -52,6 +57,10 @@ impl Term
     {
         Self::String( s)
     }
+    pub fn	NewReal( v: f64) -> Self
+    {
+        Self::Real( v)
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -62,6 +71,7 @@ impl IWork for Term
     {
         match self { 
             Self::String( s) => print!( "{} ", s),
+            Self::Real( v) => print!( "{} ", v),
         }
     }
 }
@@ -74,6 +84,7 @@ impl std::fmt::Display for Term
     {
         match self {
             Self::String( s) => write!( f, "Term( {})", s),
+            Self::Real( v) => write!( f, "Term( {})", v),
         }
     }
 }
@@ -110,21 +121,12 @@ impl From< &str> for Term
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[macro_export]
-macro_rules! TermTree {
-    // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
-    ( @feature_STAR   $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_STAR   $( $args)* ) };
-    ( @feature_PLUS   $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_PLUS   $( $args)* ) }; 
-    ( @feature_NEW    $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_NEW    $( $args)* ) }; 
-    
-    // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
-    ( @ $( $inner:tt )+ ) => {
-        $crate::BiNodeTree!( @ $( $inner )+ )
-    };
-    // Top-level entry (user code)
-    ( $( $inner:tt)+ )  => {
-        $crate::BiNodeTree!( @define [ $crate::TermTree ], Term, $( $inner)+ )
-    };
+impl From< f64> for Term
+{
+    fn	from( v: f64) -> Self
+    {
+        Self::Real( v)
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -144,6 +146,25 @@ impl< 'a> crate::stalks::INode< 'a> for Term
     fn	DocStr( &self) -> &'static str { "" }
     fn	Attrib( &self) -> Option< &crate::stalks::Attrib> { None }
     fn	ChildOp( &self) -> crate::stalks::ChildOp { crate::stalks::ChildOp::None }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[macro_export]
+macro_rules! TermTree {
+    // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
+    ( @feature_STAR   $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_STAR   $( $args)* ) };
+    ( @feature_PLUS   $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_PLUS   $( $args)* ) }; 
+    ( @feature_NEW    $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_NEW    $( $args)* ) }; 
+    
+    // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
+    ( @ $( $inner:tt )+ ) => {
+        $crate::BiNodeTree!( @ $( $inner )+ )
+    };
+    // Top-level entry (user code)
+    ( $( $inner:tt)+ )  => {
+        $crate::BiNodeTree!( @define [ $crate::TermTree ], Term, $( $inner)+ )
+    };
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

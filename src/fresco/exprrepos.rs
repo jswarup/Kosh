@@ -9,7 +9,7 @@ use	crate::fresco::prodexpr::ProdExpr;
 
 use	core::any::Any;
 
-pub trait BaseExpr: Any
+pub trait BaseExpr: Any + crate::segue::IXFluxable
 {
     fn	SizeChild( &self, _chart: &ExprRepos) -> U32
     {
@@ -42,6 +42,19 @@ impl Clone for ExprEntry
         match self {
             ExprEntry::Empty => ExprEntry::Empty,
             ExprEntry::Expr( expr) => ExprEntry::Expr( expr.CloneBox()),
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl crate::segue::IXFluxable for ExprEntry
+{
+    fn	ToXFlux< 'b>( &'b self, field: &mut crate::segue::xflux::XField< 'b>)
+    {
+        match self {
+            ExprEntry::Empty => *field = crate::segue::xflux::XField::Null,
+            ExprEntry::Expr( expr) => expr.ToXFlux( field),
         }
     }
 }
@@ -222,6 +235,7 @@ impl ExprRepos
                 let  	term = curNode.AsAny().unwrap().downcast_ref::<crate::fresco::Term>().unwrap();
                 let  	exprId = match term {
                     crate::fresco::Term::String( s) => self.VarCreate( s.clone(), false),
+                    crate::fresco::Term::Real( v) => self.RealCreate( *v),
                 };
                 exprStk.Push( exprId);
                 return;
@@ -252,5 +266,51 @@ impl ExprRepos
         } else {
             *exprStk.Arr().Last()
         }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl crate::segue::IXFluxable for ExprRepos
+{
+    fn	ToXFlux< 'b>( &'b self, field: &mut crate::segue::xflux::XField< 'b>)
+    {
+        let  	mut step = 0u32;
+        let  	repos = self;
+        *field = crate::segue::xflux::XField::Obj( Box::new( move |key, item| {
+            if step == 0 {
+                *key = "Exprs".to_string();
+                let  	mut iterStep = 0u32;
+                *item = crate::segue::xflux::XField::Arr( Box::new( move |elem| {
+                    if iterStep < repos._Exprs.Size().0 {
+                        let  	expr = repos._Exprs.Stk().Arr().At( crate::silo::U32( iterStep));
+                        expr.ToXFlux( elem);
+                        iterStep += 1;
+                        true
+                    } else {
+                        false
+                    }
+                }));
+                step += 1;
+                true
+            } else if step == 1 {
+                *key = "VarAttribs".to_string();
+                let  	mut iterStep = 0u32;
+                *item = crate::segue::xflux::XField::Arr( Box::new( move |elem| {
+                    if iterStep < repos._VarAttribs.Size().0 {
+                        let  	attr = repos._VarAttribs.Stk().Arr().At( crate::silo::U32( iterStep));
+                        attr.ToXFlux( elem);
+                        iterStep += 1;
+                        true
+                    } else {
+                        false
+                    }
+                }));
+                step += 1;
+                true
+            } else {
+                false
+            }
+        }));
     }
 }
