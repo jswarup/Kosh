@@ -188,6 +188,19 @@ impl ExprRepos
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    pub fn	PowCreate( &mut self, bases: &[ U32], exps: &[ U32]) -> U32
+    {
+        let  	mut childs = Vec::with_capacity( bases.len() + exps.len());
+        childs.extend_from_slice( bases);
+        childs.extend_from_slice( exps);
+
+        let  	mut powExpr = crate::fresco::powexpr::PowExpr::New();
+        powExpr._Poly.DoInitArr( U32( bases.len() as u32), childs);
+        self.Store( Box::new( powExpr))
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	SzVar( &self) -> U32
     {
         self._VarAttribs.Size()
@@ -256,6 +269,9 @@ impl ExprRepos
             let  	exprId = match curOp {
                 crate::stalks::ChildOp::Sum => self.SumCreate( &arr, &[]),
                 crate::stalks::ChildOp::Prod => self.ProdCreate( &arr, &[]),
+                crate::stalks::ChildOp::Sub => self.SumCreate( &arr[0..1], &arr[1..]),
+                crate::stalks::ChildOp::Div => self.ProdCreate( &arr[0..1], &arr[1..]),
+                crate::stalks::ChildOp::Pow => self.PowCreate( &arr[0..1], &arr[1..]),
                 _ => panic!( "Unsupported ChildOp in PostTermTree: {:?}", curOp),
             };
             exprStk.Push( exprId);

@@ -5,6 +5,7 @@ pub mod realexpr;
 pub mod polyexpr;
 pub mod sumexpr;
 pub mod prodexpr;
+pub mod powexpr;
 pub mod term;
 
 pub use	exprrepos::{ BaseExpr, ExprEntry, ExprRepos };

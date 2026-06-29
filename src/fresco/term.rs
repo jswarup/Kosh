@@ -155,6 +155,9 @@ macro_rules! TermTree {
     // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
     ( @feature_STAR   $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_STAR   $( $args)* ) };
     ( @feature_PLUS   $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_PLUS   $( $args)* ) }; 
+    ( @feature_MINUS  $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_MINUS  $( $args)* ) }; 
+    ( @feature_DIV    $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_DIV    $( $args)* ) }; 
+    ( @feature_POW    $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_POW    $( $args)* ) }; 
     ( @feature_NEW    $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_NEW    $( $args)* ) }; 
     
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
