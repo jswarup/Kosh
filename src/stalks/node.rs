@@ -42,6 +42,7 @@ pub enum ChildOp
     None
 }
 
+
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl std::fmt::Display for ChildOp
@@ -49,16 +50,16 @@ impl std::fmt::Display for ChildOp
     fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
         match self {
-            ChildOp::Sum => f.write_str( "Sum"),
-            ChildOp::Prod => f.write_str( "Prod"),
-            ChildOp::Less => f.write_str( "Less"),
-            ChildOp::Bor => f.write_str( "Bor"),
-            ChildOp::Shl => f.write_str( "Shl"),
-            ChildOp::Shr => f.write_str( "Shr"),
-            ChildOp::None => f.write_str( "None"),
+            ChildOp::Sum => write!( f, "+"),
+            ChildOp::Prod => write!( f, "*"),
+            ChildOp::Less => write!( f, "<"),
+            ChildOp::Bor => write!( f, "|"),
+            ChildOp::Shl => write!( f, "<<"),
+            ChildOp::Shr => write!( f, ">>"),  
+            ChildOp::None => write!( f, ""),
         }
     }
-}
+} 
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -120,6 +121,11 @@ pub trait INode< 'a>: Send + Sync
     fn	IsLeaf( &self) -> bool
     {
         self._Size() == U32( 0)
+    }
+
+    fn	AsAny( &self) -> Option<&dyn core::any::Any>
+    {
+        None
     }
 
     fn	TraverseDF( &'a self, fnMut: &mut dyn FnMut( &'a DynINode< 'a>, TraversalEvent))
@@ -260,9 +266,7 @@ impl< 'b, 'a> NodeProbe< 'b, 'a>
         None
     } 
 }
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
+ 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub trait IntoBiNode< T, N: Sized>
@@ -483,6 +487,16 @@ macro_rules! BiNodeTree {
                         match self {
                             [<$Arg BiNode>]::Leaf { _Val, .. } => {
                                 _Val.Value()
+                            }
+                            _ => None
+                        }
+                    }
+
+                    fn	AsAny( &self) -> Option<&dyn core::any::Any>
+                    {
+                        match self {
+                            [<$Arg BiNode>]::Leaf { _Val, .. } => {
+                                _Val.AsAny()
                             }
                             _ => None
                         }

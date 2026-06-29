@@ -1,5 +1,5 @@
 //-- exprrepos.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ IAccess, Stash, U32 };
+use	crate::silo::{ IAccess, IArr, Stash, U32 };
 use	crate::fresco::varexpr::{ VarAttrib, VarExpr };
 use	crate::fresco::realexpr::RealExpr;
 use	crate::fresco::sumexpr::SumExpr;
@@ -201,5 +201,56 @@ impl ExprRepos
     {
         self._VarAttribs.Stk().Arr().At( vInd)
     }
-}
 
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	PostTermTree( &mut self, node: &crate::stalks::DynINode< '_>) -> U32
+    {
+        let  	exprStash = Stash::<U32>::New( U32( 1024), 0, U32( 0));
+        let  	mut exprStk = exprStash.Stk();
+        let  	opStash = Stash::<(crate::stalks::ChildOp, U32)>::New( U32( 1024), 0, (crate::stalks::ChildOp::None, U32( 0)));
+        let  	opStk = opStash.Stk();
+
+        node.DiveDf( &mut |probe, enterFlg| {
+            let  	curNode = probe.CurNode().unwrap();
+            let  	curOp = curNode.ChildOp();
+            if enterFlg {
+                if curOp != crate::stalks::ChildOp::None {
+                    opStk.Push( ( curOp, exprStk.Size()));
+                    return;
+                } 
+                let  	term = curNode.AsAny().unwrap().downcast_ref::<crate::fresco::Term>().unwrap();
+                let  	exprId = match term {
+                    crate::fresco::Term::String( s) => self.VarCreate( s.clone(), false),
+                };
+                exprStk.Push( exprId);
+                return;
+            }
+            if curOp == crate::stalks::ChildOp::None { 
+                return; 
+            }
+            let  	mut opCtx = ( crate::stalks::ChildOp::None, U32( 0));
+            opStk.Pop( &mut opCtx); 
+
+            let  	parentOp = if opStk.Size() != 0 { opStk.Arr().Last().0 } else { crate::stalks::ChildOp::None };
+            if parentOp == curOp { 
+                return; 
+            }
+
+            let  	arr = exprStk.Arr().Subset( opCtx.1, exprStk.Size() - opCtx.1);
+            exprStk.SetSize( opCtx.1);
+            let  	exprId = match curOp {
+                crate::stalks::ChildOp::Sum => self.SumCreate( &arr, &[]),
+                crate::stalks::ChildOp::Prod => self.ProdCreate( &arr, &[]),
+                _ => panic!( "Unsupported ChildOp in PostTermTree: {:?}", curOp),
+            };
+            exprStk.Push( exprId);
+        }); 
+        
+        if exprStk.Size() == 0 {
+            U32( 0)
+        } else {
+            *exprStk.Arr().Last()
+        }
+    }
+}

@@ -5,11 +5,8 @@ use	crate::stalks::{ DynIWorker, IWork };
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Clone, Debug)]
-pub enum Term {
-    Closure( fn( &DynIWorker< '_>)),
-    Char( char),
-    String( String),
-    Charset( Charset),
+pub enum Term {  
+    String( String), 
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -18,7 +15,7 @@ impl Default for Term
 {
     fn	default() -> Self
     {
-        Self::Closure( |_| {})
+        Self::String( "".to_string())
     }
 }
 
@@ -32,23 +29,11 @@ impl crate::segue::IXFluxable for Term
         let  	term = self;
         *field = crate::segue::xflux::XField::Obj( Box::new( move |key, item| {
             if step == 0 {
-                match term {
-                    Term::Closure( _) => {
-                        *key = "Type".to_string();
-                        *item = crate::segue::xflux::XField::Str( "Closure");
-                    }
-                    Term::Char( c) => {
-                        *key = "Char".to_string();
-                        *item = crate::segue::xflux::XField::String( c.to_string());
-                    }
+                match term {  
                     Term::String( s) => {
                         *key = "String".to_string();
                         *item = crate::segue::xflux::XField::Str( s);
-                    }
-                    Term::Charset( c) => {
-                        *key = "Charset".to_string();
-                        *item = crate::segue::xflux::XField::Fluxable( c);
-                    }
+                    } 
                 }
                 step += 1;
                 true
@@ -63,21 +48,9 @@ impl crate::segue::IXFluxable for Term
 
 impl Term
 {
-    pub fn	New( f: fn( &DynIWorker< '_>)) -> Self
-    {
-        Self::Closure( f)
-    }
-    pub fn	NewChar( c: char) -> Self
-    {
-        Self::Char( c)
-    }
     pub fn	NewString( s: String) -> Self
     {
         Self::String( s)
-    }
-    pub fn	NewCharset( cs: Charset) -> Self
-    {
-        Self::Charset( cs)
     }
 }
 
@@ -85,13 +58,10 @@ impl Term
 
 impl IWork for Term
 {
-    fn	DoWork( &mut self, worker: &DynIWorker< '_>)
+    fn	DoWork( &mut self, _worker: &DynIWorker< '_>)
     {
-        match self {
-            Self::Closure( f) => ( f)( worker),
-            Self::Char( c) => print!( "{} ", c),
+        match self { 
             Self::String( s) => print!( "{} ", s),
-            Self::Charset( cs) => print!( "{} ", cs),
         }
     }
 }
@@ -103,21 +73,8 @@ impl std::fmt::Display for Term
     fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
     {
         match self {
-            Self::Char( c) => write!( f, "Term( {})", c),
             Self::String( s) => write!( f, "Term( {})", s),
-            Self::Charset( cs) => write!( f, "Term( {})", cs),
-            Self::Closure( _) => write!( f, "Term"),
         }
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl From< fn( &DynIWorker< '_>) > for Term
-{
-    fn	from( f: fn( &DynIWorker< '_>)) -> Self
-    {
-        Self::New( f)
     }
 }
 
@@ -127,7 +84,7 @@ impl From< char> for Term
 {
     fn	from( c: char) -> Self
     {
-        Self::Char( c)
+        Self::String( c.to_string())
     }
 }
 
@@ -148,16 +105,6 @@ impl From< &str> for Term
     fn	from( s: &str) -> Self
     {
         Self::String( s.to_string())
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl From< Charset> for Term
-{
-    fn	from( cs: Charset) -> Self
-    {
-        Self::Charset( cs)
     }
 }
 
@@ -189,6 +136,10 @@ impl< 'a> crate::stalks::INode< 'a> for Term
     fn	Value( &self) -> Option< crate::stalks::WorkPtr< 'a>>
     {
         Some( crate::stalks::IntoWorkPtr::IntoWorkPtr( self.clone()))
+    }
+    fn	AsAny( &self) -> Option<&dyn core::any::Any>
+    {
+        Some( self)
     }
     fn	DocStr( &self) -> &'static str { "" }
     fn	Attrib( &self) -> Option< &crate::stalks::Attrib> { None }

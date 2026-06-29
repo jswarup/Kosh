@@ -40,6 +40,8 @@ fn	TestTermTree()
         let  	mut jsonStream = JsonOutStream::New( &mut output, true);
         jsonStream.KeyField( "nodeTree", XField::Fluxable( &nodeTree));
     }
+    let         mut exprRepos = ExprRepos::NewEmpty();
+    exprRepos.PostTermTree( &nodeTree);
     println!( "{}", output);
 }
 
