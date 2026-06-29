@@ -1,19 +1,23 @@
 //-- exprrepos.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ IAccess, IArr, Stash, U32 };
+use	crate::silo::{ IAccess, IArr, Stash, U32, Arr, Buff };
+use	crate::segue::{ IXFluxable, xflux::XField };
 use	crate::fresco::varexpr::{ VarAttrib, VarExpr };
 use	crate::fresco::realexpr::RealExpr;
 use	crate::fresco::sumexpr::SumExpr;
 use	crate::fresco::prodexpr::ProdExpr;
+use	crate::fresco::powexpr::PowExpr;
+use	crate::fresco::Term;
+use	crate::stalks::{ ChildOp, DynINode };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 use	core::any::Any;
 
-pub trait BaseExpr: Any + crate::segue::IXFluxable
+pub trait BaseExpr: Any + IXFluxable
 {
     fn	SizeChild( &self, _chart: &ExprRepos) -> U32
     {
-        U32( 0)
+        0.into()
     }
 
     fn	IsBinary( &self) -> bool
@@ -48,12 +52,12 @@ impl Clone for ExprEntry
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::segue::IXFluxable for ExprEntry
+impl IXFluxable for ExprEntry
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut crate::segue::xflux::XField< 'b>)
+    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
     {
         match self {
-            ExprEntry::Empty => *field = crate::segue::xflux::XField::Null,
+            ExprEntry::Empty => *field = XField::Null,
             ExprEntry::Expr( expr) => expr.ToXFlux( field),
         }
     }
@@ -134,14 +138,14 @@ impl ExprRepos
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	SumCreate( &mut self, adds: &[ U32], subs: &[ U32]) -> U32
+    pub fn	SumCreate( &mut self, adds: Arr<'_, U32>, subs: Arr<'_, U32>) -> U32
     {
-        let  	mut childs = Vec::with_capacity( adds.len() + subs.len());
-        childs.extend_from_slice( adds);
-        childs.extend_from_slice( subs);
+        let  	mut childs = Buff::NewEmpty();
+        childs.ExtendFromArr( adds);
+        childs.ExtendFromArr( subs);
 
         let  	mut sumExpr = SumExpr::New();
-        sumExpr._Poly.DoInitArr( U32( adds.len() as u32), childs);
+        sumExpr._Poly.DoInitArr( adds.Size(), childs);
         self.Store( Box::new( sumExpr))
     }
 
@@ -149,26 +153,26 @@ impl ExprRepos
 
     pub fn	AddCreate( &mut self, tok0: U32, tok1: U32) -> U32
     {
-        self.SumCreate( &[ tok0, tok1], &[])
+        self.SumCreate( Arr::from( &[tok0, tok1]), Arr::from( &[] as &[U32]))
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	DiffCreate( &mut self, tok0: U32, tok1: U32) -> U32
     {
-        self.SumCreate( &[ tok0], &[ tok1])
+        self.SumCreate( Arr::from( &[tok0]), Arr::from( &[tok1]))
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ProdCreate( &mut self, numers: &[ U32], denoms: &[ U32]) -> U32
+    pub fn	ProdCreate( &mut self, numers: Arr<'_, U32>, denoms: Arr<'_, U32>) -> U32
     {
-        let  	mut childs = Vec::with_capacity( numers.len() + denoms.len());
-        childs.extend_from_slice( numers);
-        childs.extend_from_slice( denoms);
+        let  	mut childs = Buff::NewEmpty();
+        childs.ExtendFromArr( numers);
+        childs.ExtendFromArr( denoms);
 
         let  	mut prodExpr = ProdExpr::New();
-        prodExpr._Poly.DoInitArr( U32( numers.len() as u32), childs);
+        prodExpr._Poly.DoInitArr( numers.Size(), childs);
         self.Store( Box::new( prodExpr))
     }
 
@@ -176,26 +180,26 @@ impl ExprRepos
 
     pub fn	MultCreate( &mut self, tok0: U32, tok1: U32) -> U32
     {
-        self.ProdCreate( &[ tok0, tok1], &[])
+        self.ProdCreate( Arr::from( &[tok0, tok1]), Arr::from( &[] as &[U32]))
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	DivCreate( &mut self, tok0: U32, tok1: U32) -> U32
     {
-        self.ProdCreate( &[ tok0], &[ tok1])
+        self.ProdCreate( Arr::from( &[tok0]), Arr::from( &[tok1]))
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	PowCreate( &mut self, bases: &[ U32], exps: &[ U32]) -> U32
+    pub fn	PowCreate( &mut self, bases: Arr<'_, U32>, exps: Arr<'_, U32>) -> U32
     {
-        let  	mut childs = Vec::with_capacity( bases.len() + exps.len());
-        childs.extend_from_slice( bases);
-        childs.extend_from_slice( exps);
+        let  	mut childs = Buff::NewEmpty();
+        childs.ExtendFromArr( bases);
+        childs.ExtendFromArr( exps);
 
-        let  	mut powExpr = crate::fresco::powexpr::PowExpr::New();
-        powExpr._Poly.DoInitArr( U32( bases.len() as u32), childs);
+        let  	mut powExpr = PowExpr::New();
+        powExpr._Poly.DoInitArr( bases.Size(), childs);
         self.Store( Box::new( powExpr))
     }
 
@@ -230,55 +234,56 @@ impl ExprRepos
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	PostTermTree( &mut self, node: &crate::stalks::DynINode< '_>) -> U32
+    pub fn	PostTermTree( &mut self, node: &DynINode< '_>) -> U32
     {
-        let  	exprStash = Stash::<U32>::New( U32( 1024), 0, U32( 0));
+        let  	exprStash = Stash::<U32>::New( 1024, 0, 0.into());
         let  	mut exprStk = exprStash.Stk();
-        let  	opStash = Stash::<(crate::stalks::ChildOp, U32)>::New( U32( 1024), 0, (crate::stalks::ChildOp::None, U32( 0)));
+        let  	opStash = Stash::<(ChildOp, U32)>::New( 1024, 0, (ChildOp::None, 0.into()));
         let  	opStk = opStash.Stk();
 
         node.DiveDf( &mut |probe, enterFlg| {
             let  	curNode = probe.CurNode().unwrap();
             let  	curOp = curNode.ChildOp();
             if enterFlg {
-                if curOp != crate::stalks::ChildOp::None {
+                if curOp != ChildOp::None {
                     opStk.Push( ( curOp, exprStk.Size()));
                     return;
                 } 
-                let  	term = curNode.AsAny().unwrap().downcast_ref::<crate::fresco::Term>().unwrap();
+                let  	term = curNode.AsAny().unwrap().downcast_ref::<Term>().unwrap();
                 let  	exprId = match term {
-                    crate::fresco::Term::String( s) => self.VarCreate( s.clone(), false),
-                    crate::fresco::Term::Real( v) => self.RealCreate( *v),
+                    Term::String( s) => self.VarCreate( s.clone(), false),
+                    Term::Real( v) => self.RealCreate( *v),
                 };
                 exprStk.Push( exprId);
                 return;
             }
-            if curOp == crate::stalks::ChildOp::None { 
+            if curOp == ChildOp::None { 
                 return; 
             }
-            let  	mut opCtx = ( crate::stalks::ChildOp::None, U32( 0));
+            let  	mut opCtx = ( ChildOp::None, 0.into());
             opStk.Pop( &mut opCtx); 
 
-            let  	parentOp = if opStk.Size() != 0 { opStk.Arr().Last().0 } else { crate::stalks::ChildOp::None };
+            let  	parentOp = if opStk.Size() != 0 { opStk.Arr().Last().0 } else { ChildOp::None };
             if parentOp == curOp { 
                 return; 
             }
 
-            let  	arr = exprStk.Arr().Subset( opCtx.1, exprStk.Size() - opCtx.1);
+                        let  	arr = exprStk.Arr().Subset( opCtx.1, exprStk.Size() - opCtx.1);
             exprStk.SetSize( opCtx.1);
+            let  	emptyArr = Arr::from( &[][..]);
             let  	exprId = match curOp {
-                crate::stalks::ChildOp::Sum => self.SumCreate( &arr, &[]),
-                crate::stalks::ChildOp::Prod => self.ProdCreate( &arr, &[]),
-                crate::stalks::ChildOp::Sub => self.SumCreate( &arr[0..1], &arr[1..]),
-                crate::stalks::ChildOp::Div => self.ProdCreate( &arr[0..1], &arr[1..]),
-                crate::stalks::ChildOp::Pow => self.PowCreate( &arr[0..1], &arr[1..]),
+                ChildOp::Sum => self.SumCreate( arr, emptyArr),
+                ChildOp::Prod => self.ProdCreate( arr, emptyArr),
+                ChildOp::Sub => self.SumCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1)),
+                ChildOp::Div => self.ProdCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1)),
+                ChildOp::Pow => self.PowCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1)),
                 _ => panic!( "Unsupported ChildOp in PostTermTree: {:?}", curOp),
             };
             exprStk.Push( exprId);
         }); 
         
         if exprStk.Size() == 0 {
-            U32( 0)
+            0.into()
         } else {
             *exprStk.Arr().Last()
         }
@@ -287,19 +292,19 @@ impl ExprRepos
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::segue::IXFluxable for ExprRepos
+impl IXFluxable for ExprRepos
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut crate::segue::xflux::XField< 'b>)
+    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut step = 0u32;
         let  	repos = self;
-        *field = crate::segue::xflux::XField::Obj( Box::new( move |key, item| {
+        *field = XField::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Exprs".to_string();
                 let  	mut iterStep = 0u32;
-                *item = crate::segue::xflux::XField::Arr( Box::new( move |elem| {
+                *item = XField::Arr( Box::new( move |elem| {
                     if iterStep < repos._Exprs.Size().0 {
-                        let  	expr = repos._Exprs.Stk().Arr().At( crate::silo::U32( iterStep));
+                        let  	expr = repos._Exprs.Stk().Arr().At( iterStep);
                         expr.ToXFlux( elem);
                         iterStep += 1;
                         true
@@ -312,9 +317,9 @@ impl crate::segue::IXFluxable for ExprRepos
             } else if step == 1 {
                 *key = "VarAttribs".to_string();
                 let  	mut iterStep = 0u32;
-                *item = crate::segue::xflux::XField::Arr( Box::new( move |elem| {
+                *item = XField::Arr( Box::new( move |elem| {
                     if iterStep < repos._VarAttribs.Size().0 {
-                        let  	attr = repos._VarAttribs.Stk().Arr().At( crate::silo::U32( iterStep));
+                        let  	attr = repos._VarAttribs.Stk().Arr().At( iterStep);
                         attr.ToXFlux( elem);
                         iterStep += 1;
                         true

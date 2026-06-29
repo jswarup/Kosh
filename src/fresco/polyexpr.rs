@@ -1,6 +1,6 @@
 //-- polyexpr.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::fresco::exprrepos::BaseExpr;
-use	crate::silo::U32;
+use	crate::silo::{ U32, Buff };
 use	core::any::Any;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -8,7 +8,7 @@ use	core::any::Any;
 #[derive( Clone)]
 pub struct PolyExpr
 {
-    _Childs: Vec< U32>,
+    _Childs: Buff< U32>,
     _CoSz: U32,
 }
 
@@ -17,7 +17,7 @@ impl PolyExpr
     pub fn	New() -> Self
     {
         Self {
-            _Childs: Vec::new(),
+            _Childs: Buff::NewEmpty(),
             _CoSz: U32( 0),
         }
     }
@@ -25,10 +25,10 @@ impl PolyExpr
     pub fn	DoInitSize( &mut self, coSz: U32, sz: usize)
     {
         self._CoSz = coSz;
-        self._Childs.resize( sz, U32( 0));
+        self._Childs.Resize( U32( sz as u32), |_| U32( 0));
     }
 
-    pub fn	DoInitArr( &mut self, coSz: U32, arr: Vec< U32>)
+    pub fn	DoInitArr( &mut self, coSz: U32, arr: Buff< U32>)
     {
         self._CoSz = coSz;
         self._Childs = arr;
@@ -36,7 +36,7 @@ impl PolyExpr
 
     pub fn	SzChild( &self) -> U32
     {
-        U32( self._Childs.len() as u32)
+        self._Childs.Size()
     }
 
     pub fn	Child( &self, k: usize) -> U32
