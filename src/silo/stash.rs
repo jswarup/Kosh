@@ -1,4 +1,5 @@
 //-- stash.rs -------------------------------------------------------------------------------------------------------------------------
+use	std::{ mem::replace, ptr::copy_nonoverlapping };
 use	crate::silo::{ Arr, Buff, IAccess, IArr, Stk, U32 };
 use	crate::stalks::Atm;
 use	std::sync::atomic::Ordering;
@@ -67,7 +68,7 @@ impl< T> Stash< T>
 
     pub fn	BuffOut( &mut self) -> Buff< T>
     {
-        std::mem::replace( &mut self._Buff, Buff::NewEmpty())
+        replace( &mut self._Buff, Buff::NewEmpty())
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -133,7 +134,7 @@ impl< T: Copy> Stash< T>
         }
         let  	startSz = self.Size();
         unsafe {
-            std::ptr::copy_nonoverlapping(
+            copy_nonoverlapping(
                 arr.Ptr(),
                 self._Buff._Ptr.cast::< T>().as_ptr().add( startSz.AsUsize()),
                 n.AsUsize(),

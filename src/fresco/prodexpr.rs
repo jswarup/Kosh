@@ -1,4 +1,5 @@
 //-- prodexpr.rs ----------------------------------------------------------------------------------------------------------------------
+use	crate::flux::{ IXFluxable, xflux::XField };
 use	crate::fresco::exprrepos::BaseExpr;
 use	crate::fresco::polyexpr::PolyExpr;
 use	core::any::Any;
@@ -34,16 +35,16 @@ impl BaseExpr for ProdExpr
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::flux::IXFluxable for ProdExpr
+impl IXFluxable for ProdExpr
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut crate::flux::xflux::XField< 'b>)
+    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut step = 0u32;
         let  	expr = self;
-        *field = crate::flux::xflux::XField::Obj( Box::new( move |key, item| {
+        *field = XField::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Type".to_string();
-                *item = crate::flux::xflux::XField::Str( "ProdExpr");
+                *item = XField::Str( "ProdExpr");
                 step += 1;
                 true
             } else if step == 1 {

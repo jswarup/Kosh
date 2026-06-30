@@ -1,4 +1,5 @@
 //-- access.rs -----------------------------------------------------------------------------------------------------------------------
+use	std::{ fmt, marker::PhantomData };
 use	crate::silo::{ U32, USeg };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -62,7 +63,7 @@ pub trait IAccess< 'a, T: 'a + ?Sized> {
         AccessIter {
             _access: self,
             _index: U32( 0),
-            _marker: std::marker::PhantomData,
+            _marker: PhantomData,
         }
     }
 
@@ -82,7 +83,7 @@ pub struct AccessIter< 'a, T: 'a + ?Sized, A>
 {
     _access: A,
     _index: U32,
-    _marker: std::marker::PhantomData< &'a T>,
+    _marker: PhantomData< &'a T>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -105,9 +106,9 @@ impl< 'a, T: 'a + ?Sized, A: IAccess< 'a, T>> Iterator for AccessIter< 'a, T, A>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T: 'a + ?Sized + std::fmt::Display, A: IAccess< 'a, T>> std::fmt::Display for AccessIter< 'a, T, A>
+impl< 'a, T: 'a + ?Sized + fmt::Display, A: IAccess< 'a, T>> fmt::Display for AccessIter< 'a, T, A>
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         write!( f, "[")?;
         for i in self._index.0 .. self._access.Size().0 {

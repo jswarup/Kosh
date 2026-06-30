@@ -1,4 +1,5 @@
 //-- stk.rs -------------------------------------------------------------------------------------------------------------------------
+use	std::fmt;
 use	crate::silo::{ Arr, IAccess, IArr, U32, USeg };
 use	crate::stalks::Atm;
 use	std::sync::atomic::Ordering;
@@ -67,8 +68,8 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
                 .CompareExchange(
                     sz,
                     sz - U32( 1),
-                    std::sync::atomic::Ordering::Acquire,
-                    std::sync::atomic::Ordering::Relaxed,
+                    Ordering::Acquire,
+                    Ordering::Relaxed,
                 )
                 .is_err()) {
             return false;
@@ -92,8 +93,8 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
             .CompareExchange(
                 sz,
                 sz + U32( 1),
-                std::sync::atomic::Ordering::Release,
-                std::sync::atomic::Ordering::Relaxed,
+                Ordering::Release,
+                Ordering::Relaxed,
             )
             .is_err() {
             self._Arr.SwapAt( sz, val);                                // Rollback: swap original value back
@@ -182,11 +183,11 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, 'b, T: std::fmt::Display> std::fmt::Display for Stk< 'a, 'b, T>
+impl< 'a, 'b, T: fmt::Display> fmt::Display for Stk< 'a, 'b, T>
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
-        std::fmt::Display::fmt( &self.Arr(), f)
+        fmt::Display::fmt( &self.Arr(), f)
     }
 }
 

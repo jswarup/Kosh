@@ -1,4 +1,6 @@
 //-- node.rs -------------------------------------------------------------------------------------------------------------------
+use	crate::{ flux::xflux::XField, stalks::WorkPtr };
+use	std::fmt;
 use	crate::silo::{ Arr, IAccess, Stash, U32 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -15,9 +17,9 @@ pub enum Attrib
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl std::fmt::Display for Attrib
+impl fmt::Display for Attrib
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         match self {
             Attrib::Inv( value) => write!( f, "Inv({})", value),
@@ -48,9 +50,9 @@ pub enum ChildOp
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl std::fmt::Display for ChildOp
+impl fmt::Display for ChildOp
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         match self {
             ChildOp::Sum => write!( f, "+"),
@@ -99,14 +101,14 @@ impl< 'b, 'a> IAccess< 'b, DynINode< 'a>> for NodeChildren< 'b, 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> INode< 'a> for crate::silo::U32
+impl< 'a> INode< 'a> for U32
 {
-    fn	_Size( &self) -> crate::silo::U32 { crate::silo::U32(0) }
-    fn	_At( &self, _idx: crate::silo::U32) -> &DynINode< 'a> { panic!("Leaf") }
-    fn	Value( &self) -> Option< crate::stalks::WorkPtr< 'a>> { None }
+    fn	_Size( &self) -> U32 { U32(0) }
+    fn	_At( &self, _idx: U32) -> &DynINode< 'a> { panic!("Leaf") }
+    fn	Value( &self) -> Option< WorkPtr< 'a>> { None }
     fn	DocStr( &self) -> &'static str { "" }
-    fn	Attrib( &self) -> Option< &crate::stalks::Attrib> { None }
-    fn	ChildOp( &self) -> crate::stalks::ChildOp { crate::stalks::ChildOp::None }
+    fn	Attrib( &self) -> Option< &Attrib> { None }
+    fn	ChildOp( &self) -> ChildOp { ChildOp::None }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -116,7 +118,7 @@ pub trait INode< 'a>: Send + Sync
     fn	_Size( &self) -> U32;
     fn	_At( &self, idx: U32) -> &DynINode< 'a>;
 
-    fn	Value( &self) -> Option< crate::stalks::WorkPtr< 'a>>;
+    fn	Value( &self) -> Option< WorkPtr< 'a>>;
 
     fn	DocStr( &self) -> &'static str;
 
@@ -144,30 +146,30 @@ pub trait INode< 'a>: Send + Sync
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub fn FluxDynINode< 'b, 'a>( node: &'b DynINode< 'a>, field: &mut crate::flux::xflux::XField< 'b>)
+pub fn FluxDynINode< 'b, 'a>( node: &'b DynINode< 'a>, field: &mut XField< 'b>)
 {
     let  	mut step = 0u32;
-    *field = crate::flux::xflux::XField::Obj( Box::new( move |key, item| {
+    *field = XField::Obj( Box::new( move |key, item| {
         if step == 0 {
             *key = "DocStr".to_string();
-            *item = crate::flux::xflux::XField::Str( node.DocStr());
+            *item = XField::Str( node.DocStr());
             step += 1;
             true
         } else if step == 1 {
             *key = "ChildOp".to_string();
-            *item = crate::flux::xflux::XField::U64( node.ChildOp() as u64);
+            *item = XField::U64( node.ChildOp() as u64);
             step += 1;
             true
         } else if step == 2 {
             *key = "ChildrenSize".to_string();
-            *item = crate::flux::xflux::XField::U64( node._Size().0 as u64);
+            *item = XField::U64( node._Size().0 as u64);
             step += 1;
             true
         } else if step >= 3 && step < 3 + node._Size().0 {
             let  	childIdx = step - 3;
             *key = format!( "Child_{}", childIdx);
-            let  	child = node._At( crate::silo::U32( childIdx));
-            crate::stalks::node::FluxDynINode( child, item);
+            let  	child = node._At( U32( childIdx));
+            FluxDynINode( child, item);
             step += 1;
             true
         } else {

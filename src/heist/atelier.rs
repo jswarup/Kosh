@@ -1,4 +1,5 @@
 
+use	std::{ fmt, hint::spin_loop, thread::{ scope, yield_now } };
 
 //-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::Maestro;
@@ -107,7 +108,7 @@ impl< 'a> Atelier< 'a>
                 return jobId;
             }
             if self._FreeJobStash.Size() == 0 {
-                std::thread::yield_now();
+                yield_now();
                 continue;
             }
             let  	_guard = self._FreeJobLock.Lock();
@@ -221,8 +222,8 @@ impl< 'a> Atelier< 'a>
                 jobId = self.GrabJob( maestroIdx, &mut stealSeed);
             }
             if jobId == 0 {
-                std::hint::spin_loop();
-                std::thread::yield_now();
+                spin_loop();
+                yield_now();
             }
         }
     }
@@ -232,7 +233,7 @@ impl< 'a> Atelier< 'a>
     pub fn	DoLaunch( &self)
     {
         let  	maestros = self._Maestros.Arr();
-        std::thread::scope( |s| {
+        scope( |s| {
             for maestroIdx in 1..maestros.len() {
                 s.spawn( move || {
                     self.ExecuteLoop( U32( maestroIdx as u32));
@@ -352,9 +353,9 @@ impl AtelierInfo
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl std::fmt::Display for JobInfo
+impl fmt::Display for JobInfo
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         write!( f, "{{ JobId: {},  {}, {}, {}}} ", self._JobId, self._SuccId, self._SzPred, self._DocStr)
     }
@@ -362,9 +363,9 @@ impl std::fmt::Display for JobInfo
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl std::fmt::Display for AtelierInfo
+impl fmt::Display for AtelierInfo
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         write!( f, "Atel[ Hooked:")?;
         self._HookedStash.Stk().Arr().Traverse( |job| { 

@@ -1,4 +1,6 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
+use	crate::{ flux::{ JsonOutStream, xflux::XField, IXFlux }, ChoreTree };
+use	std::fs;
 use	crate::{
     heist::
     { Atelier, Chore, Maestro },
@@ -149,10 +151,10 @@ fn	TestChoreTree()
     
     let  	mut jsonStr = String::new();
     {
-        let  	mut jsonOutStream = crate::flux::JsonOutStream::New( &mut jsonStr, true);
-        crate::segue::IXFlux::Field( &mut jsonOutStream, crate::flux::xflux::XField::Fluxable( &choreTree));
+        let  	mut jsonOutStream = JsonOutStream::New( &mut jsonStr, true);
+        IXFlux::Field( &mut jsonOutStream, XField::Fluxable( &choreTree));
     }
-    std::fs::write( "a.json", jsonStr).unwrap();
+    fs::write( "a.json", jsonStr).unwrap();
 
     
     let  	atelier = Atelier::New( U32( 4));

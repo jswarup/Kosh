@@ -13,7 +13,7 @@ This project has strict, non-standard Rust formatting rules defined in `FORMATTI
 4. **Local Variables**: The `let` keyword MUST be followed by two spaces and a tab (`let  \tvar = `). Variables must use `camelCase`.
 5. **Separators**: All `//---...` separator lines MUST be padded with one blank line before and after.
 6. **Trailing Comments**: Must be aligned to column 72.
-7. **Use statements**: The `use` keyword MUST be followed by a tab (`\t`) (e.g., `use\tcrate::silo`). Prefer file-level use statements to full-path and function level use statements. Group file-level use statements.
+7. **Use statements**: The `use` keyword MUST be followed by a tab (`\t`) (e.g., `use\tcrate::silo`). Prefer file-level use statements to full-path and function level use statements. Group file-level use statements. Do not use full-paths inline; rely on file-level `use` instead.
 
 8. **return**: Must be on separate line
 

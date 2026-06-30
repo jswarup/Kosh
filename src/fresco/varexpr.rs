@@ -1,4 +1,5 @@
 //-- varexpr.rs ---------------------------------------------------------------------------------------------------------------------------
+use	crate::flux::{ IXFluxable, xflux::XField };
 
 use	core::any::Any;
 use	crate::silo::U32;
@@ -99,31 +100,31 @@ impl BaseExpr for VarExpr
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::flux::IXFluxable for VarAttrib
+impl IXFluxable for VarAttrib
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut crate::flux::xflux::XField< 'b>)
+    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut step = 0u32;
         let  	attr = self;
-        *field = crate::flux::xflux::XField::Obj( Box::new( move |key, item| {
+        *field = XField::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Name".to_string();
-                *item = crate::flux::xflux::XField::Str( &attr._Name);
+                *item = XField::Str( &attr._Name);
                 step += 1;
                 true
             } else if step == 1 {
                 *key = "DepTok".to_string();
-                *item = crate::flux::xflux::XField::U64( attr._DepTok.0 as u64);
+                *item = XField::U64( attr._DepTok.0 as u64);
                 step += 1;
                 true
             } else if step == 2 {
                 *key = "AggrIndex".to_string();
-                *item = crate::flux::xflux::XField::U64( attr._AggrIndex.0 as u64);
+                *item = XField::U64( attr._AggrIndex.0 as u64);
                 step += 1;
                 true
             } else if step == 3 {
                 *key = "VarFlags".to_string();
-                *item = crate::flux::xflux::XField::U64( attr._VarFlags.0 as u64);
+                *item = XField::U64( attr._VarFlags.0 as u64);
                 step += 1;
                 true
             } else {
@@ -135,21 +136,21 @@ impl crate::flux::IXFluxable for VarAttrib
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::flux::IXFluxable for VarExpr
+impl IXFluxable for VarExpr
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut crate::flux::xflux::XField< 'b>)
+    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut step = 0u32;
         let  	expr = self;
-        *field = crate::flux::xflux::XField::Obj( Box::new( move |key, item| {
+        *field = XField::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Type".to_string();
-                *item = crate::flux::xflux::XField::Str( "VarExpr");
+                *item = XField::Str( "VarExpr");
                 step += 1;
                 true
             } else if step == 1 {
                 *key = "VarIndex".to_string();
-                *item = crate::flux::xflux::XField::U64( expr._VarIndex.0 as u64);
+                *item = XField::U64( expr._VarIndex.0 as u64);
                 step += 1;
                 true
             } else {

@@ -1,4 +1,6 @@
 //-- term.rs -------------------------------------------------------------------------------------------------------------------------
+use	crate::{ flux::{ IXFluxable, xflux::XField }, silo::U32, stalks::{ Attrib, ChildOp, DynINode, INode, IntoWorkPtr, WorkPtr } };
+use	std::fmt;
 use	crate::stalks::{ DynIWorker, IWork };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -21,22 +23,22 @@ impl Default for Term
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::flux::IXFluxable for Term
+impl IXFluxable for Term
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut crate::flux::xflux::XField< 'b>)
+    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut step = 0u32;
         let  	term = self;
-        *field = crate::flux::xflux::XField::Obj( Box::new( move |key, item| {
+        *field = XField::Obj( Box::new( move |key, item| {
             if step == 0 {
                 match term {  
                     Term::String( s) => {
                         *key = "String".to_string();
-                        *item = crate::flux::xflux::XField::Str( s);
+                        *item = XField::Str( s);
                     } 
                     Term::Real( v) => {
                         *key = "Real".to_string();
-                        *item = crate::flux::xflux::XField::F64( *v);
+                        *item = XField::F64( *v);
                     }
                 }
                 step += 1;
@@ -77,9 +79,9 @@ impl IWork for Term
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl std::fmt::Display for Term
+impl fmt::Display for Term
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         match self {
             Self::String( s) => write!( f, "Term( {})", s),
@@ -130,21 +132,21 @@ impl From< f64> for Term
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> crate::stalks::INode< 'a> for Term
+impl< 'a> INode< 'a> for Term
 {
-    fn	_Size( &self) -> crate::silo::U32 { crate::silo::U32(0) }
-    fn	_At( &self, _idx: crate::silo::U32) -> &crate::stalks::DynINode< 'a> { panic!("Leaf") }
-    fn	Value( &self) -> Option< crate::stalks::WorkPtr< 'a>>
+    fn	_Size( &self) -> U32 { U32(0) }
+    fn	_At( &self, _idx: U32) -> &DynINode< 'a> { panic!("Leaf") }
+    fn	Value( &self) -> Option< WorkPtr< 'a>>
     {
-        Some( crate::stalks::IntoWorkPtr::IntoWorkPtr( self.clone()))
+        Some( IntoWorkPtr::IntoWorkPtr( self.clone()))
     }
     fn	AsAny( &self) -> Option<&dyn core::any::Any>
     {
         Some( self)
     }
     fn	DocStr( &self) -> &'static str { "" }
-    fn	Attrib( &self) -> Option< &crate::stalks::Attrib> { None }
-    fn	ChildOp( &self) -> crate::stalks::ChildOp { crate::stalks::ChildOp::None }
+    fn	Attrib( &self) -> Option< &Attrib> { None }
+    fn	ChildOp( &self) -> ChildOp { ChildOp::None }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

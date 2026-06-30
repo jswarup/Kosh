@@ -1,7 +1,8 @@
 //-- _tests.rs ---------------------------------------------------------------------------------------------------------------------
+use	crate::{ segue::Charset, silo::{ Arr, U8 }, stalks::WorkPtr };
 use	crate::silo::{ Buff, IAccess, U32 };
 use	crate::stalks::{ Atm, INode, DynINode, Attrib, TraversalEvent as NodeTraversalEvent, BiNodeTree, ChildOp };
-use	crate::segue::Shard;
+use	crate::segue::shard::Shard;
 use	std::sync::Arc;
 use	std::sync::atomic::{ AtomicBool, Ordering };
 
@@ -62,7 +63,7 @@ fn	TestINodeTraverse()
         {
             self.children[idx.0 as usize]
         }
-        fn	Value( &self) -> Option< crate::stalks::WorkPtr< 'a>>
+        fn	Value( &self) -> Option< WorkPtr< 'a>>
         {
             None
         }
@@ -168,7 +169,7 @@ fn	TestBiNodeTreeBoxetAction()
 {
     macro_rules! ShardBiNodeTree {
         ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $s:literal ) => {
-            $crate::stalks::node::IntoBiNode::< Shard, $Node >::IntoBiNode( Shard::NewCharset( crate::segue::Charset::FromBoxet( crate::silo::U8::FromArr( crate::silo::Arr::from( $s.as_bytes() ) ) ) ) )
+            $crate::stalks::node::IntoBiNode::< Shard, $Node >::IntoBiNode( Shard::NewCharset( Charset::FromBoxet( U8::FromArr( Arr::from( $s.as_bytes() ) ) ) ) )
         };
         ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, | $( $body:tt)+ ) => { $crate::BiNodeTree!( @feature_NEW [ $( $cb)* ], $Arg, $Node, | $( $body)+ ) };
         ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, || $( $body:tt)+ ) => { $crate::BiNodeTree!( @feature_NEW [ $( $cb)* ], $Arg, $Node, || $( $body)+ ) };

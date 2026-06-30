@@ -1,4 +1,5 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
+use	std::thread::spawn;
 use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, Stk, USeg, U8, U16, U32, U64 };
 use	crate::stalks::{ Atm, Worker };
 use	std::sync::Arc;
@@ -52,7 +53,7 @@ fn	BuffFromTest()
     assert_eq!( buff1.Size(), 10);
     assert_eq!( buff1[5], ());
     let  	buff2 = Buff::Create( 5, |_| 42);
-    let  	handle = std::thread::spawn( move || {
+    let  	handle = spawn( move || {
         assert_eq!( buff2.len(), 5);
         assert_eq!( buff2[0], 42);
     });

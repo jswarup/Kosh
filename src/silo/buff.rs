@@ -1,4 +1,5 @@
 //-- buff.rs ----------------------------------------------------------------------------------------------------------------------
+use	std::{ alloc::realloc, marker::PhantomData, mem::{ forget, size_of, swap }, ptr::{ copy_nonoverlapping, drop_in_place, read, slice_from_raw_parts_mut, write } };
 use	crate::silo::{ Arr, IAccess, IArr, U32 };
 use	std::alloc::{ Layout, alloc, dealloc, handle_alloc_error };
 
@@ -24,8 +25,8 @@ impl< T> Drop for InitGuard< T>
         unsafe {
             if self._InitCount > 0 {
                 let  	slicePtr =
-                    std::ptr::slice_from_raw_parts_mut( self._Ptr, self._InitCount);
-                std::ptr::drop_in_place( slicePtr);
+                    slice_from_raw_parts_mut( self._Ptr, self._InitCount);
+                drop_in_place( slicePtr);
             }
             dealloc( self._Ptr as *mut u8, self._Layout);
         }
@@ -52,10 +53,10 @@ where
             _InitCount: 0,
         };
         for i in 0..size {
-            std::ptr::write( rawPtr.add( i), f( i));
+            write( rawPtr.add( i), f( i));
             guard._InitCount += 1;
         }
-        std::mem::forget( guard);
+        forget( guard);
         let  	nonNullPtr = NonNull::new_unchecked( rawPtr);
         NonNull::slice_from_raw_parts( nonNullPtr, size)
     }
@@ -91,7 +92,7 @@ impl< T> Buff< T>
     {
         let  	oldSize = self._Ptr.len();
         let  	newSize = oldSize + 1;
-        let  	isZst = std::mem::size_of::< T>() == 0;
+        let  	isZst = size_of::< T>() == 0;
         if isZst {
             self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), newSize);
             return;
@@ -102,13 +103,13 @@ impl< T> Buff< T>
             let  	rawPtr = if oldSize == 0 {
                 alloc( newLayout)
             } else {
-                std::alloc::realloc( self._Ptr.cast::< u8>().as_ptr(), oldLayout, newLayout.size())
+                realloc( self._Ptr.cast::< u8>().as_ptr(), oldLayout, newLayout.size())
             };
             if rawPtr.is_null() {
                 handle_alloc_error( newLayout);
             }
             let  	rawPtrT = rawPtr as *mut T;
-            std::ptr::write( rawPtrT.add( oldSize), val);
+            write( rawPtrT.add( oldSize), val);
             let  	nonNullPtr = NonNull::new_unchecked( rawPtrT);
             self._Ptr = NonNull::slice_from_raw_parts( nonNullPtr, newSize);
         }
@@ -123,14 +124,14 @@ impl< T> Buff< T>
             return None;
         }
         let  	newSize = oldSize - 1;
-        let  	isZst = std::mem::size_of::< T>() == 0;
+        let  	isZst = size_of::< T>() == 0;
         if isZst {
             self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), newSize);
-            return Some( unsafe { std::ptr::read( NonNull::<T>::dangling().as_ptr()) });
+            return Some( unsafe { read( NonNull::<T>::dangling().as_ptr()) });
         }
         unsafe {
             let  	rawPtrT = self._Ptr.as_ptr() as *mut T;
-            let  	val = std::ptr::read( rawPtrT.add( newSize));
+            let  	val = read( rawPtrT.add( newSize));
             if newSize == 0 {
                 let  	layout = Layout::array::< T>( oldSize).unwrap();
                 dealloc( rawPtrT as *mut u8, layout);
@@ -138,7 +139,7 @@ impl< T> Buff< T>
             } else {
                 let  	oldLayout = Layout::array::< T>( oldSize).unwrap();
                 let  	newLayout = Layout::array::< T>( newSize).unwrap();
-                let  	rawPtr = std::alloc::realloc( rawPtrT as *mut u8, oldLayout, newLayout.size());
+                let  	rawPtr = realloc( rawPtrT as *mut u8, oldLayout, newLayout.size());
                 if rawPtr.is_null() {
                     handle_alloc_error( newLayout);
                 }
@@ -174,7 +175,7 @@ impl< T> Buff< T>
         if newSizeUsize <= oldSize {
             return;
         }
-        let  	isZst = std::mem::size_of::< T>() == 0;
+        let  	isZst = size_of::< T>() == 0;
         if isZst {
             self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), newSizeUsize);
             return;
@@ -185,7 +186,7 @@ impl< T> Buff< T>
             let  	rawPtr = if oldSize == 0 {
                 alloc( newLayout)
             } else {
-                std::alloc::realloc( self._Ptr.cast::< u8>().as_ptr(), oldLayout, newLayout.size())
+                realloc( self._Ptr.cast::< u8>().as_ptr(), oldLayout, newLayout.size())
             };
             if rawPtr.is_null() {
                 handle_alloc_error( newLayout);
@@ -199,7 +200,7 @@ impl< T> Buff< T>
                 _NewLayout: Layout,
                 _OldSize: usize,
                 _InitCount: usize,
-                _Phantom: std::marker::PhantomData< T>,
+                _Phantom: PhantomData< T>,
             }
             impl< T> Drop for ResizeGuard< T>
             {
@@ -208,11 +209,11 @@ impl< T> Buff< T>
                     unsafe {
                         let  	totalValid = self._OldSize + self._InitCount;
                         if totalValid > 0 {
-                            let  	slicePtr = std::ptr::slice_from_raw_parts_mut(
+                            let  	slicePtr = slice_from_raw_parts_mut(
                                 self._RawPtr as *mut T,
                                 totalValid,
                             );
-                            std::ptr::drop_in_place( slicePtr);
+                            drop_in_place( slicePtr);
                         }
                         dealloc( self._RawPtr, self._NewLayout);
                     }
@@ -223,13 +224,13 @@ impl< T> Buff< T>
                 _NewLayout: newLayout,
                 _OldSize: oldSize,
                 _InitCount: 0,
-                _Phantom: std::marker::PhantomData,
+                _Phantom: PhantomData,
             };
             for i in oldSize..newSizeUsize {
-                std::ptr::write( rawPtrT.add( i), dispenser( U32( i as u32)));
+                write( rawPtrT.add( i), dispenser( U32( i as u32)));
                 guard._InitCount += 1;
             }
-            std::mem::forget( guard);
+            forget( guard);
             let  	nonNullPtr = NonNull::new_unchecked( rawPtrT);
             self._Ptr = NonNull::slice_from_raw_parts( nonNullPtr, newSizeUsize);
         }
@@ -253,7 +254,7 @@ impl< T> Buff< T>
         let  	oldSize = self._Ptr.len();
         let  	addSize = slice.len();
         let  	newSize = oldSize + addSize;
-        let  	isZst = std::mem::size_of::< T>() == 0;
+        let  	isZst = size_of::< T>() == 0;
         
         if isZst {
             self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), newSize);
@@ -267,7 +268,7 @@ impl< T> Buff< T>
             let  	rawPtr = if oldSize == 0 {
                 alloc( newLayout)
             } else {
-                std::alloc::realloc( self._Ptr.cast::< u8>().as_ptr(), oldLayout, newLayout.size())
+                realloc( self._Ptr.cast::< u8>().as_ptr(), oldLayout, newLayout.size())
             };
             
             if rawPtr.is_null() {
@@ -275,7 +276,7 @@ impl< T> Buff< T>
             }
             
             let  	rawPtrT = rawPtr as *mut T;
-            std::ptr::copy_nonoverlapping( slice.as_ptr(), rawPtrT.add( oldSize), addSize);
+            copy_nonoverlapping( slice.as_ptr(), rawPtrT.add( oldSize), addSize);
             
             let  	nonNullPtr = NonNull::new_unchecked( rawPtrT);
             self._Ptr = NonNull::slice_from_raw_parts( nonNullPtr, newSize);
@@ -289,7 +290,7 @@ impl< T> Buff< T>
         Dispenser: Fn( U32) -> T,
     {
         let  	size = sz.into();
-        let  	isZst = std::mem::size_of::< T>() == 0;
+        let  	isZst = size_of::< T>() == 0;
         if size == 0 || isZst {
             let  	dangling = NonNull::slice_from_raw_parts( NonNull::dangling(), size.AsUsize());
             return Buff { _Ptr: dangling };
@@ -313,7 +314,7 @@ impl< T> Buff< T>
 
     pub fn	SwapBuff( &mut self, buff: &mut Buff< T>)
     {
-        std::mem::swap( self, buff);
+        swap( self, buff);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -328,7 +329,7 @@ impl< T> Buff< T>
         if totalSz == 0 {
             return Buff::NewEmpty();
         }
-        let  	isZst = std::mem::size_of::< T>() == 0;
+        let  	isZst = size_of::< T>() == 0;
         if isZst {
             let  	dangling = NonNull::slice_from_raw_parts( NonNull::dangling(), totalSz);
             return Buff { _Ptr: dangling };
@@ -339,8 +340,8 @@ impl< T> Buff< T>
             if rawPtr.is_null() {
                 handle_alloc_error( layout);
             }
-            std::ptr::copy_nonoverlapping( a.Ptr(), rawPtr, aSz);
-            std::ptr::copy_nonoverlapping( b.Ptr(), rawPtr.add( aSz), bSz);
+            copy_nonoverlapping( a.Ptr(), rawPtr, aSz);
+            copy_nonoverlapping( b.Ptr(), rawPtr.add( aSz), bSz);
             let  	nonNullPtr = NonNull::new_unchecked( rawPtr);
             Buff { _Ptr: NonNull::slice_from_raw_parts( nonNullPtr, totalSz) }
         }
@@ -391,14 +392,14 @@ impl< T> Drop for Buff< T>
     fn	drop( &mut self)
     {
         let  	size = self._Ptr.len();
-        let  	isZst = std::mem::size_of::< T>() == 0;
+        let  	isZst = size_of::< T>() == 0;
         if size == 0 || isZst {
             return;
         }
         let  	layout = Layout::array::< T>( size).expect( "Too Big");
         unsafe {
             // Drop all elements via slice pointer
-            std::ptr::drop_in_place( self._Ptr.as_ptr());
+            drop_in_place( self._Ptr.as_ptr());
             // Deallocate the contiguous chunk of raw memory
             dealloc( self._Ptr.cast::< u8>().as_ptr(), layout);
         }
@@ -412,7 +413,7 @@ impl< T: Clone> Clone for Buff< T>
     fn	clone( &self) -> Self
     {
         let  	size = self._Ptr.len();
-        if size == 0 || std::mem::size_of::< T>() == 0 {
+        if size == 0 || size_of::< T>() == 0 {
             let  	dangling = NonNull::slice_from_raw_parts( NonNull::dangling(), size);
             return Buff { _Ptr: dangling };
         }
@@ -429,7 +430,7 @@ impl< T: Clone> From< &[T]> for Buff< T>
     fn	from( slice: &[T]) -> Self
     {
         let  	size = slice.len();
-        if size == 0 || std::mem::size_of::< T>() == 0 {
+        if size == 0 || size_of::< T>() == 0 {
             let  	dangling = NonNull::slice_from_raw_parts( NonNull::dangling(), size);
             return Buff { _Ptr: dangling };
         }
@@ -451,9 +452,9 @@ impl< T: Clone, const N: usize> From< [T; N]> for Buff< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T: Clone> From< crate::silo::Arr< '_, T> > for Buff< T>
+impl< T: Clone> From< Arr< '_, T> > for Buff< T>
 {
-    fn	from( arr: crate::silo::Arr< '_, T>) -> Self
+    fn	from( arr: Arr< '_, T>) -> Self
     {
         Self::from( &*arr)
     }
@@ -462,7 +463,7 @@ impl< T: Clone> From< crate::silo::Arr< '_, T> > for Buff< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T: 'a> crate::silo::IAccess< 'a, T> for &'a Buff< T>
+impl< 'a, T: 'a> IAccess< 'a, T> for &'a Buff< T>
 {
     fn	Size( &self) -> U32
     {
@@ -477,7 +478,7 @@ impl< 'a, T: 'a> crate::silo::IAccess< 'a, T> for &'a Buff< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T: 'a> crate::silo::IAccess< 'a, T> for &'a mut Buff< T>
+impl< 'a, T: 'a> IAccess< 'a, T> for &'a mut Buff< T>
 {
     fn	Size( &self) -> U32
     {
@@ -492,7 +493,7 @@ impl< 'a, T: 'a> crate::silo::IAccess< 'a, T> for &'a mut Buff< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T: 'a> crate::silo::IArr< 'a, T> for &'a mut Buff< T> {
+impl< 'a, T: 'a> IArr< 'a, T> for &'a mut Buff< T> {
     fn	Ptr( &self) -> *const T
     {
         self._Ptr.cast::< T>().as_ptr()

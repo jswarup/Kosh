@@ -1,5 +1,6 @@
 //-- uint.rs -------------------------------------------------------------------------------------------------------------------------
 //!  thin wrappers around unsigned integers providing seamless operations.
+use	std::{ cmp, fmt, mem::transmute, ops::{ AddAssign, SubAssign } };
 use	crate::stalks::atm::AtomicInt;
 use	std::ops::{ Add, BitAnd, BitOr, BitXor, Deref, Div, Mul, Neg, Not, Rem, Shl, Shr, Sub };
 use	std::sync::atomic::{ AtomicU8, AtomicU16, AtomicU32, AtomicU64, Ordering };
@@ -92,7 +93,7 @@ macro_rules! ImplUIntTraits {
             }
             #[inline]
             pub fn	FromArr< 'a>(arr: Arr<'a, $prim>) -> Arr< 'a, Self> {
-                unsafe { std::mem::transmute( arr) }
+                unsafe { transmute( arr) }
             }
         }
         macro_rules! impl_binop {
@@ -158,9 +159,9 @@ macro_rules! ImplUIntTraits {
                 $type( !self.0)
             }
         }
-        impl std::fmt::Display for $type
+        impl fmt::Display for $type
         {
-            fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result {
+            fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result {
                 write!( f, "{}", self.0)
             }
         }
@@ -276,7 +277,7 @@ macro_rules! ImplUIntTraits {
         impl PartialOrd< $prim> for $type
         {
             #[inline]
-            fn	partial_cmp( &self, other: &$prim) -> Option< std::cmp::Ordering>
+            fn	partial_cmp( &self, other: &$prim) -> Option< cmp::Ordering>
             {
                 self.0.partial_cmp( other)
             }
@@ -284,7 +285,7 @@ macro_rules! ImplUIntTraits {
         impl PartialOrd< $type> for $prim
         {
             #[inline]
-            fn	partial_cmp( &self, other: &$type) -> Option< std::cmp::Ordering>
+            fn	partial_cmp( &self, other: &$type) -> Option< cmp::Ordering>
             {
                 self.partial_cmp( &other.0)
             }
@@ -303,7 +304,7 @@ macro_rules! ImplUIntTraits {
                 }
             };
         }
-        impl< T> std::ops::AddAssign< T> for $type
+        impl< T> AddAssign< T> for $type
         where
             T: Into< $type>,
         {
@@ -313,7 +314,7 @@ macro_rules! ImplUIntTraits {
                 self.0 = self.0.wrapping_add( rhs.into().0);
             }
         }
-        impl< T> std::ops::SubAssign< T> for $type
+        impl< T> SubAssign< T> for $type
         where
             T: Into< $type>,
         {
@@ -383,7 +384,7 @@ macro_rules! Xplod {
             #[inline]
             fn	Xplod( self) -> [$dst; $sz]
             {
-                unsafe { std::mem::transmute( self) }
+                unsafe { transmute( self) }
             }
         }
     };

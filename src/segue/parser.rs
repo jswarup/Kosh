@@ -1,4 +1,5 @@
 //-- parser.rs ------------------------------------------------------------------------------------------------------------------------
+use	std::io;
 use	crate::{
     flux::InStream,
     segue::Charset
@@ -32,7 +33,7 @@ pub trait IParser<'a, 'f, 's, R: Read>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct Parser<'a, 'f, 's, R: Read = std::io::Empty>
+pub struct Parser<'a, 'f, 's, R: Read = io::Empty>
 {
     _Stream: &'a mut InStream<'s, R>,
     _Forge: &'f dyn IForge<'f>,

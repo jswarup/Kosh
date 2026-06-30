@@ -1,4 +1,6 @@
 //-- chore.rs -------------------------------------------------------------------------------------------------------------------------
+use	crate::{ flux::{ IXFluxable, xflux::XField }, silo::U32, stalks::{ Attrib, ChildOp, DynINode, INode, IntoWorkPtr, WorkPtr } };
+use	std::fmt;
 use	crate::stalks::{ DynIWorker, IWork };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -22,15 +24,15 @@ impl Default for Chore
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::flux::IXFluxable for Chore
+impl IXFluxable for Chore
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut crate::flux::xflux::XField< 'b>)
+    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut step = 0u32;
-        *field = crate::flux::xflux::XField::Obj( Box::new( move |key, item| {
+        *field = XField::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "DocStr".to_string();
-                *item = crate::flux::xflux::XField::Str( self._DocStr);
+                *item = XField::Str( self._DocStr);
                 step += 1;
                 true
             } else {
@@ -67,9 +69,9 @@ impl IWork for Chore
  
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl std::fmt::Display for Chore
+impl fmt::Display for Chore
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         if self._DocStr.is_empty() {
             write!( f, "Chore")
@@ -112,17 +114,17 @@ macro_rules! ChoreTree {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> crate::stalks::INode< 'a> for Chore
+impl< 'a> INode< 'a> for Chore
 {
-    fn	_Size( &self) -> crate::silo::U32 { crate::silo::U32(0) }
-    fn	_At( &self, _idx: crate::silo::U32) -> &crate::stalks::DynINode< 'a> { panic!("Leaf") }
-    fn	Value( &self) -> Option< crate::stalks::WorkPtr< 'a>>
+    fn	_Size( &self) -> U32 { U32(0) }
+    fn	_At( &self, _idx: U32) -> &DynINode< 'a> { panic!("Leaf") }
+    fn	Value( &self) -> Option< WorkPtr< 'a>>
     {
-        Some( crate::stalks::IntoWorkPtr::IntoWorkPtr( *self))
+        Some( IntoWorkPtr::IntoWorkPtr( *self))
     }
     fn	DocStr( &self) -> &'static str { self._DocStr }
-    fn	Attrib( &self) -> Option< &crate::stalks::Attrib> { None }
-    fn	ChildOp( &self) -> crate::stalks::ChildOp { crate::stalks::ChildOp::None }
+    fn	Attrib( &self) -> Option< &Attrib> { None }
+    fn	ChildOp( &self) -> ChildOp { ChildOp::None }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 //-- instream.rs -----------------------------------------------------------------------------------------------------------------------
+use	std::{ cmp, fs, io, path::Path, slice::{ from_raw_parts, from_raw_parts_mut } };
 use	crate::silo::{ Arr, Buff, IAccess, IArr, U8, U32 };
 use std::io::Read;
 
@@ -12,7 +13,7 @@ pub enum InSource< 'a, R: Read>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct InStream< 'a, R: Read = std::io::Empty>
+pub struct InStream< 'a, R: Read = io::Empty>
 {
     _Source: InSource< 'a, R>,
     _Marker: U32,
@@ -20,7 +21,7 @@ pub struct InStream< 'a, R: Read = std::io::Empty>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> InStream< 'a, std::io::Empty>
+impl< 'a> InStream< 'a, io::Empty>
 {
     pub fn	FromArr( arr: Arr< 'a, U8>) -> Self
     {
@@ -46,15 +47,15 @@ impl< 'a, R: Read> InStream< 'a, R>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> InStream< 'a, std::fs::File>
+impl< 'a> InStream< 'a, fs::File>
 {
-    pub fn	FromFile< P: AsRef< std::path::Path>>( path: P) -> std::io::Result< Self>
+    pub fn	FromFile< P: AsRef< Path>>( path: P) -> io::Result< Self>
     {
-        let  	file = std::fs::File::open( path)?;
+        let  	file = fs::File::open( path)?;
         Ok( Self::New( file))
     }
 
-    pub fn	FromFileHandle( file: std::fs::File) -> std::io::Result< Self>
+    pub fn	FromFileHandle( file: fs::File) -> io::Result< Self>
     {
         Ok( Self::New( file))
     }
@@ -62,11 +63,11 @@ impl< 'a> InStream< 'a, std::fs::File>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> InStream< 'a, std::io::Stdin>
+impl< 'a> InStream< 'a, io::Stdin>
 {
-    pub fn	FromStdin() -> std::io::Result< Self>
+    pub fn	FromStdin() -> io::Result< Self>
     {
-        Ok( Self::New( std::io::stdin()))
+        Ok( Self::New( io::stdin()))
     }
 }
 
@@ -76,14 +77,14 @@ impl< 'a, R: Read> InStream< 'a, R>
 {
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	EnsureCached( &mut self, amt: usize) -> std::io::Result< ()>
+    fn	EnsureCached( &mut self, amt: usize) -> io::Result< ()>
     {
         if let InSource::Streaming( ref mut inner, ref mut buff) = self._Source {
             let  	required = self._Marker.AsUsize() + amt;
             let  	mut currSize = buff.Size().AsUsize();
 
             while currSize < required {
-                let  	chunkSize = std::cmp::max( 4096, required - currSize);
+                let  	chunkSize = cmp::max( 4096, required - currSize);
                 let  	mut chunk = vec![ 0u8; chunkSize];
                 let  	readBytes = inner.read( &mut chunk)?;
                 
@@ -96,7 +97,7 @@ impl< 'a, R: Read> InStream< 'a, R>
                 
                 unsafe {
                     let  	ptr = buff.as_mut_ptr().cast::<u8>();
-                    let  	slice = std::slice::from_raw_parts_mut( ptr, newSize);
+                    let  	slice = from_raw_parts_mut( ptr, newSize);
                     slice[currSize..newSize].copy_from_slice( &chunk[..readBytes]);
                 }
                 currSize = newSize;
@@ -165,7 +166,7 @@ impl< 'a, R: Read> InStream< 'a, R>
                 buff.Resize( U32( newSize as u32), |_| U8::_0);
                 unsafe {
                     let  	ptr = buff.as_mut_ptr().cast::<u8>();
-                    let  	slice = std::slice::from_raw_parts_mut( ptr, newSize);
+                    let  	slice = from_raw_parts_mut( ptr, newSize);
                     slice[currSize..newSize].copy_from_slice( &vec);
                 }
             }
@@ -190,7 +191,7 @@ impl< 'a, R: Read> InStream< 'a, R>
     {
         let  	rest = self.Rest();
         unsafe {
-            std::slice::from_raw_parts( rest.Ptr().cast::<u8>(), rest.Size().AsUsize())
+            from_raw_parts( rest.Ptr().cast::<u8>(), rest.Size().AsUsize())
         }
     }
 
@@ -201,7 +202,7 @@ impl< 'a, R: Read> InStream< 'a, R>
 
 impl< 'a, R: Read> Read for InStream< 'a, R>
 {
-    fn	read( &mut self, buf: &mut [u8]) -> std::io::Result< usize>
+    fn	read( &mut self, buf: &mut [u8]) -> io::Result< usize>
     {
         let  	amt = buf.len();
         if amt == 0 {
@@ -218,13 +219,13 @@ impl< 'a, R: Read> Read for InStream< 'a, R>
         }
 
         let  	available = currSize - marker;
-        let  	len = std::cmp::min( available, amt);
+        let  	len = cmp::min( available, amt);
 
         match &self._Source {
             InSource::Fixed( arr) => {
                 unsafe {
                     let  	ptr = arr.Ptr().cast::<u8>();
-                    let  	slice = std::slice::from_raw_parts( ptr, currSize);
+                    let  	slice = from_raw_parts( ptr, currSize);
                     buf[..len].copy_from_slice( &slice[marker..marker + len]);
                 }
             },
@@ -232,7 +233,7 @@ impl< 'a, R: Read> Read for InStream< 'a, R>
                 unsafe {
                     // buff implements Deref<Target=[U8]>, as_ptr returns *const U8
                     let  	ptr = buff.as_ptr().cast::<u8>();
-                    let  	slice = std::slice::from_raw_parts( ptr, currSize);
+                    let  	slice = from_raw_parts( ptr, currSize);
                     buf[..len].copy_from_slice( &slice[marker..marker + len]);
                 }
             }

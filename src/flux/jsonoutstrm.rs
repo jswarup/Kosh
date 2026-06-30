@@ -1,11 +1,12 @@
 //-- jsonoutstrm.rs -------------------------------------------------------------------------------------------------------------------
+use	std::{ fmt, mem::swap };
 
 use	crate::flux::xflux::{ IXFlux, XField };
 use	crate::silo::U32;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct JsonOutStream< W: std::fmt::Write>
+pub struct JsonOutStream< W: fmt::Write>
 {
     _OStr: W,
     _Depth: U32,
@@ -15,7 +16,7 @@ pub struct JsonOutStream< W: std::fmt::Write>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< W: std::fmt::Write> JsonOutStream< W>
+impl< W: fmt::Write> JsonOutStream< W>
 {
     pub fn	New( ostr: W, multiLineFlg: bool) -> Self
     {
@@ -29,7 +30,7 @@ impl< W: std::fmt::Write> JsonOutStream< W>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	LineFeed( &mut self) -> std::fmt::Result
+    fn	LineFeed( &mut self) -> fmt::Result
     {
         if self._EntryFlg {
             write!( self._OStr, ",")?;
@@ -63,7 +64,7 @@ impl< W: std::fmt::Write> JsonOutStream< W>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< W: std::fmt::Write> IXFlux for JsonOutStream< W>
+impl< W: fmt::Write> IXFlux for JsonOutStream< W>
 {
     fn	Field( &mut self, field: XField) 
     { 
@@ -89,7 +90,7 @@ impl< W: std::fmt::Write> IXFlux for JsonOutStream< W>
                         let  	_ = write!( self._OStr, ", "); 
                     }
                     let  	mut next_item = XField::Null;
-                    std::mem::swap( &mut item, &mut next_item);
+                    swap( &mut item, &mut next_item);
                     self.Field( next_item);
                     is_first = false;
                 }
@@ -105,7 +106,7 @@ impl< W: std::fmt::Write> IXFlux for JsonOutStream< W>
                 let  	mut item = XField::Null;
                 while obj_func( &mut key, &mut item) {
                     let  	mut next_item = XField::Null;
-                    std::mem::swap( &mut item, &mut next_item);
+                    swap( &mut item, &mut next_item);
                     self.KeyField( &key, next_item);
                     key.clear();
                 }

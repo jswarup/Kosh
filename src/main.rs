@@ -1,5 +1,6 @@
 //-- main.rs ----------------------------------------------------------------------------------------------------------------------
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
+use	std::{ fs::write, process::{ Command, Stdio } };
 use	anyhow::{ Context, Result };
 use	clap::Parser;
 use	tracing::{ debug, level_filters::LevelFilter };
@@ -48,7 +49,7 @@ fn	setup_logging( verbose: bool) -> Result< ()>
 
 fn	run_tests( filter: &str, nocapture: bool) -> Result< ()>
 {
-    let  	mut cmd = std::process::Command::new( "cargo");
+    let  	mut cmd = Command::new( "cargo");
     cmd.arg( "test");
     if filter != "all" {
         cmd.arg( filter);
@@ -57,8 +58,8 @@ fn	run_tests( filter: &str, nocapture: bool) -> Result< ()>
         cmd.arg( "--");
         cmd.arg( "--nocapture");
     }
-    cmd.stdout( std::process::Stdio::inherit());
-    cmd.stderr( std::process::Stdio::inherit());
+    cmd.stdout( Stdio::inherit());
+    cmd.stderr( Stdio::inherit());
     let  	status = cmd.status().context( "Failed to run cargo test")?;
     if !status.success() {
         anyhow::bail!( "Tests failed with exit code: {:?}", status.code());

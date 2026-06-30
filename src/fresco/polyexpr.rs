@@ -1,4 +1,5 @@
 //-- polyexpr.rs ----------------------------------------------------------------------------------------------------------------------
+use	crate::flux::{ IXFluxable, xflux::XField };
 use	crate::fresco::exprrepos::BaseExpr;
 use	crate::silo::{ U32, Buff };
 use	core::any::Any;
@@ -70,24 +71,24 @@ impl BaseExpr for PolyExpr
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::flux::IXFluxable for PolyExpr
+impl IXFluxable for PolyExpr
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut crate::flux::xflux::XField< 'b>)
+    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut step = 0u32;
         let  	poly = self;
-        *field = crate::flux::xflux::XField::Obj( Box::new( move |key, item| {
+        *field = XField::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "CoSz".to_string();
-                *item = crate::flux::xflux::XField::U64( poly._CoSz.0 as u64);
+                *item = XField::U64( poly._CoSz.0 as u64);
                 step += 1;
                 true
             } else if step == 1 {
                 *key = "Childs".to_string();
                 let  	mut iterStep = 0usize;
-                *item = crate::flux::xflux::XField::Arr( Box::new( move |elem| {
+                *item = XField::Arr( Box::new( move |elem| {
                     if iterStep < poly._Childs.len() {
-                        *elem = crate::flux::xflux::XField::U64( poly._Childs[iterStep].0 as u64);
+                        *elem = XField::U64( poly._Childs[iterStep].0 as u64);
                         iterStep += 1;
                         true
                     } else {

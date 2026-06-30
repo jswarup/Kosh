@@ -1,8 +1,11 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
+use	crate::{ segue::parser::IForge, silo::Arr };
+use	std::fs;
 use	crate::{
-    heist::Atelier,
-    segue::{ Charset, InStream, Shard, JsonOutStream, xflux::XField },
-    silo::{ IAccess, U8, U32 }
+    flux::{ InStream, JsonOutStream, xflux::XField },
+    segue::{ Charset, shard::Shard },
+    silo::{ IAccess, U8, U32 },
+    heist::Atelier
 };
 
  
@@ -70,7 +73,7 @@ fn	TestJsonOutStream()
         jsonStream.KeyField( "prices", XField::Fluxable( &arr));
     }
     
-    std::fs::write( "a.json", output).unwrap();
+    fs::write( "a.json", output).unwrap();
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -107,12 +110,12 @@ fn	TestInStream()
 fn	TestInStreamFromFile()
 {
     let  	path = "test_inbuffstream.txt";
-    std::fs::write( path, b"hello").unwrap();
+    fs::write( path, b"hello").unwrap();
     let  	mut stream = InStream::FromFile( path).unwrap();
     assert_eq!( stream.Curr(), U8( b'h'));
     assert!( stream.Next());
     assert_eq!( stream.Curr(), U8( b'e'));
-    std::fs::remove_file( path).unwrap();
+    fs::remove_file( path).unwrap();
 }
 
 
@@ -123,8 +126,8 @@ struct DummyForge {
     _Offset: U32,
 }
 
-impl<'a> crate::segue::IForge<'a> for DummyForge {
-    fn	Parent( &self) -> Option< &'a dyn crate::segue::IForge<'a>> { None }
+impl<'a> IForge<'a> for DummyForge {
+    fn	Parent( &self) -> Option< &'a dyn IForge<'a>> { None }
     fn	Offset( &self) -> U32 { self._Offset }
 }
 
@@ -134,7 +137,7 @@ fn	TestParserBasic()
     use	crate::segue::{ Parser, IGrammar, Charset };
     
     let  	data = [U8( b'h'), U8( b'e'), U8( b'l'), U8( b'l'), U8( b'o'), U8( b' '), U8( b'p'), U8( b'a'), U8( b'r'), U8( b's'), U8( b'e'), U8( b'r')];
-    let  	arr = crate::silo::Arr::from( &data[..]);
+    let  	arr = Arr::from( &data[..]);
     let  	mut stream = InStream::FromArr( arr);
     let  	forge = DummyForge { _Offset: U32( 0) };
     let  	mut parser = Parser::New( &mut stream, &forge);

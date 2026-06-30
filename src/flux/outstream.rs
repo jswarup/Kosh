@@ -1,4 +1,5 @@
 //-- outstream.rs ----------------------------------------------------------------------------------------------------------------------
+use	std::{ cmp, io, slice::{ from_raw_parts, from_raw_parts_mut } };
 use	crate::silo::{ Arr, Buff, IAccess, IArr, U8, U32 };
 use	std::io::{ Result, Write };
 
@@ -12,7 +13,7 @@ pub enum OutSource< 'a, W: Write>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct OutStream< 'a, W: Write = std::io::Sink>
+pub struct OutStream< 'a, W: Write = io::Sink>
 {
     _Source: OutSource< 'a, W>,
     _Marker: U32,
@@ -20,7 +21,7 @@ pub struct OutStream< 'a, W: Write = std::io::Sink>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> OutStream< 'a, std::io::Sink>
+impl< 'a> OutStream< 'a, io::Sink>
 {
     pub fn	FromArr( arr: Arr< 'a, U8>) -> Self
     {
@@ -80,11 +81,11 @@ impl< 'a, W: Write> Write for OutStream< 'a, W>
                 }
                 
                 let  	available = currSize - pos;
-                let  	len = std::cmp::min( available, amt);
+                let  	len = cmp::min( available, amt);
                 
                 unsafe {
                     let  	ptr = arr.Ptr().cast_mut().cast::<u8>();
-                    let  	slice = std::slice::from_raw_parts_mut( ptr, currSize);
+                    let  	slice = from_raw_parts_mut( ptr, currSize);
                     slice[pos..pos + len].copy_from_slice( &buf[..len]);
                 }
                 
@@ -101,7 +102,7 @@ impl< 'a, W: Write> Write for OutStream< 'a, W>
                         // Flush cache
                         unsafe {
                             let  	ptr = buff.as_ptr().cast::<u8>();
-                            let  	slice = std::slice::from_raw_parts( ptr, cacheSize);
+                            let  	slice = from_raw_parts( ptr, cacheSize);
                             inner.write_all( slice)?;
                         }
                         pos = 0;
@@ -109,11 +110,11 @@ impl< 'a, W: Write> Write for OutStream< 'a, W>
                     }
 
                     let  	available = cacheSize - pos;
-                    let  	len = std::cmp::min( available, amt - written);
+                    let  	len = cmp::min( available, amt - written);
 
                     unsafe {
                         let  	ptr = buff.as_mut_ptr().cast::<u8>();
-                        let  	slice = std::slice::from_raw_parts_mut( ptr, cacheSize);
+                        let  	slice = from_raw_parts_mut( ptr, cacheSize);
                         slice[pos..pos + len].copy_from_slice( &buf[written..written + len]);
                     }
 
@@ -138,7 +139,7 @@ impl< 'a, W: Write> Write for OutStream< 'a, W>
                 if pos > 0 {
                     unsafe {
                         let  	ptr = buff.as_ptr().cast::<u8>();
-                        let  	slice = std::slice::from_raw_parts( ptr, pos);
+                        let  	slice = from_raw_parts( ptr, pos);
                         inner.write_all( slice)?;
                     }
                     self._Marker = U32( 0);

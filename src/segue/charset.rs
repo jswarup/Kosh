@@ -1,4 +1,5 @@
 //-- charset.rs -------------------------------------------------------------------------------------------------------------------
+use	std::{ cmp, fmt, ops::{ BitAnd, BitAndAssign, BitOr, BitOrAssign, Not } };
 use	std::sync::LazyLock;
 use	crate::silo::{ Arr, Buff, U8, U64 };
 use	crate::flux::{IXFluxable, XField};
@@ -188,9 +189,9 @@ impl Charset
     pub fn	Compare( &self, other: &Charset) -> i32
     {
         match self.cmp( other) {
-            std::cmp::Ordering::Less => -1,
-            std::cmp::Ordering::Equal => 0,
-            std::cmp::Ordering::Greater => 1,
+            cmp::Ordering::Less => -1,
+            cmp::Ordering::Equal => 0,
+            cmp::Ordering::Greater => 1,
         }
     }
 
@@ -500,9 +501,9 @@ impl Charset
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl std::fmt::Display for Charset
+impl fmt::Display for Charset
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         if self.Compare( Charset::Word()) == 0 {
             return write!( f, "[[Word]]");
@@ -516,9 +517,9 @@ impl std::fmt::Display for Charset
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl std::fmt::Debug for Charset
+impl fmt::Debug for Charset
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         write!( f, "Charset({})", self)
     }
@@ -526,16 +527,16 @@ impl std::fmt::Debug for Charset
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl std::cmp::PartialOrd for Charset
+impl cmp::PartialOrd for Charset
 {
-    fn	partial_cmp( &self, other: &Self) -> Option< std::cmp::Ordering>
+    fn	partial_cmp( &self, other: &Self) -> Option< cmp::Ordering>
     {
         Some( self.cmp( other))
     }
 }
-impl std::cmp::Ord for Charset
+impl cmp::Ord for Charset
 {
-    fn	cmp( &self, other: &Self) -> std::cmp::Ordering
+    fn	cmp( &self, other: &Self) -> cmp::Ordering
     {
         self._Bits.cmp( &other._Bits)
     }
@@ -543,7 +544,7 @@ impl std::cmp::Ord for Charset
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl std::ops::Not for Charset
+impl Not for Charset
 {
     type Output = Self;
     fn	not( self) -> Self::Output
@@ -551,7 +552,7 @@ impl std::ops::Not for Charset
         self.Negative()
     }
 }
-impl std::ops::BitOr for Charset
+impl BitOr for Charset
 {
     type Output = Self;
     fn	bitor( self, rhs: Self) -> Self::Output
@@ -559,7 +560,7 @@ impl std::ops::BitOr for Charset
         self.Union( &rhs)
     }
 }
-impl std::ops::BitAnd for Charset
+impl BitAnd for Charset
 {
     type Output = Self;
     fn	bitand( self, rhs: Self) -> Self::Output
@@ -567,14 +568,14 @@ impl std::ops::BitAnd for Charset
         self.Intersect( &rhs)
     }
 }
-impl std::ops::BitOrAssign for Charset
+impl BitOrAssign for Charset
 {
     fn	bitor_assign( &mut self, rhs: Self)
     {
         self.UnionWith( &rhs);
     }
 }
-impl std::ops::BitAndAssign for Charset
+impl BitAndAssign for Charset
 {
     fn	bitand_assign( &mut self, rhs: Self)
     {

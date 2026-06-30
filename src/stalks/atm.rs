@@ -1,4 +1,5 @@
 //-- atm.rs -----------------------------------------------------------------------------------------------------------------------
+use	std::hint::spin_loop;
 use	std::sync::atomic::*;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -164,7 +165,7 @@ impl Spinlock
             .compare_exchange_weak( false, true, Ordering::Acquire, Ordering::Relaxed)
             .is_err() {
             while self._Locked.load( Ordering::Relaxed) {
-                std::hint::spin_loop();
+                spin_loop();
             }
         }
     }

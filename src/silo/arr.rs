@@ -1,4 +1,5 @@
 //-- arr.rs -----------------------------------------------------------------------------------------------------------------------
+use	std::{ fmt, mem::transmute, ptr::{ swap, swap_nonoverlapping }, slice::{ from_raw_parts, from_raw_parts_mut }, str::from_utf8_unchecked };
 use	crate::silo::{ IAccess, AccessIter, U8, U32 };
 use	crate::stalks::DynIWorker;
 use	std::marker::PhantomData;
@@ -37,7 +38,7 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
     {
         unsafe {
             let  	ptr = self.Ptr().cast_mut().add( k.into().AsUsize());
-            std::ptr::swap( ptr, a);
+            swap( ptr, a);
             &*ptr
         }
     }
@@ -47,7 +48,7 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
     fn	Swap< I: Into< U32>, J: Into< U32>>( &self, i: I, j: J)
     {
         unsafe {
-            std::ptr::swap( 
+            swap( 
                 self.Ptr().cast_mut().add( i.into().AsUsize()),
                 self.Ptr().cast_mut().add( j.into().AsUsize()),
             );
@@ -66,7 +67,7 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
         T: Copy,
     {
         unsafe {
-            std::ptr::swap_nonoverlapping( 
+            swap_nonoverlapping( 
                 src.Ptr().cast_mut().add( srcStart.into().AsUsize()),
                 self.Ptr().cast_mut().add( dstStart.into().AsUsize()),
                 count.AsUsize(),
@@ -80,7 +81,7 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
     {
         let  	cnt = count.into();
         Arr::New( 
-            unsafe { std::ptr::NonNull::new_unchecked(self.Ptr().cast_mut().add( cnt.AsU32() as usize)) },
+            unsafe { NonNull::new_unchecked(self.Ptr().cast_mut().add( cnt.AsU32() as usize)) },
             self.Size() - cnt,
         )
     }
@@ -90,14 +91,14 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
     fn	RSnip< C: Into< U32>>( &self, count: C) -> Arr< 'a, T>
     {
         let  	cnt = count.into();
-        Arr::New( unsafe { std::ptr::NonNull::new_unchecked(self.Ptr().cast_mut()) }, self.Size() - cnt)
+        Arr::New( unsafe { NonNull::new_unchecked(self.Ptr().cast_mut()) }, self.Size() - cnt)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
     fn	Subset< F: Into< U32>, Sz: Into< U32>>( &self, first: F, sz:  Sz) -> Arr< 'a, T>
     { 
-        Arr::New( unsafe { std::ptr::NonNull::new_unchecked(self.Ptr().cast_mut().add( first.into().AsU32() as usize)) }, sz.into())
+        Arr::New( unsafe { NonNull::new_unchecked(self.Ptr().cast_mut().add( first.into().AsU32() as usize)) }, sz.into())
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -107,7 +108,7 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
         Less: Fn( &T, &T) -> bool + Send + Sync + 'a + Copy,
         T: Send + Sync + 'a,
     {
-        let  	arr = Arr::New( unsafe { std::ptr::NonNull::new_unchecked(self.Ptr().cast_mut()) }, self.Size());
+        let  	arr = Arr::New( unsafe { NonNull::new_unchecked(self.Ptr().cast_mut()) }, self.Size());
         move |worker: &DynIWorker< '_>| {
             let  	lessFn = move |i, j| less( arr.At( i), arr.At( j));
             let  	swapFn = move |i, j| arr.Swap( i, j);
@@ -192,7 +193,7 @@ impl< 'a, T> Deref for Arr< 'a, T>
     type Target = [T];
     fn	deref( &self) -> &Self::Target
     {
-        unsafe { std::slice::from_raw_parts( self._Ptr.as_ptr(), usize::from( self._Size)) }
+        unsafe { from_raw_parts( self._Ptr.as_ptr(), usize::from( self._Size)) }
     }
 }
 
@@ -202,7 +203,7 @@ impl< 'a, T> DerefMut for Arr< 'a, T>
 {
     fn	deref_mut( &mut self) -> &mut Self::Target
     {
-        unsafe { std::slice::from_raw_parts_mut( self._Ptr.as_ptr(), usize::from( self._Size)) }
+        unsafe { from_raw_parts_mut( self._Ptr.as_ptr(), usize::from( self._Size)) }
     }
 }
 
@@ -224,21 +225,21 @@ impl< 'a, T> Copy for Arr< 'a, T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T: std::fmt::Debug> std::fmt::Debug for Arr< 'a, T>
+impl< 'a, T: fmt::Debug> fmt::Debug for Arr< 'a, T>
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
-        std::fmt::Debug::fmt( &**self, f)
+        fmt::Debug::fmt( &**self, f)
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T: std::fmt::Display> std::fmt::Display for Arr< 'a, T>
+impl< 'a, T: fmt::Display> fmt::Display for Arr< 'a, T>
 {
-    fn	fmt( &self, f: &mut std::fmt::Formatter< '_>) -> std::fmt::Result
+    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
-        std::fmt::Display::fmt( &(*self).Iter(), f)
+        fmt::Display::fmt( &(*self).Iter(), f)
     }
 }
 
@@ -310,9 +311,9 @@ impl< 'a> Arr< 'a, U8>
     pub fn	Str( &self) -> &'a str
     {
         unsafe {
-            let  	sliceU8: &'a [U8] = std::slice::from_raw_parts( self._Ptr.as_ptr(), self._Size.AsUsize());
-            let  	bytes: &'a [u8] = std::mem::transmute( sliceU8);
-            std::str::from_utf8_unchecked( bytes)
+            let  	sliceU8: &'a [U8] = from_raw_parts( self._Ptr.as_ptr(), self._Size.AsUsize());
+            let  	bytes: &'a [u8] = transmute( sliceU8);
+            from_utf8_unchecked( bytes)
         }
     }
 }

@@ -1,4 +1,5 @@
 //-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
+use	std::ptr::null;
 use	crate::heist::Atelier;
 use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, Stk, USeg, U16, U32 };
 use	crate::stalks::{ Atm, DynINode, DynIWorker, IWorker, IntoWorkPtr, Spinlock, WorkPtr, ChildOp};
@@ -33,7 +34,7 @@ impl< 'a> Maestro< 'a>
     {
         Self {
             _Index: maestroInd,
-            _Atelier: std::ptr::null(),
+            _Atelier: null(),
             _SzProcessed: U32::_0,
             _JobCache: Stash::<U16>::New( U32( 256), 0, U16( 0)),
             _RunQueue: Stash::<U16>::New( U32( 1024),0, U16( 0)),

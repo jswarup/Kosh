@@ -1,4 +1,5 @@
 //-- work.rs -------------------------------------------------------------------------------------------------------------------------
+use	std::{ marker::PhantomData, ptr::null_mut };
 //---------------------------------------------------------------------------------------------------------------------------------
 /// Represents a unit of work that can be executed concurrently.
 pub trait IWork: Send + Sync
@@ -28,7 +29,7 @@ pub struct WorkPtr< 'a>
 {
     pub     data: *mut (),
     pub     func: JobFn,
-    _marker: std::marker::PhantomData< &'a ()>,
+    _marker: PhantomData< &'a ()>,
 }
 
 unsafe impl< 'a> Send for WorkPtr< 'a>
@@ -43,9 +44,9 @@ impl< 'a> WorkPtr< 'a>
     pub fn	Null() -> Self
     {
         Self {
-            data: std::ptr::null_mut(),
+            data: null_mut(),
             func: |_, _| {},
-            _marker: std::marker::PhantomData,
+            _marker: PhantomData,
         }
     }
     pub fn	Dummy() -> Self
@@ -53,7 +54,7 @@ impl< 'a> WorkPtr< 'a>
         Self {
             data: 1 as *mut (),
             func: |_, _| {},
-            _marker: std::marker::PhantomData,
+            _marker: PhantomData,
         }
     }
     pub fn	IsNull( &self) -> bool
@@ -70,7 +71,7 @@ impl< 'a> WorkPtr< 'a>
         Self {
             data,
             func,
-            _marker: std::marker::PhantomData,
+            _marker: PhantomData,
         }
     }
 
@@ -148,7 +149,7 @@ impl< T: IWork> WorkSlot< T>
         WorkPtr {
             data,
             func,
-            _marker: std::marker::PhantomData,
+            _marker: PhantomData,
         }
     }
 }
