@@ -34,16 +34,16 @@ impl BaseExpr for SumExpr
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::segue::IXFluxable for SumExpr
+impl crate::flux::IXFluxable for SumExpr
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut crate::segue::xflux::XField< 'b>)
+    fn	ToXFlux< 'b>( &'b self, field: &mut crate::flux::xflux::XField< 'b>)
     {
         let  	mut step = 0u32;
         let  	expr = self;
-        *field = crate::segue::xflux::XField::Obj( Box::new( move |key, item| {
+        *field = crate::flux::xflux::XField::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Type".to_string();
-                *item = crate::segue::xflux::XField::Str( "SumExpr");
+                *item = crate::flux::xflux::XField::Str( "SumExpr");
                 step += 1;
                 true
             } else if step == 1 {

@@ -70,24 +70,24 @@ impl BaseExpr for PolyExpr
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::segue::IXFluxable for PolyExpr
+impl crate::flux::IXFluxable for PolyExpr
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut crate::segue::xflux::XField< 'b>)
+    fn	ToXFlux< 'b>( &'b self, field: &mut crate::flux::xflux::XField< 'b>)
     {
         let  	mut step = 0u32;
         let  	poly = self;
-        *field = crate::segue::xflux::XField::Obj( Box::new( move |key, item| {
+        *field = crate::flux::xflux::XField::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "CoSz".to_string();
-                *item = crate::segue::xflux::XField::U64( poly._CoSz.0 as u64);
+                *item = crate::flux::xflux::XField::U64( poly._CoSz.0 as u64);
                 step += 1;
                 true
             } else if step == 1 {
                 *key = "Childs".to_string();
                 let  	mut iterStep = 0usize;
-                *item = crate::segue::xflux::XField::Arr( Box::new( move |elem| {
+                *item = crate::flux::xflux::XField::Arr( Box::new( move |elem| {
                     if iterStep < poly._Childs.len() {
-                        *elem = crate::segue::xflux::XField::U64( poly._Childs[iterStep].0 as u64);
+                        *elem = crate::flux::xflux::XField::U64( poly._Childs[iterStep].0 as u64);
                         iterStep += 1;
                         true
                     } else {

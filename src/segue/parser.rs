@@ -1,5 +1,8 @@
 //-- parser.rs ------------------------------------------------------------------------------------------------------------------------
-use	crate::segue::{ Charset, InStream };
+use	crate::{
+    flux::InStream,
+    segue::Charset
+};
 use	crate::silo::{ U8, U32 };
 use	std::io::Read;
 

@@ -1,5 +1,4 @@
 //-- term.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::segue::Charset;
 use	crate::stalks::{ DynIWorker, IWork };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -22,22 +21,22 @@ impl Default for Term
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::segue::IXFluxable for Term
+impl crate::flux::IXFluxable for Term
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut crate::segue::xflux::XField< 'b>)
+    fn	ToXFlux< 'b>( &'b self, field: &mut crate::flux::xflux::XField< 'b>)
     {
         let  	mut step = 0u32;
         let  	term = self;
-        *field = crate::segue::xflux::XField::Obj( Box::new( move |key, item| {
+        *field = crate::flux::xflux::XField::Obj( Box::new( move |key, item| {
             if step == 0 {
                 match term {  
                     Term::String( s) => {
                         *key = "String".to_string();
-                        *item = crate::segue::xflux::XField::Str( s);
+                        *item = crate::flux::xflux::XField::Str( s);
                     } 
                     Term::Real( v) => {
                         *key = "Real".to_string();
-                        *item = crate::segue::xflux::XField::F64( *v);
+                        *item = crate::flux::xflux::XField::F64( *v);
                     }
                 }
                 step += 1;

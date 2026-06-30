@@ -1,6 +1,6 @@
 //-- exprrepos.rs -------------------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ IAccess, IArr, Stash, U32, Arr, Buff };
-use	crate::segue::{ IXFluxable, xflux::XField };
+use	crate::flux::{ IXFluxable, xflux::XField };
 use	crate::fresco::varexpr::{ VarAttrib, VarExpr };
 use	crate::fresco::realexpr::RealExpr;
 use	crate::fresco::sumexpr::SumExpr;

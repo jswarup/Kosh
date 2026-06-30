@@ -149,8 +149,8 @@ fn	TestChoreTree()
     
     let  	mut jsonStr = String::new();
     {
-        let  	mut jsonOutStream = crate::segue::JsonOutStream::New( &mut jsonStr, true);
-        crate::segue::IXFlux::Field( &mut jsonOutStream, crate::segue::xflux::XField::Fluxable( &choreTree));
+        let  	mut jsonOutStream = crate::flux::JsonOutStream::New( &mut jsonStr, true);
+        crate::segue::IXFlux::Field( &mut jsonOutStream, crate::flux::xflux::XField::Fluxable( &choreTree));
     }
     std::fs::write( "a.json", jsonStr).unwrap();
 

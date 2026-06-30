@@ -3,7 +3,7 @@ use	crate::fresco::exprrepos::ExprRepos;
 use	crate::fresco::varexpr::{ VarKind, VarExpr };
 use	crate::fresco::term::Term;
 use	crate::silo::U32;
-use	crate::segue::{ JsonOutStream, XField };
+use	crate::flux::{ JsonOutStream, XField };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 

@@ -37,19 +37,19 @@ macro_rules! ImplIXFluxable
 {
     ( $struct_name:ident $( , $field:ident )* ) => 
     {
-        impl $crate::segue::IXFluxable for $struct_name
+        impl $crate::flux::IXFluxable for $struct_name
         {
-            fn	ToXFlux< 'a>( &'a self, field: &mut $crate::segue::xflux::XField< 'a>)
+            fn	ToXFlux< 'a>( &'a self, field: &mut $crate::flux::xflux::XField< 'a>)
             {
                 let  	mut step = 0u32;
                 let  	obj = self;
-                *field = $crate::segue::xflux::XField::Obj( Box::new( move |key, item| {
+                *field = $crate::flux::xflux::XField::Obj( Box::new( move |key, item| {
                     #[allow( unused_variables, unused_assignments)]
                     let  	mut _curr_step = 0u32;
                     $(
                         if step == _curr_step {
                             *key = stringify!( $field).to_string();
-                            *item = $crate::segue::xflux::XField::Fluxable( &obj.$field);
+                            *item = $crate::flux::xflux::XField::Fluxable( &obj.$field);
                             step += 1;
                             return true;
                         }
