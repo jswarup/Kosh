@@ -597,8 +597,8 @@ fn	TestStashAppend()
     let  	arr = Arr::from( &mut data);
     stash.Append( arr);
     assert_eq!( stash.Size(), 3);
-    // Buffer should resize to exactly 3 since neededSz ( 3) > current capacity ( 2)
-    assert_eq!( stash.Size() + stash.Stk().SzVoid(), 3);
+    // Buffer should resize to 4 since we use doubling growth ( max( 3, 2 * 2))
+    assert_eq!( stash.Size() + stash.Stk().SzVoid(), 4);
     // Pop and verify elements ( LIFO order: 30, 20, 10)
     let  	stk = stash.Stk();
     let  	mut out = U32( 0);

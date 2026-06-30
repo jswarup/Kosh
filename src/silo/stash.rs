@@ -67,9 +67,7 @@ impl< T> Stash< T>
 
     pub fn	BuffOut( &mut self) -> Buff< T>
     {
-        let  	mut buff = Buff::NewEmpty();
-        self._Buff.SwapBuff( &mut buff);
-        buff
+        std::mem::replace( &mut self._Buff, Buff::NewEmpty())
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -99,18 +97,49 @@ impl< T: Copy> Stash< T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    fn	DoGrow( &mut self, fillVal: T)
+    {
+        let  	newSz = if self._Buff.Size() == U32( 0) {
+            U32( 1)
+        } else {
+            self._Buff.Size() * U32( 2)
+        };
+        self._Buff.Resize( newSz, |_| fillVal);
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	Push( &mut self, val:  T)
-    { 
+    {
         while !self.Stk().Push( val) {
             if self.Size() == self._Buff.Size() {
-                let  	newSz = if self._Buff.Size() == U32( 0) {
-                    U32( 1)
-                } else {
-                    self._Buff.Size() * U32( 2)
-                };
-                self._Buff.Resize( newSz, |_| val);
+                self.DoGrow( val);
             }
         }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	Append( &mut self, arr: Arr< '_, T>)
+    {
+        let  	n = arr.Size();
+        if n == U32( 0) {
+            return;
+        }
+        let  	neededSz = self.Size() + n;
+        if neededSz > self._Buff.Size() {
+            let  	growTo = neededSz.max( self._Buff.Size() * U32( 2));
+            self._Buff.Resize( growTo, |_| arr[0]);
+        }
+        let  	startSz = self.Size();
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                arr.Ptr(),
+                self._Buff._Ptr.cast::< T>().as_ptr().add( startSz.AsUsize()),
+                n.AsUsize(),
+            );
+        }
+        self._Sz.Set( startSz + n);
     }
 
 }
@@ -136,23 +165,6 @@ impl< T: Default> Stash< T>
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    pub fn	Append( &mut self, arr: Arr< '_, T>)
-    {
-        let  	n = arr.Size();
-        if n == U32( 0) {
-            return;
-        }
-        let  	neededSz = self.Size() + n;
-        if neededSz > self._Buff.Size() {
-            self._Buff.Resize( neededSz, |_| T::default());
-        }
-        let  	startSz = self.Size();
-        let  	arrBuff = self._Buff.Arr();
-        for i in 0..usize::from( n) {
-            arrBuff.SwapAt( startSz + U32( i as u32), arr.MutAt( U32( i as u32)));
-        }
-        self._Sz.Set( startSz + n);
-    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

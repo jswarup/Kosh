@@ -140,10 +140,7 @@ impl ExprRepos
 
     pub fn	SumCreate( &mut self, adds: Arr<'_, U32>, subs: Arr<'_, U32>) -> U32
     {
-        let  	mut childs = Buff::NewEmpty();
-        childs.ExtendFromArr( adds);
-        childs.ExtendFromArr( subs);
-
+        let  	childs = Buff::Concat( adds, subs);
         let  	mut sumExpr = SumExpr::New();
         sumExpr._Poly.DoInitArr( adds.Size(), childs);
         self.Store( Box::new( sumExpr))
@@ -167,10 +164,7 @@ impl ExprRepos
 
     pub fn	ProdCreate( &mut self, numers: Arr<'_, U32>, denoms: Arr<'_, U32>) -> U32
     {
-        let  	mut childs = Buff::NewEmpty();
-        childs.ExtendFromArr( numers);
-        childs.ExtendFromArr( denoms);
-
+        let  	childs = Buff::Concat( numers, denoms);
         let  	mut prodExpr = ProdExpr::New();
         prodExpr._Poly.DoInitArr( numers.Size(), childs);
         self.Store( Box::new( prodExpr))
@@ -194,10 +188,7 @@ impl ExprRepos
 
     pub fn	PowCreate( &mut self, bases: Arr<'_, U32>, exps: Arr<'_, U32>) -> U32
     {
-        let  	mut childs = Buff::NewEmpty();
-        childs.ExtendFromArr( bases);
-        childs.ExtendFromArr( exps);
-
+        let  	childs = Buff::Concat( bases, exps);
         let  	mut powExpr = PowExpr::New();
         powExpr._Poly.DoInitArr( bases.Size(), childs);
         self.Store( Box::new( powExpr))
