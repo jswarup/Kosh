@@ -501,3 +501,23 @@ impl< 'a, T: 'a> crate::silo::IArr< 'a, T> for &'a mut Buff< T> {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+#[macro_export]
+macro_rules! Buff {
+    ( $( $x:expr ),* ) => {
+        {
+            let  	temp = [$( $x ),*];
+            $crate::silo::Buff::from( temp)
+        }
+    };
+    ( $( $x:expr ),+ , ) => {
+        $crate::Buff![ $( $x ),* ]
+    };
+    ( $elem:expr ; $n:expr ) => {
+        {
+            let  	count: u32 = ( $n).try_into().expect( "Count must fit in u32");
+            $crate::silo::Buff::New( $crate::silo::U32( count), $elem)
+        }
+    };
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------

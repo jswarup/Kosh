@@ -2,7 +2,7 @@
 use	crate::{
     heist::Atelier,
     segue::{ Charset, InStream, Shard, JsonOutStream, xflux::XField },
-    silo::{ Arr, IAccess, U8, U32 }
+    silo::{ IAccess, U8, U32 }
 };
 
  
@@ -57,9 +57,8 @@ crate::ImplIXFluxable!( Point, _X, _Y);
 #[test] 
 fn	TestJsonOutStream()
 {
-    let  	mut prices = vec![ 12.34_f32, 56.78, 90.12, 34.56, 78.90 ];
-    let  	ptr = std::ptr::NonNull::new( prices.as_mut_ptr()).unwrap();
-    let  	arr = Arr::New( ptr, U32( 5));
+    let  	prices = crate::Buff![ 12.34_f32, 56.78, 90.12, 34.56, 78.90 ];
+    let  	arr = prices.Arr();
     
     let     pt = Point{ _X: 10.0, _Y: 30.3};
     
