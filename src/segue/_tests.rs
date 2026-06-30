@@ -118,3 +118,44 @@ fn	TestInStreamFromFile()
 
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+struct DummyForge {
+    _Offset: U32,
+}
+
+impl<'a> crate::segue::IForge<'a> for DummyForge {
+    fn	Parent( &self) -> Option< &'a dyn crate::segue::IForge<'a>> { None }
+    fn	Offset( &self) -> U32 { self._Offset }
+}
+
+#[test]
+fn	TestParserBasic()
+{
+    use	crate::segue::{ Parser, IGrammar, Charset };
+    
+    let  	data = [U8( b'h'), U8( b'e'), U8( b'l'), U8( b'l'), U8( b'o'), U8( b' '), U8( b'p'), U8( b'a'), U8( b'r'), U8( b's'), U8( b'e'), U8( b'r')];
+    let  	arr = crate::silo::Arr::from( &data[..]);
+    let  	mut stream = InStream::FromArr( arr);
+    let  	forge = DummyForge { _Offset: U32( 0) };
+    let  	mut parser = Parser::New( &mut stream, &forge);
+
+    // Test char grammar
+    assert!( 'h'.Match( &mut parser));
+    assert!( 'e'.Match( &mut parser));
+
+    // Test &str grammar
+    assert!( "llo ".Match( &mut parser));
+
+    // Test charset grammar
+    let  	mut cs = Charset::New();
+    cs.SetChar( b'p');
+    assert!( cs.Match( &mut parser));
+    
+    // Test failing match (should rollback)
+    assert!( !"fail".Match( &mut parser));
+    
+    // Test continuing after fail
+    assert!( "arser".Match( &mut parser));
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
