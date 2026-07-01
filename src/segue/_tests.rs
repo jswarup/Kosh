@@ -5,23 +5,9 @@ use	crate::{
     segue::{ Charset, shard::Shard, Parser, IGrammar, parser::{IForge, Forge, BinOpForge} },
     silo::{ U8, U32, Arr},
     stalks::DynINode,
-    heist::Atelier
 };
 
  
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[test]
-fn	TestShardFromCharAndString()
-{
-    let  	_nodeTree = crate::ShardTree!( ( "cShard" < ( 'b' < [ "a-z" ] < "aShard"[ || {
-                        print!( "{} ", 50);
-                    }] )));
-    let  	atelier = Atelier::New( U32( 4));
-    let  	_mainMaestro = atelier.MainMaestro();
-    atelier.DoLaunch();
-}
-
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]

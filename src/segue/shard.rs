@@ -1,7 +1,8 @@
-use	crate::{ flux::{ IXFluxable, xflux::XField }, silo::U32, stalks::{ Attrib, ChildOp, DynINode, INode, IntoWorkPtr, WorkPtr } };
+use	crate::silo::U32;
+use	crate::stalks::{ Attrib, ChildOp, DynINode, INode, WorkPtr };
+use	crate::flux::{ IXFluxable, xflux::XField };
 use	std::fmt;
 use	crate::segue::{ Charset, IGrammar, Parser };
-use	crate::stalks::{ DynIWorker, IWork };
 use	std::any::Any;
 use	std::io::Read;
 
@@ -9,7 +10,6 @@ use	std::io::Read;
 
 #[derive( Clone, Debug)]
 pub enum Shard {
-    Closure( fn( &DynIWorker< '_>)),
     Char( char),
     String( String),
     Charset( Charset),
@@ -21,7 +21,7 @@ impl Default for Shard
 {
     fn	default() -> Self
     {
-        Self::Closure( |_| {})
+        Self::Char( '\0')
     }
 }
 
@@ -36,10 +36,6 @@ impl IXFluxable for Shard
         *field = XField::Obj( Box::new( move |key, item| {
             if step == 0 {
                 match shard {
-                    Shard::Closure( _) => {
-                        *key = "Type".to_string();
-                        *item = XField::Str( "Closure");
-                    }
                     Shard::Char( c) => {
                         *key = "Char".to_string();
                         *item = XField::String( c.to_string());
@@ -66,10 +62,6 @@ impl IXFluxable for Shard
 
 impl Shard
 {
-    pub fn	New( f: fn( &DynIWorker< '_>)) -> Self
-    {
-        Self::Closure( f)
-    }
     pub fn	NewChar( c: char) -> Self
     {
         Self::Char( c)
@@ -86,21 +78,6 @@ impl Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IWork for Shard
-{
-    fn	DoWork( &mut self, worker: &DynIWorker< '_>)
-    {
-        match self {
-            Self::Closure( f) => ( f)( worker),
-            Self::Char( c) => print!( "{} ", c),
-            Self::String( s) => print!( "{} ", s),
-            Self::Charset( cs) => print!( "{} ", cs),
-        }
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
 impl fmt::Display for Shard
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
@@ -109,20 +86,11 @@ impl fmt::Display for Shard
             Self::Char( c) => write!( f, "Shard( {})", c),
             Self::String( s) => write!( f, "Shard( {})", s),
             Self::Charset( cs) => write!( f, "Shard( {})", cs),
-            Self::Closure( _) => write!( f, "Shard"),
         }
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
-impl From< fn( &DynIWorker< '_>) > for Shard
-{
-    fn	from( f: fn( &DynIWorker< '_>)) -> Self
-    {
-        Self::New( f)
-    }
-}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -176,7 +144,7 @@ macro_rules! ShardTree {
     ( @feature_SHL    $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_SHL    $( $args)* ) };
     ( @feature_BOR    $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_BOR    $( $args)* ) };
     ( @feature_NEW    $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_NEW    $( $args)* ) };
-    ( @feature_ACTION $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_ACTION $( $args)* ) };
+
     // ── Custom: Boxet stringification (overrides BudTree default) ─────────────────────────────────
     ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $s:literal ) => {
         $crate::stalks::node::IntoBiNode::< Shard, $Node >::IntoBiNode( Shard::NewCharset( $crate::segue::Charset::FromBoxet( $crate::silo::U8::FromArr( $crate::silo::Arr::from( $s.as_bytes() ) ) ) ) )
@@ -197,10 +165,7 @@ impl< 'a> INode< 'a> for Shard
 {
     fn	_Size( &self) -> U32 { U32(0) }
     fn	_At( &self, _idx: U32) -> &DynINode< 'a> { panic!("Leaf") }
-    fn	Value( &self) -> Option< WorkPtr< 'a>>
-    {
-        Some( IntoWorkPtr::IntoWorkPtr( self.clone()))
-    }
+    fn	Value( &self) -> Option< WorkPtr< 'a>> { None }
     fn	AsAny( &self) -> Option< &dyn Any>
     {
         Some( self)
@@ -217,21 +182,9 @@ impl IGrammar for Shard
     fn	Match< 'p, 's, R: Read>( &self, parser: &mut Parser<'p, 's, R>) -> bool
     {
         match self {
-            Self::Char( c) => {
-                let  	res = c.Match( parser);
-                return res;
-            }
-            Self::String( s) => {
-                let  	res = s.as_str().Match( parser);
-                return res;
-            }
-            Self::Charset( cs) => {
-                let  	res = cs.Match( parser);
-                return res;
-            }
-            Self::Closure( _) => {
-                return true;
-            }
+            Self::Char( c) => c.Match( parser),
+            Self::String( s) => s.as_str().Match( parser),
+            Self::Charset( cs) => cs.Match( parser),
         }
     }
 }
