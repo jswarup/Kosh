@@ -1,8 +1,9 @@
-//-- shard.rs -------------------------------------------------------------------------------------------------------------------------
 use	crate::{ flux::{ IXFluxable, xflux::XField }, silo::U32, stalks::{ Attrib, ChildOp, DynINode, INode, IntoWorkPtr, WorkPtr } };
 use	std::fmt;
-use	crate::segue::Charset;
+use	crate::segue::{ Charset, IGrammar, Parser };
 use	crate::stalks::{ DynIWorker, IWork };
+use	std::any::Any;
+use	std::io::Read;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -200,9 +201,39 @@ impl< 'a> INode< 'a> for Shard
     {
         Some( IntoWorkPtr::IntoWorkPtr( self.clone()))
     }
+    fn	AsAny( &self) -> Option< &dyn Any>
+    {
+        Some( self)
+    }
     fn	DocStr( &self) -> &'static str { "" }
     fn	Attrib( &self) -> Option< &Attrib> { None }
     fn	ChildOp( &self) -> ChildOp { ChildOp::None }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IGrammar for Shard
+{
+    fn	Match< 'p, 's, R: Read>( &self, parser: &mut Parser<'p, 's, R>) -> bool
+    {
+        match self {
+            Self::Char( c) => {
+                let  	res = c.Match( parser);
+                return res;
+            }
+            Self::String( s) => {
+                let  	res = s.as_str().Match( parser);
+                return res;
+            }
+            Self::Charset( cs) => {
+                let  	res = cs.Match( parser);
+                return res;
+            }
+            Self::Closure( _) => {
+                return true;
+            }
+        }
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

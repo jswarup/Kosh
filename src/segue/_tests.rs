@@ -2,8 +2,9 @@
 
 use	crate::{
     flux::InStream,
-    segue::{ Charset, shard::Shard, Parser, IGrammar, parser::{IForge, Forge} },
+    segue::{ Charset, shard::Shard, Parser, IGrammar, parser::{IForge, Forge, BinOpForge} },
     silo::{ U8, U32, Arr},
+    stalks::DynINode,
     heist::Atelier
 };
 
@@ -77,6 +78,72 @@ fn	TestParserBasic()
         
         // Test continuing after fail
         assert!( "arser".Match( forge.GetParser()));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestBacktrackingParser()
+{
+    // Test alternative 1 success
+    {
+        let  	data = [U8( b'a'), U8( b'b'), U8( b'c'), U8( b'd')];
+        let  	arr = Arr::from( &data[..]);
+        let  	mut stream = InStream::FromArr( arr);
+        let  	mut parser = Parser::New( &mut stream);
+        let  	tree = crate::ShardTree!( ( "ab" < "cd" ) | ( "a" < "bc" ));
+        let  	dynNode: &DynINode<'_> = &tree;
+        assert!( dynNode.Match( &mut parser));
+    }
+
+    // Test alternative 2 success with backtracking
+    {
+        let  	data = [U8( b'a'), U8( b'b'), U8( b'c')];
+        let  	arr = Arr::from( &data[..]);
+        let  	mut stream = InStream::FromArr( arr);
+        let  	mut parser = Parser::New( &mut stream);
+        let  	tree = crate::ShardTree!( ( "ab" < "cd" ) | ( "a" < "bc" ));
+        let  	dynNode: &DynINode<'_> = &tree;
+        assert!( dynNode.Match( &mut parser));
+    }
+
+    // Test ancestor lookup
+    {
+        let  	mut dummyStream = InStream::FromArr( Arr::from( &[U8( 0)][..]));
+        let  	mut dummyParser = Parser::New( &mut dummyStream);
+        
+        let  	mut stream = InStream::FromArr( Arr::from( &[U8( 0)][..]));
+        let  	mut parser = Parser::New( &mut stream);
+        let  	forge = BinOpForge {
+            _Parent: None,
+            _Offset: U32( 0),
+            _Parser: &mut parser,
+            _LeftDigest: std::cell::Cell::new( None),
+            _RightDigest: std::cell::Cell::new( None),
+        };
+        
+        let  	parentPtr = &forge as *const BinOpForge<'_, '_, '_, _> as *const dyn IForge<'_, '_, '_, _>;
+        let  	parent = unsafe { &*parentPtr };
+        
+        let  	childForge = BinOpForge {
+            _Parent: Some( parent),
+            _Offset: U32( 1),
+            _Parser: &mut dummyParser,
+            _LeftDigest: std::cell::Cell::new( None),
+            _RightDigest: std::cell::Cell::new( None),
+        };
+        
+        let  	mut found = false;
+        let  	ancestor = childForge.FindAncestor( &mut |a| {
+            if a.Offset() == U32( 0) {
+                found = true;
+                return true;
+            }
+            false
+        });
+        assert!( found);
+        assert!( ancestor.is_some());
     }
 }
 
