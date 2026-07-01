@@ -1,5 +1,5 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::{ flux::{ JsonOutStream, xflux::XField, IXFlux }, ChoreTree };
+use	crate::flux::{ JsonOutStream, xflux::XField, IXFlux };
 use	std::fs;
 use	crate::{
     heist::

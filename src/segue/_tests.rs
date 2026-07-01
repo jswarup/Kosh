@@ -1,9 +1,9 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::{ segue::parser::IForge, silo::Arr };
+
 use	crate::{
     flux::InStream,
-    segue::{ Charset, shard::Shard },
-    silo::{ U8, U32 },
+    segue::{ Charset, shard::Shard, Parser, IGrammar, parser::{IForge, Forge} },
+    silo::{ U8, U32, Arr},
     heist::Atelier
 };
 
@@ -44,51 +44,40 @@ fn	TestCharsetOps()
     println!( "cs4 (NonWord): {}", cs4);
     let  	cs5 = Charset::Digit().Negative();
     println!( "cs5 (NonDigit): {}", cs5);
-}
-
-
-
-
+} 
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
-struct DummyForge {
-    _Offset: U32,
-}
-
-impl<'a> IForge<'a> for DummyForge {
-    fn	Parent( &self) -> Option< &'a dyn IForge<'a>> { None }
-    fn	Offset( &self) -> U32 { self._Offset }
-}
-
+ 
 #[test]
 fn	TestParserBasic()
 {
-    use	crate::segue::{ Parser, IGrammar, Charset };
     
     let  	data = [U8( b'h'), U8( b'e'), U8( b'l'), U8( b'l'), U8( b'o'), U8( b' '), U8( b'p'), U8( b'a'), U8( b'r'), U8( b's'), U8( b'e'), U8( b'r')];
     let  	arr = Arr::from( &data[..]);
     let  	mut stream = InStream::FromArr( arr);
-    let  	forge = DummyForge { _Offset: U32( 0) };
-    let  	mut parser = Parser::New( &mut stream, &forge);
-
-    // Test char grammar
-    assert!( 'h'.Match( &mut parser));
-    assert!( 'e'.Match( &mut parser));
-
-    // Test &str grammar
-    assert!( "llo ".Match( &mut parser));
-
-    // Test charset grammar
-    let  	mut cs = Charset::New();
-    cs.SetChar( b'p');
-    assert!( cs.Match( &mut parser));
+    let  	mut parser = Parser::New( &mut stream);
     
-    // Test failing match (should rollback)
-    assert!( !"fail".Match( &mut parser));
-    
-    // Test continuing after fail
-    assert!( "arser".Match( &mut parser));
+    {
+        let  	mut forge = Forge { _Parent: None, _Offset: U32( 0), _Parser: &mut parser };
+        
+        // Test char grammar
+        assert!( 'h'.Match( forge.GetParser()));
+        assert!( 'e'.Match( forge.GetParser()));
+
+        // Test &str grammar
+        assert!( "llo ".Match( forge.GetParser()));
+
+        // Test charset grammar
+        let  	mut cs = Charset::New();
+        cs.SetChar( b'p');
+        assert!( cs.Match( forge.GetParser()));
+        
+        // Test failing match (should rollback)
+        assert!( !"fail".Match( forge.GetParser()));
+        
+        // Test continuing after fail
+        assert!( "arser".Match( forge.GetParser()));
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 //-- main.rs ----------------------------------------------------------------------------------------------------------------------
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
-use	std::{ fs::write, process::{ Command, Stdio } };
+use	std::process::{ Command, Stdio };
 use	anyhow::{ Context, Result };
 use	clap::Parser;
 use	tracing::{ debug, level_filters::LevelFilter };
