@@ -48,22 +48,22 @@ fn	TestParserBasic()
         let  	mut forge = Forge { _Parent: None, _Parser: &mut parser };
         
         // Test char grammar
-        assert!( 'h'.Match( forge.GetParser()));
-        assert!( 'e'.Match( forge.GetParser()));
+        assert!( 'h'.Match( forge.Parser()));
+        assert!( 'e'.Match( forge.Parser()));
 
         // Test &str grammar
-        assert!( "llo ".Match( forge.GetParser()));
+        assert!( "llo ".Match( forge.Parser()));
 
         // Test charset grammar
         let  	mut cs = Charset::New();
         cs.SetChar( b'p');
-        assert!( cs.Match( forge.GetParser()));
+        assert!( cs.Match( forge.Parser()));
         
         // Test failing match (should rollback)
-        assert!( !"fail".Match( forge.GetParser()));
+        assert!( !"fail".Match( forge.Parser()));
         
         // Test continuing after fail
-        assert!( "arser".Match( forge.GetParser()));
+        assert!( "arser".Match( forge.Parser()));
     }
 }
 

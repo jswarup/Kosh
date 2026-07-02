@@ -156,14 +156,9 @@ impl< 'a, R: Read> InStream< 'a, R>
     pub fn	Rest( &mut self) -> Arr< '_, U8>
     {
         if let InSource::Streaming( ref mut inner, ref mut buff) = self._Source {
-            let  	mut vec = Vec::new();
-            if inner.read_to_end( &mut vec).is_ok() && !vec.is_empty() {
-                let  	currSize = buff.Size().AsUsize();
-                let  	newSize = currSize + vec.len();
-                buff.Resize( U32( newSize as u32), |_| U8::_0);
-                let  	slice = (&mut **buff).Cast::<&mut [u8]>();
-                slice[currSize..newSize].copy_from_slice( &vec);
-            }
+            let mut stash = crate::silo::Stash::FromBuff( std::mem::replace( buff, crate::silo::Buff::NewEmpty()), buff.Size());
+            stash.ReadFrom( inner);
+            *buff = stash.BuffOut();
         }
         
         let  	sz = self.Size();

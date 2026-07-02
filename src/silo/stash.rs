@@ -1,6 +1,7 @@
 //-- stash.rs -------------------------------------------------------------------------------------------------------------------------
 use	std::{ mem::replace, ptr::copy_nonoverlapping };
-use	crate::silo::{ Arr, Buff, IAccess, IArr, Stk, U32 };
+use	crate::silo::{ Arr, Buff, IAccess, IArr, Stk, U32, U8 };
+use	crate::silo::cast::ICastExt;
 use	crate::stalks::Atm;
 use	std::sync::atomic::Ordering;
 
@@ -28,6 +29,17 @@ impl< T> Stash< T>
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	FromBuff( buff: Buff<T>, szStk: U32) -> Self
+    {
+        Self {
+            _Buff: buff,
+            _Sz: Atm::New( szStk),
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
 
     pub fn	Create< Sz: Into< U32>, SzStk: Into< U32>, Dispenser>(
         sz: Sz,
@@ -185,3 +197,23 @@ where
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+
+impl Stash< U8>
+{
+    pub fn	ReadFrom( &mut self, reader: &mut impl std::io::Read)
+    {
+        let  mut temp = [0u8; 4096];
+        loop {
+            match reader.read( &mut temp) {
+                Ok( 0) => break,
+                Ok( n) => {
+                    let  slice = (&temp[..n]).Cast::<&[U8]>();
+                    self.Append( slice.into());
+                }
+                Err( _) => break,
+            }
+        }
+    }
+}
+
