@@ -30,7 +30,7 @@ graph TD
 ### 1. Parser (The Engine)
 Defined in [parser.rs](../src/segue/parser.rs), `Parser` is the core matching engine. It:
 * Wraps an `InStream` to read input tokens (characters/bytes).
-* Maintains a cyclic, type-erased `Stash` of `IForge` pointers to track the parsing context.
+* Maintains a type-erased `Stash` (stack) of `IForge` pointers to track the parsing context downwards from the root to the active leaf. The `IForge` pointers are transmuted to `'static` lifetimes before being stashed to deliberately break a **cyclic drop-check (`dropck`) dependency** between the `Parser` and its `Forge` contexts. Unlike `IForge::_Parent` (which links upwards), using an explicit stack safely decouples global state tracking from the node's structural links, side-stepping complex borrow rules when scopes pop.
 * Provides the `Parse` method to match any type implementing the `IGrammar` trait against the stream.
 
 ### 2. IForge (The Context)
