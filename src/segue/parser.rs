@@ -7,7 +7,7 @@ use	crate::{
     flux::InStream,
     segue::Charset
 };
-use	crate::silo::{ U8, U32, Stash, IAccess };
+use	crate::silo::{ U8, U32, Stash, IAccess, IArr };
 use	crate::stalks::{ ChildOp, DynINode };
 use	crate::segue::shard::Shard;
 
@@ -28,8 +28,6 @@ pub trait IForge<'a, 'p, 's, R: Read + 'p>
     fn	Parent( &self) -> Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>;
     fn	Offset( &self) -> U32;
     fn	GetParser( &mut self) -> &mut Parser<'p, 's, R>;
-    fn	Node( &self) -> Option<*const DynINode<'static>>;
-    fn	SetNode( &mut self, node: Option<*const DynINode<'static>>);
     fn	Deposit( &self, childIdx: U32, digest: Digest);
     
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -48,9 +46,8 @@ pub trait IForge<'a, 'p, 's, R: Read + 'p>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	Init( &mut self, node: Option<*const DynINode<'static>>) where Self: Sized
+    fn	Init( &mut self) where Self: Sized
     {
-        self.SetNode( node);
         let  	selfRef: &mut (dyn IForge<'a, 'p, 's, R> + 'a) = self;
         let  	ptr = selfRef as *mut (dyn IForge<'a, 'p, 's, R> + 'a);
         let  	erased_ptr = unsafe { std::mem::transmute::<_, *mut (dyn IForge<'static, 'static, 'static, R> + 'static)>(ptr) };
@@ -81,7 +78,6 @@ pub struct  Forge<'a, 'p, 's, R: Read + 'p = io::Empty>
     pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
     pub _Offset: U32,
     pub _Parser: &'a mut Parser<'p, 's, R>,
-    pub _Node: Option<*const DynINode<'static>>,
 }
 
 impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for Forge<'a, 'p, 's, R>
@@ -100,16 +96,6 @@ impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for Forge<'a, 'p, 's, R>
     fn	GetParser( &mut self) -> &mut Parser<'p, 's, R>
     {
         self._Parser
-    }
-
-    fn	Node( &self) -> Option<*const DynINode<'static>>
-    {
-        self._Node
-    }
-
-    fn	SetNode( &mut self, node: Option<*const DynINode<'static>>)
-    {
-        self._Node = node;
     }
 
     fn	Deposit( &self, _childIdx: U32, _digest: Digest)
@@ -155,6 +141,59 @@ where 's: 'p
         Self {
             _Stream: stream,
             _Stash: Stash::New( U32( 16), U32( 0), None),
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	DepositArr( &mut self, _arr: crate::silo::Arr<'_, Option<*const DynINode<'static>>>, _isConcat: bool) -> Option<*const DynINode<'static>>
+    {
+        None
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	ParseShardTree( &mut self, node: &DynINode< '_>) -> Option<*const DynINode<'static>>
+    {
+        let  	nodeStash = Stash::<Option<*const DynINode<'static>>>::New( 1024, 0, None);
+        let  	mut nodeStk = nodeStash.Stk();
+        let  	opStash = Stash::<(ChildOp, U32)>::New( 1024, 0, (ChildOp::None, 0.into()));
+        let  	opStk = opStash.Stk();
+
+        node.DiveDf( &mut |probe, enterFlg| {
+            let  	curNode = probe.CurNode().unwrap();
+            let  	curOp = curNode.ChildOp();
+            if enterFlg {
+                if curOp != ChildOp::None {
+                    opStk.Push( ( curOp, nodeStk.Size()));
+                    return;
+                } 
+                let  	nodePtr = unsafe { std::mem::transmute::<*const DynINode<'_>, *const DynINode<'static>>(curNode as *const DynINode<'_>) };
+                nodeStk.Push( Some( nodePtr));
+                return;
+            }
+            if curOp == ChildOp::None { 
+                return; 
+            }
+            let  	mut opCtx = ( ChildOp::None, 0.into());
+            opStk.Pop( &mut opCtx); 
+
+            let  	parentOp = if opStk.Size() != 0 { opStk.Arr().Last().0 } else { ChildOp::None };
+            if parentOp == curOp { 
+                return; 
+            }
+
+            let  	arr = nodeStk.Arr().Subset( opCtx.1, nodeStk.Size() - opCtx.1);
+            nodeStk.SetSize( opCtx.1);
+            let  	isConcat = curOp == ChildOp::Less;
+            let  	newNode = self.DepositArr( arr, isConcat);
+            nodeStk.Push( newNode);
+        }); 
+        
+        if nodeStk.Size() == 0 {
+            None
+        } else {
+            *nodeStk.Arr().Last()
         }
     }
 }
@@ -288,16 +327,6 @@ where 's: 'p
         self._Parser
     }
 
-    fn	Node( &self) -> Option<*const DynINode<'static>>
-    {
-        self._Node
-    }
-
-    fn	SetNode( &mut self, node: Option<*const DynINode<'static>>)
-    {
-        self._Node = node;
-    }
-
     fn	Deposit( &self, childIdx: U32, digest: Digest)
     {
         if childIdx == U32( 0) {
@@ -339,16 +368,16 @@ impl<'a> IGrammar for DynINode<'a>
                 false
             }
             ChildOp::Less | ChildOp::Bor => {
+                let  	node_ptr = unsafe { std::mem::transmute::<*const DynINode<'a>, *const DynINode<'static>>(self as *const DynINode<'a>) };
                 let  	mut forge = BinOpForge {
                     _Parent: parent,
                     _Offset: startMark,
                     _Parser: parser,
-                    _Node: None,
+                    _Node: Some(node_ptr),
                     _LeftDigest: Cell::new( None),
                     _RightDigest: Cell::new( None),
                 };
-                let  	node_ptr = unsafe { std::mem::transmute::<*const DynINode<'a>, *const DynINode<'static>>(self as *const DynINode<'a>) };
-                forge.Init( Some(node_ptr));
+                forge.Init();
                 return forge.MatchNode();
             }
             _ => {

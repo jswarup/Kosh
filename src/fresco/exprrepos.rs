@@ -259,7 +259,7 @@ impl ExprRepos
                 return; 
             }
 
-                        let  	arr = exprStk.Arr().Subset( opCtx.1, exprStk.Size() - opCtx.1);
+            let  	arr = exprStk.Arr().Subset( opCtx.1, exprStk.Size() - opCtx.1);
             exprStk.SetSize( opCtx.1);
             let  	emptyArr = Arr::from( &[][..]);
             let  	exprId = match curOp {

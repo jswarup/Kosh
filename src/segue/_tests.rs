@@ -105,6 +105,7 @@ fn	TestBacktrackingParser()
             _Parent: None,
             _Offset: U32( 0),
             _Parser: &mut parser,
+            _Node: None,
             _LeftDigest: std::cell::Cell::new( None),
             _RightDigest: std::cell::Cell::new( None),
         };
@@ -116,6 +117,7 @@ fn	TestBacktrackingParser()
             _Parent: Some( parent),
             _Offset: U32( 1),
             _Parser: &mut dummyParser,
+            _Node: None,
             _LeftDigest: std::cell::Cell::new( None),
             _RightDigest: std::cell::Cell::new( None),
         };
