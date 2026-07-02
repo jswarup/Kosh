@@ -2,7 +2,7 @@
 
 use	crate::{
     flux::InStream,
-    segue::{ Charset, shard::Shard, Parser, IGrammar, parser::{IForge, Forge, StringForge} },
+    segue::{ Charset, shard::Shard, Parser, IGrammar, parser::{IForge, Forge, LeafForge} },
     silo::{ U8, U32, Arr},
     stalks::DynINode,
 };
@@ -100,16 +100,16 @@ fn	TestBacktrackingParser()
         let  	mut dummyStream = InStream::FromArr( Arr::from( &[U8( 0)][..]));
         let  	mut dummyParser = Parser::New( &mut dummyStream);
         let  	mut parser = Parser::New( &mut stream);
-        let  	forge = StringForge {
+        let  	forge = LeafForge {
             _Parent: None,
             _Parser: &mut parser,
             _Shard: None,
         };
         
-        let  	parentPtr = &forge as *const StringForge<'_, '_, '_, _> as *const dyn IForge<'_, '_, '_, _>;
+        let  	parentPtr = &forge as *const LeafForge<'_, '_, '_, _> as *const dyn IForge<'_, '_, '_, _>;
         let  	parent = unsafe { &*parentPtr };
         
-        let  	childForge = StringForge {
+        let  	childForge = LeafForge {
             _Parent: Some( parent),
             _Parser: &mut dummyParser,
             _Shard: None,

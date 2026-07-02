@@ -5,6 +5,7 @@ The `segue` module is a high-performance, backtracking recursive descent parser 
 ## Purpose & Design Philosophy
 1. **Expressive Grammar**: Enable developers to define complex grammars easily using Rust macros (`ShardTree!`) and operators (`<` for concatenation, `|` for alternation).
 2. **Efficient Backtracking**: Provide a robust state management system (via `IForge`) to seamlessly handle failed matches and backtrack without deep copying the input stream.
+3. **DRY & Modular Forges**: Boilerplate is minimized through macros like `ImplForgeBase!`, and structural redundancies are eliminated by combining similar node types (e.g. `LeafForge`, `CompositeForge`).
 
 > [!TIP]
 > **Unified Parsing Interface**:
@@ -29,20 +30,23 @@ graph TD
 
 ### 1. Parser (The Engine)
 Defined in [parser.rs](../src/segue/parser.rs), `Parser` is the core matching engine. It:
-* Wraps an `InStream` to read input tokens (characters/bytes).
-* Maintains a type-erased `Stash` (stack) of `IForge` pointers to track the parsing context downwards from the root to the active leaf. The `IForge` pointers are transmuted to `'static` lifetimes before being stashed to deliberately break a **cyclic drop-check (`dropck`) dependency** between the `Parser` and its `Forge` contexts. Unlike `IForge::_Parent` (which links upwards), using an explicit stack safely decouples global state tracking from the node's structural links, side-stepping complex borrow rules when scopes pop.
+* Wraps an `InStream` to read input tokens (characters/bytes) buffered dynamically via `Stash`.
+* Maintains a type-erased `Stash` (stack) of `IForge` pointers to track the parsing context downwards from the root to the active leaf. The `IForge` pointers are transmuted to `'static` lifetimes before being stashed to deliberately break a **cyclic drop-check (`dropck`) dependency** between the `Parser` and its `Forge` contexts. 
+* Safely reclaims memory by implementing `Drop`, which walks the `_Stash` and correctly deallocates the erased raw `IForge` pointers.
 * Provides the `Parse` method to match any type implementing the `IGrammar` trait against the stream.
 
 ### 2. IForge (The Context)
-Defined in [parser.rs](../src/segue/parser.rs), `IForge` represents a linked list of contexts for the current parse tree path.
-* **Context Tracking**: Every complex node (like binary operations) creates a context (e.g., `BinOpForge`) and pushes it to the parser's stash.
-* **Backtracking**: It records the `_Offset` (start marker) in the stream. If a match fails, the stream is rolled back to this offset.
+Defined in [parser.rs](../src/segue/parser.rs), `IForge` represents a linked list of contexts for the current parse tree path. To minimize boilerplate, standard methods (`Parent`, `Parser`, `Deposit`) are auto-generated for implementations using the `ImplForgeBase!` macro.
+* **Context Tracking**: Every node creates a context and pushes it to the parser's stash. To maximize code reuse:
+  * **`LeafForge`** handles all scalar token matching (`String`, `Charset`).
+  * **`CompositeForge`** handles all nested node operations (Concatenation `<` and Alternation `|`), dispatching logic based on its `_Mode: ChildOp`.
+* **Backtracking**: It records the `Marker` in the stream. If a match fails, the stream is rolled back `InStream().RollTo(startMark)`.
 * **Ancestor Traversal**: Provides `FindAncestor` to navigate up the context tree, useful for complex context-sensitive parsing rules.
-* **Digests**: Successful matches deposit a `Digest` (start and end markers) to their parent forge, allowing upper levels to extract matched sub-strings.
+* **Digests**: Successful matches use the `EmitDigest` helper to deposit a `Digest` (start and end markers) to their parent forge, allowing upper levels to extract matched sub-strings.
 
 ### 3. Shard & ShardTree (The Grammar)
 Defined in [shard.rs](../src/segue/shard.rs), `Shard` represents a leaf node in the grammar tree.
-* **Types**: Supports matching a single `Char`, a specific `String`, or a custom `Charset`.
+* **Types**: Supports matching a specific `String` or a custom `Charset`.
 * **Tree Construction**: The `ShardTree!` macro compiles a tree of `DynINode`s.
   * `a < b`: Concatenation (a must match, followed by b).
   * `a | b`: Alternation (if a fails, backtrack and try b).
