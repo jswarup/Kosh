@@ -1,6 +1,7 @@
 //-- uint.rs -------------------------------------------------------------------------------------------------------------------------
 //!  thin wrappers around unsigned integers providing seamless operations.
-use	std::{ cmp, fmt, mem::transmute, ops::{ AddAssign, SubAssign } };
+use	std::{ cmp, fmt, ops::{ AddAssign, SubAssign } };
+use	crate::silo::cast::ICastExt;
 use	crate::stalks::atm::AtomicInt;
 use	std::ops::{ Add, BitAnd, BitOr, BitXor, Deref, Div, Mul, Neg, Not, Rem, Shl, Shr, Sub };
 use	std::sync::atomic::{ AtomicU8, AtomicU16, AtomicU32, AtomicU64, Ordering };
@@ -93,7 +94,7 @@ macro_rules! ImplUIntTraits {
             }
             #[inline]
             pub fn	FromArr< 'a>(arr: Arr<'a, $prim>) -> Arr< 'a, Self> {
-                unsafe { transmute( arr) }
+                arr.Cast()
             }
         }
         macro_rules! impl_binop {
@@ -384,7 +385,7 @@ macro_rules! Xplod {
             #[inline]
             fn	Xplod( self) -> [$dst; $sz]
             {
-                unsafe { transmute( self) }
+                self.Cast()
             }
         }
     };

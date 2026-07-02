@@ -6,7 +6,7 @@ use	crate::{
     flux::InStream,
     segue::Charset
 };
-use	crate::silo::{ U8, U32, Stash, IAccess, IArr };
+use	crate::silo::{ U8, U32, Stash, IAccess, IArr, cast::{ ICastExt, IPtrExt } };
 use	crate::stalks::{ ChildOp, DynINode };
 use	crate::segue::shard::Shard;
 
@@ -50,7 +50,7 @@ pub trait IForge<'a, 'p, 's, R: Read + 'p>
     {
         let  	selfRef: &mut (dyn IForge<'a, 'p, 's, R> + 'a) = self;
         let  	ptr = selfRef as *mut (dyn IForge<'a, 'p, 's, R> + 'a);
-        let  	erased_ptr = unsafe { std::mem::transmute::<_, *mut (dyn IForge<'p, 'p, 's, R> + 'p)>(ptr) };
+        let  	erased_ptr = ptr.CastLife::<dyn IForge<'p, 'p, 's, R> + 'p>();
         self.GetParser()._Stash.Push( Some(erased_ptr));
     }
     
@@ -162,7 +162,7 @@ where 's: 'p
                 let  anyRef = curNode.AsAny().unwrap();
                 let  shard = anyRef.downcast_ref::<Shard>().unwrap();
                 
-                let  shardPtr = unsafe { std::mem::transmute::<Option<&Shard>, Option<&'static Shard>>(Some(shard)) };
+                let  shardPtr = Some(shard).Cast::<Option<&'static Shard>>();
                 let  forgePtr: *mut (dyn IForge<'p, 'p, 's, R> + 'p) = match shard {
                     Shard::Charset(_) => {
                         let forge = Box::new(CharsetForge {
@@ -265,12 +265,7 @@ where 's: 'p
             let  	arr = self._Stash.Stk().Arr();
             let  	optPtr = arr.At( lastIdx);
             if let Some( ptr) = *optPtr {
-                let  	ptrF = unsafe {
-                    std::mem::transmute::<
-                        *mut (dyn IForge<'p, 'p, 's, R> + 'p),
-                        *mut (dyn IForge<'f, 'p, 's, R> + 'f)
-                    >( ptr)
-                };
+                let  	ptrF = ptr.CastLife::<dyn IForge<'f, 'p, 's, R> + 'f>();
                 return Some( unsafe { &*ptrF });
             }
             None

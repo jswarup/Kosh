@@ -1,6 +1,6 @@
 //-- instream.rs -----------------------------------------------------------------------------------------------------------------------
-use	std::{ cmp, fs, io, path::Path, slice::{ from_raw_parts, from_raw_parts_mut } };
-use	crate::silo::{ Arr, Buff, IAccess, IArr, U8, U32 };
+use	std::{ cmp, fs, io, path::Path };
+use	crate::silo::{ Arr, Buff, IAccess, IArr, U8, U32, cast::ICastExt };
 use std::io::Read;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -95,11 +95,8 @@ impl< 'a, R: Read> InStream< 'a, R>
                 let  	newSize = currSize + readBytes;
                 buff.Resize( U32( newSize as u32), |_| U8::_0);
                 
-                unsafe {
-                    let  	ptr = buff.as_mut_ptr().cast::<u8>();
-                    let  	slice = from_raw_parts_mut( ptr, newSize);
-                    slice[currSize..newSize].copy_from_slice( &chunk[..readBytes]);
-                }
+                let  	slice = (&mut **buff).Cast::<&mut [u8]>();
+                slice[currSize..newSize].copy_from_slice( &chunk[..readBytes]);
                 currSize = newSize;
             }
         }
@@ -164,11 +161,8 @@ impl< 'a, R: Read> InStream< 'a, R>
                 let  	currSize = buff.Size().AsUsize();
                 let  	newSize = currSize + vec.len();
                 buff.Resize( U32( newSize as u32), |_| U8::_0);
-                unsafe {
-                    let  	ptr = buff.as_mut_ptr().cast::<u8>();
-                    let  	slice = from_raw_parts_mut( ptr, newSize);
-                    slice[currSize..newSize].copy_from_slice( &vec);
-                }
+                let  	slice = (&mut **buff).Cast::<&mut [u8]>();
+                slice[currSize..newSize].copy_from_slice( &vec);
             }
         }
         
@@ -190,9 +184,7 @@ impl< 'a, R: Read> InStream< 'a, R>
     pub fn	RemainingBytes( &mut self) -> &[u8]
     {
         let  	rest = self.Rest();
-        unsafe {
-            from_raw_parts( rest.Ptr().cast::<u8>(), rest.Size().AsUsize())
-        }
+        (&*rest).Cast::<&[u8]>()
     }
 
 
@@ -223,19 +215,12 @@ impl< 'a, R: Read> Read for InStream< 'a, R>
 
         match &self._Source {
             InSource::Fixed( arr) => {
-                unsafe {
-                    let  	ptr = arr.Ptr().cast::<u8>();
-                    let  	slice = from_raw_parts( ptr, currSize);
-                    buf[..len].copy_from_slice( &slice[marker..marker + len]);
-                }
+                let  	slice = (&*arr).Cast::<&[u8]>();
+                buf[..len].copy_from_slice( &slice[marker..marker + len]);
             },
             InSource::Streaming( _, buff) => {
-                unsafe {
-                    // buff implements Deref<Target=[U8]>, as_ptr returns *const U8
-                    let  	ptr = buff.as_ptr().cast::<u8>();
-                    let  	slice = from_raw_parts( ptr, currSize);
-                    buf[..len].copy_from_slice( &slice[marker..marker + len]);
-                }
+                let  	slice = (&**buff).Cast::<&[u8]>();
+                buf[..len].copy_from_slice( &slice[marker..marker + len]);
             }
         }
 
