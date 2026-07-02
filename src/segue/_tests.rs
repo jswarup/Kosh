@@ -45,7 +45,7 @@ fn	TestParserBasic()
     let  	mut parser = Parser::New( &mut stream);
     
     {
-        let  	mut forge = Forge { _Parent: None, _Offset: U32( 0), _Parser: &mut parser };
+        let  	mut forge = Forge { _Parent: None, _Parser: &mut parser };
         
         // Test char grammar
         assert!( 'h'.Match( forge.GetParser()));
@@ -102,7 +102,6 @@ fn	TestBacktrackingParser()
         let  	mut parser = Parser::New( &mut stream);
         let  	forge = StringForge {
             _Parent: None,
-            _Offset: U32( 0),
             _Parser: &mut parser,
             _Shard: None,
         };
@@ -112,18 +111,14 @@ fn	TestBacktrackingParser()
         
         let  	childForge = StringForge {
             _Parent: Some( parent),
-            _Offset: U32( 1),
             _Parser: &mut dummyParser,
             _Shard: None,
         };
         
         let  	mut found = false;
-        let  	ancestor = childForge.FindAncestor( &mut |a| {
-            if a.Offset() == U32( 0) {
-                found = true;
-                return true;
-            }
-            false
+        let  	ancestor = childForge.FindAncestor( &mut |_a| {
+            found = true;
+            true
         });
         assert!( found);
         assert!( ancestor.is_some());

@@ -52,3 +52,20 @@ impl< T: ?Sized> IConstPtrExt for *const T
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait IAllocRawExt
+{
+    // Allocates a value on the heap and returns a raw pointer to it.
+    fn	AllocRaw( self) -> *mut Self;
+}
+
+impl< T> IAllocRawExt for T
+{
+    #[inline( always)]
+    fn	AllocRaw( self) -> *mut Self
+    {
+        Box::into_raw( Box::new( self))
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------

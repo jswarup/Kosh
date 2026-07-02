@@ -6,7 +6,7 @@ use	crate::{
     flux::InStream,
     segue::Charset
 };
-use	crate::silo::{ U8, U32, Stash, IAccess, IArr, cast::{ ICastExt, IPtrExt } };
+use	crate::silo::{ U8, U32, Stash, IAccess, IArr, cast::{ ICastExt, IPtrExt, IAllocRawExt } };
 use	crate::stalks::{ ChildOp, DynINode };
 use	crate::segue::shard::Shard;
 
@@ -21,11 +21,13 @@ pub struct  Digest
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub trait IForge<'a, 'p, 's, R: Read + 'p>
     where 's: 'p, Self: 'a
 {
     fn	Parent( &self) -> Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>;
-    fn	Offset( &self) -> U32;
+    fn InMarker( &mut self) -> U32;
     fn	GetParser( &mut self) -> &mut Parser<'p, 's, R>;
     fn	Deposit( &self, childIdx: U32, digest: Digest);
     fn	MatchNode(&mut self) -> bool;
@@ -70,7 +72,6 @@ pub struct  Forge<'a, 'p, 's, R: Read + 'p = io::Empty>
     where 's: 'p 
 {
     pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
-    pub _Offset: U32,
     pub _Parser: &'a mut Parser<'p, 's, R>,
 }
 
@@ -81,11 +82,7 @@ impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for Forge<'a, 'p, 's, R>
     {
         self._Parent
     }
-
-    fn	Offset( &self) -> U32
-    {
-        self._Offset
-    }
+    fn InMarker( &mut self) -> U32 { self.GetParser().Stream().Marker() }
 
     fn	GetParser( &mut self) -> &mut Parser<'p, 's, R>
     {
@@ -95,7 +92,9 @@ impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for Forge<'a, 'p, 's, R>
     fn	Deposit( &self, _childIdx: U32, _digest: Digest)
     {
     }
-    fn MatchNode(&mut self) -> bool { false }
+    fn MatchNode(&mut self) -> bool {
+        false
+    }
 }
 
 
@@ -132,18 +131,11 @@ where 's: 'p
             _Stash: Stash::New( U32( 16), U32( 0), None),
         }
     }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	DepositArr( &mut self, _arr: crate::silo::Arr<'_, Option<*const DynINode<'static>>>, _isConcat: bool) -> Option<*const DynINode<'static>>
-    {
-        None
-    }
-
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	ParseShardTree( &mut self, node: &DynINode< '_>) -> Option<*mut (dyn IForge<'p, 'p, 's, R> + 'p)>
     {
+        
         let  selfPtr = self as *mut Parser<'p, 's, R>;
         let  mut forgeStk = unsafe { &mut *selfPtr }._Stash.Stk();
         let  opStash = Stash::<(ChildOp, U32)>::New( 1024, 0, (ChildOp::None, 0.into()));
@@ -165,24 +157,18 @@ where 's: 'p
                 let  shardPtr = Some(shard).Cast::<Option<&'static Shard>>();
                 let  forgePtr: *mut (dyn IForge<'p, 'p, 's, R> + 'p) = match shard {
                     Shard::Charset(_) => {
-                        let forge = Box::new(CharsetForge {
+                        CharsetForge {
                             _Parent: None,
-                            _Offset: unsafe { (*selfPtr).Stream().Marker() },
                             _Parser: selfPtr,
                             _Shard: shardPtr,
-                        });
-                        let ptr = Box::into_raw(forge) as *mut (dyn IForge<'p, 'p, 's, R> + 'p);
-                        ptr
+                        }.AllocRaw()
                     },
                     Shard::String(_) => {
-                        let forge = Box::new(StringForge {
+                        StringForge {
                             _Parent: None,
-                            _Offset: unsafe { (*selfPtr).Stream().Marker() },
                             _Parser: selfPtr,
                             _Shard: shardPtr,
-                        });
-                        let ptr = Box::into_raw(forge) as *mut (dyn IForge<'p, 'p, 's, R> + 'p);
-                        ptr
+                        }.AllocRaw()
                     },
                 };
                 forgeStk.Push( Some( forgePtr));
@@ -210,22 +196,18 @@ where 's: 'p
             
             let  forgePtr: *mut (dyn IForge<'p, 'p, 's, R> + 'p) = match curOp {
                 ChildOp::Less => {
-                    let forge = Box::new(CatArrForge {
+                    CatArrForge {
                         _Parent: None,
-                        _Offset: unsafe { (*selfPtr).Stream().Marker() },
                         _Parser: selfPtr,
                         _Children: children,
-                    });
-                    Box::into_raw(forge) as *mut (dyn IForge<'p, 'p, 's, R> + 'p)
+                    }.AllocRaw()
                 },
                 ChildOp::Bor => {
-                    let forge = Box::new(ParArrForge {
+                    ParArrForge {
                         _Parent: None,
-                        _Offset: unsafe { (*selfPtr).Stream().Marker() },
                         _Parser: selfPtr,
                         _Children: children,
-                    });
-                    Box::into_raw(forge) as *mut (dyn IForge<'p, 'p, 's, R> + 'p)
+                    }.AllocRaw()
                 },
                 _ => panic!( "Unsupported ChildOp in ParseShardTree: {:?}", curOp),
             };
@@ -343,7 +325,6 @@ pub struct CharsetForge<'a, 'p, 's, R: Read + 'p = io::Empty>
 where 's: 'p
 {
     pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
-    pub _Offset: U32,
     pub _Parser: *mut Parser<'p, 's, R>,
     pub _Shard: Option<&'a Shard>,
 }
@@ -354,7 +335,6 @@ where 's: 'p
     fn default() -> Self {
         Self {
             _Parent: None,
-            _Offset: U32(0),
             _Parser: std::ptr::null_mut(),
             _Shard: None,
         }
@@ -365,15 +345,16 @@ impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for CharsetForge<'a, 'p, 's
 where 's: 'p
 {
     fn Parent( &self) -> Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)> { self._Parent }
-    fn Offset( &self) -> U32 { self._Offset }
+    fn InMarker( &mut self) -> U32 { self.GetParser().Stream().Marker() }
     fn GetParser( &mut self) -> &mut Parser<'p, 's, R> { unsafe { &mut *self._Parser } }
     fn Deposit( &self, _childIdx: U32, _digest: Digest) {}
 
     fn MatchNode(&mut self) -> bool {
+        let startMark = self.InMarker();
         if let Some(shard) = self._Shard {
             if shard.Match(self.GetParser()) {
                 let endMark = self.GetParser().Stream().Marker();
-                let digest = Digest { _Start: self._Offset, _End: endMark };
+                let digest = Digest { _Start: startMark, _End: endMark };
                 if let Some(p) = self.Parent() {
                     p.Deposit(crate::silo::U32(0), digest);
                 }
@@ -388,7 +369,6 @@ pub struct StringForge<'a, 'p, 's, R: Read + 'p = io::Empty>
 where 's: 'p
 {
     pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
-    pub _Offset: U32,
     pub _Parser: *mut Parser<'p, 's, R>,
     pub _Shard: Option<&'a Shard>,
 }
@@ -399,7 +379,6 @@ where 's: 'p
     fn default() -> Self {
         Self {
             _Parent: None,
-            _Offset: U32(0),
             _Parser: std::ptr::null_mut(),
             _Shard: None,
         }
@@ -410,15 +389,16 @@ impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for StringForge<'a, 'p, 's,
 where 's: 'p
 {
     fn Parent( &self) -> Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)> { self._Parent }
-    fn Offset( &self) -> U32 { self._Offset }
+    fn InMarker( &mut self) -> U32 { self.GetParser().Stream().Marker() }
     fn GetParser( &mut self) -> &mut Parser<'p, 's, R> { unsafe { &mut *self._Parser } }
     fn Deposit( &self, _childIdx: U32, _digest: Digest) {}
 
     fn MatchNode(&mut self) -> bool {
+        let startMark = self.InMarker();
         if let Some(shard) = self._Shard {
             if shard.Match(self.GetParser()) {
                 let endMark = self.GetParser().Stream().Marker();
-                let digest = Digest { _Start: self._Offset, _End: endMark };
+                let digest = Digest { _Start: startMark, _End: endMark };
                 if let Some(p) = self.Parent() {
                     p.Deposit(crate::silo::U32(0), digest);
                 }
@@ -435,7 +415,6 @@ pub struct CatArrForge<'a, 'p, 's, R: Read + 'p = io::Empty>
 where 's: 'p
 {
     pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
-    pub _Offset: U32,
     pub _Parser: *mut Parser<'p, 's, R>,
     pub _Children: Vec<*mut (dyn IForge<'p, 'p, 's, R> + 'p)>,
 }
@@ -446,7 +425,6 @@ where 's: 'p
     pub fn new(parser: *mut Parser<'p, 's, R>, children: Vec<*mut (dyn IForge<'p, 'p, 's, R> + 'p)>) -> Self {
         Self {
             _Parent: None,
-            _Offset: crate::silo::U32(0),
             _Parser: parser,
             _Children: children,
         }
@@ -458,22 +436,22 @@ impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for CatArrForge<'a, 'p, 's,
 where 's: 'p
 {
     fn Parent( &self) -> Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)> { self._Parent }
-    fn Offset( &self) -> U32 { self._Offset }
+    fn InMarker( &mut self) -> U32 { self.GetParser().Stream().Marker() }
     fn GetParser( &mut self) -> &mut Parser<'p, 's, R> { unsafe { &mut *self._Parser } }
     fn Deposit( &self, _childIdx: U32, _digest: Digest) {}
 
     fn MatchNode(&mut self) -> bool {
+        let startMark = self.InMarker();
         for i in 0..self._Children.len() {
             let child_ptr = self._Children[i];
             let child_ref = unsafe { &mut *child_ptr };
             if !child_ref.MatchNode() {
-                let startMark = self._Offset;
                 self.GetParser().Stream().RollTo(startMark);
                 return false;
             }
         }
         let endMark = self.GetParser().Stream().Marker();
-        let digest = Digest { _Start: self._Offset, _End: endMark };
+        let digest = Digest { _Start: startMark, _End: endMark };
         if let Some(p) = self.Parent() {
             p.Deposit(crate::silo::U32(0), digest);
         }
@@ -488,7 +466,6 @@ pub struct ParArrForge<'a, 'p, 's, R: Read + 'p = io::Empty>
 where 's: 'p
 {
     pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
-    pub _Offset: U32,
     pub _Parser: *mut Parser<'p, 's, R>,
     pub _Children: Vec<*mut (dyn IForge<'p, 'p, 's, R> + 'p)>,
 }
@@ -499,7 +476,6 @@ where 's: 'p
     pub fn new(parser: *mut Parser<'p, 's, R>, children: Vec<*mut (dyn IForge<'p, 'p, 's, R> + 'p)>) -> Self {
         Self {
             _Parent: None,
-            _Offset: crate::silo::U32(0),
             _Parser: parser,
             _Children: children,
         }
@@ -512,23 +488,23 @@ impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for ParArrForge<'a, 'p, 's,
 where 's: 'p
 {
     fn Parent( &self) -> Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)> { self._Parent }
-    fn Offset( &self) -> U32 { self._Offset }
+    fn InMarker( &mut self) -> U32 { self.GetParser().Stream().Marker() }
     fn GetParser( &mut self) -> &mut Parser<'p, 's, R> { unsafe { &mut *self._Parser } }
     fn Deposit( &self, _childIdx: U32, _digest: Digest) {}
 
     fn MatchNode(&mut self) -> bool {
+        let startMark = self.InMarker();
         for i in 0..self._Children.len() {
             let child_ptr = self._Children[i];
             let child_ref = unsafe { &mut *child_ptr };
             if child_ref.MatchNode() {
                 let endMark = self.GetParser().Stream().Marker();
-                let digest = Digest { _Start: self._Offset, _End: endMark };
+                let digest = Digest { _Start: startMark, _End: endMark };
                 if let Some(p) = self.Parent() {
                     p.Deposit(crate::silo::U32(0), digest);
                 }
                 return true;
             }
-            let startMark = self._Offset;
             self.GetParser().Stream().RollTo(startMark);
         }
         false
