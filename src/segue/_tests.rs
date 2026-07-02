@@ -2,7 +2,7 @@
 
 use	crate::{
     flux::InStream,
-    segue::{ Charset, shard::Shard, Parser, IGrammar, parser::{IForge, Forge, BinOpForge} },
+    segue::{ Charset, shard::Shard, Parser, IGrammar, parser::{IForge, Forge, StringForge} },
     silo::{ U8, U32, Arr},
     stalks::DynINode,
 };
@@ -96,30 +96,25 @@ fn	TestBacktrackingParser()
 
     // Test ancestor lookup
     {
+        let  	mut stream = InStream::FromArr( Arr::from( &[U8( 0)][..]));
         let  	mut dummyStream = InStream::FromArr( Arr::from( &[U8( 0)][..]));
         let  	mut dummyParser = Parser::New( &mut dummyStream);
-        
-        let  	mut stream = InStream::FromArr( Arr::from( &[U8( 0)][..]));
         let  	mut parser = Parser::New( &mut stream);
-        let  	forge = BinOpForge {
+        let  	forge = StringForge {
             _Parent: None,
             _Offset: U32( 0),
             _Parser: &mut parser,
-            _Node: None,
-            _LeftDigest: std::cell::Cell::new( None),
-            _RightDigest: std::cell::Cell::new( None),
+            _Shard: None,
         };
         
-        let  	parentPtr = &forge as *const BinOpForge<'_, '_, '_, _> as *const dyn IForge<'_, '_, '_, _>;
+        let  	parentPtr = &forge as *const StringForge<'_, '_, '_, _> as *const dyn IForge<'_, '_, '_, _>;
         let  	parent = unsafe { &*parentPtr };
         
-        let  	childForge = BinOpForge {
+        let  	childForge = StringForge {
             _Parent: Some( parent),
             _Offset: U32( 1),
             _Parser: &mut dummyParser,
-            _Node: None,
-            _LeftDigest: std::cell::Cell::new( None),
-            _RightDigest: std::cell::Cell::new( None),
+            _Shard: None,
         };
         
         let  	mut found = false;

@@ -10,7 +10,6 @@ use	std::io::Read;
 
 #[derive( Clone, Debug)]
 pub enum Shard {
-    Char( char),
     String( String),
     Charset( Charset),
 }
@@ -21,7 +20,7 @@ impl Default for Shard
 {
     fn	default() -> Self
     {
-        Self::Char( '\0')
+        Self::String( String::new())
     }
 }
 
@@ -36,10 +35,6 @@ impl IXFluxable for Shard
         *field = XField::Obj( Box::new( move |key, item| {
             if step == 0 {
                 match shard {
-                    Shard::Char( c) => {
-                        *key = "Char".to_string();
-                        *item = XField::String( c.to_string());
-                    }
                     Shard::String( s) => {
                         *key = "String".to_string();
                         *item = XField::Str( s);
@@ -62,10 +57,6 @@ impl IXFluxable for Shard
 
 impl Shard
 {
-    pub fn	NewChar( c: char) -> Self
-    {
-        Self::Char( c)
-    }
     pub fn	NewString( s: String) -> Self
     {
         Self::String( s)
@@ -83,7 +74,6 @@ impl fmt::Display for Shard
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         match self {
-            Self::Char( c) => write!( f, "Shard( {})", c),
             Self::String( s) => write!( f, "Shard( {})", s),
             Self::Charset( cs) => write!( f, "Shard( {})", cs),
         }
@@ -98,7 +88,7 @@ impl From< char> for Shard
 {
     fn	from( c: char) -> Self
     {
-        Self::Char( c)
+        Self::String( c.to_string())
     }
 }
 
@@ -182,7 +172,6 @@ impl IGrammar for Shard
     fn	Match< 'p, 's, R: Read>( &self, parser: &mut Parser<'p, 's, R>) -> bool
     {
         match self {
-            Self::Char( c) => c.Match( parser),
             Self::String( s) => s.as_str().Match( parser),
             Self::Charset( cs) => cs.Match( parser),
         }
