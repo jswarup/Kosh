@@ -1,7 +1,7 @@
 //-- _tests.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::{ segue::Charset, silo::{ Arr, U8 }, stalks::WorkPtr };
 use	crate::silo::{ Buff, IAccess, U32 };
-use	crate::stalks::{ Atm, INode, DynINode, TraversalEvent as NodeTraversalEvent, NoduleTree, ChildOp };
+use	crate::stalks::{ Atm, INode, DynINode, TraversalEvent as NodeTraversalEvent, NoduleTree, BinOp };
 use	crate::segue::shard::Shard;
 use	std::sync::Arc;
 use	std::sync::atomic::{ AtomicBool, Ordering };
@@ -66,9 +66,9 @@ fn	TestINodeTraverse()
         {
             ""
         }
-        fn	ChildOp( &self) -> ChildOp
+        fn	BinOp( &self) -> BinOp
         {
-            ChildOp::None
+            BinOp::None
         }
     }
 
@@ -136,21 +136,21 @@ fn	TestNoduleTree()
 {
     let  	root = NoduleTree!( U32, 10 < ( 20 | 30 ));
 
-    assert_eq!( root.ChildOp(), ChildOp::Less);
+    assert_eq!( root.BinOp(), BinOp::Less);
 
     assert_eq!( root.Children().Size(), U32(2));
 
     let  	left = root.Children().At(U32(0));
     let  	right = root.Children().At(U32(1));
 
-    assert_eq!( left.ChildOp(), ChildOp::None);
-    assert_eq!( right.ChildOp(), ChildOp::Bor);
+    assert_eq!( left.BinOp(), BinOp::None);
+    assert_eq!( right.BinOp(), BinOp::Bor);
 
     let  	_left1: &DynINode< '_> = root.Children().At(U32(0));
 
     assert_eq!( right.Children().Size(), U32(2));
-    assert_eq!( right.Children().At(U32(0)).ChildOp(), ChildOp::None);
-    assert_eq!( right.Children().At(U32(1)).ChildOp(), ChildOp::None);
+    assert_eq!( right.Children().At(U32(0)).BinOp(), BinOp::None);
+    assert_eq!( right.Children().At(U32(1)).BinOp(), BinOp::None);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

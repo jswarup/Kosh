@@ -2,7 +2,7 @@
 use	std::ptr::null;
 use	crate::heist::Atelier;
 use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, Stk, USeg, U16, U32 };
-use	crate::stalks::{ Atm, DynINode, DynIWorker, IWorker, IntoWorkPtr, Spinlock, WorkPtr, ChildOp};
+use	crate::stalks::{ Atm, DynINode, DynIWorker, IWorker, IntoWorkPtr, Spinlock, WorkPtr, BinOp};
 use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -179,15 +179,15 @@ impl< 'a> Maestro< 'a>
         let  	tailStk = tailStash.Stk();
         let  	arrowStash = Stash::<(U16, USeg)>::New( U32( 1024), 0, (U16( 0), USeg::New( 0, 0)));
         let  	mut arrowStk = arrowStash.Stk();
-        let  	opStash = Stash::<(ChildOp, U32)>::New( U32( 1024), 0, (ChildOp::None, U32( 0)));
+        let  	opStash = Stash::<(BinOp, U32)>::New( U32( 1024), 0, (BinOp::None, U32( 0)));
         let  	opStk = opStash.Stk();
         let  	succId = self.CurSuccId();
 
         node.DiveDf( &mut |probe, enterFlg| {
             let  	curNode = probe.CurNode().unwrap();
-            let  	curOp = curNode.ChildOp();
+            let  	curOp = curNode.BinOp();
             if enterFlg {
-                if curOp != ChildOp::None {
+                if curOp != BinOp::None {
                     opStk.Push( ( curOp, arrowStk.Size()));
                     return;
                 }
@@ -196,20 +196,20 @@ impl< 'a> Maestro< 'a>
                 tailStk.Push( jobId);
                 return;
             }
-            if curOp == ChildOp::None {
+            if curOp == BinOp::None {
                 return;
             }
-            let  	mut opCtx = ( ChildOp::None, U32( 0));
+            let  	mut opCtx = ( BinOp::None, U32( 0));
             opStk.Pop( &mut opCtx);
 
-            let  	parentOp = if opStk.Size() != 0 { opStk.Arr().Last().0 } else { ChildOp::None };
+            let  	parentOp = if opStk.Size() != 0 { opStk.Arr().Last().0 } else { BinOp::None };
             if parentOp == curOp {
                 return;
             }
 
             let  	arr = arrowStk.Arr().Subset( opCtx.1, arrowStk.Size() - opCtx.1);
             arrowStk.SetSize( opCtx.1);
-            if curOp == ChildOp::Less {
+            if curOp == BinOp::Less {
                 USeg::New( 0, arr.Size() -1).Traverse( |i| {
                     let  	nextHead = arr.At( i +1).0;
                     arr.At( i).1.Traverse( |k| {
@@ -218,7 +218,7 @@ impl< 'a> Maestro< 'a>
                 });
                 arrowStk.Push( ( arr.First().0, arr.Last().1));
             }
-            if curOp == ChildOp::Bor {
+            if curOp == BinOp::Bor {
                 let  	mut headsBuff = Buff::<U16>::NewEmpty();
                 let  	tailStart = tailStk.Size();
                 arr.USeg().Traverse( |i| {

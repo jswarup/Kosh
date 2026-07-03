@@ -7,7 +7,7 @@ use	crate::fresco::sumexpr::SumExpr;
 use	crate::fresco::prodexpr::ProdExpr;
 use	crate::fresco::powexpr::PowExpr;
 use	crate::fresco::Term;
-use	crate::stalks::{ ChildOp, DynINode };
+use	crate::stalks::{ BinOp, DynINode };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -229,14 +229,14 @@ impl ExprRepos
     {
         let  	exprStash = Stash::<U32>::New( 1024, 0, 0.into());
         let  	mut exprStk = exprStash.Stk();
-        let  	opStash = Stash::<(ChildOp, U32)>::New( 1024, 0, (ChildOp::None, 0.into()));
+        let  	opStash = Stash::<(BinOp, U32)>::New( 1024, 0, (BinOp::None, 0.into()));
         let  	opStk = opStash.Stk();
 
         node.DiveDf( &mut |probe, enterFlg| {
             let  	curNode = probe.CurNode().unwrap();
-            let  	curOp = curNode.ChildOp();
+            let  	curOp = curNode.BinOp();
             if enterFlg {
-                if curOp != ChildOp::None {
+                if curOp != BinOp::None {
                     opStk.Push( ( curOp, exprStk.Size()));
                     return;
                 }
@@ -248,13 +248,13 @@ impl ExprRepos
                 exprStk.Push( exprId);
                 return;
             }
-            if curOp == ChildOp::None {
+            if curOp == BinOp::None {
                 return;
             }
-            let  	mut opCtx = ( ChildOp::None, 0.into());
+            let  	mut opCtx = ( BinOp::None, 0.into());
             opStk.Pop( &mut opCtx);
 
-            let  	parentOp = if opStk.Size() != 0 { opStk.Arr().Last().0 } else { ChildOp::None };
+            let  	parentOp = if opStk.Size() != 0 { opStk.Arr().Last().0 } else { BinOp::None };
             if parentOp == curOp {
                 return;
             }
@@ -263,12 +263,12 @@ impl ExprRepos
             exprStk.SetSize( opCtx.1);
             let  	emptyArr = Arr::from( &[][..]);
             let  	exprId = match curOp {
-                ChildOp::Sum => self.SumCreate( arr, emptyArr),
-                ChildOp::Prod => self.ProdCreate( arr, emptyArr),
-                ChildOp::Sub => self.SumCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1)),
-                ChildOp::Div => self.ProdCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1)),
-                ChildOp::Pow => self.PowCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1)),
-                _ => panic!( "Unsupported ChildOp in PostTermTree: {:?}", curOp),
+                BinOp::Sum => self.SumCreate( arr, emptyArr),
+                BinOp::Prod => self.ProdCreate( arr, emptyArr),
+                BinOp::Sub => self.SumCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1)),
+                BinOp::Div => self.ProdCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1)),
+                BinOp::Pow => self.PowCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1)),
+                _ => panic!( "Unsupported BinOp in PostTermTree: {:?}", curOp),
             };
             exprStk.Push( exprId);
         });

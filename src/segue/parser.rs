@@ -7,7 +7,7 @@ use	crate::{
     segue::Charset
 };
 use	crate::silo::{ U8, U32, Stash, IAccess, IArr, cast::{ ICastExt, IPtrExt, IAllocRawExt } };
-use	crate::stalks::{ ChildOp, DynINode };
+use	crate::stalks::{ BinOp, DynINode };
 use	crate::segue::shard::Shard;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -150,15 +150,15 @@ where 's: 'p
 
         let  selfPtr = self as *mut Parser<'p, 's, R>;
         let  mut forgeStk = unsafe { &mut *selfPtr }._Stash.Stk();
-        let  opStash = Stash::<(ChildOp, U32)>::New( 1024, 0, (ChildOp::None, 0.into()));
+        let  opStash = Stash::<(BinOp, U32)>::New( 1024, 0, (BinOp::None, 0.into()));
         let  opStk = opStash.Stk();
 
         node.DiveDf( &mut |probe, enterFlg| {
             let  curNode = probe.CurNode().unwrap();
-            let  curOp = curNode.ChildOp();
+            let  curOp = curNode.BinOp();
 
             if enterFlg {
-                if curOp != ChildOp::None {
+                if curOp != BinOp::None {
                     opStk.Push( ( curOp, forgeStk.Size()));
                     return;
                 }
@@ -175,13 +175,13 @@ where 's: 'p
                 forgeStk.Push( Some( forgePtr));
                 return;
             }
-            if curOp == ChildOp::None {
+            if curOp == BinOp::None {
                 return;
             }
-            let  mut opCtx = ( ChildOp::None, 0.into());
+            let  mut opCtx = ( BinOp::None, 0.into());
             opStk.Pop( &mut opCtx);
 
-            let  parentOp = if opStk.Size() != 0 { opStk.Arr().Last().0 } else { ChildOp::None };
+            let  parentOp = if opStk.Size() != 0 { opStk.Arr().Last().0 } else { BinOp::None };
             if parentOp == curOp {
                 return;
             }
@@ -360,7 +360,7 @@ where 's: 'p
     pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
     pub _Parser: *mut Parser<'p, 's, R>,
     pub _Children: crate::silo::Buff<*mut (dyn IForge<'p, 'p, 's, R> + 'p)>,
-    pub _Mode: ChildOp,
+    pub _Mode: BinOp,
 }
 
 impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for CompositeForge<'a, 'p, 's, R>
@@ -375,12 +375,12 @@ where 's: 'p
             let child_ref = unsafe { &mut *child_ptr };
             let matched = child_ref.MatchNode();
 
-            if self._Mode == ChildOp::Less {
+            if self._Mode == BinOp::Less {
                 if !matched {
                     self.Parser().InStream().RollTo(startMark);
                     return false;
                 }
-            } else if self._Mode == ChildOp::Bor {
+            } else if self._Mode == BinOp::Bor {
                 if matched {
                     let endMark = self.Parser().InStream().Marker();
                     self.EmitDigest(startMark, endMark);
@@ -390,7 +390,7 @@ where 's: 'p
             }
         }
 
-        if self._Mode == ChildOp::Less {
+        if self._Mode == BinOp::Less {
             let endMark = self.Parser().InStream().Marker();
             self.EmitDigest(startMark, endMark);
             return true;

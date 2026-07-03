@@ -1,5 +1,5 @@
 //-- term.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::{ flux::{ IXFluxable, xflux::XField }, silo::U32, stalks::{ ChildOp, DynINode, INode, IntoWorkPtr, WorkPtr } };
+use	crate::{ flux::{ IXFluxable, xflux::XField }, silo::U32, stalks::{ BinOp, DynINode, INode, IntoWorkPtr, WorkPtr } };
 use	std::fmt;
 use	crate::stalks::{ DynIWorker, IWork };
 
@@ -145,7 +145,7 @@ impl< 'a> INode< 'a> for Term
         Some( self)
     }
     fn	DocStr( &self) -> &'static str { "" }
-    fn	ChildOp( &self) -> ChildOp { ChildOp::None }
+    fn	BinOp( &self) -> BinOp { BinOp::None }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

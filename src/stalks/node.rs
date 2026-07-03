@@ -2,19 +2,28 @@
 use	crate::{ flux::xflux::XField, stalks::WorkPtr };
 use	std::fmt;
 use	crate::silo::{ Arr, IAccess, Stash, U32 };
-
+ 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+pub enum Attrib
+{
+    Repeat( crate::silo::USeg),
+    Action( Box< dyn Fn() + 'static>),
+}
 
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-
-
-//---------------------------------------------------------------------------------------------------------------------------------
+impl fmt::Display for Attrib
+{
+    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
+    {
+        match self {
+            Attrib::Repeat( _ ) => f.write_str( "Repeat"),
+            Attrib::Action( _ ) => f.write_str( "Action"),
+        }
+    }
+}
 
 #[derive( Clone, Copy, PartialEq, Eq, Debug)]
-pub enum ChildOp
+pub enum BinOp
 {
     Sum,
     Prod,
@@ -31,21 +40,21 @@ pub enum ChildOp
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl fmt::Display for ChildOp
+impl fmt::Display for BinOp
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         match self {
-            ChildOp::Sum => write!( f, "+"),
-            ChildOp::Prod => write!( f, "*"),
-            ChildOp::Less => write!( f, "<"),
-            ChildOp::Bor => write!( f, "|"),
-            ChildOp::Shl => write!( f, "<<"),
-            ChildOp::Shr => write!( f, "Shr"),
-            ChildOp::Sub => write!( f, "Sub"),
-            ChildOp::Div => write!( f, "Div"),
-            ChildOp::Pow => write!( f, "Pow"),
-            ChildOp::None => write!( f, "None"),
+            BinOp::Sum => write!( f, "+"),
+            BinOp::Prod => write!( f, "*"),
+            BinOp::Less => write!( f, "<"),
+            BinOp::Bor => write!( f, "|"),
+            BinOp::Shl => write!( f, "<<"),
+            BinOp::Shr => write!( f, "Shr"),
+            BinOp::Sub => write!( f, "Sub"),
+            BinOp::Div => write!( f, "Div"),
+            BinOp::Pow => write!( f, "Pow"),
+            BinOp::None => write!( f, "None"),
         }
     }
 }
@@ -88,7 +97,7 @@ impl< 'a> INode< 'a> for U32
     fn	_At( &self, _idx: U32) -> &DynINode< 'a> { panic!("Leaf") }
     fn	Value( &self) -> Option< WorkPtr< 'a>> { None }
     fn	DocStr( &self) -> &'static str { "" }
-    fn	ChildOp( &self) -> ChildOp { ChildOp::None }
+    fn	BinOp( &self) -> BinOp { BinOp::None }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -102,7 +111,12 @@ pub trait INode< 'a>: Send + Sync
 
     fn	DocStr( &self) -> &'static str;
 
-    fn	ChildOp( &self) -> ChildOp;
+    fn	Attrib( &self) -> Option< &Attrib>
+    {
+        None
+    }
+
+    fn	BinOp( &self) -> BinOp;
 
     fn	IsLeaf( &self) -> bool
     {
@@ -134,8 +148,8 @@ pub fn FluxDynINode< 'b, 'a>( node: &'b DynINode< 'a>, field: &mut XField< 'b>)
             step += 1;
             true
         } else if step == 1 {
-            *key = "ChildOp".to_string();
-            *item = XField::U64( node.ChildOp() as u64);
+            *key = "BinOp".to_string();
+            *item = XField::U64( node.BinOp() as u64);
             step += 1;
             true
         } else if step == 2 {
@@ -307,8 +321,12 @@ macro_rules! NoduleTree {
                     Leaf {
                         _Val: $Arg,
                     },
-                    BiNode {
-                        _Op: $crate::stalks::ChildOp,
+                    UniNode {
+                        _Child: Box<$crate::stalks::DynINode<'a>>,
+                        _Attrib: $crate::stalks::node::Attrib,
+                    },
+                    BinNode {
+                        _Op: $crate::stalks::BinOp,
                         _Children: [Box<$crate::stalks::DynINode<'a>>; 2],
                     }
                 }
@@ -324,9 +342,9 @@ macro_rules! NoduleTree {
                             _Val: value,
                         }
                     }
-                    fn  NewBranch( op: $crate::stalks::ChildOp, left: Self, right: Self) -> Self
+                    fn  NewBranch( op: $crate::stalks::BinOp, left: Self, right: Self) -> Self
                     {
-                        [<$Arg Nodule>]::BiNode {
+                        [<$Arg Nodule>]::BinNode {
                             _Op: op,
                             _Children: [Box::new(left), Box::new(right)],
                         }
@@ -360,7 +378,18 @@ macro_rules! NoduleTree {
                                         false
                                     }
                                 },
-                                [<$Arg Nodule>]::BiNode { _Op, _Children, .. } => {
+                                [<$Arg Nodule>]::UniNode { _Child, .. } => {
+                                    if step == $crate::silo::U32( 0) {
+                                        *key = "Child".to_string();
+                                        let  	child = &**_Child;
+                                        $crate::stalks::node::FluxDynINode( child, item);
+                                        step.0 += 1;
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                },
+                                [<$Arg Nodule>]::BinNode { _Op, _Children, .. } => {
                                     if step == $crate::silo::U32( 0) {
                                         *key = "Op".to_string();
                                         *item = $crate::flux::xflux::XField::U64( *_Op as u64);
@@ -391,13 +420,21 @@ macro_rules! NoduleTree {
                 {
                     fn _Size(&self) -> $crate::silo::U32 {
                         match self {
-                            [<$Arg Nodule>]::BiNode { .. } => $crate::silo::U32(2),
+                            [<$Arg Nodule>]::UniNode { .. } => $crate::silo::U32(1),
+                            [<$Arg Nodule>]::BinNode { .. } => $crate::silo::U32(2),
                             _ => $crate::silo::U32(0),
                         }
                     }
                     fn _At(&self, idx: $crate::silo::U32) -> &$crate::stalks::DynINode<'a> {
                         match self {
-                            [<$Arg Nodule>]::BiNode { _Children, .. } => &*_Children[idx.0 as usize],
+                            [<$Arg Nodule>]::UniNode { _Child, .. } => {
+                                if idx.0 == 0 {
+                                    &**_Child
+                                } else {
+                                    panic!("At called on UniNode with index > 0")
+                                }
+                            }
+                            [<$Arg Nodule>]::BinNode { _Children, .. } => &*_Children[idx.0 as usize],
                             _ => panic!("At called on Leaf"),
                         }
                     }
@@ -433,11 +470,20 @@ macro_rules! NoduleTree {
                     }
 
 
-                    fn	ChildOp( &self) -> $crate::stalks::ChildOp
+                    fn	Attrib( &self) -> Option<& $crate::stalks::node::Attrib>
                     {
                         match self {
-                            [<$Arg Nodule>]::Leaf { .. } => $crate::stalks::ChildOp::None,
-                            [<$Arg Nodule>]::BiNode { _Op, .. } => *_Op,
+                            [<$Arg Nodule>]::UniNode { _Attrib, .. } => Some(_Attrib),
+                            _ => None,
+                        }
+                    }
+
+                    fn	BinOp( &self) -> $crate::stalks::BinOp
+                    {
+                        match self {
+                            [<$Arg Nodule>]::Leaf { .. } => $crate::stalks::BinOp::None,
+                            [<$Arg Nodule>]::UniNode { .. } => $crate::stalks::BinOp::None,
+                            [<$Arg Nodule>]::BinNode { _Op, .. } => *_Op,
                         }
                     }
                 }
@@ -532,14 +578,14 @@ macro_rules! NoduleTree {
     // @bg : binary — (group) OP rhs
     ( @bg [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $op:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => {
         $Node::NewBranch(
-            $crate::stalks::ChildOp::$op,
+            $crate::stalks::BinOp::$op,
             $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ),
             $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) )
     };
     // @bl : binary — leaf OP rhs
     ( @bl [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $op:ident, $l:expr, $( $r:tt)+ ) => {
         $Node::NewBranch(
-            $crate::stalks::ChildOp::$op,
+            $crate::stalks::BinOp::$op,
             $crate::stalks::node::IntoNodule::< $Arg, $Node >::IntoNodule( $l ),
             $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) )
     };

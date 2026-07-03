@@ -1,5 +1,5 @@
 use	crate::silo::U32;
-use	crate::stalks::{ ChildOp, DynINode, INode, WorkPtr };
+use	crate::stalks::{ BinOp, DynINode, INode, WorkPtr };
 use	crate::flux::{ IXFluxable, xflux::XField };
 use	std::fmt;
 use	crate::segue::{ Charset, IGrammar, Parser };
@@ -133,7 +133,7 @@ impl< 'a> INode< 'a> for Shard
         Some( self)
     }
     fn	DocStr( &self) -> &'static str { "" }
-    fn	ChildOp( &self) -> ChildOp { ChildOp::None }
+    fn	BinOp( &self) -> BinOp { BinOp::None }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
