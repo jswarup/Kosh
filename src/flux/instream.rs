@@ -21,29 +21,47 @@ pub struct InStream< 'a, R: Read = io::Empty>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> InStream< 'a, io::Empty>
+impl< 'a> From< Arr< 'a, U8>> for InStream< 'a, io::Empty>
 {
-    pub fn	FromArr( arr: Arr< 'a, U8>) -> Self
+    fn from( arr: Arr< 'a, U8>) -> Self
     {
         Self {
             _Source: InSource::Fixed( arr),
             _Marker: U32( 0),
         }
     }
+}
 
-    //-----------------------------------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	FromStr( strVal: &'a str) -> Self
+impl< 'a> From< &'a str> for InStream< 'a, io::Empty>
+{
+    fn from( strVal: &'a str) -> Self
     {
-        Self::FromArr( Arr::from( strVal))
+        Self::from( Arr::from( strVal))
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, R: Read> InStream< 'a, R>
+impl< 'a> InStream< 'a, io::Empty>
 {
-    pub fn	New( inner: R) -> Self
+    pub fn	FromStr( strVal: &'a str) -> Self
+    {
+        Self::from( strVal)
+    }
+
+    pub fn	FromArr( arr: Arr< 'a, U8>) -> Self
+    {
+        Self::from( arr)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, R: Read> From< R> for InStream< 'a, R>
+{
+    fn from( inner: R) -> Self
     {
         Self {
             _Source: InSource::Streaming( inner, Buff::NewEmpty()),
@@ -54,17 +72,49 @@ impl< 'a, R: Read> InStream< 'a, R>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a> TryFrom< &Path> for InStream< 'a, fs::File>
+{
+    type Error = io::Error;
+    fn try_from( path: &Path) -> io::Result< Self>
+    {
+        let  	file = fs::File::open( path)?;
+        Ok( Self::from( file))
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a> TryFrom< &str> for InStream< 'a, fs::File>
+{
+    type Error = io::Error;
+    fn try_from( path: &str) -> io::Result< Self>
+    {
+        let  	file = fs::File::open( path)?;
+        Ok( Self::from( file))
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl< 'a> InStream< 'a, fs::File>
 {
     pub fn	FromFile< P: AsRef< Path>>( path: P) -> io::Result< Self>
     {
-        let  	file = fs::File::open( path)?;
-        Ok( Self::New( file))
+        Self::try_from( path.as_ref())
+    }
+
+    pub fn	FromPath( path: &Path) -> io::Result< Self>
+    {
+        Self::try_from( path)
     }
 
     pub fn	FromFileHandle( file: fs::File) -> io::Result< Self>
     {
-        Ok( Self::New( file))
+        Ok( Self::from( file))
     }
 }
 
@@ -74,7 +124,7 @@ impl< 'a> InStream< 'a, io::Stdin>
 {
     pub fn	FromStdin() -> io::Result< Self>
     {
-        Ok( Self::New( io::stdin()))
+        Ok( Self::from( io::stdin()))
     }
 }
 

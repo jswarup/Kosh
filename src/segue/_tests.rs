@@ -40,7 +40,7 @@ fn	TestParserBasic()
 {
 
     let     str = "hello parser";
-    let  	mut stream = InStream::FromStr( &str);
+    let  	mut stream = InStream::FromStr( str);
     let  	mut parser = Parser::New( &mut stream);
 
     {
@@ -74,7 +74,7 @@ fn	TestBacktrackingParser()
     // Test alternative 1 success
     {
         let  	data = "abcd";
-        let  	mut stream = InStream::FromStr( &data);
+        let  	mut stream = InStream::FromStr( data);
         let  	mut parser = Parser::New( &mut stream);
         let  	tree = crate::ShardTree!( ( "ab" < "cd" ) | ( "a" < "bc" ));
         let  	dynNode: &DynINode<'_> = &tree;
@@ -84,7 +84,7 @@ fn	TestBacktrackingParser()
     // Test alternative 2 success with backtracking
     {
         let  	data = "abc";
-        let  	mut stream = InStream::FromStr( &data);
+        let  	mut stream = InStream::FromStr( data);
         let  	mut parser = Parser::New( &mut stream);
         let  	tree = crate::ShardTree!( ( "ab" < "cd" ) | ( "a" < "bc" ));
         let  	dynNode: &DynINode<'_> = &tree;

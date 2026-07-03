@@ -37,7 +37,7 @@ fn	TestJsonOutStream()
 fn	TestInStream()
 {
     let  	data = "abc";
-    let  	mut stream = InStream::FromStr( &data);
+    let  	mut stream = InStream::FromStr( data);
     assert_eq!( stream.Curr(), U8( b'a'));
     assert!( stream.Next());
     assert_eq!( stream.Curr(), U8( b'b'));
@@ -72,3 +72,5 @@ fn	TestInStreamFromFile()
     assert_eq!( stream.Curr(), U8( b'e'));
     fs::remove_file( path).unwrap();
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
