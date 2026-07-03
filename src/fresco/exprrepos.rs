@@ -208,7 +208,7 @@ impl ExprRepos
             ExprEntry::Empty => panic!( "Empty ExprEntry"),
         }
     }
-    
+
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	VarNameAt( &self, vInd: U32) -> &str
@@ -239,7 +239,7 @@ impl ExprRepos
                 if curOp != ChildOp::None {
                     opStk.Push( ( curOp, exprStk.Size()));
                     return;
-                } 
+                }
                 let  	term = curNode.AsAny().unwrap().downcast_ref::<Term>().unwrap();
                 let  	exprId = match term {
                     Term::String( s) => self.VarCreate( s.clone(), false),
@@ -248,15 +248,15 @@ impl ExprRepos
                 exprStk.Push( exprId);
                 return;
             }
-            if curOp == ChildOp::None { 
-                return; 
+            if curOp == ChildOp::None {
+                return;
             }
             let  	mut opCtx = ( ChildOp::None, 0.into());
-            opStk.Pop( &mut opCtx); 
+            opStk.Pop( &mut opCtx);
 
             let  	parentOp = if opStk.Size() != 0 { opStk.Arr().Last().0 } else { ChildOp::None };
-            if parentOp == curOp { 
-                return; 
+            if parentOp == curOp {
+                return;
             }
 
             let  	arr = exprStk.Arr().Subset( opCtx.1, exprStk.Size() - opCtx.1);
@@ -271,8 +271,8 @@ impl ExprRepos
                 _ => panic!( "Unsupported ChildOp in PostTermTree: {:?}", curOp),
             };
             exprStk.Push( exprId);
-        }); 
-        
+        });
+
         if exprStk.Size() == 0 {
             0.into()
         } else {

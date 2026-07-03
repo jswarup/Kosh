@@ -4,7 +4,7 @@ use	std::fs;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-struct Point 
+struct Point
 {
     _X : f64,
     _Y :f64,
@@ -12,14 +12,14 @@ struct Point
 
 crate::ImplIXFluxable!( Point, _X, _Y);
 
-#[test] 
+#[test]
 fn	TestJsonOutStream()
 {
     let  	prices = crate::Buff![ 12.34_f32, 56.78, 90.12, 34.56, 78.90 ];
     let  	arr = prices.Arr();
-    
+
     let     pt = Point{ _X: 10.0, _Y: 30.3};
-    
+
     let  	mut output = String::new();
     {
         let  	mut jsonStream = JsonOutStream::New( &mut output, true);
@@ -27,7 +27,7 @@ fn	TestJsonOutStream()
         jsonStream.KeyField( "point", XField::Fluxable( &pt));
         jsonStream.KeyField( "prices", XField::Fluxable( &arr));
     }
-    
+
     fs::write( "a.json", output).unwrap();
 }
 

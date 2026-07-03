@@ -117,38 +117,38 @@ fn	TestChoreTree()
     });
     let  	c = crate::Chore!( "C", |_m| {
         print!( "{} ", "C");
-    }); 
+    });
     let  	d = crate::Chore!( "D", |_m| {
         print!( "{} ", "D");
-    }); 
- 
+    });
+
     let  	e = crate::Chore!( "E", |_m| {
         print!( "{} ", "E");
-    }); 
- 
+    });
+
     let  	f = crate::Chore!( "F", |_m| {
         print!( "{} ", "F");
-    }); 
- 
+    });
+
     let  	g = crate::Chore!( "G", |_m| {
         print!( "{} ", "G");
-    }); 
- 
+    });
+
     let  	h = crate::Chore!( "H", |_m| {
         print!( "{} ", "H");
-    }); 
- 
+    });
+
     let  	i = crate::Chore!( "i", |_m| {
         print!( "{} ", "I");
-    }); 
- 
+    });
+
     let  	j = crate::Chore!( "J", |_m| {
         print!( "{} ", "J");
-    }); 
-    
+    });
+
     let  	choreTree= crate::ChoreTree!( ((( ( a < b ) | ( c <  d)) < e) | ( ( f | g) < h)  | i) < j);
     //let  	choreTree= crate::ChoreTree!( ((( ( aChore | bChore ) < gChore))));
-    
+
     let  	mut jsonStr = String::new();
     {
         let  	mut jsonOutStream = JsonOutStream::New( &mut jsonStr, true);
@@ -156,16 +156,16 @@ fn	TestChoreTree()
     }
     fs::write( "a.json", jsonStr).unwrap();
 
-    
-    let  	atelier = Atelier::New( U32( 4));
-    let  	mainMaestro = atelier.MainMaestro(); 
 
-    // Note: Calling DoWork manually in DiveDf consumes the job, which causes 
+    let  	atelier = Atelier::New( U32( 4));
+    let  	mainMaestro = atelier.MainMaestro();
+
+    // Note: Calling DoWork manually in DiveDf consumes the job, which causes
     // use-after-free panics when DoLaunch actually runs them asynchronously.
-     
+
     mainMaestro.PostChoreTree(  &choreTree);
     atelier.DoLaunch();
-    
+
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -180,8 +180,8 @@ fn	TestDoQSortWorkStealing()
     let  	mainMaestro = atelier.MainMaestro();
     mainMaestro.PostJob( quickSorter.IntoWorkPtr());
     atelier.DoLaunch();
-    assert!( arr.SortSanity( |a, b| { a > b })); 
-    println!( "{} ", arr);  
+    assert!( arr.SortSanity( |a, b| { a > b }));
+    println!( "{} ", arr);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -193,8 +193,8 @@ fn	TestDoQSortSequential()
     let  	quickSorter = buff.Arr().QuickSorter( |a, b| a > b);
     let  	worker = Worker::New();
     worker.PostJob( quickSorter.IntoWorkPtr());
-    assert!( buff.Arr().SortSanity( |a, b| { a > b })); 
-    println!( "{} ", buff.Arr());  
+    assert!( buff.Arr().SortSanity( |a, b| { a > b }));
+    println!( "{} ", buff.Arr());
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

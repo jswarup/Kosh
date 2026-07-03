@@ -255,7 +255,7 @@ impl< T> Buff< T>
         let  	addSize = slice.len();
         let  	newSize = oldSize + addSize;
         let  	isZst = size_of::< T>() == 0;
-        
+
         if isZst {
             self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), newSize);
             return;
@@ -264,20 +264,20 @@ impl< T> Buff< T>
         unsafe {
             let  	oldLayout = Layout::array::< T>( oldSize).unwrap();
             let  	newLayout = Layout::array::< T>( newSize).unwrap();
-            
+
             let  	rawPtr = if oldSize == 0 {
                 alloc( newLayout)
             } else {
                 realloc( self._Ptr.cast::< u8>().as_ptr(), oldLayout, newLayout.size())
             };
-            
+
             if rawPtr.is_null() {
                 handle_alloc_error( newLayout);
             }
-            
+
             let  	rawPtrT = rawPtr as *mut T;
             copy_nonoverlapping( slice.as_ptr(), rawPtrT.add( oldSize), addSize);
-            
+
             let  	nonNullPtr = NonNull::new_unchecked( rawPtrT);
             self._Ptr = NonNull::slice_from_raw_parts( nonNullPtr, newSize);
         }

@@ -12,7 +12,7 @@ use	crate::silo::Arr;
 #[derive( Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr( transparent)]
 pub struct U8( pub u8);
-impl U8 
+impl U8
 {
     pub const _X: Self = U8( u8::MAX);
     pub const _0: Self = U8( 0u8);
@@ -24,7 +24,7 @@ impl U8
 #[derive( Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr( transparent)]
 pub struct U32( pub u32);
-impl U32 
+impl U32
 {
     pub const _X: Self = U32( u32::MAX);
     pub const _0: Self = U32( 0u32);
@@ -37,7 +37,7 @@ impl U32
 #[derive( Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr( transparent)]
 pub struct U16( pub u16);
-impl U16 
+impl U16
 {
     pub const _X: Self = U16( u16::MAX);
     pub const _0: Self = U16( 0u16);
@@ -49,7 +49,7 @@ impl U16
 #[derive( Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr( transparent)]
 pub struct U64( pub u64);
-impl U64 
+impl U64
 {
     pub const _X: Self = U64( u64::MAX);
     pub const _0: Self = U64( 0u64);
@@ -199,7 +199,7 @@ macro_rules! ImplUIntTraits {
                 $type( a.fetch_add( val.0, order))
             }
             #[inline]
-            fn	CompareExchange( 
+            fn	CompareExchange(
                 a: &Self::AtomicType,
                 current: Self,
                 newVal: Self,

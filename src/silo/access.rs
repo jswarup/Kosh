@@ -20,15 +20,15 @@ pub trait IAccess< 'a, T: 'a + ?Sized> {
     fn	First( &self) -> &'a T
     {
         return self.At( 0);
-    } 
-    
+    }
+
     //-----------------------------------------------------------------------------------------------------------------------------
 
     fn	Last( &self) -> &'a T
     {
         return self.At( self.Size() -1);
     }
-    
+
     //-----------------------------------------------------------------------------------------------------------------------------
 
     fn	USeg( &self) -> USeg
@@ -41,16 +41,16 @@ pub trait IAccess< 'a, T: 'a + ?Sized> {
     fn	Span< F>( &self, mut f: F) -> bool
     where
         F: FnMut( &T) -> bool,
-    { 
+    {
         self.USeg().Span( |k| f( self.At( k)))
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	Traverse< F>( &self, mut f: F) 
+    fn	Traverse< F>( &self, mut f: F)
     where
         F: FnMut( &T),
-    { 
+    {
         self.USeg().Traverse( |k| f( self.At( k)))
     }
 

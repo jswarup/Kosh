@@ -49,7 +49,7 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
     fn	Swap< I: Into< U32>, J: Into< U32>>( &self, i: I, j: J)
     {
         unsafe {
-            swap( 
+            swap(
                 self.Ptr().cast_mut().add( i.into().AsUsize()),
                 self.Ptr().cast_mut().add( j.into().AsUsize()),
             );
@@ -58,7 +58,7 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	SwapFrom< S: Into< U32>, D: Into< U32>>( 
+    fn	SwapFrom< S: Into< U32>, D: Into< U32>>(
         &self,
         dstStart: D,
         src: &Arr< '_, T>,
@@ -68,7 +68,7 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
         T: Copy,
     {
         unsafe {
-            swap_nonoverlapping( 
+            swap_nonoverlapping(
                 src.Ptr().cast_mut().add( srcStart.into().AsUsize()),
                 self.Ptr().cast_mut().add( dstStart.into().AsUsize()),
                 count.AsUsize(),
@@ -81,7 +81,7 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
     fn	LSnip< C: Into< U32>>( &self, count: C) -> Arr< 'a, T>
     {
         let  	cnt = count.into();
-        Arr::New( 
+        Arr::New(
             unsafe { NonNull::new_unchecked(self.Ptr().cast_mut().add( cnt.AsU32() as usize)) },
             self.Size() - cnt,
         )
@@ -98,7 +98,7 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
     //-----------------------------------------------------------------------------------------------------------------------------
 
     fn	Subset< F: Into< U32>, Sz: Into< U32>>( &self, first: F, sz:  Sz) -> Arr< 'a, T>
-    { 
+    {
         Arr::New( unsafe { NonNull::new_unchecked(self.Ptr().cast_mut().add( first.into().AsU32() as usize)) }, sz.into())
     }
 
@@ -115,21 +115,21 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
             let  	swapFn = move |i, j| arr.Swap( i, j);
             arr.USeg().DoQSort( worker, lessFn, swapFn);
         }
-    } 
- 
-    //-----------------------------------------------------------------------------------------------------------------------------
-    
-    fn	DoIndexSetup( &self)
-    where
-        T: From< usize> + Clone,
-    { 
-        self.USeg().Traverse( |i: U32| {
-            self.SetAt( i, &T::from( i.AsUsize()));
-        }); 
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
- 
+
+    fn	DoIndexSetup( &self)
+    where
+        T: From< usize> + Clone,
+    {
+        self.USeg().Traverse( |i: U32| {
+            self.SetAt( i, &T::from( i.AsUsize()));
+        });
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -287,7 +287,7 @@ impl< 'a, T> From< &'a [T]> for Arr< 'a, T>
     fn	from( slice: &'a [T]) -> Self
     {
         unsafe {
-            Arr::New( 
+            Arr::New(
                 NonNull::new_unchecked( slice.as_ptr() as *mut T),
                 slice.len(),
             )

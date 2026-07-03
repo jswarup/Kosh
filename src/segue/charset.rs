@@ -583,12 +583,12 @@ impl BitAndAssign for Charset
         self.IntersectWith( &rhs);
     }
 }
- 
+
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl IXFluxable for Charset
 {
-    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>) 
+    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>)
     {
         let  	s = self.ToString();
         *field = XField::String( s);

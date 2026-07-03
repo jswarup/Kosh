@@ -93,7 +93,7 @@ impl< 'a> Maestro< 'a>
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	ConstructEnqueArr( &self, succId: U16, buff: Buff< U16>, docStr: &'static str) -> U16
-    { 
+    {
         self.ConstructJob( succId, move |worker: &DynIWorker< '_>| {
             let  	maestro = Maestro::FromWorker( worker);
             let  	arr = buff.Arr();
@@ -169,10 +169,10 @@ impl< 'a> Maestro< 'a>
     pub fn	SetCurSuccId< K: Into< U16>>( &self, val: K)
     {
         self._CurSuccId.Store( val, Ordering::Release);
-    } 
+    }
 
     //-----------------------------------------------------------------------------------------------------------------------------
- 
+
     pub fn	PostChoreTree( &self, node: &DynINode< 'a>)
     {
         let  	tailStash = Stash::<U16>::New( U32( 1024), 0, U16( 0));
@@ -190,26 +190,26 @@ impl< 'a> Maestro< 'a>
                 if curOp != ChildOp::None {
                     opStk.Push( ( curOp, arrowStk.Size()));
                     return;
-                } 
+                }
                 let  	jobId = self.ConstructJob( U16( 0), curNode.Value().unwrap(), curNode.DocStr());
                 arrowStk.Push( (jobId, USeg::New( tailStk.Size(), 1)));
                 tailStk.Push( jobId);
                 return;
             }
-            if curOp == ChildOp::None { 
-                return; 
+            if curOp == ChildOp::None {
+                return;
             }
             let  	mut opCtx = ( ChildOp::None, U32( 0));
-            opStk.Pop( &mut opCtx); 
+            opStk.Pop( &mut opCtx);
 
             let  	parentOp = if opStk.Size() != 0 { opStk.Arr().Last().0 } else { ChildOp::None };
-            if parentOp == curOp { 
-                return; 
+            if parentOp == curOp {
+                return;
             }
 
             let  	arr = arrowStk.Arr().Subset( opCtx.1, arrowStk.Size() - opCtx.1);
             arrowStk.SetSize( opCtx.1);
-            if curOp == ChildOp::Less { 
+            if curOp == ChildOp::Less {
                 USeg::New( 0, arr.Size() -1).Traverse( |i| {
                     let  	nextHead = arr.At( i +1).0;
                     arr.At( i).1.Traverse( |k| {
@@ -218,7 +218,7 @@ impl< 'a> Maestro< 'a>
                 });
                 arrowStk.Push( ( arr.First().0, arr.Last().1));
             }
-            if curOp == ChildOp::Bor { 
+            if curOp == ChildOp::Bor {
                 let  	mut headsBuff = Buff::<U16>::NewEmpty();
                 let  	tailStart = tailStk.Size();
                 arr.USeg().Traverse( |i| {
@@ -229,7 +229,7 @@ impl< 'a> Maestro< 'a>
                 let  	enqId = self.ConstructEnqueArr( U16( 0), headsBuff.clone(), "EnqPar");
                 arrowStk.Push( (enqId, USeg::New( tailStart, tailStk.Size() - tailStart)));
             }
-        }); 
+        });
         arrowStk.Arr().Traverse( |arrow| {
             arrow.1.Traverse( |k| {
                 self.Atelier().SetSucc( *tailStk.Arr().At( k), succId);

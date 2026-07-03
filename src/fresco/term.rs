@@ -6,8 +6,8 @@ use	crate::stalks::{ DynIWorker, IWork };
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Clone, Debug)]
-pub enum Term {  
-    String( String), 
+pub enum Term {
+    String( String),
     Real( f64),
 }
 
@@ -31,11 +31,11 @@ impl IXFluxable for Term
         let  	term = self;
         *field = XField::Obj( Box::new( move |key, item| {
             if step == 0 {
-                match term {  
+                match term {
                     Term::String( s) => {
                         *key = "String".to_string();
                         *item = XField::Str( s);
-                    } 
+                    }
                     Term::Real( v) => {
                         *key = "Real".to_string();
                         *item = XField::F64( *v);
@@ -70,7 +70,7 @@ impl IWork for Term
 {
     fn	DoWork( &mut self, _worker: &DynIWorker< '_>)
     {
-        match self { 
+        match self {
             Self::String( s) => print!( "{} ", s),
             Self::Real( v) => print!( "{} ", v),
         }
@@ -155,12 +155,12 @@ impl< 'a> INode< 'a> for Term
 macro_rules! TermTree {
     // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
     ( @feature_STAR   $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_STAR   $( $args)* ) };
-    ( @feature_PLUS   $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_PLUS   $( $args)* ) }; 
-    ( @feature_MINUS  $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_MINUS  $( $args)* ) }; 
-    ( @feature_DIV    $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_DIV    $( $args)* ) }; 
-    ( @feature_POW    $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_POW    $( $args)* ) }; 
-    ( @feature_NEW    $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_NEW    $( $args)* ) }; 
-    
+    ( @feature_PLUS   $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_PLUS   $( $args)* ) };
+    ( @feature_MINUS  $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_MINUS  $( $args)* ) };
+    ( @feature_DIV    $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_DIV    $( $args)* ) };
+    ( @feature_POW    $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_POW    $( $args)* ) };
+    ( @feature_NEW    $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_NEW    $( $args)* ) };
+
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
     ( @ $( $inner:tt )+ ) => {
         $crate::BiNodeTree!( @ $( $inner )+ )

@@ -1,9 +1,9 @@
 //-- xflux.rs -----------------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ Arr, U16, U32, U64, U8 };
- 
+
 //---------------------------------------------------------------------------------------------------------------------------------
 use	crate::silo::IAccess;
- 
+
 pub enum XField< 'a>
 {
     Str( &'a str),
@@ -18,25 +18,25 @@ pub enum XField< 'a>
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
- 
-pub trait IXFlux 
+
+pub trait IXFlux
 {
-    fn	Field( &mut self, field: XField); 
+    fn	Field( &mut self, field: XField);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
- 
+
 pub trait IXFluxable
 {
     fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
- 
+
 #[macro_export]
-macro_rules! ImplIXFluxable 
+macro_rules! ImplIXFluxable
 {
-    ( $struct_name:ident $( , $field:ident )* ) => 
+    ( $struct_name:ident $( , $field:ident )* ) =>
     {
         impl $crate::flux::IXFluxable for $struct_name
         {

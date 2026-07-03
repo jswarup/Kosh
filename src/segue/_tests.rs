@@ -7,7 +7,7 @@ use	crate::{
     stalks::DynINode,
 };
 
- 
+
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
@@ -31,21 +31,21 @@ fn	TestCharsetOps()
     println!( "cs4 (NonWord): {}", cs4);
     let  	cs5 = Charset::Digit().Negative();
     println!( "cs5 (NonDigit): {}", cs5);
-} 
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
- 
+
 #[test]
 fn	TestParserBasic()
 {
-    
-    let     str = "hello parser"; 
+
+    let     str = "hello parser";
     let  	mut stream = InStream::FromStr( &str);
     let  	mut parser = Parser::New( &mut stream);
-    
+
     {
         let  	mut forge = Forge { _Parent: None, _Parser: &mut parser };
-        
+
         // Test char grammar
         assert!( 'h'.Match( forge.Parser()));
         assert!( 'e'.Match( forge.Parser()));
@@ -57,10 +57,10 @@ fn	TestParserBasic()
         let  	mut cs = Charset::New();
         cs.SetChar( b'p');
         assert!( cs.Match( forge.Parser()));
-        
+
         // Test failing match (should rollback)
         assert!( !"fail".Match( forge.Parser()));
-        
+
         // Test continuing after fail
         assert!( "arser".Match( forge.Parser()));
     }
@@ -73,7 +73,7 @@ fn	TestBacktrackingParser()
 {
     // Test alternative 1 success
     {
-        let  	data = "abcd"; 
+        let  	data = "abcd";
         let  	mut stream = InStream::FromStr( &data);
         let  	mut parser = Parser::New( &mut stream);
         let  	tree = crate::ShardTree!( ( "ab" < "cd" ) | ( "a" < "bc" ));
@@ -83,7 +83,7 @@ fn	TestBacktrackingParser()
 
     // Test alternative 2 success with backtracking
     {
-        let  	data = "abc"; 
+        let  	data = "abc";
         let  	mut stream = InStream::FromStr( &data);
         let  	mut parser = Parser::New( &mut stream);
         let  	tree = crate::ShardTree!( ( "ab" < "cd" ) | ( "a" < "bc" ));
@@ -102,16 +102,16 @@ fn	TestBacktrackingParser()
             _Parser: &mut parser,
             _Shard: None,
         };
-        
+
         let  	parentPtr = &forge as *const LeafForge<'_, '_, '_, _> as *const dyn IForge<'_, '_, '_, _>;
         let  	parent = unsafe { &*parentPtr };
-        
+
         let  	childForge = LeafForge {
             _Parent: Some( parent),
             _Parser: &mut dummyParser,
             _Shard: None,
         };
-        
+
         let  	mut found = false;
         let  	ancestor = childForge.FindAncestor( &mut |_a| {
             found = true;

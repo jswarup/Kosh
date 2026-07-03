@@ -52,11 +52,11 @@ impl< W: fmt::Write> JsonOutStream< W>
     {
         let  	_ = self.LineFeed();
         self._EntryFlg = true;
-        
+
         if !key.is_empty() {
             let  	_ = write!( self._OStr, "\"{}\": ", key);
         }
-        
+
         self.Field( value);
         true
     }
@@ -66,13 +66,13 @@ impl< W: fmt::Write> JsonOutStream< W>
 
 impl< W: fmt::Write> IXFlux for JsonOutStream< W>
 {
-    fn	Field( &mut self, field: XField) 
-    { 
+    fn	Field( &mut self, field: XField)
+    {
         match field {
             XField::Str( s) => { let  	_ = write!( self._OStr, "\"{}\"", s); },
             XField::String( s) => { let  	_ = write!( self._OStr, "\"{}\"", s); },
             XField::U64( n) => { let  	_ = write!( self._OStr, "{}", n); },
-            XField::F64( f) => { 
+            XField::F64( f) => {
                 if f.is_nan() || f.is_infinite() {
                     let  	_ = write!( self._OStr, "\"null\"");
                 } else {
@@ -87,7 +87,7 @@ impl< W: fmt::Write> IXFlux for JsonOutStream< W>
                 let  	mut item = XField::Null;
                 while arr_func( &mut item) {
                     if !is_first {
-                        let  	_ = write!( self._OStr, ", "); 
+                        let  	_ = write!( self._OStr, ", ");
                     }
                     let  	mut next_item = XField::Null;
                     swap( &mut item, &mut next_item);
@@ -99,7 +99,7 @@ impl< W: fmt::Write> IXFlux for JsonOutStream< W>
             XField::Obj( mut obj_func) => {
                 let  	_ = write!( self._OStr, "{{");
                 self._Depth += 1;
-                
+
                 self._EntryFlg = false;
 
                 let  	mut key = String::new();

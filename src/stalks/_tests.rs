@@ -188,7 +188,7 @@ fn	TestBiNodeTreeBoxetAction()
 
     let  	triggered = Arc::new(AtomicBool::new(false));
     let  	triggered_clone = triggered.clone();
-    
+
     // Construct tree with a boxet leaf and an action suffix
     let  	root = ShardBiNodeTree!( [ "a" ] [ move || {
         triggered_clone.store(true, Ordering::SeqCst);

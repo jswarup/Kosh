@@ -94,14 +94,14 @@ impl< 'a, R: Read> InStream< 'a, R>
                 let  	chunkSize = cmp::max( 4096, required - currSize);
                 let  	mut chunk = vec![ 0u8; chunkSize];
                 let  	readBytes = inner.read( &mut chunk)?;
-                
+
                 if readBytes == 0 {
                     break;
                 }
-                
+
                 let  	newSize = currSize + readBytes;
                 buff.Resize( U32( newSize as u32), |_| U8::_0);
-                
+
                 let  	slice = (&mut **buff).Cast::<&mut [u8]>();
                 slice[currSize..newSize].copy_from_slice( &chunk[..readBytes]);
                 currSize = newSize;
@@ -167,7 +167,7 @@ impl< 'a, R: Read> InStream< 'a, R>
             stash.ReadFrom( inner);
             *buff = stash.BuffOut();
         }
-        
+
         let  	sz = self.Size();
         let  	arr = match &self._Source {
             InSource::Fixed( arr) => *arr,

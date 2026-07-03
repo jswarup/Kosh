@@ -11,7 +11,7 @@ use	crate::flux::{ JsonOutStream, XField };
 fn	TestExprRepos()
 {
     let  	mut repos = ExprRepos::NewEmpty();
-    
+
     assert_eq!( repos.SzVar(), U32( 0));
     assert_eq!( repos.Size(), U32( 0));
 
@@ -33,15 +33,15 @@ fn	TestTermTree()
     let  	x = 'x';
     let  	y = 'y';
     let  	z = "z";
-    let  	nodeTree = crate::TermTree!(  x + y *( z + "a" +"b" +"x" +"d")); 
-    
+    let  	nodeTree = crate::TermTree!(  x + y *( z + "a" +"b" +"x" +"d"));
+
     let  	mut output = String::new();
     {
         let  	mut jsonStream = JsonOutStream::New( &mut output, true);
         jsonStream.KeyField( "nodeTree", XField::Fluxable( &nodeTree));
     }
     println!( "{}", output);
-    
+
     let         mut exprRepos = ExprRepos::NewEmpty();
     exprRepos.PostTermTree( &nodeTree);
 

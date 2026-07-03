@@ -75,20 +75,20 @@ impl< 'a, W: Write> Write for OutStream< 'a, W>
             OutSource::Fixed( arr) => {
                 let  	pos = self._Marker.AsUsize();
                 let  	currSize = arr.Size().AsUsize();
-                
+
                 if pos >= currSize {
                     return Ok( 0);
                 }
-                
+
                 let  	available = currSize - pos;
                 let  	len = cmp::min( available, amt);
-                
+
                 unsafe {
                     let  	ptr = arr.Ptr().cast_mut().cast::<u8>();
                     let  	slice = from_raw_parts_mut( ptr, currSize);
                     slice[pos..pos + len].copy_from_slice( &buf[..len]);
                 }
-                
+
                 self._Marker += U32( len as u32);
                 Ok( len)
             },

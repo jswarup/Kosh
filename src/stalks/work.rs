@@ -76,7 +76,7 @@ impl< 'a> WorkPtr< 'a>
     }
 
     pub fn	DoWork( &self, worker: &DynIWorker< '_>)
-    { 
+    {
         (self.func)( self.data, worker);
     }
 
