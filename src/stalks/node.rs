@@ -5,28 +5,11 @@ use	crate::silo::{ Arr, IAccess, Stash, U32 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive(Default)]
-pub enum Attrib
-{
-    Inv( bool),
-    Repeat( U32, U32),
-    #[default]
-    Empty,
-}
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl fmt::Display for Attrib
-{
-    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
-    {
-        match self {
-            Attrib::Inv( value) => write!( f, "Inv({})", value),
-            Attrib::Repeat( left, right) => write!( f, "Repeat({}, {})", left.0, right.0),
-            Attrib::Empty => f.write_str( "Empty"),
-        }
-    }
-}
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -105,7 +88,6 @@ impl< 'a> INode< 'a> for U32
     fn	_At( &self, _idx: U32) -> &DynINode< 'a> { panic!("Leaf") }
     fn	Value( &self) -> Option< WorkPtr< 'a>> { None }
     fn	DocStr( &self) -> &'static str { "" }
-    fn	Attrib( &self) -> Option< &Attrib> { None }
     fn	ChildOp( &self) -> ChildOp { ChildOp::None }
 }
 
@@ -119,8 +101,6 @@ pub trait INode< 'a>: Send + Sync
     fn	Value( &self) -> Option< WorkPtr< 'a>>;
 
     fn	DocStr( &self) -> &'static str;
-
-    fn	Attrib( &self) -> Option< &Attrib>;
 
     fn	ChildOp( &self) -> ChildOp;
 
@@ -282,15 +262,7 @@ pub trait IntoBiNode< T, N: Sized>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub fn	clone_attrib( attr: &Option< Attrib>) -> Option< Attrib>
-{
-    match attr {
-        None => None,
-        Some( Attrib::Inv( val)) => Some( Attrib::Inv( *val)),
-        Some( Attrib::Repeat( l, r)) => Some( Attrib::Repeat( *l, *r)),
-        Some( Attrib::Empty) => Some( Attrib::Empty),
-    }
-}
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -334,12 +306,10 @@ macro_rules! BiNodeTree {
                 enum [<$Arg BiNode>]<'a> {
                     Leaf {
                         _Val: $Arg,
-                        _Attrib: Option< $crate::stalks::Attrib >,
                     },
                     Node {
                         _Op: $crate::stalks::ChildOp,
                         _Children: [Box<$crate::stalks::DynINode<'a>>; 2],
-                        _Attrib: Option< $crate::stalks::Attrib >,
                     }
                 }
                 unsafe impl<'a> Send for [<$Arg BiNode>]<'a> {}
@@ -352,7 +322,6 @@ macro_rules! BiNodeTree {
                     {
                         [<$Arg BiNode>]::Leaf {
                             _Val: value,
-                            _Attrib: None,
                         }
                     }
                     fn  NewBranch( op: $crate::stalks::ChildOp, left: Self, right: Self) -> Self
@@ -360,24 +329,7 @@ macro_rules! BiNodeTree {
                         [<$Arg BiNode>]::Node {
                             _Op: op,
                             _Children: [Box::new(left), Box::new(right)],
-                            _Attrib: None,
                         }
-                    }
-                    fn	SetAttrib( &mut self, attr: Option< $crate::stalks::Attrib >)
-                    {
-                        match self {
-                            [<$Arg BiNode>]::Leaf { _Attrib, .. } => {
-                                *_Attrib = attr;
-                            }
-                            [<$Arg BiNode>]::Node { _Attrib, .. } => {
-                                *_Attrib = attr;
-                            }
-                        }
-                    }
-                    fn	WithAttrib( mut self, attr: Option< $crate::stalks::Attrib >) -> Self
-                    {
-                        self.SetAttrib( attr);
-                        self
                     }
                 }
 
@@ -480,13 +432,7 @@ macro_rules! BiNodeTree {
                         }
                     }
 
-                    fn	Attrib( &self) -> Option<& $crate::stalks::Attrib>
-                    {
-                        match self {
-                            [<$Arg BiNode>]::Leaf { _Attrib, .. } => _Attrib.as_ref(),
-                            [<$Arg BiNode>]::Node { _Attrib, .. } => _Attrib.as_ref(),
-                        }
-                    }
+
                     fn	ChildOp( &self) -> $crate::stalks::ChildOp
                     {
                         match self {

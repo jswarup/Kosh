@@ -1,7 +1,7 @@
 //-- _tests.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::{ segue::Charset, silo::{ Arr, U8 }, stalks::WorkPtr };
 use	crate::silo::{ Buff, IAccess, U32 };
-use	crate::stalks::{ Atm, INode, DynINode, Attrib, TraversalEvent as NodeTraversalEvent, BiNodeTree, ChildOp };
+use	crate::stalks::{ Atm, INode, DynINode, TraversalEvent as NodeTraversalEvent, BiNodeTree, ChildOp };
 use	crate::segue::shard::Shard;
 use	std::sync::Arc;
 use	std::sync::atomic::{ AtomicBool, Ordering };
@@ -42,7 +42,6 @@ fn	TestINodeTraverse()
     {
         id: u32,
         children: &'a [&'a DynINode< 'a>],
-        attrib: Option< Attrib>,
     }
     unsafe impl< 'a> Send for TestNode< 'a>
     { }
@@ -51,10 +50,6 @@ fn	TestINodeTraverse()
 
     impl< 'a> INode< 'a> for TestNode< 'a>
     {
-        fn	Attrib( &self) -> Option< &Attrib>
-        {
-            self.attrib.as_ref()
-        }
         fn	_Size( &self) -> U32
         {
             U32( self.children.len() as u32)
@@ -77,16 +72,12 @@ fn	TestINodeTraverse()
         }
     }
 
-    let  	leaf1 = TestNode { id: 1, children: &[], attrib: Some( Attrib::default()) };
-    let  	leaf2 = TestNode { id: 2, children: &[], attrib: None };
+    let  	leaf1 = TestNode { id: 1, children: &[] };
+    let  	leaf2 = TestNode { id: 2, children: &[] };
     let  	root = TestNode {
         id: 0,
         children: &[ &leaf1 as &DynINode< '_>, &leaf2 as &DynINode< '_>],
-        attrib: None,
     };
-
-    assert!( matches!( leaf1.Attrib(), Some( Attrib::Empty)));
-    assert!( leaf2.Attrib().is_none());
 
     let  	mut visited = Buff::NewEmpty();
     root.TraverseDF( &mut |node, event| {

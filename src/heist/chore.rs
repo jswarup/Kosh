@@ -1,5 +1,5 @@
 //-- chore.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::{ flux::{ IXFluxable, xflux::XField }, silo::U32, stalks::{ Attrib, ChildOp, DynINode, INode, IntoWorkPtr, WorkPtr } };
+use	crate::{ flux::{ IXFluxable, xflux::XField }, silo::U32, stalks::{ ChildOp, DynINode, INode, IntoWorkPtr, WorkPtr } };
 use	std::fmt;
 use	crate::stalks::{ DynIWorker, IWork };
 
@@ -123,7 +123,6 @@ impl< 'a> INode< 'a> for Chore
         Some( IntoWorkPtr::IntoWorkPtr( *self))
     }
     fn	DocStr( &self) -> &'static str { self._DocStr }
-    fn	Attrib( &self) -> Option< &Attrib> { None }
     fn	ChildOp( &self) -> ChildOp { ChildOp::None }
 }
 
