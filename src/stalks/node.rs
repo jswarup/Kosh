@@ -307,7 +307,7 @@ macro_rules! NoduleTree {
                     Leaf {
                         _Val: $Arg,
                     },
-                    Node {
+                    BiNode {
                         _Op: $crate::stalks::ChildOp,
                         _Children: [Box<$crate::stalks::DynINode<'a>>; 2],
                     }
@@ -326,7 +326,7 @@ macro_rules! NoduleTree {
                     }
                     fn  NewBranch( op: $crate::stalks::ChildOp, left: Self, right: Self) -> Self
                     {
-                        [<$Arg Nodule>]::Node {
+                        [<$Arg Nodule>]::BiNode {
                             _Op: op,
                             _Children: [Box::new(left), Box::new(right)],
                         }
@@ -360,7 +360,7 @@ macro_rules! NoduleTree {
                                         false
                                     }
                                 },
-                                [<$Arg Nodule>]::Node { _Op, _Children, .. } => {
+                                [<$Arg Nodule>]::BiNode { _Op, _Children, .. } => {
                                     if step == $crate::silo::U32( 0) {
                                         *key = "Op".to_string();
                                         *item = $crate::flux::xflux::XField::U64( *_Op as u64);
@@ -391,13 +391,13 @@ macro_rules! NoduleTree {
                 {
                     fn _Size(&self) -> $crate::silo::U32 {
                         match self {
-                            [<$Arg Nodule>]::Node { .. } => $crate::silo::U32(2),
+                            [<$Arg Nodule>]::BiNode { .. } => $crate::silo::U32(2),
                             _ => $crate::silo::U32(0),
                         }
                     }
                     fn _At(&self, idx: $crate::silo::U32) -> &$crate::stalks::DynINode<'a> {
                         match self {
-                            [<$Arg Nodule>]::Node { _Children, .. } => &*_Children[idx.0 as usize],
+                            [<$Arg Nodule>]::BiNode { _Children, .. } => &*_Children[idx.0 as usize],
                             _ => panic!("At called on Leaf"),
                         }
                     }
@@ -437,7 +437,7 @@ macro_rules! NoduleTree {
                     {
                         match self {
                             [<$Arg Nodule>]::Leaf { .. } => $crate::stalks::ChildOp::None,
-                            [<$Arg Nodule>]::Node { _Op, .. } => *_Op,
+                            [<$Arg Nodule>]::BiNode { _Op, .. } => *_Op,
                         }
                     }
                 }
