@@ -307,19 +307,22 @@ impl< 'a, T> From< &'a mut [T]> for Arr< 'a, T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> Arr< 'a, U8>
+impl< 'a> From< &'a str> for Arr< 'a, U8>
 {
-    pub fn	FromStr( strVal: &'a str) -> Self
+    fn	from( strVal: &'a str) -> Self
     {
         unsafe { Arr::New( NonNull::new_unchecked( strVal.as_ptr() as *mut U8), strVal.len()) }
     }
+}
 
-    //-----------------------------------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Str( &self) -> &'a str
+impl< 'a> From< Arr< 'a, U8>> for &'a str
+{
+    fn	from( arr: Arr< 'a, U8>) -> &'a str
     {
         unsafe {
-            let  	sliceU8: &'a [U8] = from_raw_parts( self._Ptr.as_ptr(), self._Size.AsUsize());
+            let  	sliceU8: &'a [U8] = from_raw_parts( arr._Ptr.as_ptr(), arr._Size.AsUsize());
             let  	bytes: &'a [u8] = sliceU8.Cast();
             from_utf8_unchecked( bytes)
         }

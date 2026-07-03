@@ -35,7 +35,7 @@ impl< 'a> InStream< 'a, io::Empty>
 
     pub fn	FromStr( strVal: &'a str) -> Self
     {
-        Self::FromArr( Arr::FromStr( strVal))
+        Self::FromArr( Arr::from( strVal))
     }
 }
 

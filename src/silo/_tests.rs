@@ -121,7 +121,7 @@ fn	TestArrFromArr()
     // Test Arr<'a, U8>::Str()
     let  	arrU8Data = [U8( b'h'), U8( b'e'), U8( b'l'), U8( b'l'), U8( b'o')];
     let  	arrU8 = Arr::from( &arrU8Data);
-    assert_eq!( arrU8.Str(), "hello");
+    assert_eq!( <&str>::from( arrU8), "hello");
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
