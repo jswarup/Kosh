@@ -164,44 +164,6 @@ fn	TestBiNodeTree()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[test]
-fn	TestBiNodeTreeBoxetAction()
-{
-    macro_rules! ShardBiNodeTree {
-        ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $s:literal ) => {
-            $crate::stalks::node::IntoBiNode::< Shard, $Node >::IntoBiNode( Shard::NewCharset( Charset::FromBoxet( U8::FromArr( Arr::from( $s.as_bytes() ) ) ) ) )
-        };
-        ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, | $( $body:tt)+ ) => { $crate::BiNodeTree!( @feature_NEW [ $( $cb)* ], $Arg, $Node, | $( $body)+ ) };
-        ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, || $( $body:tt)+ ) => { $crate::BiNodeTree!( @feature_NEW [ $( $cb)* ], $Arg, $Node, || $( $body)+ ) };
-        ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move | $( $body:tt)+ ) => { $crate::BiNodeTree!( @feature_NEW [ $( $cb)* ], $Arg, $Node, move | $( $body)+ ) };
-        ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move || $( $body:tt)+ ) => { $crate::BiNodeTree!( @feature_NEW [ $( $cb)* ], $Arg, $Node, move || $( $body)+ ) };
-        ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal [ $( $closure:tt )* ] ) => { $crate::BiNodeTree!( @feature_ACTION [ $( $cb)* ], $Arg, $Node, $l [ $( $closure )* ] ) };
-        ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $expr:tt)+ ) [ $( $closure:tt )* ] ) => { $crate::BiNodeTree!( @feature_ACTION [ $( $cb)* ], $Arg, $Node, ( $( $expr )+ ) [ $( $closure )* ] ) };
-        ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] [ $( $closure:tt )* ] ) => { $crate::BiNodeTree!( @feature_ACTION [ $( $cb)* ], $Arg, $Node, [ $s ] [ $( $closure )* ] ) };
-        ( @ $( $inner:tt )+ ) => {
-            $crate::BiNodeTree!( @ $( $inner )+ )
-        };
-        ( $( $inner:tt)+ ) => {
-            $crate::BiNodeTree!( @define [ ShardBiNodeTree ], Shard, $( $inner)+ )
-        };
-    }
 
-    let  	triggered = Arc::new(AtomicBool::new(false));
-    let  	triggered_clone = triggered.clone();
-
-    // Construct tree with a boxet leaf and an action suffix
-    let  	root = ShardBiNodeTree!( [ "a" ] [ move || {
-        triggered_clone.store(true, Ordering::SeqCst);
-    } ] );
-
-    // Check that we can get the action attribute
-    if let  	Some(Attrib::Action(action)) = root.Attrib() {
-        action();
-    } else {
-        panic!("Action attribute not found on root node!");
-    }
-
-    assert!(triggered.load(Ordering::SeqCst));
-}
 
 //---------------------------------------------------------------------------------------------------------------------------------
