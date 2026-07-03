@@ -1,7 +1,7 @@
 //-- _tests.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::{ segue::Charset, silo::{ Arr, U8 }, stalks::WorkPtr };
 use	crate::silo::{ Buff, IAccess, U32 };
-use	crate::stalks::{ Atm, INode, DynINode, TraversalEvent as NodeTraversalEvent, BiNodeTree, ChildOp };
+use	crate::stalks::{ Atm, INode, DynINode, TraversalEvent as NodeTraversalEvent, NoduleTree, ChildOp };
 use	crate::segue::shard::Shard;
 use	std::sync::Arc;
 use	std::sync::atomic::{ AtomicBool, Ordering };
@@ -132,9 +132,9 @@ fn	TestINodeTraverse()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestBiNodeTree()
+fn	TestNoduleTree()
 {
-    let  	root = BiNodeTree!( U32, 10 < ( 20 | 30 ));
+    let  	root = NoduleTree!( U32, 10 < ( 20 | 30 ));
 
     assert_eq!( root.ChildOp(), ChildOp::Less);
 

@@ -98,17 +98,17 @@ macro_rules! Chore {
 #[macro_export]
 macro_rules! ChoreTree {
     // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
-    ( @feature_LT  $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_LT  $( $args)* ) };
-    ( @feature_BOR $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_BOR $( $args)* ) };
-    ( @feature_NEW $( $args:tt)* ) => { $crate::BiNodeTree!( @feature_NEW $( $args)* ) };
+    ( @feature_LT  $( $args:tt)* ) => { $crate::NoduleTree!( @feature_LT  $( $args)* ) };
+    ( @feature_BOR $( $args:tt)* ) => { $crate::NoduleTree!( @feature_BOR $( $args)* ) };
+    ( @feature_NEW $( $args:tt)* ) => { $crate::NoduleTree!( @feature_NEW $( $args)* ) };
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
-    // Forward unhandled internal callbacks to BiNodeTree (e.g., disallowed features like @feature_SHL)
+    // Forward unhandled internal callbacks to NoduleTree (e.g., disallowed features like @feature_SHL)
     ( @ $( $inner:tt )+ ) => {
-        $crate::BiNodeTree!( @ $( $inner )+ )
+        $crate::NoduleTree!( @ $( $inner )+ )
     };
     // Top-level entry (user code)
     ( $( $inner:tt)+ )  => {
-        $crate::BiNodeTree!( @define [ $crate::ChoreTree ], Chore, $( $inner)+ )
+        $crate::NoduleTree!( @define [ $crate::ChoreTree ], Chore, $( $inner)+ )
     };
 }
 

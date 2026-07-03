@@ -5,7 +5,7 @@ pub mod atm;
 pub mod node;
 pub mod work;
 pub use	atm::{ Atm, Spinlock };
-pub use	node::{ ChildOp, INode, DynINode, TraversalEvent, IntoBiNode, BiNodeTree, FluxDynINode };
+pub use	node::{ ChildOp, INode, DynINode, TraversalEvent, IntoNodule, NoduleTree, FluxDynINode };
 pub use	work::{ DynIWorker, IWork, IWorker, IntoWorkPtr, JobFn, WorkFn, WorkPtr, WorkSlot, Worker };
 
 //---------------------------------------------------------------------------------------------------------------------------------

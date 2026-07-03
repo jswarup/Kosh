@@ -255,9 +255,9 @@ impl< 'b, 'a> NodeProbe< 'b, 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IntoBiNode< T, N: Sized>
+pub trait IntoNodule< T, N: Sized>
 {
-    fn	IntoBiNode( self) -> N;
+    fn	IntoNodule( self) -> N;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -267,26 +267,26 @@ pub trait IntoBiNode< T, N: Sized>
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[macro_export]
-macro_rules! BiNodeTree {
-    // ---- FEATURE OPT-INS FOR BiNodeTree ITSELF ----------------------------------------------------------------------------
-    ( @feature_PLUS [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BiNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Sum, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_PLUS [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BiNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Sum, $l, $( $r)+ ) };
-    ( @feature_STAR [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BiNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Prod, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_STAR [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BiNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Prod, $l, $( $r)+ ) };
-    ( @feature_SHL [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BiNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Shl, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_SHL [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BiNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Shl, $l, $( $r)+ ) };
-    ( @feature_SHR [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BiNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Shr, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_SHR [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BiNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Shr, $l, $( $r)+ ) };
-    ( @feature_MINUS [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BiNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Sub, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_MINUS [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BiNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Sub, $l, $( $r)+ ) };
-    ( @feature_DIV [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BiNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Div, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_DIV [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BiNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Div, $l, $( $r)+ ) };
-    ( @feature_POW [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BiNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Pow, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_POW [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BiNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Pow, $l, $( $r)+ ) };
-    ( @feature_LT  [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BiNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Less, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_LT  [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BiNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Less, $l, $( $r)+ ) };
-    ( @feature_BOR [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::BiNodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Bor, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_BOR [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::BiNodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Bor, $l, $( $r)+ ) };
+macro_rules! NoduleTree {
+    // ---- FEATURE OPT-INS FOR NoduleTree ITSELF ----------------------------------------------------------------------------
+    ( @feature_PLUS [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NoduleTree!( @bg [ $( $cb)* ], $Arg, $Node, Sum, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_PLUS [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NoduleTree!( @bl [ $( $cb)* ], $Arg, $Node, Sum, $l, $( $r)+ ) };
+    ( @feature_STAR [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NoduleTree!( @bg [ $( $cb)* ], $Arg, $Node, Prod, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_STAR [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NoduleTree!( @bl [ $( $cb)* ], $Arg, $Node, Prod, $l, $( $r)+ ) };
+    ( @feature_SHL [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NoduleTree!( @bg [ $( $cb)* ], $Arg, $Node, Shl, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_SHL [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NoduleTree!( @bl [ $( $cb)* ], $Arg, $Node, Shl, $l, $( $r)+ ) };
+    ( @feature_SHR [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NoduleTree!( @bg [ $( $cb)* ], $Arg, $Node, Shr, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_SHR [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NoduleTree!( @bl [ $( $cb)* ], $Arg, $Node, Shr, $l, $( $r)+ ) };
+    ( @feature_MINUS [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NoduleTree!( @bg [ $( $cb)* ], $Arg, $Node, Sub, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_MINUS [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NoduleTree!( @bl [ $( $cb)* ], $Arg, $Node, Sub, $l, $( $r)+ ) };
+    ( @feature_DIV [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NoduleTree!( @bg [ $( $cb)* ], $Arg, $Node, Div, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_DIV [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NoduleTree!( @bl [ $( $cb)* ], $Arg, $Node, Div, $l, $( $r)+ ) };
+    ( @feature_POW [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NoduleTree!( @bg [ $( $cb)* ], $Arg, $Node, Pow, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_POW [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NoduleTree!( @bl [ $( $cb)* ], $Arg, $Node, Pow, $l, $( $r)+ ) };
+    ( @feature_LT  [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NoduleTree!( @bg [ $( $cb)* ], $Arg, $Node, Less, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_LT  [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NoduleTree!( @bl [ $( $cb)* ], $Arg, $Node, Less, $l, $( $r)+ ) };
+    ( @feature_BOR [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NoduleTree!( @bg [ $( $cb)* ], $Arg, $Node, Bor, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_BOR [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NoduleTree!( @bl [ $( $cb)* ], $Arg, $Node, Bor, $l, $( $r)+ ) };
     ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, | $( $body:tt)+ ) => { $Node::New( $Arg::New( | $( $body)+ ) ) };
     ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, || $( $body:tt)+ ) => { $Node::New( $Arg::New( || $( $body)+ ) ) };
     ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move | $( $body:tt)+ ) => { $Node::New( $Arg::New( move | $( $body)+ ) ) };
@@ -303,7 +303,7 @@ macro_rules! BiNodeTree {
         {
             paste::paste! {
                 #[allow(dead_code)]
-                enum [<$Arg BiNode>]<'a> {
+                enum [<$Arg Nodule>]<'a> {
                     Leaf {
                         _Val: $Arg,
                     },
@@ -312,45 +312,45 @@ macro_rules! BiNodeTree {
                         _Children: [Box<$crate::stalks::DynINode<'a>>; 2],
                     }
                 }
-                unsafe impl<'a> Send for [<$Arg BiNode>]<'a> {}
-                unsafe impl<'a> Sync for [<$Arg BiNode>]<'a> {}
+                unsafe impl<'a> Send for [<$Arg Nodule>]<'a> {}
+                unsafe impl<'a> Sync for [<$Arg Nodule>]<'a> {}
 
                 #[allow(dead_code)]
-                impl<'a> [<$Arg BiNode>]<'a>
+                impl<'a> [<$Arg Nodule>]<'a>
                 {
                     fn	New( value: $Arg) -> Self
                     {
-                        [<$Arg BiNode>]::Leaf {
+                        [<$Arg Nodule>]::Leaf {
                             _Val: value,
                         }
                     }
                     fn  NewBranch( op: $crate::stalks::ChildOp, left: Self, right: Self) -> Self
                     {
-                        [<$Arg BiNode>]::Node {
+                        [<$Arg Nodule>]::Node {
                             _Op: op,
                             _Children: [Box::new(left), Box::new(right)],
                         }
                     }
                 }
 
-                impl<'a> [<$Arg BiNode>]<'a> {
+                impl<'a> [<$Arg Nodule>]<'a> {
                     #[allow(dead_code)]
                     pub fn Children<'b>(&'b self) -> $crate::stalks::node::NodeChildren<'b, 'a> {
                         $crate::stalks::node::NodeChildren(self)
                     }
                 }
 
-                impl<'a> $crate::flux::IXFluxable for [<$Arg BiNode>]<'a>
+                impl<'a> $crate::flux::IXFluxable for [<$Arg Nodule>]<'a>
                 where
                     $Arg: $crate::flux::IXFluxable + 'a,
                 {
                     fn	ToXFlux< 'b>( &'b self, field: &mut $crate::flux::xflux::XField< 'b>)
                     {
                         let  	mut step = $crate::silo::U32( 0);
-                        let  	node: &'b [<$Arg BiNode>]<'a> = self;
+                        let  	node: &'b [<$Arg Nodule>]<'a> = self;
                         *field = $crate::flux::xflux::XField::Obj( Box::new( move |key, item| {
                             match node {
-                                [<$Arg BiNode>]::Leaf { _Val, .. } => {
+                                [<$Arg Nodule>]::Leaf { _Val, .. } => {
                                     if step == $crate::silo::U32( 0) {
                                         *key = "Leaf".to_string();
                                         *item = $crate::flux::xflux::XField::Fluxable( _Val);
@@ -360,7 +360,7 @@ macro_rules! BiNodeTree {
                                         false
                                     }
                                 },
-                                [<$Arg BiNode>]::Node { _Op, _Children, .. } => {
+                                [<$Arg Nodule>]::Node { _Op, _Children, .. } => {
                                     if step == $crate::silo::U32( 0) {
                                         *key = "Op".to_string();
                                         *item = $crate::flux::xflux::XField::U64( *_Op as u64);
@@ -387,17 +387,17 @@ macro_rules! BiNodeTree {
                     }
                 }
 
-                impl<'a> $crate::stalks::INode<'a> for [<$Arg BiNode>]<'a>
+                impl<'a> $crate::stalks::INode<'a> for [<$Arg Nodule>]<'a>
                 {
                     fn _Size(&self) -> $crate::silo::U32 {
                         match self {
-                            [<$Arg BiNode>]::Node { .. } => $crate::silo::U32(2),
+                            [<$Arg Nodule>]::Node { .. } => $crate::silo::U32(2),
                             _ => $crate::silo::U32(0),
                         }
                     }
                     fn _At(&self, idx: $crate::silo::U32) -> &$crate::stalks::DynINode<'a> {
                         match self {
-                            [<$Arg BiNode>]::Node { _Children, .. } => &*_Children[idx.0 as usize],
+                            [<$Arg Nodule>]::Node { _Children, .. } => &*_Children[idx.0 as usize],
                             _ => panic!("At called on Leaf"),
                         }
                     }
@@ -405,7 +405,7 @@ macro_rules! BiNodeTree {
                     fn	Value( &self) -> Option< $crate::stalks::WorkPtr< 'a>>
                     {
                         match self {
-                            [<$Arg BiNode>]::Leaf { _Val, .. } => {
+                            [<$Arg Nodule>]::Leaf { _Val, .. } => {
                                 _Val.Value()
                             }
                             _ => None
@@ -415,7 +415,7 @@ macro_rules! BiNodeTree {
                     fn	AsAny( &self) -> Option<&dyn core::any::Any>
                     {
                         match self {
-                            [<$Arg BiNode>]::Leaf { _Val, .. } => {
+                            [<$Arg Nodule>]::Leaf { _Val, .. } => {
                                 _Val.AsAny()
                             }
                             _ => None
@@ -425,7 +425,7 @@ macro_rules! BiNodeTree {
                     fn	DocStr( &self) -> &'static str
                     {
                         match self {
-                            [<$Arg BiNode>]::Leaf { _Val, .. } => {
+                            [<$Arg Nodule>]::Leaf { _Val, .. } => {
                                 _Val.DocStr()
                             }
                             _ => ""
@@ -436,28 +436,28 @@ macro_rules! BiNodeTree {
                     fn	ChildOp( &self) -> $crate::stalks::ChildOp
                     {
                         match self {
-                            [<$Arg BiNode>]::Leaf { .. } => $crate::stalks::ChildOp::None,
-                            [<$Arg BiNode>]::Node { _Op, .. } => *_Op,
+                            [<$Arg Nodule>]::Leaf { .. } => $crate::stalks::ChildOp::None,
+                            [<$Arg Nodule>]::Node { _Op, .. } => *_Op,
                         }
                     }
                 }
-                impl<'a, I > $crate::stalks::node::IntoBiNode< $Arg, [<$Arg BiNode>]<'a>> for I
+                impl<'a, I > $crate::stalks::node::IntoNodule< $Arg, [<$Arg Nodule>]<'a>> for I
                 where
                     I: Into< $Arg >,
                 {
-                    fn	IntoBiNode( self) -> [<$Arg BiNode>]<'a>
+                    fn	IntoNodule( self) -> [<$Arg Nodule>]<'a>
                     {
-                        [<$Arg BiNode>]::New( self.into() )
+                        [<$Arg Nodule>]::New( self.into() )
                     }
                 }
-                impl<'a> $crate::stalks::node::IntoBiNode< $Arg, [<$Arg BiNode>]<'a>> for [<$Arg BiNode>]<'a>
+                impl<'a> $crate::stalks::node::IntoNodule< $Arg, [<$Arg Nodule>]<'a>> for [<$Arg Nodule>]<'a>
                 {
-                    fn	IntoBiNode( self) -> [<$Arg BiNode>]<'a>
+                    fn	IntoNodule( self) -> [<$Arg Nodule>]<'a>
                     {
                         self
                     }
                 }
-                $crate::BiNodeTree!( @cb [ $( $cb)* ], $Arg, [<$Arg BiNode>], $( $inner )+ )
+                $crate::NoduleTree!( @cb [ $( $cb)* ], $Arg, [<$Arg Nodule>], $( $inner )+ )
             }
         }
     };
@@ -465,7 +465,7 @@ macro_rules! BiNodeTree {
     //-----------------------------------------------------------------------------------------------------------------------------
 
     ( $Arg:ident, $( $inner:tt )+ ) => {
-        $crate::BiNodeTree!( @define [ $crate::BiNodeTree ], $Arg, $( $inner )+ )
+        $crate::NoduleTree!( @define [ $crate::NoduleTree ], $Arg, $( $inner )+ )
     };
 
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $inner:tt)+ ) ) => { $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $inner)+ ) };
@@ -525,7 +525,7 @@ macro_rules! BiNodeTree {
 
     // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $leaf:expr ) => {
-        $crate::stalks::node::IntoBiNode::< $Arg, $Node >::IntoBiNode( $leaf )
+        $crate::stalks::node::IntoNodule::< $Arg, $Node >::IntoNodule( $leaf )
     };
 
     // ---- Internal helpers ----------------------------------------------------------------------------------------------------
@@ -540,7 +540,7 @@ macro_rules! BiNodeTree {
     ( @bl [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $op:ident, $l:expr, $( $r:tt)+ ) => {
         $Node::NewBranch(
             $crate::stalks::ChildOp::$op,
-            $crate::stalks::node::IntoBiNode::< $Arg, $Node >::IntoBiNode( $l ),
+            $crate::stalks::node::IntoNodule::< $Arg, $Node >::IntoNodule( $l ),
             $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) )
     };
 
@@ -550,6 +550,6 @@ macro_rules! BiNodeTree {
 
 }
 
-pub use crate::BiNodeTree;
+pub use crate::NoduleTree;
 
 //-----------------------------------------------------------------------------------------------------------------------------
