@@ -309,6 +309,13 @@ impl< 'a, T> From< &'a mut [T]> for Arr< 'a, T>
 
 impl< 'a> Arr< 'a, U8>
 {
+    pub fn	FromStr( strVal: &'a str) -> Self
+    {
+        unsafe { Arr::New( NonNull::new_unchecked( strVal.as_ptr() as *mut U8), strVal.len()) }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	Str( &self) -> &'a str
     {
         unsafe {

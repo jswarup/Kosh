@@ -3,7 +3,7 @@
 use	crate::{
     flux::InStream,
     segue::{ Charset, shard::Shard, Parser, IGrammar, parser::{IForge, Forge, LeafForge} },
-    silo::{ U8, U32, Arr},
+    silo::{ U8, Arr},
     stalks::DynINode,
 };
 
@@ -39,9 +39,8 @@ fn	TestCharsetOps()
 fn	TestParserBasic()
 {
     
-    let  	data = [U8( b'h'), U8( b'e'), U8( b'l'), U8( b'l'), U8( b'o'), U8( b' '), U8( b'p'), U8( b'a'), U8( b'r'), U8( b's'), U8( b'e'), U8( b'r')];
-    let  	arr = Arr::from( &data[..]);
-    let  	mut stream = InStream::FromArr( arr);
+    let     str = "hello parser"; 
+    let  	mut stream = InStream::FromStr( &str);
     let  	mut parser = Parser::New( &mut stream);
     
     {
@@ -74,9 +73,8 @@ fn	TestBacktrackingParser()
 {
     // Test alternative 1 success
     {
-        let  	data = [U8( b'a'), U8( b'b'), U8( b'c'), U8( b'd')];
-        let  	arr = Arr::from( &data[..]);
-        let  	mut stream = InStream::FromArr( arr);
+        let  	data = "abcd"; 
+        let  	mut stream = InStream::FromStr( &data);
         let  	mut parser = Parser::New( &mut stream);
         let  	tree = crate::ShardTree!( ( "ab" < "cd" ) | ( "a" < "bc" ));
         let  	dynNode: &DynINode<'_> = &tree;
@@ -85,9 +83,8 @@ fn	TestBacktrackingParser()
 
     // Test alternative 2 success with backtracking
     {
-        let  	data = [U8( b'a'), U8( b'b'), U8( b'c')];
-        let  	arr = Arr::from( &data[..]);
-        let  	mut stream = InStream::FromArr( arr);
+        let  	data = "abc"; 
+        let  	mut stream = InStream::FromStr( &data);
         let  	mut parser = Parser::New( &mut stream);
         let  	tree = crate::ShardTree!( ( "ab" < "cd" ) | ( "a" < "bc" ));
         let  	dynNode: &DynINode<'_> = &tree;

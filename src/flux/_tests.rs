@@ -36,8 +36,8 @@ fn	TestJsonOutStream()
 #[test]
 fn	TestInStream()
 {
-    let  	data = [U8( b'a'), U8( b'b'), U8( b'c')];
-    let  	mut stream = InStream::FromArr( (&data).into());
+    let  	data = "abc";
+    let  	mut stream = InStream::FromStr( &data);
     assert_eq!( stream.Curr(), U8( b'a'));
     assert!( stream.Next());
     assert_eq!( stream.Curr(), U8( b'b'));
