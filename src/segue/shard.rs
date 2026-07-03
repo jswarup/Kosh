@@ -155,13 +155,13 @@ impl IGrammar for Shard
 #[macro_export]
 macro_rules! ShardTree {
     // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
-    ( @feature_STAR   $( $args:tt)* ) => { $crate::NoduleTree!( @feature_STAR   $( $args)* ) };
-    ( @feature_PLUS   $( $args:tt)* ) => { $crate::NoduleTree!( @feature_PLUS   $( $args)* ) };
+    ( @feature_STAR   $( $args:tt)* ) => { $crate::NodeTree!( @feature_STAR   $( $args)* ) };
+    ( @feature_PLUS   $( $args:tt)* ) => { $crate::NodeTree!( @feature_PLUS   $( $args)* ) };
 
-    ( @feature_LT     $( $args:tt)* ) => { $crate::NoduleTree!( @feature_LT     $( $args)* ) };
-    ( @feature_SHL    $( $args:tt)* ) => { $crate::NoduleTree!( @feature_SHL    $( $args)* ) };
-    ( @feature_BOR    $( $args:tt)* ) => { $crate::NoduleTree!( @feature_BOR    $( $args)* ) };
-    ( @feature_NEW    $( $args:tt)* ) => { $crate::NoduleTree!( @feature_NEW    $( $args)* ) };
+    ( @feature_LT     $( $args:tt)* ) => { $crate::NodeTree!( @feature_LT     $( $args)* ) };
+    ( @feature_SHL    $( $args:tt)* ) => { $crate::NodeTree!( @feature_SHL    $( $args)* ) };
+    ( @feature_BOR    $( $args:tt)* ) => { $crate::NodeTree!( @feature_BOR    $( $args)* ) };
+    ( @feature_NEW    $( $args:tt)* ) => { $crate::NodeTree!( @feature_NEW    $( $args)* ) };
 
     // ── Custom: Boxet stringification (overrides BudTree default) ─────────────────────────────────
     ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $s:literal ) => {
@@ -169,11 +169,11 @@ macro_rules! ShardTree {
     };
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
     ( @ $( $inner:tt )+ ) => {
-        $crate::NoduleTree!( @ $( $inner )+ )
+        $crate::NodeTree!( @ $( $inner )+ )
     };
     // Top-level entry (user code)
     ( $( $inner:tt)+ )  => {
-        $crate::NoduleTree!( @define [ $crate::ShardTree ], Shard, $( $inner)+ )
+        $crate::NodeTree!( @define [ $crate::ShardTree ], Shard, $( $inner)+ )
     };
 }
 

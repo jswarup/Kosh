@@ -28,4 +28,4 @@ After making changes, always verify them with:
 ## Commit
 Never commit without explicit directive.
 
-There are heavy macro usages throughout the codebase (e.g. `NoduleTree!`, `ImplUIntTraits!`), so be careful when editing macros as the custom formatting rules may not apply to DSL tokens inside macros.
+There are heavy macro usages throughout the codebase (e.g. `NodeTree!`, `ImplUIntTraits!`), so be careful when editing macros as the custom formatting rules may not apply to DSL tokens inside macros.

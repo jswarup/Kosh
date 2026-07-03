@@ -153,20 +153,20 @@ impl< 'a> INode< 'a> for Term
 #[macro_export]
 macro_rules! TermTree {
     // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
-    ( @feature_STAR   $( $args:tt)* ) => { $crate::NoduleTree!( @feature_STAR   $( $args)* ) };
-    ( @feature_PLUS   $( $args:tt)* ) => { $crate::NoduleTree!( @feature_PLUS   $( $args)* ) };
-    ( @feature_MINUS  $( $args:tt)* ) => { $crate::NoduleTree!( @feature_MINUS  $( $args)* ) };
-    ( @feature_DIV    $( $args:tt)* ) => { $crate::NoduleTree!( @feature_DIV    $( $args)* ) };
-    ( @feature_POW    $( $args:tt)* ) => { $crate::NoduleTree!( @feature_POW    $( $args)* ) };
-    ( @feature_NEW    $( $args:tt)* ) => { $crate::NoduleTree!( @feature_NEW    $( $args)* ) };
+    ( @feature_STAR   $( $args:tt)* ) => { $crate::NodeTree!( @feature_STAR   $( $args)* ) };
+    ( @feature_PLUS   $( $args:tt)* ) => { $crate::NodeTree!( @feature_PLUS   $( $args)* ) };
+    ( @feature_MINUS  $( $args:tt)* ) => { $crate::NodeTree!( @feature_MINUS  $( $args)* ) };
+    ( @feature_DIV    $( $args:tt)* ) => { $crate::NodeTree!( @feature_DIV    $( $args)* ) };
+    ( @feature_POW    $( $args:tt)* ) => { $crate::NodeTree!( @feature_POW    $( $args)* ) };
+    ( @feature_NEW    $( $args:tt)* ) => { $crate::NodeTree!( @feature_NEW    $( $args)* ) };
 
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
     ( @ $( $inner:tt )+ ) => {
-        $crate::NoduleTree!( @ $( $inner )+ )
+        $crate::NodeTree!( @ $( $inner )+ )
     };
     // Top-level entry (user code)
     ( $( $inner:tt)+ )  => {
-        $crate::NoduleTree!( @define [ $crate::TermTree ], Term, $( $inner)+ )
+        $crate::NodeTree!( @define [ $crate::TermTree ], Term, $( $inner)+ )
     };
 }
 
