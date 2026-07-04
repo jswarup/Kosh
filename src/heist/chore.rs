@@ -101,6 +101,7 @@ macro_rules! ChoreTree {
     ( @feature_LT  $( $args:tt)* ) => { $crate::NodeTree!( @feature_LT  $( $args)* ) };
     ( @feature_BOR $( $args:tt)* ) => { $crate::NodeTree!( @feature_BOR $( $args)* ) };
     ( @feature_NEW $( $args:tt)* ) => { $crate::NodeTree!( @feature_NEW $( $args)* ) };
+    ( @feature_PostBoxet $( $args:tt)* ) => { $crate::NodeTree!( @feature_PostBoxet $( $args)* ) };
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
     // Forward unhandled internal callbacks to NodeTree (e.g., disallowed features like @feature_SHL)
     ( @ $( $inner:tt )+ ) => {

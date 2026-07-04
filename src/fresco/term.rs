@@ -159,6 +159,7 @@ macro_rules! TermTree {
     ( @feature_DIV    $( $args:tt)* ) => { $crate::NodeTree!( @feature_DIV    $( $args)* ) };
     ( @feature_POW    $( $args:tt)* ) => { $crate::NodeTree!( @feature_POW    $( $args)* ) };
     ( @feature_NEW    $( $args:tt)* ) => { $crate::NodeTree!( @feature_NEW    $( $args)* ) };
+    ( @feature_PostBoxet $( $args:tt)* ) => { $crate::NodeTree!( @feature_PostBoxet $( $args)* ) };
 
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
     ( @ $( $inner:tt )+ ) => {

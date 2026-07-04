@@ -162,6 +162,7 @@ macro_rules! ShardTree {
     ( @feature_SHL    $( $args:tt)* ) => { $crate::NodeTree!( @feature_SHL    $( $args)* ) };
     ( @feature_BOR    $( $args:tt)* ) => { $crate::NodeTree!( @feature_BOR    $( $args)* ) };
     ( @feature_NEW    $( $args:tt)* ) => { $crate::NodeTree!( @feature_NEW    $( $args)* ) };
+    ( @feature_PostBoxet $( $args:tt)* ) => { $crate::NodeTree!( @feature_PostBoxet $( $args)* ) };
 
     // ── Custom: Boxet stringification (overrides BudTree default) ─────────────────────────────────
     ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $s:literal ) => {

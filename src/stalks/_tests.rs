@@ -155,6 +155,20 @@ fn	TestNoduleTree()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+#[test]
+fn	TestPostBoxet()
+{
+    let  	root = NodeTree!( U32, ( 10  + 20  ) [ | | {} ] );
 
+    assert_eq!( root.Children().Size(), U32(1));
+
+    let  	child = root.Children().At(U32(0));
+    assert_eq!( child.BinOp(), BinOp::Sum);
+    if let Some(crate::stalks::node::Attrib::Action(_)) = root.Attrib() {
+        // ok
+    } else {
+        panic!("Missing Action attrib");
+    }
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------

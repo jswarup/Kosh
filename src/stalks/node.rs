@@ -342,6 +342,13 @@ macro_rules! NodeTree {
                             _Val: value,
                         }
                     }
+                    fn  NewUniNode( attrib: $crate::stalks::node::Attrib, child: Self) -> Self
+                    {
+                        [<$Arg Nodule>]::UniNode {
+                            _Child: Box::new(child),
+                            _Attrib: attrib,
+                        }
+                    }
                     fn  NewBinNode( op: $crate::stalks::BinOp, left: Self, right: Self) -> Self
                     {
                         [<$Arg Nodule>]::BinNode {
@@ -569,6 +576,11 @@ macro_rules! NodeTree {
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move | $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, $Node, move | $( $body)+ ) };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move || $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, $Node, move || $( $body)+ ) };
 
+    // ── Postfix Boxet ───────────────────────────────────────────────────────────────────────────────
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) [ $( $body:tt)+ ] ) => { $( $cb)* !( @feature_PostBoxet [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), [ $( $body)+ ] ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident [ $( $body:tt)+ ] ) => { $( $cb)* !( @feature_PostBoxet [ $( $cb)* ], @bl $Arg, $Node, $l, [ $( $body)+ ] ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal [ $( $body:tt)+ ] ) => { $( $cb)* !( @feature_PostBoxet [ $( $cb)* ], @bl $Arg, $Node, $l, [ $( $body)+ ] ) };
+
     // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $leaf:expr ) => {
         $crate::stalks::node::IntoNodule::< $Arg, $Node >::IntoNodule( $leaf )
@@ -588,6 +600,18 @@ macro_rules! NodeTree {
             $crate::stalks::BinOp::$op,
             $crate::stalks::node::IntoNodule::< $Arg, $Node >::IntoNodule( $l ),
             $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) )
+    };
+    
+    // @feature_PostBoxet
+    ( @feature_PostBoxet [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), [ $( $body:tt)+ ] ) => {
+        $Node::NewUniNode(
+            $crate::stalks::node::Attrib::Action( Box::new( $( $body)+ ) ),
+            $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ) )
+    };
+    ( @feature_PostBoxet [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, [ $( $body:tt)+ ] ) => {
+        $Node::NewUniNode(
+            $crate::stalks::node::Attrib::Action( Box::new( $( $body)+ ) ),
+            $crate::stalks::node::IntoNodule::< $Arg, $Node >::IntoNodule( $l ) )
     };
 
     // ---- DEFAULT FALLBACK ERRORS FOR DISABLED FEATURES -------------------------------------------------------------
