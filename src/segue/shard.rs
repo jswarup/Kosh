@@ -133,6 +133,25 @@ impl IGrammar for Shard
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl crate::segue::parser::IForgeable for Shard {
+    fn Forge<'a, 'p, 's, R: std::io::Read + 'p>(
+        &'a self, 
+        parser: *mut Parser<'p, 's, R>
+    ) -> *mut (dyn crate::segue::parser::IForge<'p, 'p, 's, R> + 'p) 
+    where 's: 'p 
+    {
+        use crate::silo::cast::{IAllocRawExt, ICastExt};
+        let shardPtr = Some(self).Cast::<Option<&'static Shard>>();
+        crate::segue::parser::LeafForge {
+            _Parent: None,
+            _Parser: parser,
+            _Shard: shardPtr,
+        }.AllocRaw()
+    }
+}
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
 

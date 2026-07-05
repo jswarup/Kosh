@@ -6,7 +6,7 @@ use	crate::{
     flux::InStream,
     segue::Charset
 };
-use	crate::silo::{ U8, U32, Stash, IAccess, IArr, cast::{ ICastExt, IPtrExt, IAllocRawExt } };
+use	crate::silo::{ U8, U32, Stash, IAccess, IArr, cast::{ IPtrExt, IAllocRawExt } };
 use	crate::stalks::{ BinOp, DynINode, DynIWorker, IWork, IWorker, WorkPtr };
 use	crate::segue::shard::Shard;
 
@@ -82,6 +82,15 @@ macro_rules! ImplForgeBase {
 pub trait IGrammar
 {
     fn	Match< 'p, 's, R: Read>( &self, parser: &mut Parser<'p, 's, R>) -> bool;
+}
+
+pub trait IForgeable
+{
+    fn Forge<'a, 'p, 's, R: Read + 'p>(
+        &'a self, 
+        parser: *mut Parser<'p, 's, R>
+    ) -> *mut (dyn IForge<'p, 'p, 's, R> + 'p) 
+    where 's: 'p;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -164,7 +173,7 @@ where 's: 'p
     }
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ParseShardTree( &mut self, node: &DynINode< '_>) -> Option<*mut (dyn IForge<'p, 'p, 's, R> + 'p)>
+    pub fn	ParseTree<T: 'static + IForgeable>( &mut self, node: &DynINode< '_>) -> Option<*mut (dyn IForge<'p, 'p, 's, R> + 'p)>
     {
 
         let  selfPtr = self as *mut Parser<'p, 's, R>;
@@ -183,14 +192,8 @@ where 's: 'p
                 }
 
                 let  anyRef = curNode.AsAny().unwrap();
-                let  shard = anyRef.downcast_ref::<Shard>().unwrap();
-
-                let  shardPtr = Some(shard).Cast::<Option<&'static Shard>>();
-                let  forgePtr: *mut (dyn IForge<'p, 'p, 's, R> + 'p) = LeafForge {
-                    _Parent: None,
-                    _Parser: selfPtr,
-                    _Shard: shardPtr,
-                }.AllocRaw();
+                let  leaf = anyRef.downcast_ref::<T>().unwrap();
+                let  forgePtr: *mut (dyn IForge<'p, 'p, 's, R> + 'p) = leaf.Forge(selfPtr);
                 forgeStk.Push( Some( forgePtr));
                 return;
             }
@@ -464,7 +467,7 @@ impl<'a> IGrammar for DynINode<'a>
 {
     fn	Match< 'p, 's, R: Read>( &self, parser: &mut Parser<'p, 's, R>) -> bool
     {
-        let root_forge_ptr = parser.ParseShardTree(self);
+        let root_forge_ptr = parser.ParseTree::<Shard>(self);
         if let Some(forge_ptr) = root_forge_ptr {
             let root_forge = unsafe { &mut *forge_ptr };
             return root_forge.MatchNode();
