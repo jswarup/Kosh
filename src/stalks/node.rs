@@ -8,7 +8,7 @@ use	crate::silo::{ Arr, IAccess, Stash, U32 };
 pub enum Attrib
 {
     Repeat( crate::silo::USeg),
-    Action( Box< dyn Fn() + 'static>),
+    Action( Box< dyn crate::stalks::work::IWork + 'static>),
 }
 
 impl fmt::Display for Attrib
@@ -603,14 +603,24 @@ macro_rules! NodeTree {
     };
     
     // @feature_PostBoxet
-    ( @feature_PostBoxet [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), [ $( $body:tt)+ ] ) => {
+    ( @feature_PostBoxet [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), [ | $arg:ident | $( $body:tt)+ ] ) => {
         $Node::NewUniNode(
-            $crate::stalks::node::Attrib::Action( Box::new( $( $body)+ ) ),
+            $crate::stalks::node::Attrib::Action( Box::new( move | $arg: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ) ),
             $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ) )
     };
-    ( @feature_PostBoxet [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, [ $( $body:tt)+ ] ) => {
+    ( @feature_PostBoxet [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, [ | $arg:ident | $( $body:tt)+ ] ) => {
         $Node::NewUniNode(
-            $crate::stalks::node::Attrib::Action( Box::new( $( $body)+ ) ),
+            $crate::stalks::node::Attrib::Action( Box::new( move | $arg: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ) ),
+            $crate::stalks::node::IntoNodule::< $Arg, $Node >::IntoNodule( $l ) )
+    };
+    ( @feature_PostBoxet [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), [ || $( $body:tt)+ ] ) => {
+        $Node::NewUniNode(
+            $crate::stalks::node::Attrib::Action( Box::new( move | _: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ) ),
+            $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ) )
+    };
+    ( @feature_PostBoxet [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, [ || $( $body:tt)+ ] ) => {
+        $Node::NewUniNode(
+            $crate::stalks::node::Attrib::Action( Box::new( move | _: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ) ),
             $crate::stalks::node::IntoNodule::< $Arg, $Node >::IntoNodule( $l ) )
     };
 

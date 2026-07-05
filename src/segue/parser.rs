@@ -133,6 +133,23 @@ where 's: 'p
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+unsafe impl<'p, 's, R: Read + 'p> Send for Parser<'p, 's, R> {}
+unsafe impl<'p, 's, R: Read + 'p> Sync for Parser<'p, 's, R> {}
+
+impl<'p, 's, R: Read + 'p> crate::stalks::work::IWorker for Parser<'p, 's, R>
+where 's: 'p
+{
+    fn	PostJob( &self, job: crate::stalks::work::WorkPtr< '_>)
+    {
+        if !job.IsNull() {
+            ( job.func)( job.data, self);
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+
 impl<'p, 's, R: Read + 'p> Parser<'p, 's, R>
 where 's: 'p
 {
@@ -158,7 +175,7 @@ where 's: 'p
             let  curOp = curNode.BinOp();
 
             if enterFlg {
-                if curOp != BinOp::None {
+                if !curNode.IsLeaf() {
                     opStk.Push( ( curOp, forgeStk.Size()));
                     return;
                 }
@@ -175,16 +192,15 @@ where 's: 'p
                 forgeStk.Push( Some( forgePtr));
                 return;
             }
-            if curOp == BinOp::None {
+            if curNode.IsLeaf() {
                 return;
             }
             let  mut opCtx = ( BinOp::None, 0.into());
             opStk.Pop( &mut opCtx);
 
-            let  parentOp = if opStk.Size() != 0 { opStk.Arr().Last().0 } else { BinOp::None };
-            if parentOp == curOp {
-                return;
-            }
+            // Wait, we can't use parentOp to determine if we should skip, because UniNode has BinOp::None!
+            // Let's remove this optimization if it breaks UniNode.
+            // Actually, we must process every non-leaf node upon exit.
 
             let  arr = forgeStk.Arr().Subset( opCtx.1, forgeStk.Size() - opCtx.1);
             let mut children = crate::silo::Buff::NewEmpty();
@@ -195,12 +211,22 @@ where 's: 'p
             }
             forgeStk.SetSize( opCtx.1);
 
-            let  forgePtr: *mut (dyn IForge<'p, 'p, 's, R> + 'p) = CompositeForge {
-                _Parent: None,
-                _Parser: selfPtr,
-                _Children: children,
-                _Mode: curOp,
-            }.AllocRaw();
+            let forgePtr: *mut (dyn IForge<'p, 'p, 's, R> + 'p) = if let Some(crate::stalks::node::Attrib::Action(func)) = curNode.Attrib() {
+                // It's a UniNode Action
+                ActionForge {
+                    _Parent: None,
+                    _Parser: selfPtr,
+                    _Child: children[0],
+                    _Action: func.as_ref() as *const (dyn crate::stalks::work::IWork + 'static),
+                }.AllocRaw()
+            } else {
+                CompositeForge {
+                    _Parent: None,
+                    _Parser: selfPtr,
+                    _Children: children,
+                    _Mode: curOp,
+                }.AllocRaw()
+            };
 
             forgeStk.Push( Some( forgePtr));
         });
@@ -400,7 +426,35 @@ where 's: 'p
     }
 }
 
+pub struct ActionForge<'a, 'p, 's, R: Read + 'p = io::Empty>
+where 's: 'p
+{
+    pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
+    pub _Parser: *mut Parser<'p, 's, R>,
+    pub _Child: *mut (dyn IForge<'p, 'p, 's, R> + 'p),
+    pub _Action: *const (dyn crate::stalks::work::IWork + 'static),
+}
 
+impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for ActionForge<'a, 'p, 's, R>
+where 's: 'p
+{
+    ImplForgeBase!( ActionForge);
+
+    fn MatchNode(&mut self) -> bool {
+        let startMark = self.Parser().InStream().Marker();
+        let child_ref = unsafe { &mut *self._Child };
+        let matched = child_ref.MatchNode();
+        if matched {
+            let action = unsafe { &mut *(self._Action as *mut dyn crate::stalks::work::IWork) };
+            let parser_ref = unsafe { &mut *self._Parser };
+            action.DoWork(parser_ref as &crate::stalks::work::DynIWorker<'_>);
+            let endMark = self.Parser().InStream().Marker();
+            self.EmitDigest(startMark, endMark);
+            return true;
+        }
+        false
+    }
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -432,3 +486,4 @@ impl<'a, 'r> IGrammar for &'r DynINode<'a>
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+

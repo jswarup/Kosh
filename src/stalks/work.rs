@@ -6,6 +6,7 @@ pub trait IWork: Send + Sync
 {
     fn	DoWork( &mut self, worker: &DynIWorker< '_>);
 }
+
 impl< F> IWork for F
 where
     F: for< 'r> FnMut( &'r DynIWorker< 'r>) + Send + Sync,
