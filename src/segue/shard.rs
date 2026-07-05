@@ -55,17 +55,7 @@ impl IXFluxable for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl Shard
-{
-    pub fn	NewString( s: String) -> Self
-    {
-        Self::String( s)
-    }
-    pub fn	NewCharset( cs: Charset) -> Self
-    {
-        Self::Charset( cs)
-    }
-}
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -166,7 +156,7 @@ macro_rules! ShardTree {
 
     // ── Custom: Boxet stringification (overrides BudTree default) ─────────────────────────────────
     ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $s:literal ) => {
-        $crate::stalks::node::IntoNodule::< Shard, $Node >::IntoNodule( Shard::NewCharset( $crate::segue::Charset::FromBoxet( $crate::silo::U8::FromArr( $crate::silo::Arr::from( $s.as_bytes() ) ) ) ) )
+        $crate::stalks::node::IntoNodule::< Shard, $Node >::IntoNodule( Shard::from( $crate::segue::Charset::FromBoxet( $crate::silo::U8::FromArr( $crate::silo::Arr::from( $s.as_bytes() ) ) ) ) )
     };
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
     ( @ $( $inner:tt )+ ) => {
