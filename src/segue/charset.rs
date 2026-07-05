@@ -43,6 +43,30 @@ impl Charset
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
+impl From<&[u8]> for Charset
+{
+    fn	from( spec: &[u8]) -> Self
+    {
+        let  	mut cs = Self::New();
+        let  	mut i = 0usize;
+        while i < spec.len() {
+            let  	first = U8(spec[i]);
+            cs.SetChar( first);
+            // peek for  '-' range
+            if i + 2 < spec.len() && spec[i + 1] == b'-' {
+                let  	last = U8(spec[i + 2]);
+                cs.SetByteRange( first, last, true);
+                i += 3;
+            } else {
+                i += 1;
+            }
+        }
+        cs
+    }
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------
+
 impl< 'a> From< Arr< 'a, U8>> for Charset
 {
     fn	from( spec: Arr< 'a, U8>) -> Self

@@ -168,8 +168,8 @@ macro_rules! ShardTree {
     ( @feature_PostBoxet $( $args:tt)* ) => { $crate::NodeTree!( @feature_PostBoxet $( $args)* ) };
 
     // ── Custom: Boxet stringification (overrides BudTree default) ─────────────────────────────────
-    ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $s:literal ) => {
-        $crate::stalks::node::IntoNodule::< Shard, $Node >::IntoNodule( Shard::from( <$crate::segue::Charset>::from( <$crate::silo::Arr<$crate::silo::U8>>::from( $crate::silo::Arr::from( $s.as_bytes() ) ) ) ) )
+    ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $s:literal ) => {
+        $crate::stalks::node::IntoNodule::< Shard, $crate::stalks::node::Nodule<Shard> >::IntoNodule( Shard::from( <$crate::segue::Charset>::from( $s.as_bytes() ) ) )
     };
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
     ( @ $( $inner:tt )+ ) => {
