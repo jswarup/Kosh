@@ -21,9 +21,9 @@ pub struct OutStream< 'a, W: Write = io::Sink>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> OutStream< 'a, io::Sink>
+impl< 'a> From< Arr< 'a, U8>> for OutStream< 'a, io::Sink>
 {
-    pub fn	FromArr( arr: Arr< 'a, U8>) -> Self
+    fn	from( arr: Arr< 'a, U8>) -> Self
     {
         Self {
             _Source: OutSource::Fixed( arr),

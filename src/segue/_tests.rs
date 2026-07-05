@@ -40,7 +40,7 @@ fn	TestParserBasic()
 {
 
     let     str = "hello parser";
-    let  	mut stream = InStream::FromStr( str);
+    let  	mut stream = InStream::from( str);
     let  	mut parser = Parser::New( &mut stream);
 
     {
@@ -74,7 +74,7 @@ fn	TestBacktrackingParser()
     // Test alternative 1 success
     {
         let  	data = "abcd";
-        let  	mut stream = InStream::FromStr( data);
+        let  	mut stream = InStream::from( data);
         let  	mut parser = Parser::New( &mut stream);
         let  	tree = crate::ShardTree!( ( "ab" < "cd" ) | ( "a" < "bc" ));
         let  	dynNode: &DynINode<'_> = &tree;
@@ -84,7 +84,7 @@ fn	TestBacktrackingParser()
     // Test alternative 2 success with backtracking
     {
         let  	data = "abc";
-        let  	mut stream = InStream::FromStr( data);
+        let  	mut stream = InStream::from( data);
         let  	mut parser = Parser::New( &mut stream);
         let  	tree = crate::ShardTree!( ( "ab" < "cd" ) | ( "a" < "bc" ));
         let  	dynNode: &DynINode<'_> = &tree;
@@ -93,8 +93,8 @@ fn	TestBacktrackingParser()
 
     // Test ancestor lookup
     {
-        let  	mut stream = InStream::FromArr( Arr::from( &[U8( 0)][..]));
-        let  	mut dummyStream = InStream::FromArr( Arr::from( &[U8( 0)][..]));
+        let  	mut stream = InStream::from( Arr::from( &[U8( 0)][..]));
+        let  	mut dummyStream = InStream::from( Arr::from( &[U8( 0)][..]));
         let  	mut dummyParser = Parser::New( &mut dummyStream);
         let  	mut parser = Parser::New( &mut stream);
         let  	forge = LeafForge {
@@ -126,7 +126,7 @@ fn	TestBacktrackingParser()
 #[test]
 fn TestPostBoxet() {
     let data = "ab";
-    let mut stream = InStream::FromStr(data);
+    let mut stream = InStream::from(data);
     let mut parser = Parser::New(&mut stream);
     let tree = crate::ShardTree!( "ab" [ || {} ] );
     let dynNode: &DynINode<'_> = &tree;

@@ -92,8 +92,13 @@ macro_rules! ImplUIntTraits {
             {
                 self.0
             }
+        }
+        
+        impl< 'a> From< Arr< 'a, $prim>> for Arr< 'a, $type>
+        {
             #[inline]
-            pub fn	FromArr< 'a>(arr: Arr<'a, $prim>) -> Arr< 'a, Self> {
+            fn	from( arr: Arr< 'a, $prim>) -> Self
+            {
                 arr.Cast()
             }
         }

@@ -52,11 +52,7 @@ impl IXFluxable for Shard
         }));
     }
 }
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-
-
+ 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl fmt::Display for Shard
@@ -69,9 +65,7 @@ impl fmt::Display for Shard
         }
     }
 }
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
+ 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl From< char> for Shard
@@ -156,7 +150,7 @@ macro_rules! ShardTree {
 
     // ── Custom: Boxet stringification (overrides BudTree default) ─────────────────────────────────
     ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $s:literal ) => {
-        $crate::stalks::node::IntoNodule::< Shard, $Node >::IntoNodule( Shard::from( $crate::segue::Charset::FromBoxet( $crate::silo::U8::FromArr( $crate::silo::Arr::from( $s.as_bytes() ) ) ) ) )
+        $crate::stalks::node::IntoNodule::< Shard, $Node >::IntoNodule( Shard::from( $crate::segue::Charset::FromBoxet( <$crate::silo::Arr<$crate::silo::U8>>::from( $crate::silo::Arr::from( $s.as_bytes() ) ) ) ) )
     };
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
     ( @ $( $inner:tt )+ ) => {

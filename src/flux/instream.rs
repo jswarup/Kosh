@@ -42,22 +42,7 @@ impl< 'a> From< &'a str> for InStream< 'a, io::Empty>
     }
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> InStream< 'a, io::Empty>
-{
-    pub fn	FromStr( strVal: &'a str) -> Self
-    {
-        Self::from( strVal)
-    }
-
-    pub fn	FromArr( arr: Arr< 'a, U8>) -> Self
-    {
-        Self::from( arr)
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
 
 impl< 'a, R: Read> From< R> for InStream< 'a, R>
 {
