@@ -33,7 +33,7 @@ Defined in [parser.rs](../src/segue/parser.rs), `Parser` is the core matching en
 * Wraps an `InStream` to read input tokens (characters/bytes) buffered dynamically via `Stash`.
 * Maintains a type-erased `Stash` (stack) of `IForge` pointers to track the parsing context downwards from the root to the active leaf. The `IForge` pointers are transmuted to `'static` lifetimes before being stashed to deliberately break a **cyclic drop-check (`dropck`) dependency** between the `Parser` and its `Forge` contexts. 
 * Safely reclaims memory by implementing `Drop`, which walks the `_Stash` and correctly deallocates the erased raw `IForge` pointers.
-* Provides the `Parse` method to match any type implementing the `IGrammar` trait against the stream.
+* Provides the `ParseTree<T: IForgeable>` method to generically parse any abstract tree of nodes by calling `T::Forge` on the leaf nodes. This decouples the `Parser` from concrete implementations like `Shard`.
 
 ### 2. IForge (The Context)
 Defined in [parser.rs](../src/segue/parser.rs), `IForge` represents a linked list of contexts for the current parse tree path. To minimize boilerplate, standard methods (`Parent`, `Parser`, `Deposit`) are auto-generated for implementations using the `ImplForgeBase!` macro.
@@ -50,6 +50,7 @@ Defined in [shard.rs](../src/segue/shard.rs), `Shard` represents a leaf node in 
 * **Tree Construction**: The `ShardTree!` macro compiles a tree of `DynINode`s.
   * `a < b`: Concatenation (a must match, followed by b).
   * `a | b`: Alternation (if a fails, backtrack and try b).
+* **IForgeable**: `Shard` implements the `IForgeable` trait, providing the `Forge` method which constructs and returns a `LeafForge` raw pointer. This allows `Parser::ParseTree` to dynamically allocate context for shards without hardcoded downcasting.
 * **IGrammar**: All these types, including the `DynINode` tree, implement the `IGrammar` trait, which defines the `Match` method.
 
 ---
