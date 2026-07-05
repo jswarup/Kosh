@@ -7,7 +7,7 @@ use	crate::{
     segue::Charset
 };
 use	crate::silo::{ U8, U32, Stash, IAccess, IArr, cast::{ ICastExt, IPtrExt, IAllocRawExt } };
-use	crate::stalks::{ BinOp, DynINode };
+use	crate::stalks::{ BinOp, DynINode, DynIWorker, IWork, IWorker, WorkPtr };
 use	crate::segue::shard::Shard;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -133,13 +133,15 @@ where 's: 'p
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+// SAFETY: Parser is used single-threaded within a parse session.
+// The raw pointers in _Stash are not shared across threads.
 unsafe impl<'p, 's, R: Read + 'p> Send for Parser<'p, 's, R> {}
 unsafe impl<'p, 's, R: Read + 'p> Sync for Parser<'p, 's, R> {}
 
-impl<'p, 's, R: Read + 'p> crate::stalks::work::IWorker for Parser<'p, 's, R>
+impl<'p, 's, R: Read + 'p> IWorker for Parser<'p, 's, R>
 where 's: 'p
 {
-    fn	PostJob( &self, job: crate::stalks::work::WorkPtr< '_>)
+    fn	PostJob( &self, job: WorkPtr< '_>)
     {
         if !job.IsNull() {
             ( job.func)( job.data, self);
@@ -217,7 +219,7 @@ where 's: 'p
                     _Parent: None,
                     _Parser: selfPtr,
                     _Child: children[0],
-                    _Action: func.as_ref() as *const (dyn crate::stalks::work::IWork + 'static),
+                    _Action: func.as_ref() as *const (dyn IWork + 'static),
                 }.AllocRaw()
             } else {
                 CompositeForge {
@@ -432,7 +434,7 @@ where 's: 'p
     pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
     pub _Parser: *mut Parser<'p, 's, R>,
     pub _Child: *mut (dyn IForge<'p, 'p, 's, R> + 'p),
-    pub _Action: *const (dyn crate::stalks::work::IWork + 'static),
+    pub _Action: *const (dyn IWork + 'static),
 }
 
 impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for ActionForge<'a, 'p, 's, R>
@@ -445,9 +447,9 @@ where 's: 'p
         let child_ref = unsafe { &mut *self._Child };
         let matched = child_ref.MatchNode();
         if matched {
-            let action = unsafe { &mut *(self._Action as *mut dyn crate::stalks::work::IWork) };
+            let action = unsafe { &mut *(self._Action as *mut dyn IWork) };
             let parser_ref = unsafe { &mut *self._Parser };
-            action.DoWork(parser_ref as &crate::stalks::work::DynIWorker<'_>);
+            action.DoWork(parser_ref as &DynIWorker<'_>);
             let endMark = self.Parser().InStream().Marker();
             self.EmitDigest(startMark, endMark);
             return true;

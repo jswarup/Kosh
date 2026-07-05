@@ -1,5 +1,6 @@
 //-- node.rs -------------------------------------------------------------------------------------------------------------------
 use	crate::{ flux::xflux::XField, stalks::WorkPtr };
+use	crate::stalks::work::IWork;
 use	std::fmt;
 use	crate::silo::{ Arr, IAccess, Stash, U32 };
  
@@ -8,7 +9,7 @@ use	crate::silo::{ Arr, IAccess, Stash, U32 };
 pub enum Attrib
 {
     Repeat( crate::silo::USeg),
-    Action( Box< dyn crate::stalks::work::IWork + 'static>),
+    Action( Box< dyn IWork + 'static>),
 }
 
 impl fmt::Display for Attrib

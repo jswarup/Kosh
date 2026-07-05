@@ -18,8 +18,6 @@ where
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-/// A dynamically typed trait object for `IWork`.
-pub type WorkFn< 'a> = dyn IWork + 'a;
 
 /// Function pointer type for executing a type-erased job.
 pub type JobFn = for< 'r> fn(data: *mut (), worker: &'r DynIWorker< 'r>);
@@ -85,6 +83,7 @@ impl< 'a> WorkPtr< 'a>
 }
 //---------------------------------------------------------------------------------------------------------------------------------
 /// Trait for converting objects (like closures or `IWork` implementations) into a `WorkPtr`.
+/// NOTE: `WorkPtr` must NOT implement `IWork`, otherwise the two blanket impls below would conflict.
 pub trait IntoWorkPtr< 'a>
 {
     fn	IntoWorkPtr( self) -> WorkPtr< 'a>;
@@ -105,47 +104,11 @@ where
 {
     fn	IntoWorkPtr( self) -> WorkPtr< 'a>
     {
-        WorkSlot::New( self)
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-/// A heap-allocated slot that holds a concrete `IWork` object, allowing it to be type-erased into a `WorkPtr`.
-pub struct WorkSlot< T: IWork>
-{
-    _Inner: T,
-}
-unsafe impl< T: IWork> Send for WorkSlot< T>
-{ }
-unsafe impl< T: IWork> Sync for WorkSlot< T>
-{ }
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< T: IWork> IWork for WorkSlot< T>
-{
-    fn	DoWork( &mut self, worker: &DynIWorker< '_>)
-    {
-        self._Inner.DoWork( worker);
-        unsafe {
-            let  	_owned = Box::from_raw( self as *mut Self);
-        }
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< T: IWork> WorkSlot< T>
-{
-    pub fn	New< 'a>( inner: T) -> WorkPtr< 'a>
-    where
-        T: 'a,
-    {
-        let  	boxed = Box::new( Self { _Inner: inner });
+        let  	boxed = Box::new( self);
         let  	data = Box::into_raw( boxed) as *mut ();
         let  	func: JobFn = |dataPtr, worker| unsafe {
-            let  	actual = &mut *( dataPtr as *mut Self);
-            actual.DoWork( worker);
+            let  	mut owned = Box::from_raw( dataPtr as *mut T);
+            owned.DoWork( worker);
         };
         WorkPtr {
             data,
@@ -156,8 +119,8 @@ impl< T: IWork> WorkSlot< T>
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-/// A thread-safe dynamic trait object for an `IWorker`.
-pub type DynIWorker< 'a> = dyn IWorker + Send + Sync + 'a;
+/// A dynamic trait object for an `IWorker`. Send + Sync are already supertraits of IWorker.
+pub type DynIWorker< 'a> = dyn IWorker + 'a;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 /// Represents an entity capable of receiving and executing jobs.
