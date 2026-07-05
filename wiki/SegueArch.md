@@ -123,11 +123,8 @@ Matching basic primitive string leaves directly against the stream:
 use crate::segue::parser::Parser;
 use crate::segue::shard::Shard;
 use crate::flux::instream::InStream;
-use crate::silo::{Arr, U8};
 
-let data = [U8(b'h'), U8(b'e'), U8(b'l'), U8(b'l'), U8(b'o')];
-let arr = Arr::from(&data[..]);
-let mut stream = InStream::FromArr(arr);
+let mut stream = InStream::from("hello");
 let mut parser = Parser::New(&mut stream);
 
 // Direct matching of terminal strings
@@ -142,11 +139,8 @@ use crate::segue::parser::Parser;
 use crate::segue::shard::Shard;
 use crate::stalks::DynINode;
 use crate::flux::instream::InStream;
-use crate::silo::{Arr, U8};
 
-let data = [U8(b'a'), U8(b'c'), U8(b'd')];
-let arr = Arr::from(&data[..]);
-let mut stream = InStream::FromArr(arr);
+let mut stream = InStream::from("acd");
 let mut parser = Parser::New(&mut stream);
 
 // Grammar: Match ("ab" followed by "cd") OR ("ac" followed by "d")
