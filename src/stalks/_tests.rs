@@ -178,3 +178,33 @@ fn	TestPostBoxetArgs()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestPrefixCombinations()
+{
+    let  	root1 = NodeTree!( U32, * 10 + 20 );
+    assert_eq!( root1.BinOp(), BinOp::Sum);
+    let  	left1 = root1.Children().At(U32(0));
+    let  	right1 = root1.Children().At(U32(1));
+    if let Some(crate::stalks::node::Attrib::Repeat(useg)) = left1.Attrib() {
+        assert_eq!(useg._First.0, 0);
+        assert_eq!(useg._Last.0, 0);
+    } else {
+        panic!("Missing Repeat USeg(0,0) attrib");
+    }
+    assert_eq!( right1.BinOp(), BinOp::None);
+
+    let  	root2 = NodeTree!( U32, + 10 * 20 );
+    assert_eq!( root2.BinOp(), BinOp::Prod);
+    let  	left2 = root2.Children().At(U32(0));
+    let  	right2 = root2.Children().At(U32(1));
+    if let Some(crate::stalks::node::Attrib::Repeat(useg)) = left2.Attrib() {
+        assert_eq!(useg._First.0, 1);
+        assert_eq!(useg._Last.0, 0);
+    } else {
+        panic!("Missing Repeat USeg(1,0) attrib");
+    }
+    assert_eq!( right2.BinOp(), BinOp::None);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
