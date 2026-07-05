@@ -1,10 +1,8 @@
 //-- _tests.rs ---------------------------------------------------------------------------------------------------------------------
-use	crate::{ segue::Charset, silo::{ Arr, U8 }, stalks::WorkPtr };
+use	crate::stalks::WorkPtr;
 use	crate::silo::{ Buff, IAccess, U32 };
 use	crate::stalks::{ Atm, INode, DynINode, TraversalEvent as NodeTraversalEvent, NodeTree, BinOp };
-use	crate::segue::shard::Shard;
-use	std::sync::Arc;
-use	std::sync::atomic::{ AtomicBool, Ordering };
+use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -158,7 +156,7 @@ fn	TestNoduleTree()
 #[test]
 fn	TestPostBoxet()
 {
-    let  	root = NodeTree!( U32, ( 10  + 20  ) [ |worker| {} ] );
+    let  	root = NodeTree!( U32, ( 10  + 20  ) [ |_worker| {} ] );
 
     assert_eq!( root.Children().Size(), U32(1));
 
@@ -176,7 +174,7 @@ fn	TestPostBoxet()
 #[test]
 fn	TestPostBoxetArgs()
 {
-    let  	_root = NodeTree!( U32, ( 10  + 20  ) [ |a| {} ] );
+    let  	_root = NodeTree!( U32, ( 10  + 20  ) [ |_a| {} ] );
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
