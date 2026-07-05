@@ -158,7 +158,7 @@ fn	TestNoduleTree()
 #[test]
 fn	TestPostBoxet()
 {
-    let  	root = NodeTree!( U32, ( 10  + 20  ) [ || {} ] );
+    let  	root = NodeTree!( U32, ( 10  + 20  ) [ |worker| {} ] );
 
     assert_eq!( root.Children().Size(), U32(1));
 

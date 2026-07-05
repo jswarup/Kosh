@@ -277,6 +277,164 @@ pub trait IntoNodule< T, N: Sized>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+pub enum Nodule<'a, T> {
+    Leaf {
+        _Val: T,
+    },
+    UniNode {
+        _Child: Box<DynINode<'a>>,
+        _Attrib: Attrib,
+    },
+    BinNode {
+        _BinOp: BinOp,
+        _Children: [Box<DynINode<'a>>; 2],
+    }
+}
+unsafe impl<'a, T> Send for Nodule<'a, T> {}
+unsafe impl<'a, T> Sync for Nodule<'a, T> {}
+
+impl<'a, T> Nodule<'a, T>
+where
+    T: INode<'a> + crate::flux::IXFluxable + Send + Sync + 'a,
+{
+    pub fn New(value: T) -> Self {
+        Nodule::Leaf { _Val: value }
+    }
+    pub fn NewUniNode(attrib: Attrib, child: Self) -> Self {
+        Nodule::UniNode { _Child: Box::new(child), _Attrib: attrib }
+    }
+    pub fn NewBinNode(op: BinOp, left: Self, right: Self) -> Self {
+        Nodule::BinNode { _BinOp: op, _Children: [Box::new(left), Box::new(right)] }
+    }
+    pub fn Children<'b>(&'b self) -> NodeChildren<'b, 'a> {
+        NodeChildren(self)
+    }
+}
+
+impl<'a, T> crate::flux::IXFluxable for Nodule<'a, T>
+where
+    T: crate::flux::IXFluxable + 'a,
+{
+    fn ToXFlux<'b>(&'b self, field: &mut crate::flux::xflux::XField<'b>) {
+        let mut step = crate::silo::U32(0);
+        let node: &'b Nodule<'a, T> = self;
+        *field = crate::flux::xflux::XField::Obj(Box::new(move |key, item| {
+            match node {
+                Nodule::Leaf { _Val, .. } => {
+                    if step == crate::silo::U32(0) {
+                        *key = "Leaf".to_string();
+                        *item = crate::flux::xflux::XField::Fluxable(_Val);
+                        step.0 += 1;
+                        true
+                    } else {
+                        false
+                    }
+                },
+                Nodule::UniNode { _Child, .. } => {
+                    if step == crate::silo::U32(0) {
+                        *key = "Child".to_string();
+                        let child = &**_Child;
+                        FluxDynINode(child, item);
+                        step.0 += 1;
+                        true
+                    } else {
+                        false
+                    }
+                },
+                Nodule::BinNode { _BinOp, _Children, .. } => {
+                    if step == crate::silo::U32(0) {
+                        *key = "Op".to_string();
+                        *item = crate::flux::xflux::XField::U64(*_BinOp as u64);
+                        step.0 += 1;
+                        true
+                    } else if step == crate::silo::U32(1) {
+                        *key = "LeftChild".to_string();
+                        let child = &*_Children[0];
+                        FluxDynINode(child, item);
+                        step.0 += 1;
+                        true
+                    } else if step == crate::silo::U32(2) {
+                        *key = "RightChild".to_string();
+                        let child = &*_Children[1];
+                        FluxDynINode(child, item);
+                        step.0 += 1;
+                        true
+                    } else {
+                        false
+                    }
+                }
+            }
+        }));
+    }
+}
+
+impl<'a, T> INode<'a> for Nodule<'a, T>
+where
+    T: INode<'a>,
+{
+    fn _Size(&self) -> crate::silo::U32 {
+        match self {
+            Nodule::UniNode { .. } => crate::silo::U32(1),
+            Nodule::BinNode { .. } => crate::silo::U32(2),
+            _ => crate::silo::U32(0),
+        }
+    }
+    fn _At(&self, idx: crate::silo::U32) -> &DynINode<'a> {
+        match self {
+            Nodule::UniNode { _Child, .. } => {
+                if idx.0 == 0 {
+                    &**_Child
+                } else {
+                    panic!("At called on UniNode with index > 0")
+                }
+            }
+            Nodule::BinNode { _Children, .. } => &*_Children[idx.0 as usize],
+            _ => panic!("At called on Leaf"),
+        }
+    }
+    fn Value(&self) -> Option<WorkPtr<'a>> {
+        match self {
+            Nodule::Leaf { _Val, .. } => _Val.Value(),
+            _ => None
+        }
+    }
+    fn AsAny(&self) -> Option<&dyn core::any::Any> {
+        match self {
+            Nodule::Leaf { _Val, .. } => _Val.AsAny(),
+            _ => None
+        }
+    }
+    fn DocStr(&self) -> &'static str {
+        match self {
+            Nodule::Leaf { _Val, .. } => _Val.DocStr(),
+            _ => ""
+        }
+    }
+    fn Attrib(&self) -> Option<&Attrib> {
+        match self {
+            Nodule::UniNode { _Attrib, .. } => Some(_Attrib),
+            _ => None,
+        }
+    }
+    fn BinOp(&self) -> BinOp {
+        match self {
+            Nodule::Leaf { .. } => BinOp::None,
+            Nodule::UniNode { .. } => BinOp::None,
+            Nodule::BinNode { _BinOp, .. } => *_BinOp,
+        }
+    }
+}
+
+impl<'a, T, I> IntoNodule<T, Nodule<'a, T>> for I
+where
+    I: Into<T>,
+    T: INode<'a> + crate::flux::IXFluxable + Send + Sync + 'a,
+{
+    fn IntoNodule(self) -> Nodule<'a, T> {
+        Nodule::New(self.into())
+    }
+}
+
 
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -284,236 +442,32 @@ pub trait IntoNodule< T, N: Sized>
 #[macro_export]
 macro_rules! NodeTree {
     // ---- FEATURE OPT-INS FOR NodeTree ITSELF ----------------------------------------------------------------------------
-    ( @feature_PLUS [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Sum, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_PLUS [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Sum, $l, $( $r)+ ) };
-    ( @feature_STAR [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Prod, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_STAR [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Prod, $l, $( $r)+ ) };
-    ( @feature_SHL [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Shl, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_SHL [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Shl, $l, $( $r)+ ) };
-    ( @feature_SHR [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Shr, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_SHR [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Shr, $l, $( $r)+ ) };
-    ( @feature_MINUS [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Sub, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_MINUS [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Sub, $l, $( $r)+ ) };
-    ( @feature_DIV [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Div, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_DIV [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Div, $l, $( $r)+ ) };
-    ( @feature_POW [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Pow, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_POW [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Pow, $l, $( $r)+ ) };
-    ( @feature_LT  [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Less, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_LT  [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Less, $l, $( $r)+ ) };
-    ( @feature_BOR [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, $Node, Bor, ( $( $l)+ ), $( $r)+ ) };
-    ( @feature_BOR [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, $Node, Bor, $l, $( $r)+ ) };
-    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, | $( $body:tt)+ ) => { $Node::New( $Arg::New( | $( $body)+ ) ) };
-    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, || $( $body:tt)+ ) => { $Node::New( $Arg::New( || $( $body)+ ) ) };
-    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move | $( $body:tt)+ ) => { $Node::New( $Arg::New( move | $( $body)+ ) ) };
-    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move || $( $body:tt)+ ) => { $Node::New( $Arg::New( move || $( $body)+ ) ) };
+    ( @feature_PLUS [ $( $cb:tt)* ], @bg $Arg:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, Sum, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_PLUS [ $( $cb:tt)* ], @bl $Arg:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, Sum, $l, $( $r)+ ) };
+    ( @feature_STAR [ $( $cb:tt)* ], @bg $Arg:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, Prod, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_STAR [ $( $cb:tt)* ], @bl $Arg:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, Prod, $l, $( $r)+ ) };
+    ( @feature_SHL [ $( $cb:tt)* ], @bg $Arg:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, Shl, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_SHL [ $( $cb:tt)* ], @bl $Arg:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, Shl, $l, $( $r)+ ) };
+    ( @feature_SHR [ $( $cb:tt)* ], @bg $Arg:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, Shr, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_SHR [ $( $cb:tt)* ], @bl $Arg:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, Shr, $l, $( $r)+ ) };
+    ( @feature_MINUS [ $( $cb:tt)* ], @bg $Arg:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, Sub, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_MINUS [ $( $cb:tt)* ], @bl $Arg:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, Sub, $l, $( $r)+ ) };
+    ( @feature_DIV [ $( $cb:tt)* ], @bg $Arg:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, Div, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_DIV [ $( $cb:tt)* ], @bl $Arg:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, Div, $l, $( $r)+ ) };
+    ( @feature_POW [ $( $cb:tt)* ], @bg $Arg:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, Pow, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_POW [ $( $cb:tt)* ], @bl $Arg:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, Pow, $l, $( $r)+ ) };
+    ( @feature_LT  [ $( $cb:tt)* ], @bg $Arg:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, Less, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_LT  [ $( $cb:tt)* ], @bl $Arg:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, Less, $l, $( $r)+ ) };
+    ( @feature_BOR [ $( $cb:tt)* ], @bg $Arg:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, Bor, ( $( $l)+ ), $( $r)+ ) };
+    ( @feature_BOR [ $( $cb:tt)* ], @bl $Arg:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, Bor, $l, $( $r)+ ) };
+    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, | $( $body:tt)+ ) => { $crate::stalks::node::Nodule::<$Arg>::New( $Arg::New( | $( $body)+ ) ) };
+    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, move | $( $body:tt)+ ) => { $crate::stalks::node::Nodule::<$Arg>::New( $Arg::New( move | $( $body)+ ) ) };
 
-
-    ( @wrap $leaf:expr ) => {
-        Into::into( $leaf )
-    };
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
     ( @define [ $( $cb:tt )* ], $Arg:ident, $( $inner:tt )+ ) => {
-        {
-            paste::paste! {
-                #[allow(dead_code)]
-                enum [<$Arg Nodule>]<'a> {
-                    Leaf {
-                        _Val: $Arg,
-                    },
-                    UniNode {
-                        _Child: Box<$crate::stalks::DynINode<'a>>,
-                        _Attrib: $crate::stalks::node::Attrib,
-                    },
-                    BinNode {
-                        _BinOp: $crate::stalks::BinOp,
-                        _Children: [Box<$crate::stalks::DynINode<'a>>; 2],
-                    }
-                }
-                unsafe impl<'a> Send for [<$Arg Nodule>]<'a> {}
-                unsafe impl<'a> Sync for [<$Arg Nodule>]<'a> {}
-
-                #[allow(dead_code)]
-                impl<'a> [<$Arg Nodule>]<'a>
-                {
-                    fn	New( value: $Arg) -> Self
-                    {
-                        [<$Arg Nodule>]::Leaf {
-                            _Val: value,
-                        }
-                    }
-                    fn  NewUniNode( attrib: $crate::stalks::node::Attrib, child: Self) -> Self
-                    {
-                        [<$Arg Nodule>]::UniNode {
-                            _Child: Box::new(child),
-                            _Attrib: attrib,
-                        }
-                    }
-                    fn  NewBinNode( op: $crate::stalks::BinOp, left: Self, right: Self) -> Self
-                    {
-                        [<$Arg Nodule>]::BinNode {
-                            _BinOp: op,
-                            _Children: [Box::new(left), Box::new(right)],
-                        }
-                    }
-                }
-
-                impl<'a> [<$Arg Nodule>]<'a> {
-                    #[allow(dead_code)]
-                    pub fn Children<'b>(&'b self) -> $crate::stalks::node::NodeChildren<'b, 'a> {
-                        $crate::stalks::node::NodeChildren(self)
-                    }
-                }
-
-                impl<'a> $crate::flux::IXFluxable for [<$Arg Nodule>]<'a>
-                where
-                    $Arg: $crate::flux::IXFluxable + 'a,
-                {
-                    fn	ToXFlux< 'b>( &'b self, field: &mut $crate::flux::xflux::XField< 'b>)
-                    {
-                        let  	mut step = $crate::silo::U32( 0);
-                        let  	node: &'b [<$Arg Nodule>]<'a> = self;
-                        *field = $crate::flux::xflux::XField::Obj( Box::new( move |key, item| {
-                            match node {
-                                [<$Arg Nodule>]::Leaf { _Val, .. } => {
-                                    if step == $crate::silo::U32( 0) {
-                                        *key = "Leaf".to_string();
-                                        *item = $crate::flux::xflux::XField::Fluxable( _Val);
-                                        step.0 += 1;
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                },
-                                [<$Arg Nodule>]::UniNode { _Child, .. } => {
-                                    if step == $crate::silo::U32( 0) {
-                                        *key = "Child".to_string();
-                                        let  	child = &**_Child;
-                                        $crate::stalks::node::FluxDynINode( child, item);
-                                        step.0 += 1;
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                },
-                                [<$Arg Nodule>]::BinNode { _BinOp, _Children, .. } => {
-                                    if step == $crate::silo::U32( 0) {
-                                        *key = "Op".to_string();
-                                        *item = $crate::flux::xflux::XField::U64( *_BinOp as u64);
-                                        step.0 += 1;
-                                        true
-                                    } else if step == $crate::silo::U32( 1) {
-                                        *key = "LeftChild".to_string();
-                                        let  	child = &*_Children[0];
-                                        $crate::stalks::node::FluxDynINode( child, item);
-                                        step.0 += 1;
-                                        true
-                                    } else if step == $crate::silo::U32( 2) {
-                                        *key = "RightChild".to_string();
-                                        let  	child = &*_Children[1];
-                                        $crate::stalks::node::FluxDynINode( child, item);
-                                        step.0 += 1;
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                }
-                            }
-                        }));
-                    }
-                }
-
-                impl<'a> $crate::stalks::INode<'a> for [<$Arg Nodule>]<'a>
-                {
-                    fn _Size(&self) -> $crate::silo::U32 {
-                        match self {
-                            [<$Arg Nodule>]::UniNode { .. } => $crate::silo::U32(1),
-                            [<$Arg Nodule>]::BinNode { .. } => $crate::silo::U32(2),
-                            _ => $crate::silo::U32(0),
-                        }
-                    }
-                    fn _At(&self, idx: $crate::silo::U32) -> &$crate::stalks::DynINode<'a> {
-                        match self {
-                            [<$Arg Nodule>]::UniNode { _Child, .. } => {
-                                if idx.0 == 0 {
-                                    &**_Child
-                                } else {
-                                    panic!("At called on UniNode with index > 0")
-                                }
-                            }
-                            [<$Arg Nodule>]::BinNode { _Children, .. } => &*_Children[idx.0 as usize],
-                            _ => panic!("At called on Leaf"),
-                        }
-                    }
-
-                    fn	Value( &self) -> Option< $crate::stalks::WorkPtr< 'a>>
-                    {
-                        match self {
-                            [<$Arg Nodule>]::Leaf { _Val, .. } => {
-                                _Val.Value()
-                            }
-                            _ => None
-                        }
-                    }
-
-                    fn	AsAny( &self) -> Option<&dyn core::any::Any>
-                    {
-                        match self {
-                            [<$Arg Nodule>]::Leaf { _Val, .. } => {
-                                _Val.AsAny()
-                            }
-                            _ => None
-                        }
-                    }
-
-                    fn	DocStr( &self) -> &'static str
-                    {
-                        match self {
-                            [<$Arg Nodule>]::Leaf { _Val, .. } => {
-                                _Val.DocStr()
-                            }
-                            _ => ""
-                        }
-                    }
-
-
-                    fn	Attrib( &self) -> Option<& $crate::stalks::node::Attrib>
-                    {
-                        match self {
-                            [<$Arg Nodule>]::UniNode { _Attrib, .. } => Some(_Attrib),
-                            _ => None,
-                        }
-                    }
-
-                    fn	BinOp( &self) -> $crate::stalks::BinOp
-                    {
-                        match self {
-                            [<$Arg Nodule>]::Leaf { .. } => $crate::stalks::BinOp::None,
-                            [<$Arg Nodule>]::UniNode { .. } => $crate::stalks::BinOp::None,
-                            [<$Arg Nodule>]::BinNode { _BinOp, .. } => *_BinOp,
-                        }
-                    }
-                }
-                impl<'a, I > $crate::stalks::node::IntoNodule< $Arg, [<$Arg Nodule>]<'a>> for I
-                where
-                    I: Into< $Arg >,
-                {
-                    fn	IntoNodule( self) -> [<$Arg Nodule>]<'a>
-                    {
-                        [<$Arg Nodule>]::New( self.into() )
-                    }
-                }
-                impl<'a> $crate::stalks::node::IntoNodule< $Arg, [<$Arg Nodule>]<'a>> for [<$Arg Nodule>]<'a>
-                {
-                    fn	IntoNodule( self) -> [<$Arg Nodule>]<'a>
-                    {
-                        self
-                    }
-                }
-                $crate::NodeTree!( @cb [ $( $cb)* ], $Arg, [<$Arg Nodule>], $( $inner )+ )
-            }
-        }
+        $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $inner )+ )
     };
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -522,107 +476,95 @@ macro_rules! NodeTree {
         $crate::NodeTree!( @define [ $crate::NodeTree ], $Arg, $( $inner )+ )
     };
 
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $inner:tt)+ ) ) => { $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $inner)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, ( $( $inner:tt)+ ) ) => { $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $inner)+ ) };
 
     // ── Binary: [ boxet ] OP rhs ────────────────────────────────────────────────────────────────────
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] +  $( $r:tt)+ ) => { $( $cb)* !( @feature_PLUS [ $( $cb)* ], @bg $Arg, $Node, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ) ), $( $r )+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] -  $( $r:tt)+ ) => { $( $cb)* !( @feature_MINUS [ $( $cb)* ], @bg $Arg, $Node, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ) ), $( $r )+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] *  $( $r:tt)+ ) => { $( $cb)* !( @feature_STAR [ $( $cb)* ], @bg $Arg, $Node, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ) ), $( $r )+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] /  $( $r:tt)+ ) => { $( $cb)* !( @feature_DIV [ $( $cb)* ], @bg $Arg, $Node, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ) ), $( $r )+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] ^  $( $r:tt)+ ) => { $( $cb)* !( @feature_POW [ $( $cb)* ], @bg $Arg, $Node, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ) ), $( $r )+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bg $Arg, $Node, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ) ), $( $r )+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bg $Arg, $Node, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ) ), $( $r )+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bg $Arg, $Node, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ) ), $( $r )+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bg $Arg, $Node, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s ) ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] +  $( $r:tt)+ ) => { $( $cb)* !( @feature_PLUS [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] -  $( $r:tt)+ ) => { $( $cb)* !( @feature_MINUS [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] *  $( $r:tt)+ ) => { $( $cb)* !( @feature_STAR [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] /  $( $r:tt)+ ) => { $( $cb)* !( @feature_DIV [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] ^  $( $r:tt)+ ) => { $( $cb)* !( @feature_POW [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
 
     // ── Leaf Boxet ──────────────────────────────────────────────────────────────────────────────────
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, [ $s:literal ] ) => {
-        $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $Node, $s )
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] ) => {
+        $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s )
     };
 
     // ── Binary: (group) OP rhs ──────────────────────────────────────────────────────────────────────
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) +  $( $r:tt)+ ) => { $( $cb)* !( @feature_PLUS [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) -  $( $r:tt)+ ) => { $( $cb)* !( @feature_MINUS [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) *  $( $r:tt)+ ) => { $( $cb)* !( @feature_STAR [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) /  $( $r:tt)+ ) => { $( $cb)* !( @feature_DIV [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) ^  $( $r:tt)+ ) => { $( $cb)* !( @feature_POW [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, ( $( $l:tt)+ ) +  $( $r:tt)+ ) => { $( $cb)* !( @feature_PLUS [ $( $cb)* ], @bg $Arg, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, ( $( $l:tt)+ ) -  $( $r:tt)+ ) => { $( $cb)* !( @feature_MINUS [ $( $cb)* ], @bg $Arg, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, ( $( $l:tt)+ ) *  $( $r:tt)+ ) => { $( $cb)* !( @feature_STAR [ $( $cb)* ], @bg $Arg, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, ( $( $l:tt)+ ) /  $( $r:tt)+ ) => { $( $cb)* !( @feature_DIV [ $( $cb)* ], @bg $Arg, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, ( $( $l:tt)+ ) ^  $( $r:tt)+ ) => { $( $cb)* !( @feature_POW [ $( $cb)* ], @bg $Arg, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, ( $( $l:tt)+ ) << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bg $Arg, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, ( $( $l:tt)+ ) >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bg $Arg, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, ( $( $l:tt)+ ) <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bg $Arg, ( $( $l)+ ), $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, ( $( $l:tt)+ ) |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bg $Arg, ( $( $l)+ ), $( $r)+ ) };
 
     // ── Binary: ident/literal OP rhs ────────────────────────────────────────────────────────────────
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident +  $( $r:tt)+ ) => { $( $cb)* !( @feature_PLUS [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident -  $( $r:tt)+ ) => { $( $cb)* !( @feature_MINUS [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident *  $( $r:tt)+ ) => { $( $cb)* !( @feature_STAR [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident /  $( $r:tt)+ ) => { $( $cb)* !( @feature_DIV [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident ^  $( $r:tt)+ ) => { $( $cb)* !( @feature_POW [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal +  $( $r:tt)+ ) => { $( $cb)* !( @feature_PLUS [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal -  $( $r:tt)+ ) => { $( $cb)* !( @feature_MINUS [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal *  $( $r:tt)+ ) => { $( $cb)* !( @feature_STAR [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal /  $( $r:tt)+ ) => { $( $cb)* !( @feature_DIV [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal ^  $( $r:tt)+ ) => { $( $cb)* !( @feature_POW [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bl $Arg, $Node, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:ident +  $( $r:tt)+ ) => { $( $cb)* !( @feature_PLUS [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:ident -  $( $r:tt)+ ) => { $( $cb)* !( @feature_MINUS [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:ident *  $( $r:tt)+ ) => { $( $cb)* !( @feature_STAR [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:ident /  $( $r:tt)+ ) => { $( $cb)* !( @feature_DIV [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:ident ^  $( $r:tt)+ ) => { $( $cb)* !( @feature_POW [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:ident << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:ident >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:ident <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:ident |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:literal +  $( $r:tt)+ ) => { $( $cb)* !( @feature_PLUS [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:literal -  $( $r:tt)+ ) => { $( $cb)* !( @feature_MINUS [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:literal *  $( $r:tt)+ ) => { $( $cb)* !( @feature_STAR [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:literal /  $( $r:tt)+ ) => { $( $cb)* !( @feature_DIV [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:literal ^  $( $r:tt)+ ) => { $( $cb)* !( @feature_POW [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:literal << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:literal >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:literal <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:literal |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bl $Arg, $l, $( $r)+ ) };
 
     // ── Closure literal ─────────────────────────────────────────────────────────────────────────────
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, | $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, $Node, | $( $body)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, || $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, $Node, || $( $body)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move | $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, $Node, move | $( $body)+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, move || $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, $Node, move || $( $body)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, | $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, | $( $body)+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, move | $( $body:tt)+ ) => { $( $cb)* !( @feature_NEW [ $( $cb)* ], $Arg, move | $( $body)+ ) };
 
     // ── Postfix Boxet ───────────────────────────────────────────────────────────────────────────────
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, ( $( $l:tt)+ ) [ $( $body:tt)+ ] ) => { $( $cb)* !( @feature_PostBoxet [ $( $cb)* ], @bg $Arg, $Node, ( $( $l)+ ), [ $( $body)+ ] ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:ident [ $( $body:tt)+ ] ) => { $( $cb)* !( @feature_PostBoxet [ $( $cb)* ], @bl $Arg, $Node, $l, [ $( $body)+ ] ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $l:literal [ $( $body:tt)+ ] ) => { $( $cb)* !( @feature_PostBoxet [ $( $cb)* ], @bl $Arg, $Node, $l, [ $( $body)+ ] ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, ( $( $l:tt)+ ) [ $( $body:tt)+ ] ) => { $( $cb)* !( @feature_PostBoxet [ $( $cb)* ], @bg $Arg, ( $( $l)+ ), [ $( $body)+ ] ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:ident [ $( $body:tt)+ ] ) => { $( $cb)* !( @feature_PostBoxet [ $( $cb)* ], @bl $Arg, $l, [ $( $body)+ ] ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $l:literal [ $( $body:tt)+ ] ) => { $( $cb)* !( @feature_PostBoxet [ $( $cb)* ], @bl $Arg, $l, [ $( $body)+ ] ) };
 
     // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $leaf:expr ) => {
-        $crate::stalks::node::IntoNodule::< $Arg, $Node >::IntoNodule( $leaf )
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, $leaf:expr ) => {
+        $crate::stalks::node::IntoNodule::< $Arg, $crate::stalks::node::Nodule<$Arg> >::IntoNodule( $leaf )
     };
 
     // ---- Internal helpers ----------------------------------------------------------------------------------------------------
     // @bg : binary — (group) OP rhs
-    ( @bg [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $op:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => {
-        $Node::NewBinNode(
+    ( @bg [ $( $cb:tt)* ], $Arg:ident, $op:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => {
+        $crate::stalks::node::Nodule::<$Arg>::NewBinNode(
             $crate::stalks::BinOp::$op,
-            $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ),
-            $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) )
+            $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $l)+ ),
+            $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $r)+ ) )
     };
     // @bl : binary — leaf OP rhs
-    ( @bl [ $( $cb:tt)* ], $Arg:ident, $Node:ident, $op:ident, $l:expr, $( $r:tt)+ ) => {
-        $Node::NewBinNode(
+    ( @bl [ $( $cb:tt)* ], $Arg:ident, $op:ident, $l:expr, $( $r:tt)+ ) => {
+        $crate::stalks::node::Nodule::<$Arg>::NewBinNode(
             $crate::stalks::BinOp::$op,
-            $crate::stalks::node::IntoNodule::< $Arg, $Node >::IntoNodule( $l ),
-            $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $r)+ ) )
+            $crate::stalks::node::IntoNodule::< $Arg, $crate::stalks::node::Nodule<$Arg> >::IntoNodule( $l ),
+            $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $r)+ ) )
     };
     
     // @feature_PostBoxet
-    ( @feature_PostBoxet [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), [ | $arg:ident | $( $body:tt)+ ] ) => {
-        $Node::NewUniNode(
+    ( @feature_PostBoxet [ $( $cb:tt)* ], @bg $Arg:ident, ( $( $l:tt)+ ), [ | $arg:ident | $( $body:tt)+ ] ) => {
+        $crate::stalks::node::Nodule::<$Arg>::NewUniNode(
             $crate::stalks::node::Attrib::Action( Box::new( move | $arg: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ) ),
-            $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ) )
+            $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $l)+ ) )
     };
-    ( @feature_PostBoxet [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, [ | $arg:ident | $( $body:tt)+ ] ) => {
-        $Node::NewUniNode(
+    ( @feature_PostBoxet [ $( $cb:tt)* ], @bl $Arg:ident, $l:expr, [ | $arg:ident | $( $body:tt)+ ] ) => {
+        $crate::stalks::node::Nodule::<$Arg>::NewUniNode(
             $crate::stalks::node::Attrib::Action( Box::new( move | $arg: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ) ),
-            $crate::stalks::node::IntoNodule::< $Arg, $Node >::IntoNodule( $l ) )
-    };
-    ( @feature_PostBoxet [ $( $cb:tt)* ], @bg $Arg:ident, $Node:ident, ( $( $l:tt)+ ), [ || $( $body:tt)+ ] ) => {
-        $Node::NewUniNode(
-            $crate::stalks::node::Attrib::Action( Box::new( move | _: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ) ),
-            $( $cb)* !( @cb [ $( $cb)* ], $Arg, $Node, $( $l)+ ) )
-    };
-    ( @feature_PostBoxet [ $( $cb:tt)* ], @bl $Arg:ident, $Node:ident, $l:expr, [ || $( $body:tt)+ ] ) => {
-        $Node::NewUniNode(
-            $crate::stalks::node::Attrib::Action( Box::new( move | _: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ) ),
-            $crate::stalks::node::IntoNodule::< $Arg, $Node >::IntoNodule( $l ) )
+            $crate::stalks::node::IntoNodule::< $Arg, $crate::stalks::node::Nodule<$Arg> >::IntoNodule( $l ) )
     };
 
     // ---- DEFAULT FALLBACK ERRORS FOR DISABLED FEATURES -------------------------------------------------------------

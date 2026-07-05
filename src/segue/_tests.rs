@@ -128,7 +128,7 @@ fn TestPostBoxet() {
     let data = "ab";
     let mut stream = InStream::from(data);
     let mut parser = Parser::New(&mut stream);
-    let tree = crate::ShardTree!( "ab" [ || {} ] );
+    let tree = crate::ShardTree!( "ab" [ |worker| {} ] );
     let dynNode: &DynINode<'_> = &tree;
     assert!(dynNode.Match(&mut parser));
 }
