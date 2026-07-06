@@ -1,5 +1,6 @@
 //-- node.rs -------------------------------------------------------------------------------------------------------------------
-use	crate::{ flux::xflux::XField, stalks::WorkPtr };
+use	crate::stalks::WorkPtr;
+use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::stalks::work::IWork;
 use	std::fmt;
 use	crate::silo::{ Arr, IAccess, Stash, U32 };
@@ -22,6 +23,35 @@ impl fmt::Display for Attrib
         }
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IXFluxSource for Attrib
+{
+    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    {
+        let  	mut step = 0u32;
+        let  	attribVal = self;
+        *field = XField::Obj( Box::new( move |key, item| {
+            if step == 0 {
+                match attribVal {
+                    Attrib::Repeat( useg) => {
+                        *key = "Repeat".to_string();
+                        *item = XField::FluxSource( useg);
+                    }
+                    Attrib::Action( _ ) => {
+                        *key = "Action".to_string();
+                        *item = XField::Str( "Action");
+                    }
+                }
+                step += 1;
+                return true;
+            }
+            false
+        }));
+    }
+}
+
 
 #[derive( Clone, Copy, PartialEq, Eq, Debug)]
 pub enum BinOp
@@ -73,6 +103,18 @@ pub enum TraversalEvent
 
 pub type DynINode< 'a> = dyn INode< 'a> + Send + Sync + 'a;
 
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a> INode< 'a> for U32
+{
+    fn	_Size( &self) -> U32 { U32(0) }
+    fn	_At( &self, _idx: U32) -> &DynINode< 'a> { panic!("Leaf") }
+    fn	Value( &self) -> Option< WorkPtr< 'a>> { None }
+    fn	DocStr( &self) -> &'static str { "" }
+    fn	BinOp( &self) -> BinOp { BinOp::None }
+}
+
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub struct NodeChildren< 'b, 'a>( pub &'b DynINode< 'a>);
@@ -89,21 +131,9 @@ impl< 'b, 'a> IAccess< 'b, DynINode< 'a>> for NodeChildren< 'b, 'a>
     }
 }
 
-
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> INode< 'a> for U32
-{
-    fn	_Size( &self) -> U32 { U32(0) }
-    fn	_At( &self, _idx: U32) -> &DynINode< 'a> { panic!("Leaf") }
-    fn	Value( &self) -> Option< WorkPtr< 'a>> { None }
-    fn	DocStr( &self) -> &'static str { "" }
-    fn	BinOp( &self) -> BinOp { BinOp::None }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-pub trait INode< 'a>: Send + Sync
+pub trait INode< 'a>: Send + Sync + crate::flux::IXFluxSource
 {
     fn	_Size( &self) -> U32;
     fn	_At( &self, idx: U32) -> &DynINode< 'a>;
@@ -138,38 +168,6 @@ pub trait INode< 'a>: Send + Sync
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
-pub fn FluxDynINode< 'b, 'a>( node: &'b DynINode< 'a>, field: &mut XField< 'b>)
-{
-    let  	mut step = 0u32;
-    *field = XField::Obj( Box::new( move |key, item| {
-        if step == 0 {
-            *key = "DocStr".to_string();
-            *item = XField::Str( node.DocStr());
-            step += 1;
-            true
-        } else if step == 1 {
-            *key = "BinOp".to_string();
-            *item = XField::U64( node.BinOp() as u64);
-            step += 1;
-            true
-        } else if step == 2 {
-            *key = "ChildrenSize".to_string();
-            *item = XField::U64( node._Size().0 as u64);
-            step += 1;
-            true
-        } else if step >= 3 && step < 3 + node._Size().0 {
-            let  	childIdx = step - 3;
-            *key = format!( "Child_{}", childIdx);
-            let  	child = node._At( U32( childIdx));
-            FluxDynINode( child, item);
-            step += 1;
-            true
-        } else {
-            false
-        }
-    }));
-}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -330,11 +328,16 @@ where
                         false
                     }
                 },
-                Nodule::UniNode { _Child, .. } => {
+                Nodule::UniNode { _Child, _Attrib } => {
                     if step == crate::silo::U32(0) {
                         *key = "Child".to_string();
                         let child = &**_Child;
-                        FluxDynINode(child, item);
+                        child.ToXField(item);
+                        step.0 += 1;
+                        true
+                    } else if step == crate::silo::U32(1) {
+                        *key = "Attrib".to_string();
+                        *item = crate::flux::xflux::XField::FluxSource(_Attrib);
                         step.0 += 1;
                         true
                     } else {
@@ -350,13 +353,13 @@ where
                     } else if step == crate::silo::U32(1) {
                         *key = "LeftChild".to_string();
                         let child = &*_Children[0];
-                        FluxDynINode(child, item);
+                        child.ToXField(item);
                         step.0 += 1;
                         true
                     } else if step == crate::silo::U32(2) {
                         *key = "RightChild".to_string();
                         let child = &*_Children[1];
-                        FluxDynINode(child, item);
+                        child.ToXField(item);
                         step.0 += 1;
                         true
                     } else {
@@ -370,7 +373,7 @@ where
 
 impl<'a, T> INode<'a> for Nodule<'a, T>
 where
-    T: INode<'a>,
+    T: INode<'a> + 'a,
 {
     fn _Size(&self) -> crate::silo::U32 {
         match self {

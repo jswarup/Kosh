@@ -139,7 +139,7 @@ fn TestPostBoxet()
 fn TestRgx() 
 {
     let     alpha = crate::ShardTree!(  [ "a-zA-Z"]);
-    let     identRgx = crate::ShardTree!(  alpha[ |_worker| {} ] ); 
+    let     identRgx = crate::ShardTree!(  *alpha[ |_worker| {} ] ); 
     let  	mut output = String::new();
     {
         let  	mut jsonStream = crate::flux::JsonOutStream::New( &mut output, true);

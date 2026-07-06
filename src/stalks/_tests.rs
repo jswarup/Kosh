@@ -46,6 +46,14 @@ fn	TestINodeTraverse()
     unsafe impl< 'a> Sync for TestNode< 'a>
     { }
 
+    impl< 'a> crate::flux::IXFluxSource for TestNode< 'a>
+    {
+        fn	ToXField< 'b>( &'b self, field: &mut crate::flux::xflux::XField< 'b>)
+        {
+            *field = crate::flux::xflux::XField::Null;
+        }
+    }
+
     impl< 'a> INode< 'a> for TestNode< 'a>
     {
         fn	_Size( &self) -> U32

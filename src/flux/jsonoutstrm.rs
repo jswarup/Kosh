@@ -50,6 +50,9 @@ impl< W: fmt::Write> JsonOutStream< W>
 
     pub fn	KeyField( &mut self, key: &str, value: XField< '_>) -> bool
     {
+        if matches!( value, XField::Null) {
+            return false;
+        }
         let  	_ = self.LineFeed();
         self._EntryFlg = true;
 

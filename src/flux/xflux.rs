@@ -1,5 +1,5 @@
 //-- xflux.rs -----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Arr, U16, U32, U64, U8 };
+use	crate::silo::{ Arr, U16, U32, U64, U8, USeg };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 use	crate::silo::IAccess;
@@ -121,6 +121,32 @@ where
             } else {
                 false
             }
+        }));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IXFluxSource for USeg
+{
+    fn	ToXField< 'a>( &'a self, field: &mut XField< 'a>)
+    {
+        let  	mut step = 0u32;
+        let  	uSeg = self;
+        *field = XField::Obj( Box::new( move |key, item| {
+            if step == 0 {
+                *key = "First".to_string();
+                *item = XField::FluxSource( &uSeg._First);
+                step += 1;
+                return true;
+            }
+            if step == 1 {
+                *key = "Last".to_string();
+                *item = XField::FluxSource( &uSeg._Last);
+                step += 1;
+                return true;
+            }
+            false
         }));
     }
 }
