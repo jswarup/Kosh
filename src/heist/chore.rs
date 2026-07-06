@@ -1,5 +1,5 @@
 //-- chore.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::{ flux::{ IXFluxable, xflux::XField }, silo::U32, stalks::{ BinOp, DynINode, INode, IntoWorkPtr, WorkPtr } };
+use	crate::{ flux::{ IXFluxSource, xflux::XField }, silo::U32, stalks::{ BinOp, DynINode, INode, IntoWorkPtr, WorkPtr } };
 use	std::fmt;
 use	crate::stalks::{ DynIWorker, IWork };
 
@@ -24,9 +24,9 @@ impl Default for Chore
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxable for Chore
+impl IXFluxSource for Chore
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut step = 0u32;
         *field = XField::Obj( Box::new( move |key, item| {

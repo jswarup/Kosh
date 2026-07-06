@@ -1,5 +1,5 @@
 //-- polyexpr.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::flux::{ IXFluxable, xflux::XField };
+use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::fresco::exprrepos::BaseExpr;
 use	crate::silo::{ U32, Buff };
 use	core::any::Any;
@@ -71,9 +71,9 @@ impl BaseExpr for PolyExpr
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxable for PolyExpr
+impl IXFluxSource for PolyExpr
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut step = 0u32;
         let  	poly = self;

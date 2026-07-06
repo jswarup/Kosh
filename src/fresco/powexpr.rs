@@ -1,5 +1,5 @@
 //-- powexpr.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::flux::{ IXFluxable, xflux::XField };
+use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::fresco::exprrepos::BaseExpr;
 use	crate::fresco::polyexpr::PolyExpr;
 use	core::any::Any;
@@ -35,9 +35,9 @@ impl BaseExpr for PowExpr
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxable for PowExpr
+impl IXFluxSource for PowExpr
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut step = 0u32;
         let  	expr = self;
@@ -49,7 +49,7 @@ impl IXFluxable for PowExpr
                 true
             } else if step == 1 {
                 *key = "Poly".to_string();
-                expr._Poly.ToXFlux( item);
+                expr._Poly.ToXField( item);
                 step += 1;
                 true
             } else {

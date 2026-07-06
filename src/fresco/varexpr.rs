@@ -1,5 +1,5 @@
 //-- varexpr.rs ---------------------------------------------------------------------------------------------------------------------------
-use	crate::flux::{ IXFluxable, xflux::XField };
+use	crate::flux::{ IXFluxSource, xflux::XField };
 
 use	core::any::Any;
 use	crate::silo::U32;
@@ -100,9 +100,9 @@ impl BaseExpr for VarExpr
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxable for VarAttrib
+impl IXFluxSource for VarAttrib
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut step = 0u32;
         let  	attr = self;
@@ -136,9 +136,9 @@ impl IXFluxable for VarAttrib
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxable for VarExpr
+impl IXFluxSource for VarExpr
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut step = 0u32;
         let  	expr = self;

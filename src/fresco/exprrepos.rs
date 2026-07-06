@@ -1,6 +1,6 @@
 //-- exprrepos.rs -------------------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ IAccess, IArr, Stash, U32, Arr, Buff };
-use	crate::flux::{ IXFluxable, xflux::XField };
+use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::fresco::varexpr::{ VarAttrib, VarExpr };
 use	crate::fresco::realexpr::RealExpr;
 use	crate::fresco::sumexpr::SumExpr;
@@ -13,7 +13,7 @@ use	crate::stalks::{ BinOp, DynINode };
 
 use	core::any::Any;
 
-pub trait BaseExpr: Any + IXFluxable
+pub trait BaseExpr: Any + IXFluxSource
 {
     fn	SizeChild( &self, _chart: &ExprRepos) -> U32
     {
@@ -52,13 +52,13 @@ impl Clone for ExprEntry
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxable for ExprEntry
+impl IXFluxSource for ExprEntry
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
     {
         match self {
             ExprEntry::Empty => *field = XField::Null,
-            ExprEntry::Expr( expr) => expr.ToXFlux( field),
+            ExprEntry::Expr( expr) => expr.ToXField( field),
         }
     }
 }
@@ -283,9 +283,9 @@ impl ExprRepos
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxable for ExprRepos
+impl IXFluxSource for ExprRepos
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut step = 0u32;
         let  	repos = self;
@@ -296,7 +296,7 @@ impl IXFluxable for ExprRepos
                 *item = XField::Arr( Box::new( move |elem| {
                     if iterStep < repos._Exprs.Size().0 {
                         let  	expr = repos._Exprs.Stk().Arr().At( iterStep);
-                        expr.ToXFlux( elem);
+                        expr.ToXField( elem);
                         iterStep += 1;
                         true
                     } else {
@@ -311,7 +311,7 @@ impl IXFluxable for ExprRepos
                 *item = XField::Arr( Box::new( move |elem| {
                     if iterStep < repos._VarAttribs.Size().0 {
                         let  	attr = repos._VarAttribs.Stk().Arr().At( iterStep);
-                        attr.ToXFlux( elem);
+                        attr.ToXField( elem);
                         iterStep += 1;
                         true
                     } else {

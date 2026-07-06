@@ -10,7 +10,7 @@ struct Point
     _Y :f64,
 }
 
-crate::ImplIXFluxable!( Point, _X, _Y);
+crate::ImplIXFluxSource!( Point, _X, _Y);
 
 #[test]
 fn	TestJsonOutStream()
@@ -24,8 +24,8 @@ fn	TestJsonOutStream()
     {
         let  	mut jsonStream = JsonOutStream::New( &mut output, true);
 
-        jsonStream.KeyField( "point", XField::Fluxable( &pt));
-        jsonStream.KeyField( "prices", XField::Fluxable( &arr));
+        jsonStream.KeyField( "point", XField::FluxSource( &pt));
+        jsonStream.KeyField( "prices", XField::FluxSource( &arr));
     }
 
     fs::write( "a.json", output).unwrap();

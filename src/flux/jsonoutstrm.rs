@@ -1,7 +1,7 @@
 //-- jsonoutstrm.rs -------------------------------------------------------------------------------------------------------------------
 use	std::{ fmt, mem::swap };
 
-use	crate::flux::xflux::{ IXFlux, XField };
+use	crate::flux::xflux::{ IXFluxSink, XField };
 use	crate::silo::U32;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -57,16 +57,16 @@ impl< W: fmt::Write> JsonOutStream< W>
             let  	_ = write!( self._OStr, "\"{}\": ", key);
         }
 
-        self.Field( value);
+        self.FromXField( value);
         true
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< W: fmt::Write> IXFlux for JsonOutStream< W>
+impl< W: fmt::Write> IXFluxSink for JsonOutStream< W>
 {
-    fn	Field( &mut self, field: XField)
+    fn	FromXField( &mut self, field: XField)
     {
         match field {
             XField::Str( s) => { let  	_ = write!( self._OStr, "\"{}\"", s); },
@@ -91,7 +91,7 @@ impl< W: fmt::Write> IXFlux for JsonOutStream< W>
                     }
                     let  	mut next_item = XField::Null;
                     swap( &mut item, &mut next_item);
-                    self.Field( next_item);
+                    self.FromXField( next_item);
                     is_first = false;
                 }
                 let  	_ = write!( self._OStr, "]");
@@ -116,10 +116,10 @@ impl< W: fmt::Write> IXFlux for JsonOutStream< W>
                 self._EntryFlg = true;
                 let  	_ = write!( self._OStr, "}}");
             },
-            XField::Fluxable( f) => {
+            XField::FluxSource( f) => {
                 let  	mut field = XField::Null;
-                f.ToXFlux( &mut field);
-                self.Field( field);
+                f.ToXField( &mut field);
+                self.FromXField( field);
             },
         }
     }

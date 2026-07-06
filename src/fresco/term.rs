@@ -1,5 +1,5 @@
 //-- term.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::{ flux::{ IXFluxable, xflux::XField }, silo::U32, stalks::{ BinOp, DynINode, INode, IntoWorkPtr, WorkPtr } };
+use	crate::{ flux::{ IXFluxSource, xflux::XField }, silo::U32, stalks::{ BinOp, DynINode, INode, IntoWorkPtr, WorkPtr } };
 use	std::fmt;
 use	crate::stalks::{ DynIWorker, IWork };
 
@@ -23,9 +23,9 @@ impl Default for Term
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxable for Term
+impl IXFluxSource for Term
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut step = 0u32;
         let  	term = self;

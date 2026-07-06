@@ -295,7 +295,7 @@ unsafe impl<'a, T> Sync for Nodule<'a, T> {}
 
 impl<'a, T> Nodule<'a, T>
 where
-    T: INode<'a> + crate::flux::IXFluxable + Send + Sync + 'a,
+    T: INode<'a> + crate::flux::IXFluxSource + Send + Sync + 'a,
 {
     pub fn New(value: T) -> Self {
         Nodule::Leaf { _Val: value }
@@ -311,11 +311,11 @@ where
     }
 }
 
-impl<'a, T> crate::flux::IXFluxable for Nodule<'a, T>
+impl<'a, T> crate::flux::IXFluxSource for Nodule<'a, T>
 where
-    T: crate::flux::IXFluxable + 'a,
+    T: crate::flux::IXFluxSource + 'a,
 {
-    fn ToXFlux<'b>(&'b self, field: &mut crate::flux::xflux::XField<'b>) {
+    fn ToXField<'b>(&'b self, field: &mut crate::flux::xflux::XField<'b>) {
         let mut step = crate::silo::U32(0);
         let node: &'b Nodule<'a, T> = self;
         *field = crate::flux::xflux::XField::Obj(Box::new(move |key, item| {
@@ -323,7 +323,7 @@ where
                 Nodule::Leaf { _Val, .. } => {
                     if step == crate::silo::U32(0) {
                         *key = "Leaf".to_string();
-                        *item = crate::flux::xflux::XField::Fluxable(_Val);
+                        *item = crate::flux::xflux::XField::FluxSource(_Val);
                         step.0 += 1;
                         true
                     } else {
@@ -428,7 +428,7 @@ where
 impl<'a, T, I> IntoNodule<T, Nodule<'a, T>> for I
 where
     I: Into<T>,
-    T: INode<'a> + crate::flux::IXFluxable + Send + Sync + 'a,
+    T: INode<'a> + crate::flux::IXFluxSource + Send + Sync + 'a,
 {
     fn IntoNodule(self) -> Nodule<'a, T> {
         Nodule::New(self.into())
@@ -450,7 +450,7 @@ pub trait FallbackResolveNode<'a, T> {
 impl<'a, T, I> FallbackResolveNode<'a, T> for NodeWrapper<I, T>
 where
     I: Into<T>,
-    T: INode<'a> + crate::flux::IXFluxable + Send + Sync + 'a,
+    T: INode<'a> + crate::flux::IXFluxSource + Send + Sync + 'a,
 {
     fn resolve(self) -> Nodule<'a, T> {
         Nodule::New(self.0.into())

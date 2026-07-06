@@ -3,7 +3,7 @@
 use	std::{ cmp, fmt, ops::{ BitAnd, BitAndAssign, BitOr, BitOrAssign, Not } };
 use	std::sync::LazyLock;
 use	crate::silo::{ Arr, Buff, U8, U64 };
-use	crate::flux::{IXFluxable, XField};
+use	crate::flux::{IXFluxSource, XField};
 
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -616,9 +616,9 @@ impl BitAndAssign for Charset
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxable for Charset
+impl IXFluxSource for Charset
 {
-    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>)
+    fn	ToXField< 'a>( &'a self, field: &mut XField< 'a>)
     {
         let  	s = self.ToString();
         *field = XField::String( s);

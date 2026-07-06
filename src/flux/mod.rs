@@ -11,6 +11,6 @@ pub use	outstream::OutStream;
 
 #[cfg( test)]
 mod	_tests;
-pub use	xflux::{ IXFlux, XField, IXFluxable };
+pub use	xflux::{ IXFluxSink, XField, IXFluxSource };
 
 //---------------------------------------------------------------------------------------------------------------------------------

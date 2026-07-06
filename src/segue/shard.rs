@@ -1,6 +1,6 @@
 use	crate::silo::U32;
 use	crate::stalks::{ BinOp, DynINode, INode, WorkPtr };
-use	crate::flux::{ IXFluxable, xflux::XField };
+use	crate::flux::{ IXFluxSource, xflux::XField };
 use	std::fmt;
 use	crate::segue::{ Charset, IGrammar, Parser };
 use	std::any::Any;
@@ -26,9 +26,9 @@ impl Default for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxable for Shard
+impl IXFluxSource for Shard
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut step = 0u32;
         let  	shard = self;
@@ -41,7 +41,7 @@ impl IXFluxable for Shard
                     }
                     Shard::Charset( c) => {
                         *key = "Charset".to_string();
-                        *item = XField::Fluxable( c);
+                        *item = XField::FluxSource( c);
                     }
                 }
                 step += 1;

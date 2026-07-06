@@ -38,7 +38,7 @@ fn	TestTermTree()
     let  	mut output = String::new();
     {
         let  	mut jsonStream = JsonOutStream::New( &mut output, true);
-        jsonStream.KeyField( "nodeTree", XField::Fluxable( &nodeTree));
+        jsonStream.KeyField( "nodeTree", XField::FluxSource( &nodeTree));
     }
     println!( "{}", output);
 
@@ -48,7 +48,7 @@ fn	TestTermTree()
     let  	mut repoOutput = String::new();
     {
         let  	mut jsonStream = JsonOutStream::New( &mut repoOutput, true);
-        jsonStream.KeyField( "exprRepos", XField::Fluxable( &exprRepos));
+        jsonStream.KeyField( "exprRepos", XField::FluxSource( &exprRepos));
     }
     println!( "{}", repoOutput);
 }

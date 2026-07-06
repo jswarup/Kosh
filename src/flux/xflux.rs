@@ -6,6 +6,7 @@ use	crate::silo::IAccess;
 
 pub enum XField< 'a>
 {
+    Null,
     Str( &'a str),
     String( String),
     U64( u64),
@@ -13,34 +14,33 @@ pub enum XField< 'a>
     Bool( bool),
     Arr( Box< dyn FnMut( &mut XField< 'a>) -> bool + 'a>),
     Obj( Box< dyn FnMut( &mut String, &mut XField< 'a>) -> bool + 'a>),
-    Null,
-    Fluxable( &'a dyn IXFluxable),
+    FluxSource( &'a dyn IXFluxSource),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IXFlux
+pub trait IXFluxSink
 {
-    fn	Field( &mut self, field: XField);
+    fn	FromXField( &mut self, field: XField);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IXFluxable
+pub trait IXFluxSource
 {
-    fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>);
+    fn	ToXField< 'a>( &'a self, field: &mut XField< 'a>);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[macro_export]
-macro_rules! ImplIXFluxable
+macro_rules! ImplIXFluxSource
 {
     ( $struct_name:ident $( , $field:ident )* ) =>
     {
-        impl $crate::flux::IXFluxable for $struct_name
+        impl $crate::flux::IXFluxSource for $struct_name
         {
-            fn	ToXFlux< 'a>( &'a self, field: &mut $crate::flux::xflux::XField< 'a>)
+            fn	ToXField< 'a>( &'a self, field: &mut $crate::flux::xflux::XField< 'a>)
             {
                 let  	mut step = 0u32;
                 let  	obj = self;
@@ -50,7 +50,7 @@ macro_rules! ImplIXFluxable
                     $(
                         if step == _curr_step {
                             *key = stringify!( $field).to_string();
-                            *item = $crate::flux::xflux::XField::Fluxable( &obj.$field);
+                            *item = $crate::flux::xflux::XField::FluxSource( &obj.$field);
                             step += 1;
                             return true;
                         }
@@ -65,14 +65,14 @@ macro_rules! ImplIXFluxable
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-macro_rules! ImplIXFluxableUInt
+macro_rules! ImplIXFluxSourceUInt
 {
     ( $( $T:ty ),+ ) =>
     {
         $(
-            impl IXFluxable for $T
+            impl IXFluxSource for $T
             {
-                fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>)
+                fn	ToXField< 'a>( &'a self, field: &mut XField< 'a>)
                 {
                     *field = XField::U64( self.0 as u64);
                 }
@@ -81,18 +81,18 @@ macro_rules! ImplIXFluxableUInt
     };
 }
 
-ImplIXFluxableUInt!( U8, U16, U32, U64);
+ImplIXFluxSourceUInt!( U8, U16, U32, U64);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-macro_rules! ImplIXFluxableFloat
+macro_rules! ImplIXFluxSourceFloat
 {
     ( $( $T:ty ),+ ) =>
     {
         $(
-            impl IXFluxable for $T
+            impl IXFluxSource for $T
             {
-                fn	ToXFlux< 'a>( &'a self, field: &mut XField< 'a>)
+                fn	ToXField< 'a>( &'a self, field: &mut XField< 'a>)
                 {
                     *field = XField::F64( *self as f64);
                 }
@@ -101,21 +101,21 @@ macro_rules! ImplIXFluxableFloat
     };
 }
 
-ImplIXFluxableFloat!( f32, f64);
+ImplIXFluxSourceFloat!( f32, f64);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl<'a, T> IXFluxable for Arr<'a, T>
+impl<'a, T> IXFluxSource for Arr<'a, T>
 where
-    T: IXFluxable,
+    T: IXFluxSource,
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut idx = 0u32;
         let  	arr = *self;
         *field = XField::Arr( Box::new( move |item| {
             if idx < arr.Size().0 {
-                *item = XField::Fluxable( arr.At( idx));
+                *item = XField::FluxSource( arr.At( idx));
                 idx += 1;
                 true
             } else {

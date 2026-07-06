@@ -1,5 +1,5 @@
 //-- realexpr.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::flux::{ IXFluxable, xflux::XField };
+use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::fresco::exprrepos::BaseExpr;
 use	core::any::Any;
 
@@ -44,9 +44,9 @@ impl BaseExpr for RealExpr
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxable for RealExpr
+impl IXFluxSource for RealExpr
 {
-    fn	ToXFlux< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
     {
         let  	mut step = 0u32;
         let  	expr = self;
