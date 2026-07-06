@@ -1,5 +1,5 @@
 //-- outstream.rs ----------------------------------------------------------------------------------------------------------------------
-use	std::{ cmp, io, slice::{ from_raw_parts, from_raw_parts_mut } };
+use	std::{ cmp, fs, io, path::Path, slice::{ from_raw_parts, from_raw_parts_mut } };
 use	crate::silo::{ Arr, Buff, IAccess, IArr, U8, U32 };
 use	std::io::{ Result, Write };
 
@@ -32,19 +32,65 @@ impl< 'a> From< Arr< 'a, U8>> for OutStream< 'a, io::Sink>
     }
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< 'a, W: Write> OutStream< 'a, W>
+impl< 'a, W: Write> From< W> for OutStream< 'a, W>
 {
-    pub fn	New( inner: W, cacheSize: usize) -> Self
+    fn from( inner: W) -> Self
     {
-        let  	buff = Buff::New( U32( cacheSize as u32), U8::_0);
+        let  	buff = Buff::NewEmpty();
         Self {
             _Source: OutSource::Streaming( inner, buff),
             _Marker: U32( 0),
         }
     }
+}
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a> TryFrom< &Path> for OutStream< 'a, fs::File>
+{
+    type Error = io::Error;
+    fn try_from( path: &Path) -> io::Result< Self>
+    {
+        let  	file = fs::File::create( path)?;
+        Ok( Self::from( file))
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a> TryFrom< &str> for OutStream< 'a, fs::File>
+{
+    type Error = io::Error;
+    fn try_from( path: &str) -> io::Result< Self>
+    {
+        let  	file = fs::File::create( path)?;
+        Ok( Self::from( file))
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a> OutStream< 'a, fs::File>
+{
+    pub fn	FromFile< P: AsRef< Path>>( path: P) -> io::Result< Self>
+    {
+        Self::try_from( path.as_ref())
+    }
+
+    pub fn	FromPath( path: &Path) -> io::Result< Self>
+    {
+        Self::try_from( path)
+    }
+
+    pub fn	FromFileHandle( file: fs::File) -> io::Result< Self>
+    {
+        Ok( Self::from( file))
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+impl< 'a, W: Write> OutStream< 'a, W>
+{
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	Position( &self) -> U32
