@@ -124,7 +124,8 @@ fn	TestBacktrackingParser()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 #[test]
-fn TestPostBoxet() {
+fn TestPostBoxet() 
+{
     let data = "ab";
     let mut stream = InStream::from(data);
     let mut parser = Parser::New(&mut stream);
@@ -132,3 +133,18 @@ fn TestPostBoxet() {
     let dynNode: &DynINode<'_> = &tree;
     assert!(dynNode.Match(&mut parser));
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+#[test]
+fn TestRgx() 
+{
+    let     identRgx = crate::ShardTree!(  [ "a-zA-Z"] < *[ "a-zA-Z0-9_.@#$!"] ); 
+    let  	mut output = String::new();
+    {
+        let  	mut jsonStream = crate::flux::JsonOutStream::New( &mut output, true);
+        jsonStream.KeyField( "identRgx", crate::flux::xflux::XField::Fluxable( &identRgx));
+    }
+    println!( "{}", output);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------

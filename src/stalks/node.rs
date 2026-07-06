@@ -479,15 +479,15 @@ macro_rules! NodeTree {
     ( @cb [ $( $cb:tt)* ], $Arg:ident, ( $( $inner:tt)+ ) ) => { $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $inner)+ ) };
 
     // ── Binary: [ boxet ] OP rhs ────────────────────────────────────────────────────────────────────
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] +  $( $r:tt)+ ) => { $( $cb)* !( @feature_PLUS [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] -  $( $r:tt)+ ) => { $( $cb)* !( @feature_MINUS [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] *  $( $r:tt)+ ) => { $( $cb)* !( @feature_STAR [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] /  $( $r:tt)+ ) => { $( $cb)* !( @feature_DIV [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] ^  $( $r:tt)+ ) => { $( $cb)* !( @feature_POW [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bg $Arg, ( $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] +  $( $r:tt)+ ) => { $( $cb)* !( @feature_PLUS [ $( $cb)* ], @bg $Arg, ( [ $s ] ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] -  $( $r:tt)+ ) => { $( $cb)* !( @feature_MINUS [ $( $cb)* ], @bg $Arg, ( [ $s ] ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] *  $( $r:tt)+ ) => { $( $cb)* !( @feature_STAR [ $( $cb)* ], @bg $Arg, ( [ $s ] ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] /  $( $r:tt)+ ) => { $( $cb)* !( @feature_DIV [ $( $cb)* ], @bg $Arg, ( [ $s ] ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] ^  $( $r:tt)+ ) => { $( $cb)* !( @feature_POW [ $( $cb)* ], @bg $Arg, ( [ $s ] ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] << $( $r:tt)+ ) => { $( $cb)* !( @feature_SHL [ $( $cb)* ], @bg $Arg, ( [ $s ] ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] >> $( $r:tt)+ ) => { $( $cb)* !( @feature_SHR [ $( $cb)* ], @bg $Arg, ( [ $s ] ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] <  $( $r:tt)+ ) => { $( $cb)* !( @feature_LT  [ $( $cb)* ], @bg $Arg, ( [ $s ] ), $( $r )+ ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] |  $( $r:tt)+ ) => { $( $cb)* !( @feature_BOR [ $( $cb)* ], @bg $Arg, ( [ $s ] ), $( $r )+ ) };
 
     // ── Leaf Boxet ──────────────────────────────────────────────────────────────────────────────────
     ( @cb [ $( $cb:tt)* ], $Arg:ident, [ $s:literal ] ) => {
