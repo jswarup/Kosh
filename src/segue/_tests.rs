@@ -138,7 +138,8 @@ fn TestPostBoxet()
 #[test]
 fn TestRgx() 
 {
-    let     identRgx = crate::ShardTree!(  [ "a-zA-Z"] < *[ "a-zA-Z0-9_.@#$!"] ); 
+    let     alpha = crate::ShardTree!(  [ "a-zA-Z"]);
+    let     identRgx = crate::ShardTree!(  alpha[ |_worker| {} ] ); 
     let  	mut output = String::new();
     {
         let  	mut jsonStream = crate::flux::JsonOutStream::New( &mut output, true);

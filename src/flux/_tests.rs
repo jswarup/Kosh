@@ -38,19 +38,19 @@ fn	TestInStream()
 {
     let  	data = "abc";
     let  	mut stream = InStream::from( data);
-    assert_eq!( stream.Curr(), U8( b'a'));
+    assert_eq!( stream.Curr(), b'a');
     assert!( stream.Next());
-    assert_eq!( stream.Curr(), U8( b'b'));
+    assert_eq!( stream.Curr(), b'b');
     assert!( stream.Next());
-    assert_eq!( stream.Curr(), U8( b'c'));
+    assert_eq!( stream.Curr(), b'c');
     assert!( !stream.Next());
-    assert_eq!( stream.Curr(), U8::_0);
+    assert_eq!( stream.Curr(), 0);
     stream.RollTo( U32( 1));
-    assert_eq!( stream.Curr(), U8( b'b'));
+    assert_eq!( stream.Curr(), b'b');
     let  	rest1 = stream.Rest();
     assert_eq!( rest1.Size(), 2);
-    assert_eq!( *rest1.At( 0), U8( b'b'));
-    assert_eq!( *rest1.At( 1), U8( b'c'));
+    assert_eq!( *rest1.At( 0), b'b');
+    assert_eq!( *rest1.At( 1), b'c');
     assert_eq!( stream.RemainingBytes(), b"bc");
     stream.RollTo( U32( 5));
     assert_eq!( stream.Curr(), U8::_0);
@@ -67,9 +67,9 @@ fn	TestInStreamFromFile()
     let  	path = "test_inbuffstream.txt";
     fs::write( path, b"hello").unwrap();
     let  	mut stream = InStream::FromFile( path).unwrap();
-    assert_eq!( stream.Curr(), U8( b'h'));
+    assert_eq!( stream.Curr(), b'h');
     assert!( stream.Next());
-    assert_eq!( stream.Curr(), U8( b'e'));
+    assert_eq!( stream.Curr(), b'e');
     fs::remove_file( path).unwrap();
 }
 
