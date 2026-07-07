@@ -8,10 +8,11 @@ use	std::io::Read;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Clone, Debug)]
 pub enum Shard {
     String( String),
     Charset( Charset),
+    Repeat( Box<Shard>, crate::silo::USeg),
+    UniNode( crate::stalks::node::Attrib, Box<Shard>),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -33,21 +34,51 @@ impl IXFluxSource for Shard
         let  	mut step = 0u32;
         let  	shard = self;
         *field = XField::Obj( Box::new( move |key, item| {
-            if step == 0 {
-                match shard {
-                    Shard::String( s) => {
+            match shard {
+                Shard::String( s) => {
+                    if step == 0 {
                         *key = "String".to_string();
                         *item = XField::Str( s);
-                    }
-                    Shard::Charset( c) => {
+                        step += 1;
+                        true
+                    } else { false }
+                }
+                Shard::Charset( c) => {
+                    if step == 0 {
                         *key = "Charset".to_string();
                         *item = XField::FluxSource( c);
-                    }
+                        step += 1;
+                        true
+                    } else { false }
                 }
-                step += 1;
-                true
-            } else {
-                false
+                Shard::Repeat( child, useg) => {
+                    if step == 0 {
+                        *key = "Child".to_string();
+                        let child_ref = &**child;
+                        child_ref.ToXField( item);
+                        step += 1;
+                        true
+                    } else if step == 1 {
+                        *key = "Repeat".to_string();
+                        *item = XField::FluxSource( useg);
+                        step += 1;
+                        true
+                    } else { false }
+                }
+                Shard::UniNode( attrib, child) => {
+                    if step == 0 {
+                        *key = "Child".to_string();
+                        let child_ref = &**child;
+                        child_ref.ToXField( item);
+                        step += 1;
+                        true
+                    } else if step == 1 {
+                        *key = "Attrib".to_string();
+                        *item = XField::FluxSource( attrib);
+                        step += 1;
+                        true
+                    } else { false }
+                }
             }
         }));
     }
@@ -62,6 +93,8 @@ impl fmt::Display for Shard
         match self {
             Self::String( s) => write!( f, "Shard( {})", s),
             Self::Charset( cs) => write!( f, "Shard( {})", cs),
+            Self::Repeat( _, useg) => write!( f, "Repeat( {:?})", useg),
+            Self::UniNode( _attrib, _) => write!( f, "UniNode"),
         }
     }
 }
@@ -109,15 +142,39 @@ impl From< Charset> for Shard
 
 impl< 'a> INode< 'a> for Shard
 {
-    fn	_Size( &self) -> U32 { U32(0) }
-    fn	_At( &self, _idx: U32) -> &DynINode< 'a> { panic!("Leaf") }
+    fn	_Size( &self) -> U32 {
+        match self {
+            Self::Repeat( _, _) | Self::UniNode( _, _) => U32(1),
+            _ => U32(0),
+        }
+    }
+    fn	_At( &self, idx: U32) -> &DynINode< 'a> {
+        match self {
+            Self::Repeat( child, _) | Self::UniNode( _, child) => {
+                if idx.0 == 0 {
+                    &**child
+                } else {
+                    panic!("At called on unary node with index > 0")
+                }
+            },
+            _ => panic!("At called on Leaf"),
+        }
+    }
     fn	Value( &self) -> Option< WorkPtr< 'a>> { None }
     fn	AsAny( &self) -> Option< &dyn Any>
     {
         Some( self)
     }
     fn	DocStr( &self) -> &'static str { "" }
-    fn	BinOp( &self) -> BinOp { BinOp::None }
+    fn	BinOp( &self) -> BinOp {
+        BinOp::None
+    }
+    fn	Attrib( &self) -> Option<&crate::stalks::node::Attrib> {
+        match self {
+            Self::UniNode( attrib, _) => Some( attrib),
+            _ => None,
+        }
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -129,6 +186,8 @@ impl IGrammar for Shard
         match self {
             Self::String( s) => s.as_str().Match( parser),
             Self::Charset( cs) => cs.Match( parser),
+            Self::Repeat( _child, _) => false, // TODO: Implement Repeat matching
+            Self::UniNode( _, _child) => false, // TODO: Implement UniNode matching
         }
     }
 }
@@ -167,10 +226,31 @@ macro_rules! ShardTree {
     ( @feature_NEW    $( $args:tt)* ) => { $crate::NodeTree!( @feature_NEW    $( $args)* ) };
     ( @feature_PostBoxet $( $args:tt)* ) => { $crate::NodeTree!( @feature_PostBoxet $( $args)* ) };
 
+    // ── Shard AST Hooks (overrides NodeTree default) ──────────────────────────────────────────────
+    ( @feature_RESOLVE_LEAF [ $( $cb:tt)* ], $Arg:ident, $val:expr ) => {
+        Shard::from( $val )
+    };
+    ( @feature_NEWLEAF [ $( $cb:tt)* ], $Arg:ident, $val:expr ) => {
+        Shard::from( $val )
+    };
+    ( @feature_NEWUNINODE [ $( $cb:tt)* ], $Arg:ident, $attrib:expr, $child:expr ) => {
+        Shard::UniNode( $attrib, Box::new( $child ) )
+    };
+    ( @feature_NEWUNINODE [ $( $cb:tt)* ], $Arg:ident, $attrib:expr, $child:expr ) => {
+        Shard::UniNode( $attrib, Box::new( $child ) )
+    };
+    ( @feature_REPEAT_STAR [ $( $cb:tt)* ], $Arg:ident, $child:expr ) => {
+        Shard::Repeat( Box::new( $child ), $crate::silo::USeg::NewInf( 0) )
+    };
+    ( @feature_REPEAT_PLUS [ $( $cb:tt)* ], $Arg:ident, $child:expr ) => {
+        Shard::Repeat( Box::new( $child ), $crate::silo::USeg::NewInf( 1) )
+    };
+
     // ── Custom: Boxet stringification (overrides BudTree default) ─────────────────────────────────
     ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $s:literal ) => {
-        $crate::stalks::node::IntoNodule::< Shard, $crate::stalks::node::Nodule<Shard> >::IntoNodule( Shard::from( <$crate::segue::Charset>::from( $s.as_bytes() ) ) )
+        Shard::from( <$crate::segue::Charset>::from( $s.as_bytes() ) )
     };
+
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
     ( @ $( $inner:tt )+ ) => {
         $crate::NodeTree!( @ $( $inner )+ )
@@ -182,3 +262,9 @@ macro_rules! ShardTree {
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+impl fmt::Debug for Shard {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}

@@ -9,8 +9,8 @@ use	crate::silo::{ Arr, IAccess, Stash, U32 };
 
 pub enum Attrib
 {
-    Repeat( crate::silo::USeg),
     Action( Box< dyn IWork + 'static>),
+    Repeat( crate::silo::USeg),
 }
 
 impl fmt::Display for Attrib
@@ -18,8 +18,8 @@ impl fmt::Display for Attrib
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         match self {
-            Attrib::Repeat( _ ) => f.write_str( "Repeat"),
             Attrib::Action( _ ) => f.write_str( "Action"),
+            Attrib::Repeat( useg) => write!( f, "Repeat( {:?})", useg),
         }
     }
 }
@@ -35,13 +35,13 @@ impl IXFluxSource for Attrib
         *field = XField::Obj( Box::new( move |key, item| {
             if step == 0 {
                 match attribVal {
-                    Attrib::Repeat( useg) => {
-                        *key = "Repeat".to_string();
-                        *item = XField::FluxSource( useg);
-                    }
                     Attrib::Action( _ ) => {
                         *key = "Action".to_string();
                         *item = XField::Str( "Action");
+                    }
+                    Attrib::Repeat( useg) => {
+                        *key = "Repeat".to_string();
+                        *item = XField::FluxSource( useg);
                     }
                 }
                 step += 1;
@@ -483,8 +483,8 @@ macro_rules! NodeTree {
     ( @feature_LT  [ $( $cb:tt)* ], @bl $Arg:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, Less, $l, $( $r)+ ) };
     ( @feature_BOR [ $( $cb:tt)* ], @bg $Arg:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => { $crate::NodeTree!( @bg [ $( $cb)* ], $Arg, Bor, ( $( $l)+ ), $( $r)+ ) };
     ( @feature_BOR [ $( $cb:tt)* ], @bl $Arg:ident, $l:expr, $( $r:tt)+ ) => { $crate::NodeTree!( @bl [ $( $cb)* ], $Arg, Bor, $l, $( $r)+ ) };
-    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, | $( $body:tt)+ ) => { $crate::stalks::node::Nodule::<$Arg>::New( $Arg::New( | $( $body)+ ) ) };
-    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, move | $( $body:tt)+ ) => { $crate::stalks::node::Nodule::<$Arg>::New( $Arg::New( move | $( $body)+ ) ) };
+    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, | $( $body:tt)+ ) => { $( $cb)* !( @feature_NEWLEAF [ $( $cb)* ], $Arg, $Arg::New( | $( $body)+ ) ) };
+    ( @feature_NEW [ $( $cb:tt)* ], $Arg:ident, move | $( $body:tt)+ ) => { $( $cb)* !( @feature_NEWLEAF [ $( $cb)* ], $Arg, $Arg::New( move | $( $body)+ ) ) };
 
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -530,15 +530,15 @@ macro_rules! NodeTree {
     ( @cb [ $( $cb:tt)* ], $Arg:ident, + [ $s:literal ] $( $r:tt)+ ) => { $( $cb)* !( @cb [ $( $cb)* ], $Arg, ( + [ $s ] ) $( $r)+ ) };
 
     // ── Prefix * Leaf ───────────────────────────────────────────────────────────────────────
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, * ( $( $l:tt)+ ) ) => { $crate::stalks::node::Nodule::<$Arg>::NewUniNode( $crate::stalks::node::Attrib::Repeat( $crate::silo::USeg::NewInf( 0)), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $l)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, * $l:ident ) => { $crate::stalks::node::Nodule::<$Arg>::NewUniNode( $crate::stalks::node::Attrib::Repeat( $crate::silo::USeg::NewInf( 0)), { #[allow(unused_imports)] use $crate::stalks::node::FallbackResolveNode; $crate::stalks::node::NodeWrapper( $l, std::marker::PhantomData::<$Arg> ).resolve() } ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, * $l:literal ) => { $crate::stalks::node::Nodule::<$Arg>::NewUniNode( $crate::stalks::node::Attrib::Repeat( $crate::silo::USeg::NewInf( 0)), { #[allow(unused_imports)] use $crate::stalks::node::FallbackResolveNode; $crate::stalks::node::NodeWrapper( $l, std::marker::PhantomData::<$Arg> ).resolve() } ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, * [ $s:literal ] ) => { $crate::stalks::node::Nodule::<$Arg>::NewUniNode( $crate::stalks::node::Attrib::Repeat( $crate::silo::USeg::NewInf( 0)), $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, * ( $( $l:tt)+ ) ) => { $( $cb)* !( @feature_REPEAT_STAR [ $( $cb)* ], $Arg, $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $l)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, * $l:ident ) => { $( $cb)* !( @feature_REPEAT_STAR [ $( $cb)* ], $Arg, $( $cb)* !( @feature_RESOLVE_LEAF [ $( $cb)* ], $Arg, $l ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, * $l:literal ) => { $( $cb)* !( @feature_REPEAT_STAR [ $( $cb)* ], $Arg, $( $cb)* !( @feature_RESOLVE_LEAF [ $( $cb)* ], $Arg, $l ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, * [ $s:literal ] ) => { $( $cb)* !( @feature_REPEAT_STAR [ $( $cb)* ], $Arg, $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ) };
     // ── Prefix + Leaf ───────────────────────────────────────────────────────────────────────
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, + ( $( $l:tt)+ ) ) => { $crate::stalks::node::Nodule::<$Arg>::NewUniNode( $crate::stalks::node::Attrib::Repeat( $crate::silo::USeg::NewInf( 1)), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $l)+ ) ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, + $l:ident ) => { $crate::stalks::node::Nodule::<$Arg>::NewUniNode( $crate::stalks::node::Attrib::Repeat( $crate::silo::USeg::NewInf( 1)), { #[allow(unused_imports)] use $crate::stalks::node::FallbackResolveNode; $crate::stalks::node::NodeWrapper( $l, std::marker::PhantomData::<$Arg> ).resolve() } ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, + $l:literal ) => { $crate::stalks::node::Nodule::<$Arg>::NewUniNode( $crate::stalks::node::Attrib::Repeat( $crate::silo::USeg::NewInf( 1)), { #[allow(unused_imports)] use $crate::stalks::node::FallbackResolveNode; $crate::stalks::node::NodeWrapper( $l, std::marker::PhantomData::<$Arg> ).resolve() } ) };
-    ( @cb [ $( $cb:tt)* ], $Arg:ident, + [ $s:literal ] ) => { $crate::stalks::node::Nodule::<$Arg>::NewUniNode( $crate::stalks::node::Attrib::Repeat( $crate::silo::USeg::NewInf( 1)), $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, + ( $( $l:tt)+ ) ) => { $( $cb)* !( @feature_REPEAT_PLUS [ $( $cb)* ], $Arg, $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $l)+ ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, + $l:ident ) => { $( $cb)* !( @feature_REPEAT_PLUS [ $( $cb)* ], $Arg, $( $cb)* !( @feature_RESOLVE_LEAF [ $( $cb)* ], $Arg, $l ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, + $l:literal ) => { $( $cb)* !( @feature_REPEAT_PLUS [ $( $cb)* ], $Arg, $( $cb)* !( @feature_RESOLVE_LEAF [ $( $cb)* ], $Arg, $l ) ) };
+    ( @cb [ $( $cb:tt)* ], $Arg:ident, + [ $s:literal ] ) => { $( $cb)* !( @feature_REPEAT_PLUS [ $( $cb)* ], $Arg, $( $cb)* !( @feature_BOXET [ $( $cb)* ], $Arg, $s ) ) };
     // ── Binary: (group) OP rhs ──────────────────────────────────────────────────────────────────────
     ( @cb [ $( $cb:tt)* ], $Arg:ident, ( $( $l:tt)+ ) +  $( $r:tt)+ ) => { $( $cb)* !( @feature_PLUS [ $( $cb)* ], @bg $Arg, ( $( $l)+ ), $( $r)+ ) };
     ( @cb [ $( $cb:tt)* ], $Arg:ident, ( $( $l:tt)+ ) -  $( $r:tt)+ ) => { $( $cb)* !( @feature_MINUS [ $( $cb)* ], @bg $Arg, ( $( $l)+ ), $( $r)+ ) };
@@ -581,38 +581,51 @@ macro_rules! NodeTree {
 
     // ── Leaf fallback ───────────────────────────────────────────────────────────────────────────────
     ( @cb [ $( $cb:tt)* ], $Arg:ident, $leaf:expr ) => {
-        {
-            #[allow(unused_imports)] use $crate::stalks::node::FallbackResolveNode;
-            $crate::stalks::node::NodeWrapper( $leaf, std::marker::PhantomData::<$Arg> ).resolve()
-        }
+        $( $cb)* !( @feature_RESOLVE_LEAF [ $( $cb)* ], $Arg, $leaf )
     };
 
     // ---- Internal helpers ----------------------------------------------------------------------------------------------------
     // @bg : binary — (group) OP rhs
     ( @bg [ $( $cb:tt)* ], $Arg:ident, $op:ident, ( $( $l:tt)+ ), $( $r:tt)+ ) => {
-        $crate::stalks::node::Nodule::<$Arg>::NewBinNode(
-            $crate::stalks::BinOp::$op,
-            $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $l)+ ),
-            $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $r)+ ) )
+        $( $cb)* !( @feature_NEWBINNODE [ $( $cb)* ], $Arg, $op, $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $l)+ ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $r)+ ) )
     };
     // @bl : binary — leaf OP rhs
     ( @bl [ $( $cb:tt)* ], $Arg:ident, $op:ident, $l:expr, $( $r:tt)+ ) => {
-        $crate::stalks::node::Nodule::<$Arg>::NewBinNode(
-            $crate::stalks::BinOp::$op,
-            { #[allow(unused_imports)] use $crate::stalks::node::FallbackResolveNode; $crate::stalks::node::NodeWrapper( $l, std::marker::PhantomData::<$Arg> ).resolve() },
-            $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $r)+ ) )
+        $( $cb)* !( @feature_NEWBINNODE [ $( $cb)* ], $Arg, $op, $( $cb)* !( @feature_RESOLVE_LEAF [ $( $cb)* ], $Arg, $l ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $r)+ ) )
+    };
+
+    ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, $op:ident, $l:expr, $r:expr ) => {
+        $crate::stalks::node::Nodule::<$Arg>::NewBinNode( $crate::stalks::BinOp::$op, $l, $r )
+    };
+    ( @feature_NEWUNINODE [ $( $cb:tt)* ], $Arg:ident, $attrib:expr, $child:expr ) => {
+        $crate::stalks::node::Nodule::<$Arg>::NewUniNode( $attrib, $child )
+    };
+    ( @feature_NEWLEAF [ $( $cb:tt)* ], $Arg:ident, $val:expr ) => {
+        $crate::stalks::node::Nodule::<$Arg>::New( $val )
+    };
+    ( @feature_RESOLVE_LEAF [ $( $cb:tt)* ], $Arg:ident, $val:expr ) => {
+        {
+            #[allow(unused_imports)] use $crate::stalks::node::FallbackResolveNode;
+            $crate::stalks::node::NodeWrapper( $val, std::marker::PhantomData::<$Arg> ).resolve()
+        }
+    };
+    ( @feature_REPEAT_STAR [ $( $cb:tt)* ], $Arg:ident, $child:expr ) => {
+        $crate::stalks::node::Nodule::<$Arg>::NewUniNode( $crate::stalks::node::Attrib::Repeat( $crate::silo::USeg { _First: $crate::silo::U32(0), _Last: $crate::silo::U32(0) } ), $child )
+    };
+    ( @feature_REPEAT_PLUS [ $( $cb:tt)* ], $Arg:ident, $child:expr ) => {
+        $crate::stalks::node::Nodule::<$Arg>::NewUniNode( $crate::stalks::node::Attrib::Repeat( $crate::silo::USeg { _First: $crate::silo::U32(1), _Last: $crate::silo::U32(0) } ), $child )
     };
     
     // @feature_PostBoxet
     ( @feature_PostBoxet [ $( $cb:tt)* ], @bg $Arg:ident, ( $( $l:tt)+ ), [ | $arg:ident | $( $body:tt)+ ] ) => {
-        $crate::stalks::node::Nodule::<$Arg>::NewUniNode(
+        $( $cb)* !( @feature_NEWUNINODE [ $( $cb)* ], $Arg,
             $crate::stalks::node::Attrib::Action( Box::new( move | $arg: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ) ),
             $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $l)+ ) )
     };
     ( @feature_PostBoxet [ $( $cb:tt)* ], @bl $Arg:ident, $l:expr, [ | $arg:ident | $( $body:tt)+ ] ) => {
-        $crate::stalks::node::Nodule::<$Arg>::NewUniNode(
+        $( $cb)* !( @feature_NEWUNINODE [ $( $cb)* ], $Arg,
             $crate::stalks::node::Attrib::Action( Box::new( move | $arg: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ) ),
-            { #[allow(unused_imports)] use $crate::stalks::node::FallbackResolveNode; $crate::stalks::node::NodeWrapper( $l, std::marker::PhantomData::<$Arg> ).resolve() } )
+            $( $cb)* !( @feature_RESOLVE_LEAF [ $( $cb)* ], $Arg, $l ) )
     };
 
     // ---- DEFAULT FALLBACK ERRORS FOR DISABLED FEATURES -------------------------------------------------------------

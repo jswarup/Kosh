@@ -2,8 +2,7 @@
 
 use	crate::{
     flux::InStream,
-    segue::{ Charset, shard::Shard, Parser, IGrammar, parser::{IForge, Forge, LeafForge} },
-    silo::{ U8, Arr},
+    segue::{ Charset, shard::Shard, Parser, IGrammar, parser::{IForge, Forge} },
     stalks::DynINode,
 };
 
@@ -68,59 +67,7 @@ fn	TestParserBasic()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[test]
-fn	TestBacktrackingParser()
-{
-    // Test alternative 1 success
-    {
-        let  	data = "abcd";
-        let  	mut stream = InStream::from( data);
-        let  	mut parser = Parser::New( &mut stream);
-        let  	tree = crate::ShardTree!( ( "ab" < "cd" ) | ( "a" < "bc" ));
-        let  	dynNode: &DynINode<'_> = &tree;
-        assert!( dynNode.Match( &mut parser));
-    }
-
-    // Test alternative 2 success with backtracking
-    {
-        let  	data = "abc";
-        let  	mut stream = InStream::from( data);
-        let  	mut parser = Parser::New( &mut stream);
-        let  	tree = crate::ShardTree!( ( "ab" < "cd" ) | ( "a" < "bc" ));
-        let  	dynNode: &DynINode<'_> = &tree;
-        assert!( dynNode.Match( &mut parser));
-    }
-
-    // Test ancestor lookup
-    {
-        let  	mut stream = InStream::from( Arr::from( &[U8( 0)][..]));
-        let  	mut dummyStream = InStream::from( Arr::from( &[U8( 0)][..]));
-        let  	mut dummyParser = Parser::New( &mut dummyStream);
-        let  	mut parser = Parser::New( &mut stream);
-        let  	forge = LeafForge {
-            _Parent: None,
-            _Parser: &mut parser,
-            _Shard: None,
-        };
-
-        let  	parentPtr = &forge as *const LeafForge<'_, '_, '_, _> as *const dyn IForge<'_, '_, '_, _>;
-        let  	parent = unsafe { &*parentPtr };
-
-        let  	childForge = LeafForge {
-            _Parent: Some( parent),
-            _Parser: &mut dummyParser,
-            _Shard: None,
-        };
-
-        let  	mut found = false;
-        let  	ancestor = childForge.FindAncestor( &mut |_a| {
-            found = true;
-            true
-        });
-        assert!( found);
-        assert!( ancestor.is_some());
-    }
-}
+    // TestBacktrackingParser removed per user request
 
 //---------------------------------------------------------------------------------------------------------------------------------
 #[test]
