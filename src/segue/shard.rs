@@ -1,5 +1,6 @@
 use	crate::silo::U32;
 use	crate::stalks::{ BinOp, DynINode, INode, WorkPtr };
+use	crate::stalks::work::{DynIWork, IWork};
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	std::fmt;
 use	crate::segue::{ Charset, IGrammar, Parser };
@@ -8,16 +9,16 @@ use	std::io::Read;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub enum Shard {
+pub enum Shard<'a> {
     String( String),
     Charset( Charset),
-    Repeat( Box<Shard>, crate::silo::USeg),
-    UniNode( crate::stalks::node::Attrib, Box<Shard>),
+    Repeat( Box<DynINode<'a>>, crate::silo::USeg),
+    Action( Box<DynINode<'a>>, Box<DynIWork<'static>>),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl Default for Shard
+impl<'a> Default for Shard<'a>
 {
     fn	default() -> Self
     {
@@ -27,7 +28,7 @@ impl Default for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxSource for Shard
+impl<'a> IXFluxSource for Shard<'a>
 {
     fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
     {
@@ -65,7 +66,7 @@ impl IXFluxSource for Shard
                         true
                     } else { false }
                 }
-                Shard::UniNode( attrib, child) => {
+                Shard::Action( child, _action) => {
                     if step == 0 {
                         *key = "Child".to_string();
                         let child_ref = &**child;
@@ -73,8 +74,8 @@ impl IXFluxSource for Shard
                         step += 1;
                         true
                     } else if step == 1 {
-                        *key = "Attrib".to_string();
-                        *item = XField::FluxSource( attrib);
+                        *key = "Action".to_string();
+                        *item = XField::Str( "Action");
                         step += 1;
                         true
                     } else { false }
@@ -86,7 +87,7 @@ impl IXFluxSource for Shard
  
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl fmt::Display for Shard
+impl<'a> fmt::Display for Shard<'a>
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
@@ -94,14 +95,14 @@ impl fmt::Display for Shard
             Self::String( s) => write!( f, "Shard( {})", s),
             Self::Charset( cs) => write!( f, "Shard( {})", cs),
             Self::Repeat( _, useg) => write!( f, "Repeat( {:?})", useg),
-            Self::UniNode( _attrib, _) => write!( f, "UniNode"),
+            Self::Action( _, _) => write!( f, "Action"),
         }
     }
 }
  
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl From< char> for Shard
+impl<'a> From< char> for Shard<'a>
 {
     fn	from( c: char) -> Self
     {
@@ -111,7 +112,7 @@ impl From< char> for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl From< String> for Shard
+impl<'a> From< String> for Shard<'a>
 {
     fn	from( s: String) -> Self
     {
@@ -121,7 +122,7 @@ impl From< String> for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl From< &str> for Shard
+impl<'a> From< &str> for Shard<'a>
 {
     fn	from( s: &str) -> Self
     {
@@ -131,7 +132,7 @@ impl From< &str> for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl From< Charset> for Shard
+impl<'a> From< Charset> for Shard<'a>
 {
     fn	from( cs: Charset) -> Self
     {
@@ -140,17 +141,17 @@ impl From< Charset> for Shard
 }
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> INode< 'a> for Shard
+impl< 'a> INode< 'a> for Shard<'a>
 {
     fn	_Size( &self) -> U32 {
         match self {
-            Self::Repeat( _, _) | Self::UniNode( _, _) => U32(1),
+            Self::Repeat( _, _) | Self::Action( _, _) => U32(1),
             _ => U32(0),
         }
     }
     fn	_At( &self, idx: U32) -> &DynINode< 'a> {
         match self {
-            Self::Repeat( child, _) | Self::UniNode( _, child) => {
+            Self::Repeat( child, _) | Self::Action( child, _) => {
                 if idx.0 == 0 {
                     &**child
                 } else {
@@ -161,17 +162,25 @@ impl< 'a> INode< 'a> for Shard
         }
     }
     fn	Value( &self) -> Option< WorkPtr< 'a>> { None }
-    fn	AsAny( &self) -> Option< &dyn Any>
+    fn	AsAny( &self) -> Option< &dyn core::any::Any>
     {
-        Some( self)
+        None
+    }
+    fn	AsRawLeaf( &self) -> *const ()
+    {
+        self as *const _ as *const ()
     }
     fn	DocStr( &self) -> &'static str { "" }
     fn	BinOp( &self) -> BinOp {
         BinOp::None
     }
     fn	Attrib( &self) -> Option<&crate::stalks::node::Attrib> {
+        None
+    }
+
+    fn	Action( &self) -> Option<*const DynIWork<'static>> {
         match self {
-            Self::UniNode( attrib, _) => Some( attrib),
+            Self::Action( _, action) => Some( action.as_ref() as *const _),
             _ => None,
         }
     }
@@ -179,7 +188,7 @@ impl< 'a> INode< 'a> for Shard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IGrammar for Shard
+impl<'a> IGrammar for Shard<'a>
 {
     fn	Match< 'p, 's, R: Read>( &self, parser: &mut Parser<'p, 's, R>) -> bool
     {
@@ -187,14 +196,14 @@ impl IGrammar for Shard
             Self::String( s) => s.as_str().Match( parser),
             Self::Charset( cs) => cs.Match( parser),
             Self::Repeat( _child, _) => false, // TODO: Implement Repeat matching
-            Self::UniNode( _, _child) => false, // TODO: Implement UniNode matching
+            Self::Action( _child, _) => false, // TODO: Implement Action matching
         }
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl crate::segue::parser::IForgeable for Shard {
+impl<'node> crate::segue::parser::IForgeable for Shard<'node> {
     fn Forge<'a, 'p, 's, R: std::io::Read + 'p>(
         &'a self, 
         parser: *mut Parser<'p, 's, R>
@@ -202,7 +211,7 @@ impl crate::segue::parser::IForgeable for Shard {
     where 's: 'p 
     {
         use crate::silo::cast::{IAllocRawExt, ICastExt};
-        let shardPtr = Some(self).Cast::<Option<&'static Shard>>();
+        let shardPtr = unsafe { Some(&*(self as *const _ as *const Shard<'p>)) };
         crate::segue::parser::LeafForge {
             _Parent: None,
             _Parser: parser,
@@ -233,11 +242,8 @@ macro_rules! ShardTree {
     ( @feature_NEWLEAF [ $( $cb:tt)* ], $Arg:ident, $val:expr ) => {
         Shard::from( $val )
     };
-    ( @feature_NEWUNINODE [ $( $cb:tt)* ], $Arg:ident, $attrib:expr, $child:expr ) => {
-        Shard::UniNode( $attrib, Box::new( $child ) )
-    };
-    ( @feature_NEWUNINODE [ $( $cb:tt)* ], $Arg:ident, $attrib:expr, $child:expr ) => {
-        Shard::UniNode( $attrib, Box::new( $child ) )
+    ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $action:expr, $child:expr ) => {
+        Shard::Action( Box::new( $child ), $action )
     };
     ( @feature_REPEAT_STAR [ $( $cb:tt)* ], $Arg:ident, $child:expr ) => {
         Shard::Repeat( Box::new( $child ), $crate::silo::USeg::NewInf( 0) )
@@ -263,7 +269,7 @@ macro_rules! ShardTree {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl fmt::Debug for Shard {
+impl<'a> fmt::Debug for Shard<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }

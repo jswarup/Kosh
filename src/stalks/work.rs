@@ -122,6 +122,9 @@ where
 /// A dynamic trait object for an `IWorker`. Send + Sync are already supertraits of IWorker.
 pub type DynIWorker< 'a> = dyn IWorker + 'a;
 
+/// A dynamic trait object for an `IWork`.
+pub type DynIWork< 'a> = dyn IWork + 'a;
+
 //---------------------------------------------------------------------------------------------------------------------------------
 /// Represents an entity capable of receiving and executing jobs.
 pub trait IWorker: Send + Sync

@@ -7,7 +7,7 @@ use	crate::{
     segue::Charset
 };
 use	crate::silo::{ U8, U32, Stash, IAccess, IArr, cast::{ IPtrExt, IAllocRawExt } };
-use	crate::stalks::{ BinOp, DynINode, DynIWorker, IWork, IWorker, WorkPtr };
+use	crate::stalks::{ BinOp, DynINode, DynIWorker, DynIWork, IWork, IWorker, WorkPtr };
 use	crate::segue::shard::Shard;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -191,9 +191,14 @@ where 's: 'p
                     return;
                 }
 
-                let  anyRef = curNode.AsAny().unwrap();
-                let  leaf = anyRef.downcast_ref::<T>().unwrap();
-                let  forgePtr: *mut (dyn IForge<'p, 'p, 's, R> + 'p) = leaf.Forge(selfPtr);
+                let raw_ptr = curNode.AsRawLeaf();
+                let leaf: &T = if raw_ptr.is_null() {
+                    let anyRef = curNode.AsAny().unwrap();
+                    anyRef.downcast_ref::<T>().unwrap()
+                } else {
+                    unsafe { &*(raw_ptr as *const T) }
+                };
+                let forgePtr: *mut (dyn IForge<'p, 'p, 's, R> + 'p) = leaf.Forge(selfPtr);
                 forgeStk.Push( Some( forgePtr));
                 return;
             }
@@ -216,13 +221,13 @@ where 's: 'p
             }
             forgeStk.SetSize( opCtx.1);
 
-            let forgePtr: *mut (dyn IForge<'p, 'p, 's, R> + 'p) = if let Some(crate::stalks::node::Attrib::Action(func)) = curNode.Attrib() {
-                // It's a UniNode Action
+            let forgePtr: *mut (dyn IForge<'p, 'p, 's, R> + 'p) = if let Some(action) = curNode.Action() {
+                // It's an Action
                 ActionForge {
                     _Parent: None,
                     _Parser: selfPtr,
                     _Child: children[0],
-                    _Action: func.as_ref() as *const (dyn IWork + 'static),
+                    _Action: action,
                 }.AllocRaw()
             } else {
                 CompositeForge {
@@ -361,7 +366,7 @@ where 's: 'p
 {
     pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
     pub _Parser: *mut Parser<'p, 's, R>,
-    pub _Shard: Option<&'a Shard>,
+    pub _Shard: Option<&'a Shard<'a>>,
 }
 
 impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for LeafForge<'a, 'p, 's, R>
@@ -436,8 +441,8 @@ where 's: 'p
 {
     pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
     pub _Parser: *mut Parser<'p, 's, R>,
-    pub _Child: *mut (dyn IForge<'p, 'p, 's, R> + 'p),
-    pub _Action: *const (dyn IWork + 'static),
+    pub _Child: *mut (dyn IForge< 'p, 'p, 's, R> + 'p),
+    pub _Action: *const DynIWork< 'static>,
 }
 
 impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for ActionForge<'a, 'p, 's, R>
@@ -450,8 +455,9 @@ where 's: 'p
         let child_ref = unsafe { &mut *self._Child };
         let matched = child_ref.MatchNode();
         if matched {
-            let action = unsafe { &mut *(self._Action as *mut dyn IWork) };
             let parser_ref = unsafe { &mut *self._Parser };
+            let action = unsafe { &mut *(self._Action as *mut DynIWork<'static>) };
+            // Need to erase lifetimes for DoWork since IWork doesn't know about 'p and 's
             action.DoWork(parser_ref as &DynIWorker<'_>);
             let endMark = self.Parser().InStream().Marker();
             self.EmitDigest(startMark, endMark);
@@ -467,7 +473,7 @@ impl<'a> IGrammar for DynINode<'a>
 {
     fn	Match< 'p, 's, R: Read>( &self, parser: &mut Parser<'p, 's, R>) -> bool
     {
-        let root_forge_ptr = parser.ParseTree::<Shard>(self);
+        let root_forge_ptr = parser.ParseTree::<Shard<'_>>(self);
         if let Some(forge_ptr) = root_forge_ptr {
             let root_forge = unsafe { &mut *forge_ptr };
             return root_forge.MatchNode();

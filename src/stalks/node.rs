@@ -1,7 +1,7 @@
 //-- node.rs -------------------------------------------------------------------------------------------------------------------
 use	crate::stalks::WorkPtr;
 use	crate::flux::{ IXFluxSource, xflux::XField };
-use	crate::stalks::work::IWork;
+use	crate::stalks::work::{DynIWork, IWork};
 use	std::fmt;
 use	crate::silo::{ Arr, IAccess, Stash, U32 };
  
@@ -9,7 +9,7 @@ use	crate::silo::{ Arr, IAccess, Stash, U32 };
 
 pub enum Attrib
 {
-    Action( Box< dyn IWork + 'static>),
+    Action( Box< DynIWork< 'static>>),
     Repeat( crate::silo::USeg),
 }
 
@@ -103,7 +103,6 @@ pub enum TraversalEvent
 
 pub type DynINode< 'a> = dyn INode< 'a> + Send + Sync + 'a;
 
-
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl< 'a> INode< 'a> for U32
@@ -141,6 +140,10 @@ pub trait INode< 'a>: Send + Sync + crate::flux::IXFluxSource
     fn	Value( &self) -> Option< WorkPtr< 'a>>;
 
     fn	DocStr( &self) -> &'static str;
+
+    fn	Action( &self) -> Option< *const DynIWork< 'static>> { None }
+
+    fn	AsRawLeaf( &self) -> *const () { std::ptr::null() }
 
     fn	Attrib( &self) -> Option< &Attrib>
     {
@@ -407,6 +410,12 @@ where
             _ => None
         }
     }
+    fn AsRawLeaf(&self) -> *const () {
+        match self {
+            Nodule::Leaf { _Val, .. } => _Val as *const _ as *const (),
+            _ => std::ptr::null()
+        }
+    }
     fn DocStr(&self) -> &'static str {
         match self {
             Nodule::Leaf { _Val, .. } => _Val.DocStr(),
@@ -424,6 +433,13 @@ where
             Nodule::Leaf { .. } => BinOp::None,
             Nodule::UniNode { .. } => BinOp::None,
             Nodule::BinNode { _BinOp, .. } => *_BinOp,
+        }
+    }
+    fn Action(&self) -> Option<*const DynIWork<'static>> {
+        match self {
+            Nodule::UniNode { _Attrib: Attrib::Action(func), .. } => Some(func.as_ref() as *const _),
+            Nodule::Leaf { _Val, .. } => _Val.Action(),
+            _ => None,
         }
     }
 }
@@ -618,14 +634,18 @@ macro_rules! NodeTree {
     
     // @feature_PostBoxet
     ( @feature_PostBoxet [ $( $cb:tt)* ], @bg $Arg:ident, ( $( $l:tt)+ ), [ | $arg:ident | $( $body:tt)+ ] ) => {
-        $( $cb)* !( @feature_NEWUNINODE [ $( $cb)* ], $Arg,
-            $crate::stalks::node::Attrib::Action( Box::new( move | $arg: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ) ),
+        $( $cb)* !( @feature_ACTION [ $( $cb)* ], $Arg,
+            Box::new( move | $arg: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
             $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $l)+ ) )
     };
     ( @feature_PostBoxet [ $( $cb:tt)* ], @bl $Arg:ident, $l:expr, [ | $arg:ident | $( $body:tt)+ ] ) => {
-        $( $cb)* !( @feature_NEWUNINODE [ $( $cb)* ], $Arg,
-            $crate::stalks::node::Attrib::Action( Box::new( move | $arg: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ) ),
+        $( $cb)* !( @feature_ACTION [ $( $cb)* ], $Arg,
+            Box::new( move | $arg: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
             $( $cb)* !( @feature_RESOLVE_LEAF [ $( $cb)* ], $Arg, $l ) )
+    };
+
+    ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $action:expr, $child:expr ) => {
+        $crate::stalks::node::Nodule::<$Arg>::NewUniNode( $crate::stalks::node::Attrib::Action( $action ), $child )
     };
 
     // ---- DEFAULT FALLBACK ERRORS FOR DISABLED FEATURES -------------------------------------------------------------
