@@ -87,8 +87,7 @@ fn TestRgx()
 {
     let  	fired = Arc::new( AtomicBool::new( false));
     let  	firedClone = fired.clone();
-    let     alpha = crate::ShardTree!(  [ "a-zA-Z"]);
-    let     identRgx = crate::ShardTree!(  *alpha[ |_worker| {
+    let     identRgx = crate::ShardTree!(  ( [ "a-zA-Z"] < (*[ "a-zA-Z_"]))[ |_worker| {
         firedClone.store( true, Ordering::Relaxed);
     } ] ); 
 

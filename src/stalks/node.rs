@@ -384,7 +384,7 @@ where
         match self {
             Nodule::UniNode { .. } => crate::silo::U32(1),
             Nodule::BinNode { .. } => crate::silo::U32(2),
-            _ => crate::silo::U32(0),
+            Nodule::Leaf { _Val, .. } => _Val._Size(),
         }
     }
     fn _At(&self, idx: crate::silo::U32) -> &DynINode<'a> {
@@ -397,7 +397,7 @@ where
                 }
             }
             Nodule::BinNode { _Children, .. } => &*_Children[idx.0 as usize],
-            _ => panic!("At called on Leaf"),
+            Nodule::Leaf { _Val, .. } => _Val._At(idx),
         }
     }
     fn Value(&self) -> Option<WorkPtr<'a>> {
@@ -623,7 +623,14 @@ macro_rules! NodeTree {
     };
 
     ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, $op:ident, $l:expr, $r:expr ) => {
-        $crate::stalks::node::Nodule::<$Arg>::NewBinNode( $crate::stalks::BinOp::$op, $l, $r )
+        {
+            #[allow(unused_imports)] use $crate::stalks::node::FallbackResolveNode;
+            $crate::stalks::node::Nodule::<$Arg>::NewBinNode(
+                $crate::stalks::BinOp::$op,
+                $crate::stalks::node::NodeWrapper( $l, std::marker::PhantomData::<$Arg> ).resolve(),
+                $crate::stalks::node::NodeWrapper( $r, std::marker::PhantomData::<$Arg> ).resolve(),
+            )
+        }
     };
     ( @feature_NEWUNINODE [ $( $cb:tt)* ], $Arg:ident, $attrib:expr, $child:expr ) => {
         $crate::stalks::node::Nodule::<$Arg>::NewUniNode( $attrib, $child )
