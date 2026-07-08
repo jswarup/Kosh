@@ -7,7 +7,7 @@ use	crate::{
     segue::Charset
 };
 use	crate::silo::{ U8, U32, Stash, IAccess, IArr, cast::{ IPtrExt, IAllocRawExt } };
-use	crate::stalks::{ BinOp, DynINode, DynIWorker, DynIWork, IWork, IWorker, WorkPtr };
+use	crate::stalks::{ BinOp, DynINode, IWorker, WorkPtr };
 use	crate::segue::shard::Shard;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -229,6 +229,13 @@ where 's: 'p
                     _Child: children[0],
                     _Action: action,
                 }.AllocRaw()
+            } else if let Some(useg) = curNode.Repeat() {
+                RepeatForge {
+                    _Parent: None,
+                    _Parser: selfPtr,
+                    _Child: children[0],
+                    _Repeat: useg,
+                }.AllocRaw()
             } else {
                 CompositeForge {
                     _Parent: None,
@@ -442,7 +449,7 @@ where 's: 'p
     pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
     pub _Parser: *mut Parser<'p, 's, R>,
     pub _Child: *mut (dyn IForge< 'p, 'p, 's, R> + 'p),
-    pub _Action: *const DynIWork< 'static>,
+    pub _Action: *mut core::ffi::c_void,
 }
 
 impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for ActionForge<'a, 'p, 's, R>
@@ -456,9 +463,8 @@ where 's: 'p
         let matched = child_ref.MatchNode();
         if matched {
             let parser_ref = unsafe { &mut *self._Parser };
-            let action = unsafe { &mut *(self._Action as *mut DynIWork<'static>) };
-            // Need to erase lifetimes for DoWork since IWork doesn't know about 'p and 's
-            action.DoWork(parser_ref as &DynIWorker<'_>);
+            let action_box = unsafe { &mut *(self._Action as *mut crate::stalks::node::ActionFn) };
+            action_box(parser_ref as *mut _ as *mut core::ffi::c_void);
             let endMark = self.Parser().InStream().Marker();
             self.EmitDigest(startMark, endMark);
             return true;
@@ -498,3 +504,48 @@ impl<'a, 'r> IGrammar for &'r DynINode<'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+
+pub struct RepeatForge<'a, 'p, 's, R: Read + 'p = io::Empty>
+where 's: 'p
+{
+    pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
+    pub _Parser: *mut Parser<'p, 's, R>,
+    pub _Child: *mut (dyn IForge<'p, 'p, 's, R> + 'p),
+    pub _Repeat: crate::silo::USeg,
+}
+
+impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for RepeatForge<'a, 'p, 's, R>
+where 's: 'p
+{
+    ImplForgeBase!( RepeatForge);
+
+    fn MatchNode(&mut self) -> bool {
+        let startMark = self.Parser().InStream().Marker();
+        let child_ref = unsafe { &mut *self._Child };
+        let mut match_count = 0;
+        
+        let min = self._Repeat.First().AsU32();
+        let max = self._Repeat.Size().AsU32();
+        let is_inf = max == 0;
+        
+        while is_inf || match_count < max {
+            let iter_start = self.Parser().InStream().Marker();
+            if !child_ref.MatchNode() {
+                break;
+            }
+            if self.Parser().InStream().Marker() == iter_start {
+                break;
+            }
+            match_count += 1;
+        }
+        
+        if match_count >= min {
+            let endMark = self.Parser().InStream().Marker();
+            self.EmitDigest(startMark, endMark);
+            true
+        } else {
+            self.Parser().InStream().RollTo(startMark);
+            false
+        }
+    }
+}

@@ -76,7 +76,9 @@ fn TestPostBoxet()
     let data = "ab";
     let mut stream = InStream::from(data);
     let mut parser = Parser::New(&mut stream);
-    let tree = crate::ShardTree!( "ab" [ |_worker| {} ] );
+    let tree = crate::ShardTree!( "ab" [ |_worker| {
+        println!( "Action matched"); 
+    } ] );
     let dynNode: &DynINode<'_> = &tree;
     assert!(dynNode.Match(&mut parser));
 }
@@ -86,13 +88,26 @@ fn TestPostBoxet()
 fn TestRgx() 
 {
     let     alpha = crate::ShardTree!(  [ "a-zA-Z"]);
-    let     identRgx = crate::ShardTree!(  *alpha[ |_worker| {} ] ); 
+    let     identRgx = crate::ShardTree!(  *alpha[ |_worker| {
+        println!( "Action matched");  
+    } ] ); 
+
     let  	mut output = String::new();
     {
         let  	mut jsonStream = crate::flux::JsonOutStream::New( &mut output, true);
         jsonStream.KeyField( "identRgx", crate::flux::xflux::XField::FluxSource( &identRgx));
     }
     println!( "{}", output);
+    let data = "ab";
+    let mut stream = InStream::from(data);
+    let mut parser = Parser::New(&mut stream);
+    
+    if let Some( forge) = parser.ParseTree::<Shard>( &identRgx) {
+        let forge_ref = unsafe { &mut *forge };
+        if forge_ref.MatchNode() {
+            print!( "succ");
+        }
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

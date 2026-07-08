@@ -1,15 +1,16 @@
 //-- node.rs -------------------------------------------------------------------------------------------------------------------
 use	crate::stalks::WorkPtr;
 use	crate::flux::{ IXFluxSource, xflux::XField };
-use	crate::stalks::work::{DynIWork, IWork};
 use	std::fmt;
 use	crate::silo::{ Arr, IAccess, Stash, U32 };
  
 //---------------------------------------------------------------------------------------------------------------------------------
 
+pub type ActionFn = Box<dyn FnMut(*mut core::ffi::c_void) + Send + Sync>;
+
 pub enum Attrib
 {
-    Action( Box< DynIWork< 'static>>),
+    Action( ActionFn),
     Repeat( crate::silo::USeg),
 }
 
@@ -141,9 +142,10 @@ pub trait INode< 'a>: Send + Sync + crate::flux::IXFluxSource
 
     fn	DocStr( &self) -> &'static str;
 
-    fn	Action( &self) -> Option< *const DynIWork< 'static>> { None }
+    fn      Action( &self) -> Option<*mut core::ffi::c_void> { None }
+    fn      Repeat( &self) -> Option<crate::silo::USeg> { None }
 
-    fn	AsRawLeaf( &self) -> *const () { std::ptr::null() }
+    fn      AsRawLeaf( &self) -> *const () { std::ptr::null() }
 
     fn	Attrib( &self) -> Option< &Attrib>
     {
@@ -435,10 +437,20 @@ where
             Nodule::BinNode { _BinOp, .. } => *_BinOp,
         }
     }
-    fn Action(&self) -> Option<*const DynIWork<'static>> {
+    fn Action(&self) -> Option<*mut core::ffi::c_void> {
         match self {
-            Nodule::UniNode { _Attrib: Attrib::Action(func), .. } => Some(func.as_ref() as *const _),
+            Nodule::UniNode { _Attrib: Attrib::Action(func), .. } => {
+                let func_ref: &ActionFn = func;
+                Some(func_ref as *const ActionFn as *mut ActionFn as *mut core::ffi::c_void)
+            },
             Nodule::Leaf { _Val, .. } => _Val.Action(),
+            _ => None,
+        }
+    }
+    fn Repeat(&self) -> Option<crate::silo::USeg> {
+        match self {
+            Nodule::UniNode { _Attrib: Attrib::Repeat(useg), .. } => Some(*useg),
+            Nodule::Leaf { _Val, .. } => _Val.Repeat(),
             _ => None,
         }
     }
@@ -633,14 +645,18 @@ macro_rules! NodeTree {
     };
     
     // @feature_PostBoxet
+    ( @feature_CLOSURE [ $( $cb:tt)* ], $arg:ident, { $( $body:tt)* } ) => {
+        Box::new( move | $arg: *mut core::ffi::c_void | { $( $body )* } ) as $crate::stalks::node::ActionFn
+    };
+
     ( @feature_PostBoxet [ $( $cb:tt)* ], @bg $Arg:ident, ( $( $l:tt)+ ), [ | $arg:ident | $( $body:tt)+ ] ) => {
         $( $cb)* !( @feature_ACTION [ $( $cb)* ], $Arg,
-            Box::new( move | $arg: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+            $( $cb)* !( @feature_CLOSURE [ $( $cb)* ], $arg, { $( $body )+ } ),
             $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $l)+ ) )
     };
     ( @feature_PostBoxet [ $( $cb:tt)* ], @bl $Arg:ident, $l:expr, [ | $arg:ident | $( $body:tt)+ ] ) => {
         $( $cb)* !( @feature_ACTION [ $( $cb)* ], $Arg,
-            Box::new( move | $arg: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+            $( $cb)* !( @feature_CLOSURE [ $( $cb)* ], $arg, { $( $body )+ } ),
             $( $cb)* !( @feature_RESOLVE_LEAF [ $( $cb)* ], $Arg, $l ) )
     };
 

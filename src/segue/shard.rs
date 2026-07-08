@@ -1,10 +1,8 @@
 use	crate::silo::U32;
 use	crate::stalks::{ BinOp, DynINode, INode, WorkPtr };
-use	crate::stalks::work::{DynIWork, IWork};
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	std::fmt;
 use	crate::segue::{ Charset, IGrammar, Parser };
-use	std::any::Any;
 use	std::io::Read;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -13,7 +11,7 @@ pub enum Shard<'a> {
     String( String),
     Charset( Charset),
     Repeat( Box<DynINode<'a>>, crate::silo::USeg),
-    Action( Box<DynINode<'a>>, Box<DynIWork<'static>>),
+    Action( Box<DynINode<'a>>, crate::stalks::node::ActionFn),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -178,9 +176,19 @@ impl< 'a> INode< 'a> for Shard<'a>
         None
     }
 
-    fn	Action( &self) -> Option<*const DynIWork<'static>> {
+    fn	Action( &self) -> Option<*mut core::ffi::c_void> {
         match self {
-            Self::Action( _, action) => Some( action.as_ref() as *const _),
+            Self::Action( _, func) => {
+                let func_ref: &crate::stalks::node::ActionFn = func;
+                Some(func_ref as *const crate::stalks::node::ActionFn as *mut crate::stalks::node::ActionFn as *mut core::ffi::c_void)
+            },
+            _ => None,
+        }
+    }
+
+    fn  Repeat( &self) -> Option<crate::silo::USeg> {
+        match self {
+            Self::Repeat( _, useg) => Some( *useg),
             _ => None,
         }
     }
@@ -210,7 +218,7 @@ impl<'node> crate::segue::parser::IForgeable for Shard<'node> {
     ) -> *mut (dyn crate::segue::parser::IForge<'p, 'p, 's, R> + 'p) 
     where 's: 'p 
     {
-        use crate::silo::cast::{IAllocRawExt, ICastExt};
+        use crate::silo::cast::IAllocRawExt;
         let shardPtr = unsafe { Some(&*(self as *const _ as *const Shard<'p>)) };
         crate::segue::parser::LeafForge {
             _Parent: None,
@@ -226,6 +234,13 @@ impl<'node> crate::segue::parser::IForgeable for Shard<'node> {
 #[macro_export]
 macro_rules! ShardTree {
     // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
+    ( @feature_CLOSURE [ $( $cb:tt)* ], $arg:ident, { $( $body:tt)* } ) => {
+        Box::new( move | _raw: *mut core::ffi::c_void | {
+            let $arg = unsafe { &mut *(_raw as *mut $crate::segue::Parser<'_, '_, std::io::Empty>) };
+            $( $body )*
+        } ) as $crate::stalks::node::ActionFn
+    };
+
     ( @feature_STAR   $( $args:tt)* ) => { $crate::NodeTree!( @feature_STAR   $( $args)* ) };
     ( @feature_PLUS   $( $args:tt)* ) => { $crate::NodeTree!( @feature_PLUS   $( $args)* ) };
 
