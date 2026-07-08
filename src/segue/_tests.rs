@@ -1,8 +1,10 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 
+use	std::sync::Arc;
+use	std::sync::atomic::{ AtomicBool, Ordering};
 use	crate::{
     flux::InStream,
-    segue::{ Charset, shard::Shard, Parser, IGrammar, parser::{IForge, Forge} },
+    segue::{ Charset, shard::Shard, Parser, IGrammar },
     stalks::DynINode,
 };
 
@@ -42,54 +44,52 @@ fn	TestParserBasic()
     let  	mut stream = InStream::from( str);
     let  	mut parser = Parser::New( &mut stream);
 
-    {
-        let  	mut forge = Forge { _Parent: None, _Parser: &mut parser };
+    // Test char grammar
+    assert!( 'h'.Match( &mut parser));
+    assert!( 'e'.Match( &mut parser));
 
-        // Test char grammar
-        assert!( 'h'.Match( forge.Parser()));
-        assert!( 'e'.Match( forge.Parser()));
+    // Test &str grammar
+    assert!( "llo ".Match( &mut parser));
 
-        // Test &str grammar
-        assert!( "llo ".Match( forge.Parser()));
+    // Test charset grammar
+    let  	mut cs = Charset::New();
+    cs.SetChar( b'p');
+    assert!( cs.Match( &mut parser));
 
-        // Test charset grammar
-        let  	mut cs = Charset::New();
-        cs.SetChar( b'p');
-        assert!( cs.Match( forge.Parser()));
+    // Test failing match (should rollback)
+    assert!( !"fail".Match( &mut parser));
 
-        // Test failing match (should rollback)
-        assert!( !"fail".Match( forge.Parser()));
-
-        // Test continuing after fail
-        assert!( "arser".Match( forge.Parser()));
-    }
+    // Test continuing after fail
+    assert!( "arser".Match( &mut parser));
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-    // TestBacktrackingParser removed per user request
-
-//---------------------------------------------------------------------------------------------------------------------------------
 #[test]
 fn TestPostBoxet() 
 {
+    let  	fired = Arc::new( AtomicBool::new( false));
+    let  	firedClone = fired.clone();
     let data = "ab";
     let mut stream = InStream::from(data);
     let mut parser = Parser::New(&mut stream);
     let tree = crate::ShardTree!( "ab" [ |_worker| {
-        println!( "Action matched"); 
+        firedClone.store( true, Ordering::Relaxed);
     } ] );
     let dynNode: &DynINode<'_> = &tree;
-    assert!(dynNode.Match(&mut parser));
+    assert!( dynNode.Match(&mut parser));
+    assert!( fired.load( Ordering::Relaxed), "Action closure should have fired on match");
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 #[test]
 fn TestRgx() 
 {
+    let  	fired = Arc::new( AtomicBool::new( false));
+    let  	firedClone = fired.clone();
     let     alpha = crate::ShardTree!(  [ "a-zA-Z"]);
     let     identRgx = crate::ShardTree!(  *alpha[ |_worker| {
-        println!( "Action matched");  
+        firedClone.store( true, Ordering::Relaxed);
     } ] ); 
 
     let  	mut output = String::new();
@@ -104,10 +104,11 @@ fn TestRgx()
     
     if let Some( forge) = parser.ParseTree::<Shard>( &identRgx) {
         let forge_ref = unsafe { &mut *forge };
-        if forge_ref.MatchNode() {
-            print!( "succ");
-        }
+        assert!( forge_ref.MatchNode(), "identRgx should match 'ab'");
+    } else {
+        panic!( "ParseTree should return Some");
     }
+    assert!( fired.load( Ordering::Relaxed), "Action closure should have fired on match");
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

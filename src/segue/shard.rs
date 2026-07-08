@@ -1,5 +1,5 @@
 use	crate::silo::U32;
-use	crate::stalks::{ BinOp, DynINode, INode, WorkPtr };
+use	crate::stalks::{ BinOp, DynINode, INode };
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	std::fmt;
 use	crate::segue::{ Charset, IGrammar, Parser };
@@ -11,7 +11,7 @@ pub enum Shard<'a> {
     String( String),
     Charset( Charset),
     Repeat( Box<DynINode<'a>>, crate::silo::USeg),
-    Action( Box<DynINode<'a>>, crate::stalks::node::ActionFn),
+    Action( Box<DynINode<'a>>, crate::segue::parser::ActionFn),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -159,7 +159,7 @@ impl< 'a> INode< 'a> for Shard<'a>
             _ => panic!("At called on Leaf"),
         }
     }
-    fn	Value( &self) -> Option< WorkPtr< 'a>> { None }
+    fn	Value( &self) -> Option< crate::stalks::WorkPtr< 'a>> { None }
     fn	AsAny( &self) -> Option< &dyn core::any::Any>
     {
         None
@@ -179,8 +179,8 @@ impl< 'a> INode< 'a> for Shard<'a>
     fn	Action( &self) -> Option<*mut core::ffi::c_void> {
         match self {
             Self::Action( _, func) => {
-                let func_ref: &crate::stalks::node::ActionFn = func;
-                Some(func_ref as *const crate::stalks::node::ActionFn as *mut crate::stalks::node::ActionFn as *mut core::ffi::c_void)
+                let func_ref: &crate::segue::parser::ActionFn = func;
+                Some(func_ref as *const crate::segue::parser::ActionFn as *mut crate::segue::parser::ActionFn as *mut core::ffi::c_void)
             },
             _ => None,
         }
@@ -203,8 +203,9 @@ impl<'a> IGrammar for Shard<'a>
         match self {
             Self::String( s) => s.as_str().Match( parser),
             Self::Charset( cs) => cs.Match( parser),
-            Self::Repeat( _child, _) => false, // TODO: Implement Repeat matching
-            Self::Action( _child, _) => false, // TODO: Implement Action matching
+            Self::Repeat( _, _) | Self::Action( _, _) => {
+                panic!("Use ParseTree + MatchNode for composite Shard nodes")
+            }
         }
     }
 }
@@ -219,11 +220,11 @@ impl<'node> crate::segue::parser::IForgeable for Shard<'node> {
     where 's: 'p 
     {
         use crate::silo::cast::IAllocRawExt;
-        let shardPtr = unsafe { Some(&*(self as *const _ as *const Shard<'p>)) };
-        crate::segue::parser::LeafForge {
+        let  	shardPtr = unsafe { Some(&*(self as *const _ as *const Shard<'p>)) };
+        crate::segue::parser::ForgeNode {
             _Parent: None,
             _Parser: parser,
-            _Shard: shardPtr,
+            _Kind: crate::segue::parser::ForgeKind::Leaf( shardPtr),
         }.AllocRaw()
     }
 }
@@ -238,7 +239,7 @@ macro_rules! ShardTree {
         Box::new( move | _raw: *mut core::ffi::c_void | {
             let $arg = unsafe { &mut *(_raw as *mut $crate::segue::Parser<'_, '_, std::io::Empty>) };
             $( $body )*
-        } ) as $crate::stalks::node::ActionFn
+        } ) as $crate::segue::parser::ActionFn
     };
 
     ( @feature_STAR   $( $args:tt)* ) => { $crate::NodeTree!( @feature_STAR   $( $args)* ) };

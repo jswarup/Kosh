@@ -6,9 +6,13 @@ use	crate::{
     flux::InStream,
     segue::Charset
 };
-use	crate::silo::{ U8, U32, Stash, IAccess, IArr, cast::{ IPtrExt, IAllocRawExt } };
-use	crate::stalks::{ BinOp, DynINode, IWorker, WorkPtr };
+use	crate::silo::{ U8, U32, Buff, Stash, IAccess, IArr, cast::IAllocRawExt };
+use	crate::stalks::{ BinOp, DynINode };
 use	crate::segue::shard::Shard;
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub use	crate::stalks::node::ActionFn;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -19,11 +23,10 @@ pub struct  Digest
     pub _End: U32,
 }
 
-
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub trait IForge<'a, 'p, 's, R: Read + 'p>
-    where 's: 'p, Self: 'a, 'p: 'a, 's: 'a
+    where 's: 'p, 'p: 'a
 {
     fn	Parent( &self) -> Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>;
     fn	Parser( &mut self) -> &mut Parser<'p, 's, R>;
@@ -41,43 +44,9 @@ pub trait IForge<'a, 'p, 's, R: Read + 'p>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	FindAncestor( &self, predicate: &mut dyn FnMut( &(dyn IForge<'a, 'p, 's, R> + 'a)) -> bool) -> Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>
-    {
-        let  	mut curr = self.Parent();
-        while let Some( parent) = curr {
-            if ( predicate)( parent) {
-                return Some( parent);
-            }
-            curr = parent.Parent();
-        }
-        None
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    fn	Init( &mut self) where Self: Sized
-    {
-        let  	selfRef: &mut (dyn IForge<'a, 'p, 's, R> + 'a) = self;
-        let  	ptr = selfRef as *mut (dyn IForge<'a, 'p, 's, R> + 'a);
-        let  	erased_ptr = ptr.CastLife::<dyn IForge<'p, 'p, 's, R> + 'p>();
-        self.Parser()._Stash.Push( Some(erased_ptr));
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
-
-macro_rules! ImplForgeBase {
-    ($Type:ident) => {
-        fn Parent( &self) -> Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)> { self._Parent }
-        fn Parser( &mut self) -> &mut Parser<'p, 's, R> { unsafe { &mut *self._Parser } }
-        fn Deposit( &self, _childIdx: U32, _digest: Digest) {}
-    };
-}
-
 
 pub trait IGrammar
 {
@@ -95,39 +64,117 @@ pub trait IForgeable
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct  Forge<'a, 'p, 's, R: Read + 'p = io::Empty>
-    where 's: 'p
+pub enum ForgeKind<'a, 'p, 's, R: Read + 'p = io::Empty>
+where 's: 'p
+{
+    Leaf( Option<&'a Shard<'a>>),
+    Composite( Buff<*mut (dyn IForge<'p, 'p, 's, R> + 'p)>, BinOp),
+    Action( *mut (dyn IForge<'p, 'p, 's, R> + 'p), *mut core::ffi::c_void),
+    Repeat( *mut (dyn IForge<'p, 'p, 's, R> + 'p), crate::silo::USeg),
+}
+
+pub struct ForgeNode<'a, 'p, 's, R: Read + 'p = io::Empty>
+where 's: 'p
 {
     pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
-    pub _Parser: &'a mut Parser<'p, 's, R>,
+    pub _Parser: *mut Parser<'p, 's, R>,
+    pub _Kind: ForgeKind<'a, 'p, 's, R>,
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for Forge<'a, 'p, 's, R>
-    where 's: 'p
+impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for ForgeNode<'a, 'p, 's, R>
+where 's: 'p
 {
-    fn	Parent( &self) -> Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>
-    {
-        self._Parent
-    }
+    fn Parent( &self) -> Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)> { self._Parent }
+    fn Parser( &mut self) -> &mut Parser<'p, 's, R> { unsafe { &mut *self._Parser } }
+    fn Deposit( &self, _childIdx: U32, _digest: Digest) {}
 
-    fn	Parser( &mut self) -> &mut Parser<'p, 's, R>
-    {
-        self._Parser
-    }
-
-    fn	Deposit( &self, _childIdx: U32, _digest: Digest)
-    {
-    }
     fn MatchNode(&mut self) -> bool {
-        false
+        match &mut self._Kind {
+            ForgeKind::Leaf( shard_opt) => {
+                let  	parser = unsafe { &mut *self._Parser };
+                let  	startMark = parser.InStream().Marker();
+                if let Some( shard) = shard_opt {
+                    let  	shard = *shard;
+                    if shard.Match( parser) {
+                        let endMark = parser.InStream().Marker();
+                        self.EmitDigest( startMark, endMark);
+                        return true;
+                    }
+                }
+                false
+            }
+
+            ForgeKind::Composite( children, mode) => {
+                let  	startMark = unsafe { &mut *self._Parser }.InStream().Marker();
+                let  	mode = *mode;
+                for i in 0..children.Size().AsUsize() {
+                    let  	child_ptr = children[i];
+                    let  	child_ref = unsafe { &mut *child_ptr };
+                    let  	matched = child_ref.MatchNode();
+                    if mode == BinOp::Less {
+                        if !matched {
+                            unsafe { &mut *self._Parser }.InStream().RollTo( startMark);
+                            return false;
+                        }
+                    } else if mode == BinOp::Bor {
+                        if matched {
+                            let endMark = unsafe { &mut *self._Parser }.InStream().Marker();
+                            self.EmitDigest( startMark, endMark);
+                            return true;
+                        }
+                        unsafe { &mut *self._Parser }.InStream().RollTo( startMark);
+                    }
+                }
+                if mode == BinOp::Less {
+                    let endMark = unsafe { &mut *self._Parser }.InStream().Marker();
+                    self.EmitDigest( startMark, endMark);
+                    return true;
+                }
+                false
+            }
+
+            ForgeKind::Action( child_ptr, action_ptr) => {
+                let  	startMark = unsafe { &mut *self._Parser }.InStream().Marker();
+                let  	child_ref = unsafe { &mut **child_ptr };
+                if child_ref.MatchNode() {
+                    let  	action_box = unsafe { &mut *(*action_ptr as *mut ActionFn) };
+                    action_box( self._Parser as *mut core::ffi::c_void);
+                    let endMark = unsafe { &mut *self._Parser }.InStream().Marker();
+                    self.EmitDigest( startMark, endMark);
+                    return true;
+                }
+                false
+            }
+
+            ForgeKind::Repeat( child_ptr, useg) => {
+                let  	startMark = unsafe { &mut *self._Parser }.InStream().Marker();
+                let  	child_ref = unsafe { &mut **child_ptr };
+                let  	min = useg.First().AsU32();
+                let  	max = useg.Size().AsU32();
+                let  	is_inf = max == 0;
+                let  	mut match_count = 0u32;
+                while is_inf || match_count < max {
+                    let iter_start = unsafe { &mut *self._Parser }.InStream().Marker();
+                    if !child_ref.MatchNode() {
+                        break;
+                    }
+                    if unsafe { &mut *self._Parser }.InStream().Marker() == iter_start {
+                        break;
+                    }
+                    match_count += 1;
+                }
+                if match_count >= min {
+                    let endMark = unsafe { &mut *self._Parser }.InStream().Marker();
+                    self.EmitDigest( startMark, endMark);
+                    true
+                } else {
+                    unsafe { &mut *self._Parser }.InStream().RollTo( startMark);
+                    false
+                }
+            }
+        }
     }
 }
-
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -135,8 +182,6 @@ pub struct Parser<'p, 's, R: Read + 'p = io::Empty>
 where 's: 'p
 {
     pub     _InStream: &'p mut InStream<'s, R>,
-
-    // Erase the 'f lifetime by transmuting to 'static to break the cyclic dropck dependency
     pub     _Stash: Stash< Option<*mut (dyn IForge<'p, 'p, 's, R> + 'p)>>,
 }
 
@@ -147,19 +192,7 @@ where 's: 'p
 unsafe impl<'p, 's, R: Read + 'p> Send for Parser<'p, 's, R> {}
 unsafe impl<'p, 's, R: Read + 'p> Sync for Parser<'p, 's, R> {}
 
-impl<'p, 's, R: Read + 'p> IWorker for Parser<'p, 's, R>
-where 's: 'p
-{
-    fn	PostJob( &self, job: WorkPtr< '_>)
-    {
-        if !job.IsNull() {
-            ( job.func)( job.data, self);
-        }
-    }
-}
-
 //---------------------------------------------------------------------------------------------------------------------------------
-
 
 impl<'p, 's, R: Read + 'p> Parser<'p, 's, R>
 where 's: 'p
@@ -171,80 +204,62 @@ where 's: 'p
             _Stash: Stash::New( U32( 16), U32( 0), None),
         }
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	ParseTree<T: 'static + IForgeable>( &mut self, node: &DynINode< '_>) -> Option<*mut (dyn IForge<'p, 'p, 's, R> + 'p)>
     {
-
-        let  selfPtr = self as *mut Parser<'p, 's, R>;
-        let  mut forgeStk = unsafe { &mut *selfPtr }._Stash.Stk();
-        let  opStash = Stash::<(BinOp, U32)>::New( 1024, 0, (BinOp::None, 0.into()));
-        let  opStk = opStash.Stk();
+        let  	selfPtr = self as *mut Parser<'p, 's, R>;
+        let  	mut forgeStk = unsafe { &mut *selfPtr }._Stash.Stk();
+        let  	opStash = Stash::<(BinOp, U32)>::New( 64, 0, (BinOp::None, 0.into()));
+        let  	opStk = opStash.Stk();
 
         node.DiveDf( &mut |probe, enterFlg| {
-            let  curNode = probe.CurNode().unwrap();
-            let  curOp = curNode.BinOp();
+            let  	curNode = probe.CurNode().unwrap();
 
             if enterFlg {
                 if !curNode.IsLeaf() {
-                    opStk.Push( ( curOp, forgeStk.Size()));
+                    opStk.Push( ( curNode.BinOp(), forgeStk.Size()));
                     return;
                 }
-
-                let raw_ptr = curNode.AsRawLeaf();
-                let leaf: &T = if raw_ptr.is_null() {
-                    let anyRef = curNode.AsAny().unwrap();
-                    anyRef.downcast_ref::<T>().unwrap()
+                let  	raw_ptr = curNode.AsRawLeaf();
+                let  	leaf: &T = if raw_ptr.is_null() {
+                    curNode.AsAny().unwrap().downcast_ref::<T>().unwrap()
                 } else {
                     unsafe { &*(raw_ptr as *const T) }
                 };
-                let forgePtr: *mut (dyn IForge<'p, 'p, 's, R> + 'p) = leaf.Forge(selfPtr);
-                forgeStk.Push( Some( forgePtr));
+                forgeStk.Push( Some( leaf.Forge( selfPtr)));
                 return;
             }
+
             if curNode.IsLeaf() {
                 return;
             }
-            let  mut opCtx = ( BinOp::None, 0.into());
+
+            let  	mut opCtx = ( BinOp::None, 0.into());
             opStk.Pop( &mut opCtx);
-
-            // Wait, we can't use parentOp to determine if we should skip, because UniNode has BinOp::None!
-            // Let's remove this optimization if it breaks UniNode.
-            // Actually, we must process every non-leaf node upon exit.
-
-            let  arr = forgeStk.Arr().Subset( opCtx.1, forgeStk.Size() - opCtx.1);
-            let mut children = crate::silo::Buff::NewEmpty();
+            let  	arr = forgeStk.Arr().Subset( opCtx.1, forgeStk.Size() - opCtx.1);
+            let  	mut children = Buff::NewEmpty();
             for i in 0..arr.Size().0 {
-                if let Some(ptr) = *arr.At(crate::silo::U32(i)) {
-                    children.Push(ptr);
+                if let Some( ptr) = *arr.At( U32( i)) {
+                    children.Push( ptr);
                 }
             }
             forgeStk.SetSize( opCtx.1);
 
-            let forgePtr: *mut (dyn IForge<'p, 'p, 's, R> + 'p) = if let Some(action) = curNode.Action() {
-                // It's an Action
-                ActionForge {
-                    _Parent: None,
-                    _Parser: selfPtr,
-                    _Child: children[0],
-                    _Action: action,
-                }.AllocRaw()
-            } else if let Some(useg) = curNode.Repeat() {
-                RepeatForge {
-                    _Parent: None,
-                    _Parser: selfPtr,
-                    _Child: children[0],
-                    _Repeat: useg,
-                }.AllocRaw()
+            let  	kind = if let Some( action) = curNode.Action() {
+                ForgeKind::Action( children[0], action)
+            } else if let Some( useg) = curNode.Repeat() {
+                ForgeKind::Repeat( children[0], useg)
             } else {
-                CompositeForge {
-                    _Parent: None,
-                    _Parser: selfPtr,
-                    _Children: children,
-                    _Mode: curOp,
-                }.AllocRaw()
+                ForgeKind::Composite( children, opCtx.0)
             };
 
+            let  	forgePtr: *mut (dyn IForge<'p, 'p, 's, R> + 'p) = ForgeNode {
+                _Parent: None,
+                _Parser: selfPtr,
+                _Kind: kind,
+            }.AllocRaw();
             forgeStk.Push( Some( forgePtr));
         });
 
@@ -264,34 +279,17 @@ where 's: 'p
     {
         self._InStream
     }
-
-    pub fn Forge<'f>( &self) -> Option<&'f (dyn IForge<'f, 'p, 's, R> + 'f)> where Self: 'f
-    {
-        let  sz = self._Stash.Size();
-        if sz > U32( 0) {
-            let  lastIdx = sz.0 - 1;
-            let  arr = self._Stash.Stk().Arr();
-            let  optPtr = arr.At( lastIdx);
-            if let Some( ptr) = *optPtr {
-                let  ptrF = ptr.CastLife::<dyn IForge<'f, 'p, 's, R> + 'f>();
-                return Some( unsafe { &*ptrF });
-            }
-            None
-        } else {
-            None
-        }
-    }
 }
 
-
+//---------------------------------------------------------------------------------------------------------------------------------
 
 impl<'p, 's, R: Read + 'p> Drop for Parser<'p, 's, R>
 where 's: 'p
 {
     fn drop(&mut self) {
-        let  sz = self._Stash.Size().AsUsize();
+        let  	sz = self._Stash.Size().AsUsize();
         for i in 0..sz {
-            if let Some(ptr) = *self._Stash.Stk().Arr().At(crate::silo::U32(i as u32)) {
+            if let Some(ptr) = *self._Stash.Stk().Arr().At(U32(i as u32)) {
                 unsafe {
                     drop(Box::from_raw(ptr));
                 }
@@ -299,9 +297,6 @@ where 's: 'p
         }
     }
 }
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -343,7 +338,6 @@ impl IGrammar for &str
     {
         let  	startMark = parser.InStream().Marker();
 
-        // Ensure that empty string matches without consuming
         if self.is_empty() {
             return true;
         }
@@ -351,7 +345,6 @@ impl IGrammar for &str
         for c in self.chars() {
             let  	curr = parser.InStream().Curr();
             if curr == U8( c as u8) {
-                // If it's the last char, we just advance and we're good.
                 let _ = parser.InStream().Next();
             } else {
                 parser.InStream().RollTo( startMark);
@@ -365,123 +358,13 @@ impl IGrammar for &str
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-
-pub struct LeafForge<'a, 'p, 's, R: Read + 'p = io::Empty>
-where 's: 'p
-{
-    pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
-    pub _Parser: *mut Parser<'p, 's, R>,
-    pub _Shard: Option<&'a Shard<'a>>,
-}
-
-impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for LeafForge<'a, 'p, 's, R>
-where 's: 'p
-{
-    ImplForgeBase!( LeafForge);
-
-    fn MatchNode(&mut self) -> bool {
-        let startMark = self.Parser().InStream().Marker();
-        if let Some(shard) = self._Shard {
-            if shard.Match(self.Parser()) {
-                let endMark = self.Parser().InStream().Marker();
-                self.EmitDigest(startMark, endMark);
-                return true;
-            }
-        }
-        false
-    }
-}
-
-
-
-
-pub struct CompositeForge<'a, 'p, 's, R: Read + 'p = io::Empty>
-where 's: 'p
-{
-    pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
-    pub _Parser: *mut Parser<'p, 's, R>,
-    pub _Children: crate::silo::Buff<*mut (dyn IForge<'p, 'p, 's, R> + 'p)>,
-    pub _Mode: BinOp,
-}
-
-impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for CompositeForge<'a, 'p, 's, R>
-where 's: 'p
-{
-    ImplForgeBase!( CompositeForge);
-
-    fn MatchNode(&mut self) -> bool {
-        let startMark = self.Parser().InStream().Marker();
-        for i in 0..self._Children.Size().AsUsize() {
-            let child_ptr = self._Children[i];
-            let child_ref = unsafe { &mut *child_ptr };
-            let matched = child_ref.MatchNode();
-
-            if self._Mode == BinOp::Less {
-                if !matched {
-                    self.Parser().InStream().RollTo(startMark);
-                    return false;
-                }
-            } else if self._Mode == BinOp::Bor {
-                if matched {
-                    let endMark = self.Parser().InStream().Marker();
-                    self.EmitDigest(startMark, endMark);
-                    return true;
-                }
-                self.Parser().InStream().RollTo(startMark);
-            }
-        }
-
-        if self._Mode == BinOp::Less {
-            let endMark = self.Parser().InStream().Marker();
-            self.EmitDigest(startMark, endMark);
-            return true;
-        }
-
-        false
-    }
-}
-
-pub struct ActionForge<'a, 'p, 's, R: Read + 'p = io::Empty>
-where 's: 'p
-{
-    pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
-    pub _Parser: *mut Parser<'p, 's, R>,
-    pub _Child: *mut (dyn IForge< 'p, 'p, 's, R> + 'p),
-    pub _Action: *mut core::ffi::c_void,
-}
-
-impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for ActionForge<'a, 'p, 's, R>
-where 's: 'p
-{
-    ImplForgeBase!( ActionForge);
-
-    fn MatchNode(&mut self) -> bool {
-        let startMark = self.Parser().InStream().Marker();
-        let child_ref = unsafe { &mut *self._Child };
-        let matched = child_ref.MatchNode();
-        if matched {
-            let parser_ref = unsafe { &mut *self._Parser };
-            let action_box = unsafe { &mut *(self._Action as *mut crate::stalks::node::ActionFn) };
-            action_box(parser_ref as *mut _ as *mut core::ffi::c_void);
-            let endMark = self.Parser().InStream().Marker();
-            self.EmitDigest(startMark, endMark);
-            return true;
-        }
-        false
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
 impl<'a> IGrammar for DynINode<'a>
 {
     fn	Match< 'p, 's, R: Read>( &self, parser: &mut Parser<'p, 's, R>) -> bool
     {
-        let root_forge_ptr = parser.ParseTree::<Shard<'_>>(self);
-        if let Some(forge_ptr) = root_forge_ptr {
-            let root_forge = unsafe { &mut *forge_ptr };
+        let  	root_forge_ptr = parser.ParseTree::<Shard<'_>>( self);
+        if let Some( forge_ptr) = root_forge_ptr {
+            let  	root_forge = unsafe { &mut *forge_ptr };
             return root_forge.MatchNode();
         }
         false
@@ -489,63 +372,3 @@ impl<'a> IGrammar for DynINode<'a>
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
-
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl<'a, 'r> IGrammar for &'r DynINode<'a>
-{
-    fn	Match< 'p, 's, R: Read>( &self, parser: &mut Parser<'p, 's, R>) -> bool
-    {
-        (*self).Match( parser)
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-
-pub struct RepeatForge<'a, 'p, 's, R: Read + 'p = io::Empty>
-where 's: 'p
-{
-    pub _Parent: Option< &'a (dyn IForge<'a, 'p, 's, R> + 'a)>,
-    pub _Parser: *mut Parser<'p, 's, R>,
-    pub _Child: *mut (dyn IForge<'p, 'p, 's, R> + 'p),
-    pub _Repeat: crate::silo::USeg,
-}
-
-impl<'a, 'p, 's, R: Read + 'p> IForge<'a, 'p, 's, R> for RepeatForge<'a, 'p, 's, R>
-where 's: 'p
-{
-    ImplForgeBase!( RepeatForge);
-
-    fn MatchNode(&mut self) -> bool {
-        let startMark = self.Parser().InStream().Marker();
-        let child_ref = unsafe { &mut *self._Child };
-        let mut match_count = 0;
-        
-        let min = self._Repeat.First().AsU32();
-        let max = self._Repeat.Size().AsU32();
-        let is_inf = max == 0;
-        
-        while is_inf || match_count < max {
-            let iter_start = self.Parser().InStream().Marker();
-            if !child_ref.MatchNode() {
-                break;
-            }
-            if self.Parser().InStream().Marker() == iter_start {
-                break;
-            }
-            match_count += 1;
-        }
-        
-        if match_count >= min {
-            let endMark = self.Parser().InStream().Marker();
-            self.EmitDigest(startMark, endMark);
-            true
-        } else {
-            self.Parser().InStream().RollTo(startMark);
-            false
-        }
-    }
-}
