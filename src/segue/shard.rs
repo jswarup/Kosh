@@ -1,279 +1,349 @@
-use	crate::silo::U32;
-use	crate::stalks::{ BinOp, DynINode, INode, WorkPtr };
-use	crate::stalks::work::DynIWork;
-use	crate::flux::{ IXFluxSource, xflux::XField };
-use	std::fmt;
-use	crate::segue::{ Charset, IGrammar, Parser };
-
+use crate::silo::U32;
+use crate::stalks::{ BinOp, DynINode, INode, WorkPtr };
+use crate::stalks::work::DynIWork;
+use crate::flux::{ IXFluxSource, xflux::XField };
+use std::fmt;
+use crate::segue::{ Charset, IGrammar, Parser };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub enum Shard {
-    Leaf( Box<DynINode<'static>>),
-    Repeat( Box<Shard>, crate::silo::USeg),
-    Action( Box<Shard>, Box<DynIWork<'static>>),
-    ParNode( Box<Shard>, Box<Shard>),
-    CatNode( Box<Shard>, Box<Shard>),
+pub struct ParNode<'a> {
+    pub _Left: Box<DynINode<'a>>,
+    pub _Right: Box<DynINode<'a>>,
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl Shard
-{
-    pub fn	NewParNode( left: Self, right: Self) -> Self
-    {
-        Shard::ParNode( Box::new( left), Box::new( right))
-    }
-    pub fn	NewCatNode( left: Self, right: Self) -> Self
-    {
-        Shard::CatNode( Box::new( left), Box::new( right))
-    }
+pub struct CatNode<'a> {
+    pub _Left: Box<DynINode<'a>>,
+    pub _Right: Box<DynINode<'a>>,
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
+pub struct RepeatNode<'a> {
+    pub _Child: Box<DynINode<'a>>,
+    pub _USeg: crate::silo::USeg,
+}
 
-impl Default for Shard
-{
-    fn	default() -> Self
-    {
-        Self::Leaf( Box::new( String::new()))
+pub struct ActionNode<'a> {
+    pub _Child: Box<DynINode<'a>>,
+    pub _Action: Box<DynIWork<'static>>,
+}
+
+pub trait IntoDynNode<'a> {
+    fn IntoDynNode(self) -> Box<DynINode<'a>>;
+}
+
+impl<'a> IntoDynNode<'a> for &'static str {
+    fn IntoDynNode(self) -> Box<DynINode<'a>> {
+        Box::new(self.to_string())
     }
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
+impl<'a> IntoDynNode<'a> for String {
+    fn IntoDynNode(self) -> Box<DynINode<'a>> {
+        Box::new(self)
+    }
+}
 
-impl IXFluxSource for Shard
-{
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
-    {
-        let  	mut step = 0u32;
-        let  	shard = self;
-        *field = XField::Obj( Box::new( move |key, item| {
-            match shard {
-                Shard::Leaf( val) => {
-                    if step == 0 {
-                        *key = "Leaf".to_string();
-                        val.ToXField( item);
-                        step += 1;
-                        true
-                    } else { false }
-                }
-                Shard::Repeat( child, useg) => {
-                    if step == 0 {
-                        *key = "Child".to_string();
-                        child.ToXField( item);
-                        step += 1;
-                        true
-                    } else if step == 1 {
-                        *key = "Repeat".to_string();
-                        *item = XField::FluxSource( useg);
-                        step += 1;
-                        true
-                    } else { false }
-                }
-                Shard::Action( child, _action) => {
-                    if step == 0 {
-                        *key = "Child".to_string();
-                        child.ToXField( item);
-                        step += 1;
-                        true
-                    } else if step == 1 {
-                        *key = "Action".to_string();
-                        *item = XField::Str( "Action");
-                        step += 1;
-                        true
-                    } else { false }
-                }
-                Shard::ParNode( left, right) | Shard::CatNode( left, right) => {
-                    if step == 0 {
-                        *key = "Left".to_string();
-                        left.ToXField( item);
-                        step += 1;
-                        true
-                    } else if step == 1 {
-                        *key = "Right".to_string();
-                        right.ToXField( item);
-                        step += 1;
-                        true
-                    } else { false }
-                }
-            }
+impl<'a> IntoDynNode<'a> for char {
+    fn IntoDynNode(self) -> Box<DynINode<'a>> {
+        Box::new(self.to_string())
+    }
+}
+
+impl<'a> IntoDynNode<'a> for Charset {
+    fn IntoDynNode(self) -> Box<DynINode<'a>> {
+        Box::new(self)
+    }
+}
+
+impl<'a> IntoDynNode<'a> for Box<DynINode<'a>> {
+    fn IntoDynNode(self) -> Box<DynINode<'a>> {
+        self
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+// ParNode Impls
+//---------------------------------------------------------------------------------------------------------------------------------
+impl<'a> IXFluxSource for ParNode<'a> {
+    fn ToXField<'b>(&'b self, field: &mut XField<'b>) {
+        let mut step = 0u32;
+        let node = self;
+        *field = XField::Obj(Box::new(move |key, item| {
+            if step == 0 {
+                *key = "Left".to_string();
+                node._Left.ToXField(item);
+                step += 1;
+                true
+            } else if step == 1 {
+                *key = "Right".to_string();
+                node._Right.ToXField(item);
+                step += 1;
+                true
+            } else { false }
         }));
     }
 }
- 
-//---------------------------------------------------------------------------------------------------------------------------------
 
-impl fmt::Display for Shard
-{
-    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
-    {
-        match self {
-            Self::Leaf( val) => write!( f, "Shard( {})", val.DocStr()),
-            Self::Repeat( _, useg) => write!( f, "Repeat( {:?})", useg),
-            Self::Action( _, _) => write!( f, "Action"),
-            Self::ParNode( _, _) => write!( f, "ParNode"),
-            Self::CatNode( _, _) => write!( f, "CatNode"),
+impl<'a> INode<'a> for ParNode<'a> {
+    fn _Size(&self) -> U32 { U32(2) }
+    fn _At(&self, idx: U32) -> &DynINode<'a> {
+        match idx.0 {
+            0 => &*self._Left,
+            1 => &*self._Right,
+            _ => panic!("At called on ParNode with index > 1"),
         }
     }
-}
- 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl From< char> for Shard
-{
-    fn	from( c: char) -> Self
-    {
-        Self::Leaf( Box::new( c.to_string()))
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl From< String> for Shard
-{
-    fn	from( s: String) -> Self
-    {
-        Self::Leaf( Box::new( s))
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl From< &str> for Shard
-{
-    fn	from( s: &str) -> Self
-    {
-        Self::Leaf( Box::new( s.to_string()))
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl From< Charset> for Shard
-{
-    fn	from( cs: Charset) -> Self
-    {
-        Self::Leaf( Box::new( cs))
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< 'a> INode< 'a> for Shard
-{
-    fn	_Size( &self) -> U32 {
-        match self {
-            Self::Repeat( _, _) | Self::Action( _, _) => U32(1),
-            Self::ParNode( _, _) | Self::CatNode( _, _) => U32(2),
-            _ => U32(0),
-        }
-    }
-    fn	_At( &self, idx: U32) -> &DynINode< 'a> {
-        match self {
-            Self::Repeat( child, _) | Self::Action( child, _) => {
-                if idx.0 == 0 {
-                    &**child
-                } else {
-                    panic!("At called on unary node with index > 0")
-                }
-            },
-            Self::ParNode( left, right) | Self::CatNode( left, right) => {
-                match idx.0 {
-                    0 => &**left,
-                    1 => &**right,
-                    _ => panic!("At called on BinNode with index > 1"),
-                }
-            },
-            _ => panic!("At called on Leaf"),
-        }
-    }
-    fn	Value( &self) -> Option< WorkPtr< 'a>> { None }
-    fn	AsRawLeaf( &self) -> *const ()
-    {
-        self as *const _ as *const ()
-    }
-    fn	DocStr( &self) -> &'static str { "" }
-    fn	BinOp( &self) -> BinOp {
-        match self {
-            Self::ParNode( _, _) => BinOp::Bor,
-            Self::CatNode( _, _) => BinOp::Less,
-            _ => BinOp::None,
-        }
-    }
-
-    fn	Action( &self) -> Option<*const DynIWork<'static>> {
-        match self {
-            Self::Action( _, action) => Some( action.as_ref() as *const _),
-            _ => None,
-        }
-    }
-
+    fn Value(&self) -> Option<WorkPtr<'a>> { None }
+    fn AsRawLeaf(&self) -> *const () { std::ptr::null() }
+    fn DocStr(&self) -> &'static str { "" }
+    fn BinOp(&self) -> BinOp { BinOp::Bor }
+    fn Action(&self) -> Option<*const DynIWork<'static>> { None }
     fn MatchGrammar(&self, parser: *mut (), marker: u32) -> Option<u32> {
         let p = unsafe { &mut *(parser as *mut crate::segue::Parser<'_>) };
         self.Match(p, crate::silo::U32(marker)).map(|u| u.0)
     }
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IGrammar for Shard {
+impl<'a> IGrammar for ParNode<'a> {
     fn Match<'p>(&'p self, parser: &mut Parser<'p>, marker: U32) -> Option<U32> {
-        match self {
-            Self::Leaf( val) => val.MatchGrammar(parser as *mut _ as *mut (), marker.0).map(crate::silo::U32),
-            Self::Repeat( child, useg) => {
-                let  	mut count = U32( 0);
-                let  	first = useg.First();
-                let  	last = if useg.IsEmpty() { U32( std::u32::MAX) } else { useg.Last() };
-                let  	mut currMark = marker;
-
-                while count < last {
-                    if let Some( newMark) = child.Match( parser, currMark) {
-                        if newMark == currMark {
-                            count += U32( 1);
-                            break;
-                        }
-                        currMark = newMark;
-                        count += U32( 1);
-                    } else {
-                        break;
-                    }
-                }
-
-                if count >= first {
-                    Some(currMark)
-                } else {
-                    None
-                }
-            },
-            Self::Action( child, action) => {
-                if let Some( childMark) = child.Match( parser, marker) {
-                    let  	actionPtr = &**action as *const DynIWork<'static>;
-                    #[allow(invalid_reference_casting)]
-                    let  	actionMut = unsafe { &mut *(actionPtr as *mut DynIWork<'static>) };
-                    actionMut.DoWork( parser);
-                    return Some( childMark);
-                }
-                None
-            },
-            Self::CatNode( left, right) => {
-                if let Some( leftMark) = left.Match( parser, marker) {
-                    if let Some( rightMark) = right.Match( parser, leftMark) {
-                        return Some( rightMark);
-                    }
-                }
-                None
-            },
-            Self::ParNode( left, right) => {
-                if let Some( leftMark) = left.Match( parser, marker) {
-                    return Some( leftMark);
-                }
-                if let Some( rightMark) = right.Match( parser, marker) {
-                    return Some( rightMark);
-                }
-                None
-            },
+        if let Some(leftMark) = self._Left.Match(parser, marker) {
+            return Some(leftMark);
         }
+        if let Some(rightMark) = self._Right.Match(parser, marker) {
+            return Some(rightMark);
+        }
+        None
+    }
+}
+
+impl<'a> fmt::Display for ParNode<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ParNode")
+    }
+}
+
+impl<'a> fmt::Debug for ParNode<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+// CatNode Impls
+//---------------------------------------------------------------------------------------------------------------------------------
+impl<'a> IXFluxSource for CatNode<'a> {
+    fn ToXField<'b>(&'b self, field: &mut XField<'b>) {
+        let mut step = 0u32;
+        let node = self;
+        *field = XField::Obj(Box::new(move |key, item| {
+            if step == 0 {
+                *key = "Left".to_string();
+                node._Left.ToXField(item);
+                step += 1;
+                true
+            } else if step == 1 {
+                *key = "Right".to_string();
+                node._Right.ToXField(item);
+                step += 1;
+                true
+            } else { false }
+        }));
+    }
+}
+
+impl<'a> INode<'a> for CatNode<'a> {
+    fn _Size(&self) -> U32 { U32(2) }
+    fn _At(&self, idx: U32) -> &DynINode<'a> {
+        match idx.0 {
+            0 => &*self._Left,
+            1 => &*self._Right,
+            _ => panic!("At called on CatNode with index > 1"),
+        }
+    }
+    fn Value(&self) -> Option<WorkPtr<'a>> { None }
+    fn AsRawLeaf(&self) -> *const () { std::ptr::null() }
+    fn DocStr(&self) -> &'static str { "" }
+    fn BinOp(&self) -> BinOp { BinOp::Less }
+    fn Action(&self) -> Option<*const DynIWork<'static>> { None }
+    fn MatchGrammar(&self, parser: *mut (), marker: u32) -> Option<u32> {
+        let p = unsafe { &mut *(parser as *mut crate::segue::Parser<'_>) };
+        self.Match(p, crate::silo::U32(marker)).map(|u| u.0)
+    }
+}
+
+impl<'a> IGrammar for CatNode<'a> {
+    fn Match<'p>(&'p self, parser: &mut Parser<'p>, marker: U32) -> Option<U32> {
+        if let Some(leftMark) = self._Left.Match(parser, marker) {
+            if let Some(rightMark) = self._Right.Match(parser, leftMark) {
+                return Some(rightMark);
+            }
+        }
+        None
+    }
+}
+
+impl<'a> fmt::Display for CatNode<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "CatNode")
+    }
+}
+
+impl<'a> fmt::Debug for CatNode<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+// RepeatNode Impls
+//---------------------------------------------------------------------------------------------------------------------------------
+impl<'a> IXFluxSource for RepeatNode<'a> {
+    fn ToXField<'b>(&'b self, field: &mut XField<'b>) {
+        let mut step = 0u32;
+        let node = self;
+        *field = XField::Obj(Box::new(move |key, item| {
+            if step == 0 {
+                *key = "Child".to_string();
+                node._Child.ToXField(item);
+                step += 1;
+                true
+            } else if step == 1 {
+                *key = "Repeat".to_string();
+                *item = XField::FluxSource(&node._USeg);
+                step += 1;
+                true
+            } else { false }
+        }));
+    }
+}
+
+impl<'a> INode<'a> for RepeatNode<'a> {
+    fn _Size(&self) -> U32 { U32(1) }
+    fn _At(&self, idx: U32) -> &DynINode<'a> {
+        if idx.0 == 0 {
+            &*self._Child
+        } else {
+            panic!("At called on RepeatNode with index > 0")
+        }
+    }
+    fn Value(&self) -> Option<WorkPtr<'a>> { None }
+    fn AsRawLeaf(&self) -> *const () { std::ptr::null() }
+    fn DocStr(&self) -> &'static str { "" }
+    fn BinOp(&self) -> BinOp { BinOp::None }
+    fn Action(&self) -> Option<*const DynIWork<'static>> { None }
+    fn MatchGrammar(&self, parser: *mut (), marker: u32) -> Option<u32> {
+        let p = unsafe { &mut *(parser as *mut crate::segue::Parser<'_>) };
+        self.Match(p, crate::silo::U32(marker)).map(|u| u.0)
+    }
+}
+
+impl<'a> IGrammar for RepeatNode<'a> {
+    fn Match<'p>(&'p self, parser: &mut Parser<'p>, marker: U32) -> Option<U32> {
+        let mut count = U32(0);
+        let first = self._USeg.First();
+        let last = if self._USeg.IsEmpty() { U32(std::u32::MAX) } else { self._USeg.Last() };
+        let mut currMark = marker;
+
+        while count < last {
+            if let Some(newMark) = self._Child.Match(parser, currMark) {
+                if newMark == currMark {
+                    count += U32(1);
+                    break;
+                }
+                currMark = newMark;
+                count += U32(1);
+            } else {
+                break;
+            }
+        }
+
+        if count >= first {
+            Some(currMark)
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a> fmt::Display for RepeatNode<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Repeat({:?})", self._USeg)
+    }
+}
+
+impl<'a> fmt::Debug for RepeatNode<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+// ActionNode Impls
+//---------------------------------------------------------------------------------------------------------------------------------
+impl<'a> IXFluxSource for ActionNode<'a> {
+    fn ToXField<'b>(&'b self, field: &mut XField<'b>) {
+        let mut step = 0u32;
+        let node = self;
+        *field = XField::Obj(Box::new(move |key, item| {
+            if step == 0 {
+                *key = "Child".to_string();
+                node._Child.ToXField(item);
+                step += 1;
+                true
+            } else if step == 1 {
+                *key = "Action".to_string();
+                *item = XField::Str("Action");
+                step += 1;
+                true
+            } else { false }
+        }));
+    }
+}
+
+impl<'a> INode<'a> for ActionNode<'a> {
+    fn _Size(&self) -> U32 { U32(1) }
+    fn _At(&self, idx: U32) -> &DynINode<'a> {
+        if idx.0 == 0 {
+            &*self._Child
+        } else {
+            panic!("At called on ActionNode with index > 0")
+        }
+    }
+    fn Value(&self) -> Option<WorkPtr<'a>> { None }
+    fn AsRawLeaf(&self) -> *const () { std::ptr::null() }
+    fn DocStr(&self) -> &'static str { "" }
+    fn BinOp(&self) -> BinOp { BinOp::None }
+    fn Action(&self) -> Option<*const DynIWork<'static>> {
+        Some(self._Action.as_ref() as *const _)
+    }
+    fn MatchGrammar(&self, parser: *mut (), marker: u32) -> Option<u32> {
+        let p = unsafe { &mut *(parser as *mut crate::segue::Parser<'_>) };
+        self.Match(p, crate::silo::U32(marker)).map(|u| u.0)
+    }
+}
+
+impl<'a> IGrammar for ActionNode<'a> {
+    fn Match<'p>(&'p self, parser: &mut Parser<'p>, marker: U32) -> Option<U32> {
+        if let Some(childMark) = self._Child.Match(parser, marker) {
+            let actionPtr = &*self._Action as *const DynIWork<'static>;
+            #[allow(invalid_reference_casting)]
+            let actionMut = unsafe { &mut *(actionPtr as *mut DynIWork<'static>) };
+            actionMut.DoWork(parser);
+            return Some(childMark);
+        }
+        None
+    }
+}
+
+impl<'a> fmt::Display for ActionNode<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Action")
+    }
+}
+
+impl<'a> fmt::Debug for ActionNode<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 
@@ -293,33 +363,33 @@ macro_rules! ShardTree {
 
     // ── Shard AST Hooks (overrides NodeTree default) ──────────────────────────────────────────────
     ( @feature_RESOLVE_LEAF [ $( $cb:tt)* ], $Arg:ident, $val:expr ) => {
-        Shard::from( $val )
+        $crate::segue::shard::IntoDynNode::IntoDynNode($val)
     };
     ( @feature_NEWLEAF [ $( $cb:tt)* ], $Arg:ident, $val:expr ) => {
-        Shard::from( $val )
+        $crate::segue::shard::IntoDynNode::IntoDynNode($val)
     };
     ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, Bor, $l:expr, $r:expr ) => {
-        $crate::segue::shard::Shard::NewParNode( $l, $r )
+        Box::new($crate::segue::shard::ParNode { _Left: $l, _Right: $r }) as Box<$crate::stalks::DynINode<'static>>
     };
     ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, Less, $l:expr, $r:expr ) => {
-        $crate::segue::shard::Shard::NewCatNode( $l, $r )
+        Box::new($crate::segue::shard::CatNode { _Left: $l, _Right: $r }) as Box<$crate::stalks::DynINode<'static>>
     };
     ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, $op:ident, $l:expr, $r:expr ) => {
-        compile_error!("Shard only supports ParNode (Bor) and CatNode (Less).")
+        compile_error!("ShardTree only supports ParNode (Bor) and CatNode (Less).")
     };
     ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $action:expr, $child:expr ) => {
-        Shard::Action( Box::new( $child ), $action )
+        Box::new($crate::segue::shard::ActionNode { _Child: $child, _Action: $action }) as Box<$crate::stalks::DynINode<'static>>
     };
     ( @feature_REPEAT_STAR [ $( $cb:tt)* ], $Arg:ident, $child:expr ) => {
-        Shard::Repeat( Box::new( $child ), $crate::silo::USeg::NewInf( 0) )
+        Box::new($crate::segue::shard::RepeatNode { _Child: $child, _USeg: $crate::silo::USeg::NewInf( 0) }) as Box<$crate::stalks::DynINode<'static>>
     };
     ( @feature_REPEAT_PLUS [ $( $cb:tt)* ], $Arg:ident, $child:expr ) => {
-        Shard::Repeat( Box::new( $child ), $crate::silo::USeg::NewInf( 1) )
+        Box::new($crate::segue::shard::RepeatNode { _Child: $child, _USeg: $crate::silo::USeg::NewInf( 1) }) as Box<$crate::stalks::DynINode<'static>>
     };
 
     // ── Custom: Boxet stringification (overrides NodeTree default) ─────────────────────────────────
     ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $s:literal ) => {
-        Shard::from( <$crate::segue::Charset>::from( $s.as_bytes() ) )
+        Box::new(<$crate::segue::Charset>::from( $s.as_bytes() )) as Box<$crate::stalks::DynINode<'static>>
     };
 
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
@@ -328,16 +398,6 @@ macro_rules! ShardTree {
     };
     // Top-level entry (user code)
     ( $( $inner:tt)+ )  => {
-        $crate::NodeTree!( @define [ $crate::ShardTree ], Shard, $( $inner)+ )
+        $crate::NodeTree!( @define [ $crate::ShardTree ], DynINode, $( $inner)+ )
     };
 }
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl fmt::Debug for Shard {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------

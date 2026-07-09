@@ -1,0 +1,68 @@
+{
+  "LeftChild": {
+    "LeftChild": {
+      "LeftChild": {
+        "LeftChild": {
+          "LeftChild": {
+            "Leaf": {
+              "DocStr": "A"
+            }
+          },
+          "RightChild": {
+            "Leaf": {
+              "DocStr": "B"
+            }
+          }
+        },
+        "RightChild": {
+          "LeftChild": {
+            "Leaf": {
+              "DocStr": "C"
+            }
+          },
+          "RightChild": {
+            "Leaf": {
+              "DocStr": "D"
+            }
+          }
+        }
+      },
+      "RightChild": {
+        "Leaf": {
+          "DocStr": "E"
+        }
+      }
+    },
+    "RightChild": {
+      "LeftChild": {
+        "LeftChild": {
+          "LeftChild": {
+            "Leaf": {
+              "DocStr": "F"
+            }
+          },
+          "RightChild": {
+            "Leaf": {
+              "DocStr": "G"
+            }
+          }
+        },
+        "RightChild": {
+          "Leaf": {
+            "DocStr": "H"
+          }
+        }
+      },
+      "RightChild": {
+        "Leaf": {
+          "DocStr": "i"
+        }
+      }
+    }
+  },
+  "RightChild": {
+    "Leaf": {
+      "DocStr": "J"
+    }
+  }
+}

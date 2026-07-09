@@ -2,8 +2,8 @@
 
 use	crate::flux::instream::IStream;
 use	crate::segue::Charset;
-use	crate::silo::{ U32, U8, IAccess };
-use	crate::stalks::{ BinOp, DynINode, DynIWorker, DynIWork, INode, IWorker, WorkPtr };
+use	crate::silo::{ U32, U8 };
+use	crate::stalks::{ BinOp, DynINode, DynIWorker, INode, IWorker, WorkPtr };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -161,50 +161,10 @@ impl IGrammar for str
 
 impl<'a> IGrammar for DynINode<'a>
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser<'p>, mut marker: U32) -> Option<U32>
+    fn Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> Option<U32>
     {
-        if let Some(action) = self.Action() {
-            if let Some( new_mark) = self.Children().At(crate::silo::U32(0)).Match(parser, marker) {
-                let  	actionMut = unsafe { &mut *(action as *mut DynIWork<'static>) };
-                // Actually wait! DoWork currently doesn't take marker. If action relies on marker, it won't have it!
-                // Let's just call it for now.
-                actionMut.DoWork( parser);
-                return Some( new_mark);
-            }
-            return None;
-        }
-
-        if self.IsLeaf() {
-            let parser_ptr = parser as *mut _ as *mut ();
-            if let Some(new_mark) = self.MatchGrammar(parser_ptr, marker.0) {
-                return Some(U32(new_mark));
-            } else {
-                return None;
-            }
-        }
-
-        let op = self.BinOp();
-        if op == BinOp::Less {
-            for i in 0..self.Children().Size().AsUsize() {
-                let child = self.Children().At(crate::silo::U32(i as u32));
-                if let Some( new_mark) = child.Match(parser, marker) {
-                    marker = new_mark;
-                } else {
-                    return None;
-                }
-            }
-            return Some( marker);
-        } else if op == BinOp::Bor {
-            for i in 0..self.Children().Size().AsUsize() {
-                let child = self.Children().At(crate::silo::U32(i as u32));
-                if let Some( new_mark) = child.Match(parser, marker) {
-                    return Some( new_mark);
-                }
-            }
-            return None;
-        }
-
-        None
+        let parser_ptr = parser as *mut _ as *mut ();
+        self.MatchGrammar(parser_ptr, marker.0).map(U32)
     }
 }
 

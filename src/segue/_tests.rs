@@ -2,7 +2,7 @@
 
 use	crate::{
     flux::FixedStream,
-    segue::{ Charset, shard::Shard, Parser, IGrammar },
+    segue::{ Charset, Parser, IGrammar },
     stalks::DynINode,
     silo::U32,
 };
@@ -68,7 +68,7 @@ fn TestPostBoxet()
     let tree = crate::ShardTree!( "ab" [ |_worker| {
         println!("Matched");
     } ] );
-    let dynNode: &DynINode<'_> = &tree;
+    let dynNode: &DynINode<'_> = &*tree;
     let mut stream = FixedStream::from(data);
     let mut parser = Parser::New(&mut stream);
     assert!(dynNode.Match(&mut parser, U32(0)).is_some());
@@ -78,7 +78,7 @@ fn TestPostBoxet()
 #[test]
 fn TestRgx2() 
 {
-    use crate::segue::parser::IWorkerExt;
+
     let     alpha = crate::ShardTree!(  [ "a-zA-Z"]);
     let     identRgx = crate::ShardTree!(  [ "a-z"] < ["A-Z"] < +alpha[ |_worker| {
         // marker tracking removed
@@ -86,7 +86,7 @@ fn TestRgx2()
     let  	mut output = String::new();
     {
         let  	mut jsonStream = crate::flux::JsonOutStream::New( &mut output, true);
-        jsonStream.KeyField( "identRgx", crate::flux::xflux::XField::FluxSource( &identRgx));
+        jsonStream.KeyField( "identRgx", crate::flux::xflux::XField::FluxSource( &*identRgx));
     }
     println!( "{}", output);
 
