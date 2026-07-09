@@ -2,7 +2,7 @@
 
 use	crate::{
     flux::FixedStream,
-    shard::{ Charset, Parser, IGrammar, UInt, Int, Hex, Real, HexReal },
+    shard::{ Charset, Parser, IGrammar, UInt, Int, Hex, Real, HexReal, Json },
     stalks::DynINode,
     silo::U32,
 };
@@ -212,6 +212,36 @@ fn TestHexRealShard() {
     let match2 = tree.Match(&mut parser2, U32(0));
     assert!(match2.is_some());
     assert_eq!(match2.unwrap().AsUsize(), 11);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn TestJsonShard() {
+    let tree = crate::ShardTree!( Json );
+    
+    // JSON String
+    let mut stream1 = FixedStream::from(r#"  "hello world"  "#);
+    let mut parser1 = Parser::New(&mut stream1);
+    let match1 = tree.Match(&mut parser1, U32(0));
+    assert!(match1.is_some());
+    assert_eq!(match1.unwrap().AsUsize(), 17);
+    
+    // JSON Object with various types
+    let json_text = r#"
+    {
+        "string": "value",
+        "number": -1.23e4,
+        "bool": true,
+        "null_val": null,
+        "array": [1, 2, 3, false, {"nested": "obj"}]
+    }
+    "#;
+    let mut stream2 = FixedStream::from(json_text);
+    let mut parser2 = Parser::New(&mut stream2);
+    let match2 = tree.Match(&mut parser2, U32(0));
+    assert!(match2.is_some());
+    assert_eq!(match2.unwrap().AsUsize(), json_text.len());
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
