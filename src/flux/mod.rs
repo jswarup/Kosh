@@ -5,7 +5,7 @@ pub mod jsonoutstrm;
 pub mod outstream;
 pub mod xflux;
 
-pub use	instream::InStream;
+pub use	instream::{IStream, FixedStream, BuffStream};
 pub use	jsonoutstrm::JsonOutStream;
 pub use	outstream::OutStream;
 

@@ -34,7 +34,7 @@ impl USeg
         let  	fst = first.into();
         USeg {
             _First: fst,
-            _Last: fst,
+            _Last: fst - U32( 1),
         }
     }
 

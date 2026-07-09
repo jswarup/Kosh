@@ -1,5 +1,5 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::{ flux::{ JsonOutStream, xflux::XField, InStream }, silo::{ U8, U32, IAccess } };
+use	crate::{ flux::{ JsonOutStream, xflux::XField, FixedStream, BuffStream, IStream }, silo::{ U8, U32 } };
 use	std::fs;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -37,7 +37,7 @@ fn	TestJsonOutStream()
 fn	TestInStream()
 {
     let  	data = "abc";
-    let  	mut stream = InStream::from( data);
+    let  	mut stream = FixedStream::from( data);
     assert_eq!( stream.Curr(), b'a');
     assert!( stream.Next());
     assert_eq!( stream.Curr(), b'b');
@@ -47,16 +47,19 @@ fn	TestInStream()
     assert_eq!( stream.Curr(), 0);
     stream.RollTo( U32( 1));
     assert_eq!( stream.Curr(), b'b');
-    let  	rest1 = stream.Rest();
-    assert_eq!( rest1.Size(), 2);
-    assert_eq!( *rest1.At( 0), b'b');
-    assert_eq!( *rest1.At( 1), b'c');
-    assert_eq!( stream.RemainingBytes(), b"bc");
+    let  	rest1 = stream.Bytes( 2);
+    assert_eq!( rest1, b"bc");
+    assert_eq!( stream.Bytes( 10), b"bc");
     stream.RollTo( U32( 5));
     assert_eq!( stream.Curr(), U8::_0);
-    let  	rest5 = stream.Rest();
-    assert_eq!( rest5.Size(), 0);
-    assert_eq!( stream.RemainingBytes(), b"");
+    let  	rest5 = stream.Bytes( 1);
+    assert_eq!( rest5, b"");
+    assert_eq!( stream.Bytes( 10), b"");
+    // Test random-access At()
+    assert_eq!( stream.At( U32( 0)), b'a');
+    assert_eq!( stream.At( U32( 1)), b'b');
+    assert_eq!( stream.At( U32( 2)), b'c');
+    assert_eq!( stream.At( U32( 5)), U8::_0);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -66,7 +69,7 @@ fn	TestInStreamFromFile()
 {
     let  	path = "test_inbuffstream.txt";
     fs::write( path, b"hello").unwrap();
-    let  	mut stream = InStream::FromFile( path).unwrap();
+    let  	mut stream = BuffStream::FromFile( path).unwrap();
     assert_eq!( stream.Curr(), b'h');
     assert!( stream.Next());
     assert_eq!( stream.Curr(), b'e');

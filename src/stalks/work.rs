@@ -130,6 +130,9 @@ pub type DynIWork< 'a> = dyn IWork + 'a;
 pub trait IWorker: Send + Sync
 {
     fn	PostJob( &self, job: WorkPtr< '_>);
+    
+    // Allows unsafe downcasting to the underlying worker type (e.g. Parser)
+    fn	AsRawWorker( &self) -> *const () { std::ptr::null() }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
