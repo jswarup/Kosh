@@ -1,5 +1,5 @@
 use crate::stalks::DynINode;
-use crate::segue::Charset;
+use crate::shard::Charset;
 
 pub trait IntoDynNode<'a> {
     fn IntoDynNode(self) -> Box<DynINode<'a>>;
@@ -51,33 +51,33 @@ macro_rules! ShardTree {
 
     // ── Shard AST Hooks (overrides NodeTree default) ──────────────────────────────────────────────
     ( @feature_RESOLVE_LEAF [ $( $cb:tt)* ], $Arg:ident, $val:expr ) => {
-        $crate::segue::shard::IntoDynNode::IntoDynNode($val)
+        $crate::shard::shardtree::IntoDynNode::IntoDynNode($val)
     };
     ( @feature_NEWLEAF [ $( $cb:tt)* ], $Arg:ident, $val:expr ) => {
-        $crate::segue::shard::IntoDynNode::IntoDynNode($val)
+        $crate::shard::shardtree::IntoDynNode::IntoDynNode($val)
     };
     ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, Bor, $l:expr, $r:expr ) => {
-        Box::new($crate::segue::parshard::ParShard { _Left: $l, _Right: $r }) as Box<$crate::stalks::DynINode<'static>>
+        Box::new($crate::shard::parshard::ParShard { _Left: $l, _Right: $r }) as Box<$crate::stalks::DynINode<'static>>
     };
     ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, Less, $l:expr, $r:expr ) => {
-        Box::new($crate::segue::catshard::CatShard { _Left: $l, _Right: $r }) as Box<$crate::stalks::DynINode<'static>>
+        Box::new($crate::shard::catshard::CatShard { _Left: $l, _Right: $r }) as Box<$crate::stalks::DynINode<'static>>
     };
     ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, $op:ident, $l:expr, $r:expr ) => {
         compile_error!("ShardTree only supports ParShard (Bor) and CatShard (Less).")
     };
     ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $action:expr, $child:expr ) => {
-        Box::new($crate::segue::actionshard::ActionShard { _Child: $child, _Action: $action }) as Box<$crate::stalks::DynINode<'static>>
+        Box::new($crate::shard::actionshard::ActionShard { _Child: $child, _Action: $action }) as Box<$crate::stalks::DynINode<'static>>
     };
     ( @feature_REPEAT_STAR [ $( $cb:tt)* ], $Arg:ident, $child:expr ) => {
-        Box::new($crate::segue::repeatshard::RepeatShard { _Child: $child, _USeg: $crate::silo::USeg::NewInf( 0) }) as Box<$crate::stalks::DynINode<'static>>
+        Box::new($crate::shard::repeatshard::RepeatShard { _Child: $child, _USeg: $crate::silo::USeg::NewInf( 0) }) as Box<$crate::stalks::DynINode<'static>>
     };
     ( @feature_REPEAT_PLUS [ $( $cb:tt)* ], $Arg:ident, $child:expr ) => {
-        Box::new($crate::segue::repeatshard::RepeatShard { _Child: $child, _USeg: $crate::silo::USeg::NewInf( 1) }) as Box<$crate::stalks::DynINode<'static>>
+        Box::new($crate::shard::repeatshard::RepeatShard { _Child: $child, _USeg: $crate::silo::USeg::NewInf( 1) }) as Box<$crate::stalks::DynINode<'static>>
     };
 
     // ── Custom: Boxet stringification (overrides NodeTree default) ─────────────────────────────────
     ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $s:literal ) => {
-        Box::new(<$crate::segue::Charset>::from( $s.as_bytes() )) as Box<$crate::stalks::DynINode<'static>>
+        Box::new(<$crate::shard::Charset>::from( $s.as_bytes() )) as Box<$crate::stalks::DynINode<'static>>
     };
 
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------

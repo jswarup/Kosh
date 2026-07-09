@@ -1,7 +1,7 @@
 //-- parser.rs -------------------------------------------------------------------------------------------------------------------
 
 use	crate::flux::instream::IStream;
-use	crate::segue::Charset;
+use crate::shard::Charset;
 use	crate::silo::{ U32, U8 };
 use	crate::stalks::{ BinOp, DynINode, DynIWorker, INode, IWorker, WorkPtr };
 

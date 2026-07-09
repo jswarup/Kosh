@@ -1,6 +1,6 @@
 //-- mod.rs -----------------------------------------------------------------------------------------------------------------------
 
-pub mod shard;
+pub mod shardtree;
 pub mod parshard;
 pub mod catshard;
 pub mod repeatshard;

@@ -2,7 +2,7 @@
 
 use	crate::{
     flux::FixedStream,
-    segue::{ Charset, Parser, IGrammar },
+    shard::{ Charset, Parser, IGrammar },
     stalks::DynINode,
     silo::U32,
 };
