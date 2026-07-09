@@ -6,15 +6,16 @@ use crate::flux::{ IXFluxSource, xflux::XField };
 use std::fmt;
 use crate::shard::{ IGrammar, Parser };
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub struct CatShard<'a> {
-    pub _Left: Box<DynINode<'a>>,
-    pub _Right: Box<DynINode<'a>>,
+    pub _Left: &'a DynINode<'a>,
+    pub _Right: &'a DynINode<'a>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-// CatShard Impls
-//---------------------------------------------------------------------------------------------------------------------------------
-impl<'a> IXFluxSource for CatShard<'a> {
+ 
+ impl<'a> IXFluxSource for CatShard<'a> {
     fn ToXField<'b>(&'b self, field: &mut XField<'b>) {
         let mut step = 0u32;
         let node = self;
@@ -34,12 +35,14 @@ impl<'a> IXFluxSource for CatShard<'a> {
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl<'a> INode<'a> for CatShard<'a> {
     fn _Size(&self) -> U32 { U32(2) }
     fn _At(&self, idx: U32) -> &DynINode<'a> {
         match idx.0 {
-            0 => &*self._Left,
-            1 => &*self._Right,
+            0 => self._Left,
+            1 => self._Right,
             _ => panic!("At called on CatShard with index > 1"),
         }
     }
@@ -54,6 +57,8 @@ impl<'a> INode<'a> for CatShard<'a> {
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl<'a> IGrammar for CatShard<'a> {
     fn Match<'p>(&'p self, parser: &mut Parser<'p>, marker: U32) -> Option<U32> {
         if let Some(leftMark) = self._Left.Match(parser, marker) {
@@ -65,14 +70,20 @@ impl<'a> IGrammar for CatShard<'a> {
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl<'a> fmt::Display for CatShard<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "CatShard")
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl<'a> fmt::Debug for CatShard<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------

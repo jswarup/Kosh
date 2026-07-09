@@ -6,14 +6,15 @@ use crate::flux::{ IXFluxSource, xflux::XField };
 use std::fmt;
 use crate::shard::{ IGrammar, Parser };
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub struct RepeatShard<'a> {
-    pub _Child: Box<DynINode<'a>>,
+    pub _Child: &'a DynINode<'a>,
     pub _USeg: crate::silo::USeg,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-// RepeatShard Impls
-//---------------------------------------------------------------------------------------------------------------------------------
+
 impl<'a> IXFluxSource for RepeatShard<'a> {
     fn ToXField<'b>(&'b self, field: &mut XField<'b>) {
         let mut step = 0u32;
@@ -34,11 +35,13 @@ impl<'a> IXFluxSource for RepeatShard<'a> {
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl<'a> INode<'a> for RepeatShard<'a> {
     fn _Size(&self) -> U32 { U32(1) }
     fn _At(&self, idx: U32) -> &DynINode<'a> {
         if idx.0 == 0 {
-            &*self._Child
+            self._Child
         } else {
             panic!("At called on RepeatShard with index > 0")
         }
@@ -53,6 +56,8 @@ impl<'a> INode<'a> for RepeatShard<'a> {
         self.Match(p, crate::silo::U32(marker)).map(|u| u.0)
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 impl<'a> IGrammar for RepeatShard<'a> {
     fn Match<'p>(&'p self, parser: &mut Parser<'p>, marker: U32) -> Option<U32> {
@@ -82,14 +87,20 @@ impl<'a> IGrammar for RepeatShard<'a> {
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl<'a> fmt::Display for RepeatShard<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Repeat({:?})", self._USeg)
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl<'a> fmt::Debug for RepeatShard<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------

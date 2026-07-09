@@ -3,7 +3,7 @@
 use	crate::flux::instream::IStream;
 use crate::shard::Charset;
 use	crate::silo::{ U32, U8 };
-use	crate::stalks::{ BinOp, DynINode, DynIWorker, INode, IWorker, WorkPtr };
+use	crate::stalks::{ DynINode, DynIWorker, IWorker, WorkPtr };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -178,32 +178,5 @@ impl<'a, 'r> IGrammar for &'r DynINode<'a>
     }
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl<'a> INode<'a> for String {
-    fn _Size(&self) -> U32 { U32(0) }
-    fn _At(&self, _idx: U32) -> &DynINode<'a> { panic!("Leaf") }
-    fn Value(&self) -> Option<WorkPtr<'a>> { None }
-    fn DocStr(&self) -> &'static str { "" }
-    fn BinOp(&self) -> BinOp { BinOp::None }
-    fn MatchGrammar(&self, parser: *mut (), marker: u32) -> Option<u32> {
-        let p = unsafe { &mut *(parser as *mut Parser<'_>) };
-        self.as_str().Match(p, U32(marker)).map(|u| u.0)
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl<'a> INode<'a> for Charset {
-    fn _Size(&self) -> U32 { U32(0) }
-    fn _At(&self, _idx: U32) -> &DynINode<'a> { panic!("Leaf") }
-    fn Value(&self) -> Option<WorkPtr<'a>> { None }
-    fn DocStr(&self) -> &'static str { "" }
-    fn BinOp(&self) -> BinOp { BinOp::None }
-    fn MatchGrammar(&self, parser: *mut (), marker: u32) -> Option<u32> {
-        let p = unsafe { &mut *(parser as *mut Parser<'_>) };
-        self.Match(p, U32(marker)).map(|u| u.0)
-    }
-}
 
 //---------------------------------------------------------------------------------------------------------------------------------

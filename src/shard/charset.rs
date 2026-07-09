@@ -5,7 +5,6 @@ use	std::sync::LazyLock;
 use	crate::silo::{ Arr, Buff, U8, U64 };
 use	crate::flux::{IXFluxSource, XField};
 
-
 //---------------------------------------------------------------------------------------------------------------------------------
 
 /// A 256-bit filter for `U8` characters — one bit per byte value.

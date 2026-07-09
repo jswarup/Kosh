@@ -6,14 +6,15 @@ use crate::flux::{ IXFluxSource, xflux::XField };
 use std::fmt;
 use crate::shard::{ IGrammar, Parser };
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub struct ActionShard<'a> {
-    pub _Child: Box<DynINode<'a>>,
+    pub _Child: &'a DynINode<'a>,
     pub _Action: Box<DynIWork<'static>>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-// ActionShard Impls
-//---------------------------------------------------------------------------------------------------------------------------------
+
 impl<'a> IXFluxSource for ActionShard<'a> {
     fn ToXField<'b>(&'b self, field: &mut XField<'b>) {
         let mut step = 0u32;
@@ -34,11 +35,13 @@ impl<'a> IXFluxSource for ActionShard<'a> {
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl<'a> INode<'a> for ActionShard<'a> {
     fn _Size(&self) -> U32 { U32(1) }
     fn _At(&self, idx: U32) -> &DynINode<'a> {
         if idx.0 == 0 {
-            &*self._Child
+            self._Child
         } else {
             panic!("At called on ActionShard with index > 0")
         }
@@ -56,6 +59,8 @@ impl<'a> INode<'a> for ActionShard<'a> {
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl<'a> IGrammar for ActionShard<'a> {
     fn Match<'p>(&'p self, parser: &mut Parser<'p>, marker: U32) -> Option<U32> {
         if let Some(childMark) = self._Child.Match(parser, marker) {
@@ -69,14 +74,20 @@ impl<'a> IGrammar for ActionShard<'a> {
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl<'a> fmt::Display for ActionShard<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Action")
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl<'a> fmt::Debug for ActionShard<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
