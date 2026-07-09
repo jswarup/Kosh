@@ -2,7 +2,7 @@
 
 use	crate::{
     flux::FixedStream,
-    shard::{ Charset, Parser, IGrammar, UInt },
+    shard::{ Charset, Parser, IGrammar, UInt, Int, Hex, Real, HexReal },
     stalks::DynINode,
     silo::U32,
 };
@@ -134,6 +134,84 @@ fn TestUIntShard()
     let  	match3 = tree.Match( &mut parser3, U32( 0));
     assert!( match3.is_some());
     assert_eq!( match3.unwrap().AsUsize(), 2);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn TestIntShard() {
+    let tree = crate::ShardTree!( Int );
+    
+    // Positive int
+    let mut stream = FixedStream::from("+12345");
+    let mut parser = Parser::New(&mut stream);
+    let match1 = tree.Match(&mut parser, U32(0));
+    assert!(match1.is_some());
+    assert_eq!(match1.unwrap().AsUsize(), 6);
+    
+    // Negative int
+    let mut stream2 = FixedStream::from("-42");
+    let mut parser2 = Parser::New(&mut stream2);
+    let match2 = tree.Match(&mut parser2, U32(0));
+    assert!(match2.is_some());
+    assert_eq!(match2.unwrap().AsUsize(), 3);
+}
+
+#[test]
+fn TestHexShard() {
+    let tree = crate::ShardTree!( Hex );
+    
+    // Standard hex
+    let mut stream = FixedStream::from("0x1a2B");
+    let mut parser = Parser::New(&mut stream);
+    let match1 = tree.Match(&mut parser, U32(0));
+    assert!(match1.is_some());
+    assert_eq!(match1.unwrap().AsUsize(), 6);
+    
+    // Hex with sign
+    let mut stream2 = FixedStream::from("-0XF");
+    let mut parser2 = Parser::New(&mut stream2);
+    let match2 = tree.Match(&mut parser2, U32(0));
+    assert!(match2.is_some());
+    assert_eq!(match2.unwrap().AsUsize(), 4);
+}
+
+#[test]
+fn TestRealShard() {
+    let tree = crate::ShardTree!( Real );
+    
+    // Standard real
+    let mut stream = FixedStream::from("3.14159");
+    let mut parser = Parser::New(&mut stream);
+    let match1 = tree.Match(&mut parser, U32(0));
+    assert!(match1.is_some());
+    assert_eq!(match1.unwrap().AsUsize(), 7);
+    
+    // Real with exponent
+    let mut stream2 = FixedStream::from("-1.5e+10");
+    let mut parser2 = Parser::New(&mut stream2);
+    let match2 = tree.Match(&mut parser2, U32(0));
+    assert!(match2.is_some());
+    assert_eq!(match2.unwrap().AsUsize(), 8);
+}
+
+#[test]
+fn TestHexRealShard() {
+    let tree = crate::ShardTree!( HexReal );
+    
+    // Hex real with fraction
+    let mut stream = FixedStream::from("0x1.f");
+    let mut parser = Parser::New(&mut stream);
+    let match1 = tree.Match(&mut parser, U32(0));
+    assert!(match1.is_some());
+    assert_eq!(match1.unwrap().AsUsize(), 5);
+    
+    // Hex real with binary exponent
+    let mut stream2 = FixedStream::from("-0x1.abcP-4");
+    let mut parser2 = Parser::New(&mut stream2);
+    let match2 = tree.Match(&mut parser2, U32(0));
+    assert!(match2.is_some());
+    assert_eq!(match2.unwrap().AsUsize(), 11);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

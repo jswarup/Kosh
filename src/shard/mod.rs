@@ -10,7 +10,9 @@ pub mod leaves;
 pub use charset::Charset;
 pub use parser::{ Parser, IGrammar };
 pub use binshard::BinShard;
-pub use leaves::{ StrShard, CharsetShard, UIntShard, UInt };
+pub mod numbers;
+pub use leaves::{ StrShard, CharsetShard };
+pub use numbers::{ UIntShard, UInt, IntShard, Int, HexShard, Hex, RealShard, Real, HexRealShard, HexReal };
 #[cfg( test)]
 mod _tests;
 
