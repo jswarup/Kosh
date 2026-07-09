@@ -1,12 +1,9 @@
 //-- parser.rs -------------------------------------------------------------------------------------------------------------------
 
 use	crate::flux::instream::IStream;
-use	crate::{
-    segue::Charset
-};
+use	crate::segue::Charset;
 use	crate::silo::{ U32, U8, IAccess };
-use	crate::stalks::{ BinOp, DynINode, DynIWorker, DynIWork, IWorker, WorkPtr };
-use	crate::segue::shard::Shard;
+use	crate::stalks::{ BinOp, DynINode, DynIWorker, DynIWork, INode, IWorker, WorkPtr };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -14,6 +11,8 @@ pub trait IGrammar
 {
     fn	Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> Option<U32>;
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 pub struct Parser<'p>
 {
@@ -176,14 +175,12 @@ impl<'a> IGrammar for DynINode<'a>
         }
 
         if self.IsLeaf() {
-            let raw_ptr = self.AsRawLeaf();
-            let leaf: &Shard = if raw_ptr.is_null() {
-                let anyRef = self.AsAny().unwrap();
-                anyRef.downcast_ref::<Shard>().unwrap()
+            let parser_ptr = parser as *mut _ as *mut ();
+            if let Some(new_mark) = self.MatchGrammar(parser_ptr, marker.0) {
+                return Some(U32(new_mark));
             } else {
-                unsafe { &*(raw_ptr as *const Shard) }
-            };
-            return leaf.Match(parser, marker);
+                return None;
+            }
         }
 
         let op = self.BinOp();
@@ -223,3 +220,30 @@ impl<'a, 'r> IGrammar for &'r DynINode<'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl<'a> INode<'a> for String {
+    fn _Size(&self) -> U32 { U32(0) }
+    fn _At(&self, _idx: U32) -> &DynINode<'a> { panic!("Leaf") }
+    fn Value(&self) -> Option<WorkPtr<'a>> { None }
+    fn DocStr(&self) -> &'static str { "" }
+    fn BinOp(&self) -> BinOp { BinOp::None }
+    fn MatchGrammar(&self, parser: *mut (), marker: u32) -> Option<u32> {
+        let p = unsafe { &mut *(parser as *mut Parser<'_>) };
+        self.as_str().Match(p, U32(marker)).map(|u| u.0)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl<'a> INode<'a> for Charset {
+    fn _Size(&self) -> U32 { U32(0) }
+    fn _At(&self, _idx: U32) -> &DynINode<'a> { panic!("Leaf") }
+    fn Value(&self) -> Option<WorkPtr<'a>> { None }
+    fn DocStr(&self) -> &'static str { "" }
+    fn BinOp(&self) -> BinOp { BinOp::None }
+    fn MatchGrammar(&self, parser: *mut (), marker: u32) -> Option<u32> {
+        let p = unsafe { &mut *(parser as *mut Parser<'_>) };
+        self.Match(p, U32(marker)).map(|u| u.0)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------

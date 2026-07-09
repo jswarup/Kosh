@@ -105,6 +105,20 @@ ImplIXFluxSourceFloat!( f32, f64);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl IXFluxSource for String {
+    fn ToXField<'a>(&'a self, field: &mut XField<'a>) {
+        *field = XField::Str(self.as_str());
+    }
+}
+
+impl IXFluxSource for str {
+    fn ToXField<'a>(&'a self, field: &mut XField<'a>) {
+        *field = XField::Str(self);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl<'a, T> IXFluxSource for Arr<'a, T>
 where
     T: IXFluxSource,

@@ -162,6 +162,11 @@ pub trait INode< 'a>: Send + Sync + crate::flux::IXFluxSource
         None
     }
 
+    fn	MatchGrammar( &self, _parser: *mut (), _marker: u32) -> Option< u32>
+    {
+        None
+    }
+
     fn	TraverseDF( &'a self, fnMut: &mut dyn FnMut( &'a DynINode< 'a>, TraversalEvent))
     where
         Self: Sized,
@@ -289,6 +294,12 @@ pub enum Nodule<'a, T> {
     BinNode {
         _BinOp: BinOp,
         _Children: [Box<DynINode<'a>>; 2],
+    },
+    ParNode {
+        _Children: [Box<DynINode<'a>>; 2],
+    },
+    CatNode {
+        _Children: [Box<DynINode<'a>>; 2],
     }
 }
 unsafe impl<'a, T> Send for Nodule<'a, T> {}
@@ -306,6 +317,12 @@ where
     }
     pub fn NewBinNode(op: BinOp, left: Self, right: Self) -> Self {
         Nodule::BinNode { _BinOp: op, _Children: [Box::new(left), Box::new(right)] }
+    }
+    pub fn NewParNode(left: Self, right: Self) -> Self {
+        Nodule::ParNode { _Children: [Box::new(left), Box::new(right)] }
+    }
+    pub fn NewCatNode(left: Self, right: Self) -> Self {
+        Nodule::CatNode { _Children: [Box::new(left), Box::new(right)] }
     }
     pub fn Children<'b>(&'b self) -> NodeChildren<'b, 'a> {
         NodeChildren(self)
@@ -368,6 +385,23 @@ where
                     } else {
                         false
                     }
+                },
+                Nodule::ParNode { _Children, .. } | Nodule::CatNode { _Children, .. } => {
+                    if step == crate::silo::U32(0) {
+                        *key = "LeftChild".to_string();
+                        let child = &*_Children[0];
+                        child.ToXField(item);
+                        step.0 += 1;
+                        true
+                    } else if step == crate::silo::U32(1) {
+                        *key = "RightChild".to_string();
+                        let child = &*_Children[1];
+                        child.ToXField(item);
+                        step.0 += 1;
+                        true
+                    } else {
+                        false
+                    }
                 }
             }
         }));
@@ -381,7 +415,7 @@ where
     fn _Size(&self) -> crate::silo::U32 {
         match self {
             Nodule::UniNode { .. } => crate::silo::U32(1),
-            Nodule::BinNode { .. } => crate::silo::U32(2),
+            Nodule::BinNode { .. } | Nodule::ParNode { .. } | Nodule::CatNode { .. } => crate::silo::U32(2),
             _ => crate::silo::U32(0),
         }
     }
@@ -394,7 +428,7 @@ where
                     panic!("At called on UniNode with index > 0")
                 }
             }
-            Nodule::BinNode { _Children, .. } => &*_Children[idx.0 as usize],
+            Nodule::BinNode { _Children, .. } | Nodule::ParNode { _Children, .. } | Nodule::CatNode { _Children, .. } => &*_Children[idx.0 as usize],
             _ => panic!("At called on Leaf"),
         }
     }
@@ -433,6 +467,8 @@ where
             Nodule::Leaf { .. } => BinOp::None,
             Nodule::UniNode { .. } => BinOp::None,
             Nodule::BinNode { _BinOp, .. } => *_BinOp,
+            Nodule::ParNode { .. } => BinOp::Bor,
+            Nodule::CatNode { .. } => BinOp::Less,
         }
     }
     fn Action(&self) -> Option<*const DynIWork<'static>> {
@@ -440,6 +476,12 @@ where
             Nodule::UniNode { _Attrib: Attrib::Action(func), .. } => Some(func.as_ref() as *const _),
             Nodule::Leaf { _Val, .. } => _Val.Action(),
             _ => None,
+        }
+    }
+    fn MatchGrammar(&self, parser: *mut (), marker: u32) -> Option<u32> {
+        match self {
+            Nodule::Leaf { _Val, .. } => _Val.MatchGrammar(parser, marker),
+            _ => None
         }
     }
 }
@@ -610,6 +652,12 @@ macro_rules! NodeTree {
         $( $cb)* !( @feature_NEWBINNODE [ $( $cb)* ], $Arg, $op, $( $cb)* !( @feature_RESOLVE_LEAF [ $( $cb)* ], $Arg, $l ), $( $cb)* !( @cb [ $( $cb)* ], $Arg, $( $r)+ ) )
     };
 
+    ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, Bor, $l:expr, $r:expr ) => {
+        $crate::stalks::node::Nodule::<$Arg>::NewParNode( $l, $r )
+    };
+    ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, Less, $l:expr, $r:expr ) => {
+        $crate::stalks::node::Nodule::<$Arg>::NewCatNode( $l, $r )
+    };
     ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, $op:ident, $l:expr, $r:expr ) => {
         $crate::stalks::node::Nodule::<$Arg>::NewBinNode( $crate::stalks::BinOp::$op, $l, $r )
     };

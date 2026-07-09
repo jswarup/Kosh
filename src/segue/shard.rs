@@ -9,20 +9,24 @@ use	crate::segue::{ Charset, IGrammar, Parser };
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub enum Shard {
-    String( String),
-    Charset( Charset),
+    Leaf( Box<DynINode<'static>>),
     Repeat( Box<Shard>, crate::silo::USeg),
     Action( Box<Shard>, Box<DynIWork<'static>>),
-    BinNode( BinOp, Box<Shard>, Box<Shard>),
+    ParNode( Box<Shard>, Box<Shard>),
+    CatNode( Box<Shard>, Box<Shard>),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl Shard
 {
-    pub fn	NewBinNode( op: BinOp, left: Self, right: Self) -> Self
+    pub fn	NewParNode( left: Self, right: Self) -> Self
     {
-        Shard::BinNode( op, Box::new( left), Box::new( right))
+        Shard::ParNode( Box::new( left), Box::new( right))
+    }
+    pub fn	NewCatNode( left: Self, right: Self) -> Self
+    {
+        Shard::CatNode( Box::new( left), Box::new( right))
     }
 }
 
@@ -32,7 +36,7 @@ impl Default for Shard
 {
     fn	default() -> Self
     {
-        Self::String( String::new())
+        Self::Leaf( Box::new( String::new()))
     }
 }
 
@@ -46,18 +50,10 @@ impl IXFluxSource for Shard
         let  	shard = self;
         *field = XField::Obj( Box::new( move |key, item| {
             match shard {
-                Shard::String( s) => {
+                Shard::Leaf( val) => {
                     if step == 0 {
-                        *key = "String".to_string();
-                        *item = XField::Str( s);
-                        step += 1;
-                        true
-                    } else { false }
-                }
-                Shard::Charset( c) => {
-                    if step == 0 {
-                        *key = "Charset".to_string();
-                        *item = XField::FluxSource( c);
+                        *key = "Leaf".to_string();
+                        val.ToXField( item);
                         step += 1;
                         true
                     } else { false }
@@ -88,23 +84,13 @@ impl IXFluxSource for Shard
                         true
                     } else { false }
                 }
-                Shard::BinNode( op, left, right) => {
+                Shard::ParNode( left, right) | Shard::CatNode( left, right) => {
                     if step == 0 {
-                        *key = "Op".to_string();
-                        *item = XField::Str( match op {
-                            BinOp::Less => "<",
-                            BinOp::Bor => "|",
-                            BinOp::Shl => "<<",
-                            _ => "?",
-                        });
-                        step += 1;
-                        true
-                    } else if step == 1 {
                         *key = "Left".to_string();
                         left.ToXField( item);
                         step += 1;
                         true
-                    } else if step == 2 {
+                    } else if step == 1 {
                         *key = "Right".to_string();
                         right.ToXField( item);
                         step += 1;
@@ -123,11 +109,11 @@ impl fmt::Display for Shard
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         match self {
-            Self::String( s) => write!( f, "Shard( {})", s),
-            Self::Charset( cs) => write!( f, "Shard( {})", cs),
+            Self::Leaf( val) => write!( f, "Shard( {})", val.DocStr()),
             Self::Repeat( _, useg) => write!( f, "Repeat( {:?})", useg),
             Self::Action( _, _) => write!( f, "Action"),
-            Self::BinNode( op, _, _) => write!( f, "BinNode( {})", op),
+            Self::ParNode( _, _) => write!( f, "ParNode"),
+            Self::CatNode( _, _) => write!( f, "CatNode"),
         }
     }
 }
@@ -138,7 +124,7 @@ impl From< char> for Shard
 {
     fn	from( c: char) -> Self
     {
-        Self::String( c.to_string())
+        Self::Leaf( Box::new( c.to_string()))
     }
 }
 
@@ -148,7 +134,7 @@ impl From< String> for Shard
 {
     fn	from( s: String) -> Self
     {
-        Self::String( s)
+        Self::Leaf( Box::new( s))
     }
 }
 
@@ -158,7 +144,7 @@ impl From< &str> for Shard
 {
     fn	from( s: &str) -> Self
     {
-        Self::String( s.to_string())
+        Self::Leaf( Box::new( s.to_string()))
     }
 }
 
@@ -168,7 +154,7 @@ impl From< Charset> for Shard
 {
     fn	from( cs: Charset) -> Self
     {
-        Self::Charset( cs)
+        Self::Leaf( Box::new( cs))
     }
 }
 
@@ -179,7 +165,7 @@ impl< 'a> INode< 'a> for Shard
     fn	_Size( &self) -> U32 {
         match self {
             Self::Repeat( _, _) | Self::Action( _, _) => U32(1),
-            Self::BinNode( _, _, _) => U32(2),
+            Self::ParNode( _, _) | Self::CatNode( _, _) => U32(2),
             _ => U32(0),
         }
     }
@@ -192,7 +178,7 @@ impl< 'a> INode< 'a> for Shard
                     panic!("At called on unary node with index > 0")
                 }
             },
-            Self::BinNode( _, left, right) => {
+            Self::ParNode( left, right) | Self::CatNode( left, right) => {
                 match idx.0 {
                     0 => &**left,
                     1 => &**right,
@@ -210,7 +196,8 @@ impl< 'a> INode< 'a> for Shard
     fn	DocStr( &self) -> &'static str { "" }
     fn	BinOp( &self) -> BinOp {
         match self {
-            Self::BinNode( op, _, _) => *op,
+            Self::ParNode( _, _) => BinOp::Bor,
+            Self::CatNode( _, _) => BinOp::Less,
             _ => BinOp::None,
         }
     }
@@ -221,6 +208,11 @@ impl< 'a> INode< 'a> for Shard
             _ => None,
         }
     }
+
+    fn MatchGrammar(&self, parser: *mut (), marker: u32) -> Option<u32> {
+        let p = unsafe { &mut *(parser as *mut crate::segue::Parser<'_>) };
+        self.Match(p, crate::silo::U32(marker)).map(|u| u.0)
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -228,8 +220,7 @@ impl< 'a> INode< 'a> for Shard
 impl IGrammar for Shard {
     fn Match<'p>(&'p self, parser: &mut Parser<'p>, marker: U32) -> Option<U32> {
         match self {
-            Self::String( s) => s.as_str().Match( parser, marker),
-            Self::Charset( cs) => cs.Match( parser, marker),
+            Self::Leaf( val) => val.MatchGrammar(parser as *mut _ as *mut (), marker.0).map(crate::silo::U32),
             Self::Repeat( child, useg) => {
                 let  	mut count = U32( 0);
                 let  	first = useg.First();
@@ -265,27 +256,22 @@ impl IGrammar for Shard {
                 }
                 None
             },
-            Self::BinNode( op, left, right) => {
-                match op {
-                    BinOp::Less => {
-                        if let Some( leftMark) = left.Match( parser, marker) {
-                            if let Some( rightMark) = right.Match( parser, leftMark) {
-                                return Some( rightMark);
-                            }
-                        }
-                        None
-                    },
-                    BinOp::Bor => {
-                        if let Some( leftMark) = left.Match( parser, marker) {
-                            return Some( leftMark);
-                        }
-                        if let Some( rightMark) = right.Match( parser, marker) {
-                            return Some( rightMark);
-                        }
-                        None
-                    },
-                    _ => None,
+            Self::CatNode( left, right) => {
+                if let Some( leftMark) = left.Match( parser, marker) {
+                    if let Some( rightMark) = right.Match( parser, leftMark) {
+                        return Some( rightMark);
+                    }
                 }
+                None
+            },
+            Self::ParNode( left, right) => {
+                if let Some( leftMark) = left.Match( parser, marker) {
+                    return Some( leftMark);
+                }
+                if let Some( rightMark) = right.Match( parser, marker) {
+                    return Some( rightMark);
+                }
+                None
             },
         }
     }
@@ -312,8 +298,14 @@ macro_rules! ShardTree {
     ( @feature_NEWLEAF [ $( $cb:tt)* ], $Arg:ident, $val:expr ) => {
         Shard::from( $val )
     };
+    ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, Bor, $l:expr, $r:expr ) => {
+        $crate::segue::shard::Shard::NewParNode( $l, $r )
+    };
+    ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, Less, $l:expr, $r:expr ) => {
+        $crate::segue::shard::Shard::NewCatNode( $l, $r )
+    };
     ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, $op:ident, $l:expr, $r:expr ) => {
-        $crate::segue::shard::Shard::NewBinNode( $crate::stalks::BinOp::$op, $l, $r )
+        compile_error!("Shard only supports ParNode (Bor) and CatNode (Less).")
     };
     ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $action:expr, $child:expr ) => {
         Shard::Action( Box::new( $child ), $action )
