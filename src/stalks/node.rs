@@ -107,11 +107,6 @@ pub type DynINode< 'a> = dyn INode< 'a> + Send + Sync + 'a;
 
 impl< 'a> INode< 'a> for U32
 {
-    fn	_Size( &self) -> U32 { U32(0) }
-    fn	_At( &self, _idx: U32) -> &DynINode< 'a> { panic!("Leaf") }
-    fn	Value( &self) -> Option< WorkPtr< 'a>> { None }
-    fn	DocStr( &self) -> &'static str { "" }
-    fn	BinOp( &self) -> BinOp { BinOp::None }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -134,12 +129,14 @@ impl< 'b, 'a> IAccess< 'b, DynINode< 'a>> for NodeChildren< 'b, 'a>
 
 pub trait INode< 'a>: Send + Sync + crate::flux::IXFluxSource
 {
-    fn	_Size( &self) -> U32;
-    fn	_At( &self, idx: U32) -> &DynINode< 'a>;
+    fn	_Size( &self) -> U32 { U32( 0) }
+    fn	_At( &self, _idx: U32) -> &DynINode< 'a> { panic!( "Leaf") }
 
-    fn	Value( &self) -> Option< WorkPtr< 'a>>;
+    fn	Value( &self) -> Option< WorkPtr< 'a>> { None }
 
-    fn	DocStr( &self) -> &'static str;
+    fn	DocStr( &self) -> &'static str { "" }
+
+    fn	BinOp( &self) -> BinOp { BinOp::None }
 
     fn	Action( &self) -> Option< *const DynIWork< 'static>> { None }
 
@@ -150,7 +147,6 @@ pub trait INode< 'a>: Send + Sync + crate::flux::IXFluxSource
         None
     }
 
-    fn	BinOp( &self) -> BinOp;
 
     fn	IsLeaf( &self) -> bool
     {

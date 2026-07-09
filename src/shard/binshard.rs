@@ -5,7 +5,7 @@ use	std::fmt;
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::shard::{ IGrammar, Parser };
 use	crate::silo::U32;
-use	crate::stalks::{ BinOp, DynINode, INode, WorkPtr };
+use	crate::stalks::{ BinOp, DynINode, INode };
 use	crate::stalks::work::DynIWork;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -78,20 +78,7 @@ impl< 'a> INode< 'a> for BinShard< 'a>
         }
     }
 
-    fn	Value( &self) -> Option< WorkPtr< 'a>>
-    {
-        return None;
-    }
 
-    fn	AsRawLeaf( &self) -> *const ()
-    {
-        return std::ptr::null();
-    }
-
-    fn	DocStr( &self) -> &'static str
-    {
-        return "";
-    }
 
     fn	BinOp( &self) -> BinOp
     {

@@ -10,7 +10,7 @@ pub mod leaves;
 pub use charset::Charset;
 pub use parser::{ Parser, IGrammar };
 pub use binshard::BinShard;
-pub use leaves::{ StrShard, CharsetShard };
+pub use leaves::{ StrShard, CharsetShard, UIntShard, UInt };
 #[cfg( test)]
 mod _tests;
 

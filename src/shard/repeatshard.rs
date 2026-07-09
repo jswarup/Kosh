@@ -1,7 +1,6 @@
 //-- repeatshard.rs -----------------------------------------------------------------------------------------------------------------
 use crate::silo::U32;
-use crate::stalks::{ BinOp, DynINode, INode, WorkPtr };
-use crate::stalks::work::DynIWork;
+use crate::stalks::{ DynINode, INode };
 use crate::flux::{ IXFluxSource, xflux::XField };
 use std::fmt;
 use crate::shard::{ IGrammar, Parser };
@@ -46,11 +45,7 @@ impl<'a> INode<'a> for RepeatShard<'a> {
             panic!("At called on RepeatShard with index > 0")
         }
     }
-    fn Value(&self) -> Option<WorkPtr<'a>> { None }
-    fn AsRawLeaf(&self) -> *const () { std::ptr::null() }
-    fn DocStr(&self) -> &'static str { "" }
-    fn BinOp(&self) -> BinOp { BinOp::None }
-    fn Action(&self) -> Option<*const DynIWork<'static>> { None }
+
     fn MatchGrammar(&self, parser: *mut (), marker: u32) -> Option<u32> {
         let p = unsafe { &mut *(parser as *mut crate::shard::Parser<'_>) };
         self.Match(p, crate::silo::U32(marker)).map(|u| u.0)

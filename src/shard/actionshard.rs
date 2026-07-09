@@ -1,6 +1,6 @@
 //-- actionshard.rs -----------------------------------------------------------------------------------------------------------------
 use crate::silo::U32;
-use crate::stalks::{ BinOp, DynINode, INode, WorkPtr };
+use crate::stalks::{ DynINode, INode };
 use crate::stalks::work::DynIWork;
 use crate::flux::{ IXFluxSource, xflux::XField };
 use std::fmt;
@@ -46,10 +46,7 @@ impl<'a> INode<'a> for ActionShard<'a> {
             panic!("At called on ActionShard with index > 0")
         }
     }
-    fn Value(&self) -> Option<WorkPtr<'a>> { None }
-    fn AsRawLeaf(&self) -> *const () { std::ptr::null() }
-    fn DocStr(&self) -> &'static str { "" }
-    fn BinOp(&self) -> BinOp { BinOp::None }
+
     fn Action(&self) -> Option<*const DynIWork<'static>> {
         Some(self._Action.as_ref() as *const _)
     }

@@ -2,7 +2,7 @@
 
 use	crate::{
     flux::FixedStream,
-    shard::{ Charset, Parser, IGrammar },
+    shard::{ Charset, Parser, IGrammar, UInt },
     stalks::DynINode,
     silo::U32,
 };
@@ -103,6 +103,37 @@ fn TestRgx2()
     let match2 = identRgx.Match(&mut parser2, U32(0));
     assert!(match2.is_some()); // Should succeed but match 6 chars 
     assert_eq!(match2.unwrap().AsUsize(), 6); // Rolled back / consumed 6
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn TestUIntShard()
+{
+    let  	tree = crate::ShardTree!( UInt );
+    
+    let  	dynNode: &DynINode<'_> = &*tree;
+    assert_eq!( dynNode._Size().AsUsize(), 0);
+    
+    // Test that the UInt shard correctly parses unsigned integer strings
+    let  	mut stream1 = FixedStream::from( "12345");
+    let  	mut parser1 = Parser::New( &mut stream1);
+    let  	match1 = tree.Match( &mut parser1, U32( 0));
+    assert!( match1.is_some());
+    assert_eq!( match1.unwrap().AsUsize(), 5);
+    
+    // Test with non-matching string
+    let  	mut stream2 = FixedStream::from( "abc");
+    let  	mut parser2 = Parser::New( &mut stream2);
+    let  	match2 = tree.Match( &mut parser2, U32( 0));
+    assert!( match2.is_none());
+    
+    // Test with mixed string
+    let  	mut stream3 = FixedStream::from( "42xyz");
+    let  	mut parser3 = Parser::New( &mut stream3);
+    let  	match3 = tree.Match( &mut parser3, U32( 0));
+    assert!( match3.is_some());
+    assert_eq!( match3.unwrap().AsUsize(), 2);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
