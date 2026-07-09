@@ -16,23 +16,23 @@ macro_rules! ShardTree {
 
     // ── Shard AST Hooks (overrides NodeTree default) ──────────────────────────────────────────────
     ( @feature_RESOLVE_LEAF [ $( $cb:tt)* ], $Arg:ident, $val:literal ) => {
-        &$crate::shard::strshard::StrShard { _Val: $val } as &$crate::stalks::DynINode
+        &$crate::shard::leaves::StrShard { _Val: $val } as &$crate::stalks::DynINode
     };
     ( @feature_RESOLVE_LEAF [ $( $cb:tt)* ], $Arg:ident, $val:expr ) => {
         $val
     };
     
     ( @feature_NEWLEAF [ $( $cb:tt)* ], $Arg:ident, $val:literal ) => {
-        &$crate::shard::strshard::StrShard { _Val: $val } as &$crate::stalks::DynINode
+        &$crate::shard::leaves::StrShard { _Val: $val } as &$crate::stalks::DynINode
     };
     ( @feature_NEWLEAF [ $( $cb:tt)* ], $Arg:ident, $val:expr ) => {
         $val
     };
     ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, Bor, $l:expr, $r:expr ) => {
-        &$crate::shard::parshard::ParShard { _Left: $l, _Right: $r } as &$crate::stalks::DynINode
+        &$crate::shard::binshard::BinShard { _Left: $l, _Right: $r, _Op: $crate::shard::binshard::BinShardOp::Choice } as &$crate::stalks::DynINode
     };
     ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, Less, $l:expr, $r:expr ) => {
-        &$crate::shard::catshard::CatShard { _Left: $l, _Right: $r } as &$crate::stalks::DynINode
+        &$crate::shard::binshard::BinShard { _Left: $l, _Right: $r, _Op: $crate::shard::binshard::BinShardOp::Sequence } as &$crate::stalks::DynINode
     };
     ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, $op:ident, $l:expr, $r:expr ) => {
         compile_error!("ShardTree only supports ParShard (Bor) and CatShard (Less).")
@@ -49,7 +49,7 @@ macro_rules! ShardTree {
 
     // ── Custom: Boxet stringification (overrides NodeTree default) ─────────────────────────────────
     ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $s:literal ) => {
-        &$crate::shard::charsetshard::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) } as &$crate::stalks::DynINode
+        &$crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) } as &$crate::stalks::DynINode
     };
 
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------

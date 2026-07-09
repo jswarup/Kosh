@@ -1,20 +1,16 @@
 //-- mod.rs -----------------------------------------------------------------------------------------------------------------------
 
 pub mod shardtree;
-pub mod parshard;
-pub mod catshard;
+pub mod binshard;
 pub mod repeatshard;
 pub mod actionshard;
 pub mod charset;
 pub mod parser;
-pub mod strshard;
-pub mod stringshard;
-pub mod charsetshard;
+pub mod leaves;
 pub use charset::Charset;
 pub use parser::{ Parser, IGrammar };
-pub use strshard::StrShard;
-pub use stringshard::StringShard;
-pub use charsetshard::CharsetShard;
+pub use binshard::BinShard;
+pub use leaves::{ StrShard, CharsetShard };
 #[cfg( test)]
 mod _tests;
 
