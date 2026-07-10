@@ -17,6 +17,6 @@ pub use	stash::Stash;
 pub use	stk::Stk;
 pub use	uint::{ U8, U16, U32, U64 };
 pub use	useg::USeg;
-pub use cast::{ ICastExt, IPtrExt, IConstPtrExt, IAllocRawExt };
+pub use cast::{ ICastExt, IPtrExt, IConstPtrExt, IAllocRawExt, IVoidPtrExt };
 
 //---------------------------------------------------------------------------------------------------------------------------------

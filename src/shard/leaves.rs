@@ -4,7 +4,7 @@ use	std::fmt;
 
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::shard::{ Charset, IGrammar, Parser };
-use	crate::silo::U32;
+use	crate::silo::{U32, IVoidPtrExt};
 use	crate::stalks::INode;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -27,12 +27,10 @@ impl< 'a> IXFluxSource for StrShard< 'a>
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl< 'a> INode< 'a> for StrShard< 'a>
-{
-
-
+{ 
     fn	MatchGrammar( &self, parser: *mut (), marker: u32) -> Option< u32>
     {
-        let  	parserRef = unsafe { &mut *( parser as *mut Parser< '_>) };
+        let  	parserRef = parser.MutRef::< Parser< '_>>();
         
         return self.Match( parserRef, U32( marker)).map( |u| u.0);
     }
@@ -94,7 +92,7 @@ impl< 'a> INode< 'a> for CharsetShard
 
     fn	MatchGrammar( &self, parser: *mut (), marker: u32) -> Option< u32>
     {
-        let  	parserRef = unsafe { &mut *( parser as *mut Parser< '_>) };
+        let  	parserRef = parser.MutRef::< Parser< '_>>();
         
         return self.Match( parserRef, U32( marker)).map( |u| u.0);
     }
@@ -130,3 +128,4 @@ impl fmt::Debug for CharsetShard
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------

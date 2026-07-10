@@ -6,9 +6,8 @@ use	crate::silo::{ Arr, Buff, U8, U64 };
 use	crate::flux::{IXFluxSource, XField};
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
 /// A 256-bit filter for `U8` characters — one bit per byte value.
-/// Enables set algebra (union, intersection, negation) over character classes.
+/// Enables set algebra ( union, intersection, negation) over character classes.
 #[derive( Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Charset
 {
@@ -25,8 +24,10 @@ impl Charset
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub const fn	New() -> Self
-    { Self
-    { _Bits: [U64::_0; Self::SZ] } }
+    { Self  { 
+            _Bits: [U64::_0; Self::SZ] 
+        } 
+    }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
@@ -42,18 +43,18 @@ impl Charset
 
 //-----------------------------------------------------------------------------------------------------------------------------
 
-impl From<&[u8]> for Charset
+impl From< &[u8]> for Charset
 {
     fn	from( spec: &[u8]) -> Self
     {
         let  	mut cs = Self::New();
         let  	mut i = 0usize;
         while i < spec.len() {
-            let  	first = U8(spec[i]);
+            let  	first = U8( spec[i]);
             cs.SetChar( first);
             // peek for  '-' range
             if i + 2 < spec.len() && spec[i + 1] == b'-' {
-                let  	last = U8(spec[i + 2]);
+                let  	last = U8( spec[i + 2]);
                 cs.SetByteRange( first, last, true);
                 i += 3;
             } else {
@@ -142,7 +143,7 @@ impl Charset
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    /// Flip all 256 bits (complement).
+    /// Flip all 256 bits ( complement).
     pub fn	Negate( &mut self)
     {
         for w in self._Bits.iter_mut() {
@@ -247,7 +248,7 @@ impl Charset
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    /// Count of set bits (population count).
+    /// Count of set bits ( population count).
     pub fn	Weight( &self) -> u32
     {
         self._Bits.iter().map( |w| w.0.count_ones()).sum()
@@ -551,7 +552,7 @@ impl fmt::Debug for Charset
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
-        write!( f, "Charset({})", self)
+        write!( f, "Charset( {})", self)
     }
 }
 

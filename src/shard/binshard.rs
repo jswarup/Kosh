@@ -4,7 +4,7 @@ use	std::fmt;
 
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::shard::{ IGrammar, Parser };
-use	crate::silo::U32;
+use	crate::silo::{U32, IVoidPtrExt};
 use	crate::stalks::{ BinOp, DynINode, INode };
 use	crate::stalks::work::DynIWork;
 
@@ -58,11 +58,15 @@ impl< 'a> IXFluxSource for BinShard< 'a>
 
 impl< 'a> INode< 'a> for BinShard< 'a>
 {
+    //-----------------------------------------------------------------------------------------------------------------------------
+    
     fn	_Size( &self) -> U32
     {
         return U32( 2);
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------
+    
     fn	_At( &self, idx: U32) -> &DynINode< 'a>
     {
         match idx.0 {
@@ -78,7 +82,7 @@ impl< 'a> INode< 'a> for BinShard< 'a>
         }
     }
 
-
+    //-----------------------------------------------------------------------------------------------------------------------------
 
     fn	BinOp( &self) -> BinOp
     {
@@ -92,14 +96,18 @@ impl< 'a> INode< 'a> for BinShard< 'a>
         }
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     fn	Action( &self) -> Option< *const DynIWork< 'static>>
     {
         return None;
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     fn	MatchGrammar( &self, parser: *mut (), marker: u32) -> Option< u32>
     {
-        let  	p = unsafe { &mut *( parser as *mut crate::shard::Parser< '_>) };
+        let  	p = parser.MutRef::< crate::shard::Parser< '_>>();
         
         return self.Match( p, crate::silo::U32( marker)).map( |u| u.0);
     }
@@ -113,18 +121,18 @@ impl< 'a> IGrammar for BinShard< 'a>
     {
         match self._Op {
             BinShardOp::Choice => {
-                if let Some( leftMark) = self._Left.Match( parser, marker) {
+                if let  	Some( leftMark) = self._Left.Match( parser, marker) {
                     return Some( leftMark);
                 }
-                if let Some( rightMark) = self._Right.Match( parser, marker) {
+                if let  	Some( rightMark) = self._Right.Match( parser, marker) {
                     return Some( rightMark);
                 }
                 
                 return None;
             }
             BinShardOp::Sequence => {
-                if let Some( leftMark) = self._Left.Match( parser, marker) {
-                    if let Some( rightMark) = self._Right.Match( parser, leftMark) {
+                if let  	Some( leftMark) = self._Left.Match( parser, marker) {
+                    if let  	Some( rightMark) = self._Right.Match( parser, leftMark) {
                         return Some( rightMark);
                     }
                 }
@@ -161,3 +169,5 @@ impl< 'a> fmt::Debug for BinShard< 'a>
         return fmt::Display::fmt( self, f);
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
