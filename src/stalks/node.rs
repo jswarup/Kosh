@@ -162,11 +162,6 @@ pub trait INode< 'a>: Send + Sync + crate::flux::IXFluxSource
         None
     }
 
-    fn	MatchGrammar( &self, _parser: *mut (), _marker: U32) -> (bool, U32)
-    {
-        (false, _marker)
-    }
-
     fn	TraverseDF( &'a self, fnMut: &mut dyn FnMut( &'a DynINode< 'a>, TraversalEvent))
     where
         Self: Sized,
@@ -217,6 +212,14 @@ impl< 'a, 'r> crate::flux::IXFluxSource for &'r DynINode< 'a>
     }
 }
 
+impl< 'a, 'r, T: crate::flux::IXFluxSource> crate::flux::IXFluxSource for &'r T
+{
+    fn	ToXField< 'b>( &'b self, field: &mut crate::flux::xflux::XField< 'b>)
+    {
+        (**self).ToXField( field);
+    }
+}
+
 impl< 'a, 'r> INode< 'a> for &'r DynINode< 'a>
 {
     fn	_Size( &self) -> U32 { (**self)._Size() }
@@ -229,8 +232,22 @@ impl< 'a, 'r> INode< 'a> for &'r DynINode< 'a>
     fn	Attrib( &self) -> Option< &Attrib> { (**self).Attrib() }
     fn	IsLeaf( &self) -> bool { (**self).IsLeaf() }
     fn	AsAny( &self) -> Option<&dyn core::any::Any> { (**self).AsAny() }
-    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32) { (**self).MatchGrammar( parser, marker) }
     fn	TraverseDF( &'a self, fnMut: &mut dyn FnMut( &'a DynINode< 'a>, TraversalEvent)) where Self: Sized { TraverseDepthFirst(&(**self), fnMut) }
+}
+
+impl< 'a, 'r, T: INode< 'a>> INode< 'a> for &'r T
+{
+    fn	_Size( &self) -> U32 { (**self)._Size() }
+    fn	_At( &self, idx: U32) -> &DynINode< 'a> { (**self)._At( idx) }
+    fn	Value( &self) -> Option< crate::stalks::WorkPtr< 'a>> { (**self).Value() }
+    fn	DocStr( &self) -> &'static str { (**self).DocStr() }
+    fn	BinOp( &self) -> BinOp { (**self).BinOp() }
+    fn	Action( &self) -> Option< *const crate::stalks::work::DynIWork< 'static>> { (**self).Action() }
+    fn	AsRawLeaf( &self) -> *const () { (**self).AsRawLeaf() }
+    fn	Attrib( &self) -> Option< &Attrib> { (**self).Attrib() }
+    fn	IsLeaf( &self) -> bool { (**self).IsLeaf() }
+    fn	AsAny( &self) -> Option<&dyn core::any::Any> { (**self).AsAny() }
+    fn	TraverseDF( &'a self, fnMut: &mut dyn FnMut( &'a DynINode< 'a>, TraversalEvent)) where Self: Sized { TraverseDepthFirst(*self as &DynINode<'a>, fnMut) }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -509,12 +526,6 @@ where
             Nodule::UniNode { _Attrib: Attrib::Action(func), .. } => Some(func.as_ref() as *const _),
             Nodule::Leaf { _Val, .. } => _Val.Action(),
             _ => None,
-        }
-    }
-    fn MatchGrammar(&self, parser: *mut (), marker: U32) -> (bool, U32) {
-        match self {
-            Nodule::Leaf { _Val, .. } => _Val.MatchGrammar(parser, marker),
-            _ => (false, marker)
         }
     }
 }

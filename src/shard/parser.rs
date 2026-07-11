@@ -3,13 +3,13 @@
 use	crate::flux::instream::IStream;
 use crate::shard::Charset;
 use	crate::silo::{ U32, U8 };
-use	crate::stalks::{ DynINode, DynIWorker, IWorker, WorkPtr };
+use	crate::stalks::{ DynIWorker, IWorker, WorkPtr };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub trait IGrammar
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32);
+    fn	Match<'p>(&self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -17,6 +17,14 @@ pub trait IGrammar
 pub struct Parser<'p>
 {
     pub     _InStream: &'p mut dyn IStream,
+}
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub struct ParseForge<'p>
+{
+    pub     _Parser: &'p mut Parser<'p>,
+    pub     _Marker: U32,
+    pub     _MatchRslt: bool, 
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -103,7 +111,7 @@ impl<'p> Parser<'p>
 
 impl IGrammar for Charset
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p>(&self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
     {
         let  	curr = parser.Curr( marker);
         if self.Get( curr.0) {
@@ -119,7 +127,7 @@ impl IGrammar for Charset
 
 impl IGrammar for char
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p>(&self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
     {
         let  	curr = parser.Curr( marker);
         if curr == U8( *self as u8) {
@@ -135,7 +143,7 @@ impl IGrammar for char
 
 impl IGrammar for str
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p>(&self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
     {
         // Ensure that empty string matches without consuming
         if self.is_empty() {
@@ -163,22 +171,16 @@ impl IGrammar for str
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl<'a> IGrammar for DynINode<'a>
-{
-    fn Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
-    {
-        let parser_ptr = parser as *mut _ as *mut ();
-        self.MatchGrammar(parser_ptr, marker)
-    }
-}
+// removed impl<'a> IGrammar for DynINode<'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl<'a, 'r> IGrammar for &'r DynINode<'a>
+
+impl<'a, 'r, T: IGrammar> IGrammar for &'r T
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p>(&self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
     {
-        (*self).Match( parser, marker)
+        (**self).Match( parser, marker)
     }
 }
 

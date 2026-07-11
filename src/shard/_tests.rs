@@ -74,11 +74,10 @@ fn TestPostBoxet()
     let tree = crate::ShardTree!( "ab" [ |_worker| {
         println!("Matched");
     } ] );
-    let dynNode: &DynINode<'_> = &*tree;
     let mut stream = FixedStream::from(data);
     let mut parser = Parser::New(&mut stream);
     let m = U32(0);
-    let (matched, _) = dynNode.Match(&mut parser, m);
+    let (matched, _) = tree.Match(&mut parser, m);
     assert!(matched);
 }
 

@@ -16,40 +16,40 @@ macro_rules! ShardTree {
 
     // ── Shard AST Hooks (overrides NodeTree default) ──────────────────────────────────────────────
     ( @feature_RESOLVE_LEAF [ $( $cb:tt)* ], $Arg:ident, $val:literal ) => {
-        &$crate::shard::leaves::StrShard { _Val: $val } as &$crate::stalks::DynINode
+        &$crate::shard::leaves::StrShard { _Val: $val }
     };
     ( @feature_RESOLVE_LEAF [ $( $cb:tt)* ], $Arg:ident, $val:expr ) => {
         $val
     };
     
     ( @feature_NEWLEAF [ $( $cb:tt)* ], $Arg:ident, $val:literal ) => {
-        &$crate::shard::leaves::StrShard { _Val: $val } as &$crate::stalks::DynINode
+        &$crate::shard::leaves::StrShard { _Val: $val }
     };
     ( @feature_NEWLEAF [ $( $cb:tt)* ], $Arg:ident, $val:expr ) => {
         $val
     };
     ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, Bor, $l:expr, $r:expr ) => {
-        &$crate::shard::binshard::BinShard { _Left: $l, _Right: $r, _Op: $crate::shard::binshard::BinShardOp::Choice } as &$crate::stalks::DynINode
+        &$crate::shard::binshard::BinShard { _Left: $l, _Right: $r, _Op: $crate::shard::binshard::BinShardOp::Choice }
     };
     ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, Less, $l:expr, $r:expr ) => {
-        &$crate::shard::binshard::BinShard { _Left: $l, _Right: $r, _Op: $crate::shard::binshard::BinShardOp::Sequence } as &$crate::stalks::DynINode
+        &$crate::shard::binshard::BinShard { _Left: $l, _Right: $r, _Op: $crate::shard::binshard::BinShardOp::Sequence }
     };
     ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, $op:ident, $l:expr, $r:expr ) => {
         compile_error!("ShardTree only supports ParShard (Bor) and CatShard (Less).")
     };
     ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $action:expr, $child:expr ) => {
-        &$crate::shard::actionshard::ActionShard { _Child: $child, _Action: $action } as &$crate::stalks::DynINode
+        &$crate::shard::actionshard::ActionShard { _Child: $child, _Action: $action }
     };
     ( @feature_REPEAT_STAR [ $( $cb:tt)* ], $Arg:ident, $child:expr ) => {
-        &$crate::shard::repeatshard::RepeatShard { _Child: $child, _USeg: $crate::silo::USeg::NewInf( 0) } as &$crate::stalks::DynINode
+        &$crate::shard::repeatshard::RepeatShard { _Child: $child, _USeg: $crate::silo::USeg::NewInf( 0) }
     };
     ( @feature_REPEAT_PLUS [ $( $cb:tt)* ], $Arg:ident, $child:expr ) => {
-        &$crate::shard::repeatshard::RepeatShard { _Child: $child, _USeg: $crate::silo::USeg::NewInf( 1) } as &$crate::stalks::DynINode
+        &$crate::shard::repeatshard::RepeatShard { _Child: $child, _USeg: $crate::silo::USeg::NewInf( 1) }
     };
 
     // ── Custom: Boxet stringification (overrides NodeTree default) ─────────────────────────────────
     ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $s:literal ) => {
-        &$crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) } as &$crate::stalks::DynINode
+        &$crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) }
     };
 
     // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------

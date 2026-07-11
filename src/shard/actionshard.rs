@@ -1,5 +1,5 @@
 //-- actionshard.rs -----------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ U32, IVoidPtrExt };
+use	crate::silo::U32;
 use	crate::stalks::{ DynINode, INode };
 use	crate::stalks::work::DynIWork;
 use	crate::flux::{ IXFluxSource, xflux::XField };
@@ -62,11 +62,6 @@ where
 {
         Some( &self._Action as &DynIWork<'static> as *const _)
     }
-    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
-{
-        let  	p = parser.MutRef::< Parser< '_>>();
-        self.Match( p, marker)
-    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -76,7 +71,7 @@ where
     C: IGrammar,
     W: crate::stalks::work::IWork + 'static,
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p>(&self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
 {
         let (matched, new_mark) = self._Child.Match( parser, marker);
         if matched {

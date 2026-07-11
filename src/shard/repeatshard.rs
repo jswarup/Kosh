@@ -1,5 +1,5 @@
 //-- repeatshard.rs -----------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ U32, IVoidPtrExt };
+use	crate::silo::U32;
 use	crate::stalks::{ DynINode, INode };
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	std::fmt;
@@ -55,11 +55,7 @@ where
         }
     }
 
-    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
-{
-        let  	p = parser.MutRef::< Parser< '_>>();
-        self.Match( p, marker)
-    }
+    fn	IsLeaf( &self) -> bool { false }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -68,7 +64,7 @@ impl< C> IGrammar for RepeatShard< C>
 where
     C: IGrammar,
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p>(&self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
 {
         let  	mut count = U32( 0);
         let  	first = self._USeg.First();

@@ -4,7 +4,7 @@ use	std::fmt;
 
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::shard::{ IGrammar, Parser };
-use	crate::silo::{ U32, IVoidPtrExt };
+use	crate::silo::U32;
 use	crate::stalks::{ BinOp, DynINode, INode };
 use	crate::stalks::work::DynIWork;
 
@@ -110,12 +110,6 @@ where
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-
-    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
-    {
-        let  	p = parser.MutRef::< Parser< '_>>();
-        self.Match( p, marker)
-    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -125,7 +119,7 @@ where
     L: IGrammar,
     R: IGrammar,
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p>(&self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
     {
         match self._Op {
             BinShardOp::Choice => {

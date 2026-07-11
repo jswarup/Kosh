@@ -3,7 +3,7 @@
 use	std::fmt;
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::shard::{ IGrammar, Parser };
-use	crate::silo::{ U32, U8, IVoidPtrExt };
+use	crate::silo::{ U32, U8 };
 use	crate::stalks::INode;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -25,18 +25,13 @@ impl IXFluxSource for UIntShard
 
 impl< 'a> INode< 'a> for UIntShard
 {
-    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
-    {
-        let  	p = parser.MutRef::< Parser< '_>>();
-        self.Match( p, marker)
-    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl IGrammar for UIntShard
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p>(&self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
     {
         let  	mut currentMark = marker;
         let  	mut matched = false;
@@ -97,18 +92,13 @@ impl IXFluxSource for IntShard
 
 impl< 'a> INode< 'a> for IntShard
 {
-    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
-{
-        let  	p = parser.MutRef::< Parser< '_>>();
-        self.Match( p, marker)
-    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl IGrammar for IntShard
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p>(&self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
     {
         let  	mut currentMark = marker;
         let  	curr = parser.Curr( currentMark);
@@ -156,15 +146,10 @@ impl IXFluxSource for HexShard
 }
 impl< 'a> INode< 'a> for HexShard
 {
-    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
-{
-        let  	p = parser.MutRef::< Parser< '_>>();
-        self.Match( p, marker)
-    }
 }
 impl IGrammar for HexShard
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p>(&self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
 {
         let  	mut currentMark = marker;
         let  	mut curr = parser.Curr( currentMark);
@@ -224,15 +209,10 @@ impl IXFluxSource for RealShard
 }
 impl< 'a> INode< 'a> for RealShard
 {
-    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
-{
-        let  	p = parser.MutRef::< Parser< '_>>();
-        self.Match( p, marker)
-    }
 }
 impl IGrammar for RealShard
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p>(&self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
 {
         let  	mut currentMark = marker;
         let  	curr = parser.Curr( currentMark);
@@ -331,15 +311,10 @@ impl IXFluxSource for HexRealShard
 }
 impl< 'a> INode< 'a> for HexRealShard
 {
-    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
-{
-        let  	p = parser.MutRef::< Parser< '_>>();
-        self.Match( p, marker)
-    }
 }
 impl IGrammar for HexRealShard
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p>(&self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
 {
         let  	mut currentMark = marker;
         let  	mut curr = parser.Curr( currentMark);
