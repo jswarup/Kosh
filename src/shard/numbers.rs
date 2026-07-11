@@ -25,11 +25,10 @@ impl IXFluxSource for UIntShard
 
 impl< 'a> INode< 'a> for UIntShard
 {
-    fn	MatchGrammar( &self, parser: *mut (), marker: u32) -> Option< u32>
+    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
     {
-        let  	parserRef = parser.MutRef::< Parser< '_>>();
-        
-        return self.Match( parserRef, U32( marker)).map( |u| u.0);
+        let  	p = parser.MutRef::< Parser< '_>>();
+        self.Match( p, marker)
     }
 }
 
@@ -37,7 +36,7 @@ impl< 'a> INode< 'a> for UIntShard
 
 impl IGrammar for UIntShard
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> Option< U32>
+    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
     {
         let  	mut currentMark = marker;
         let  	mut matched = false;
@@ -57,10 +56,10 @@ impl IGrammar for UIntShard
         }
         
         if matched {
-            return Some( currentMark);
+            return (true, currentMark);
         }
         
-        return None;
+        (false, marker)
     }
 }
 
@@ -98,10 +97,10 @@ impl IXFluxSource for IntShard
 
 impl< 'a> INode< 'a> for IntShard
 {
-    fn	MatchGrammar( &self, parser: *mut (), marker: u32) -> Option< u32>
+    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
 {
-        let  	parserRef = parser.MutRef::< Parser< '_>>();
-        return self.Match( parserRef, U32( marker)).map( |u| u.0);
+        let  	p = parser.MutRef::< Parser< '_>>();
+        self.Match( p, marker)
     }
 }
 
@@ -109,7 +108,7 @@ impl< 'a> INode< 'a> for IntShard
 
 impl IGrammar for IntShard
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> Option< U32>
+    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
     {
         let  	mut currentMark = marker;
         let  	curr = parser.Curr( currentMark);
@@ -117,7 +116,7 @@ impl IGrammar for IntShard
             if let  	Some( nextMark) = parser.Next( currentMark) {
                 currentMark = nextMark;
             } else {
-                return None;
+                return (false, marker);
             }
         }
         let  	mut matched = false;
@@ -135,9 +134,9 @@ impl IGrammar for IntShard
             }
         }
         if matched {
-            return Some( currentMark);
+            return (true, currentMark);
         }
-        return None;
+        (false, marker)
     }
 }
 
@@ -157,15 +156,15 @@ impl IXFluxSource for HexShard
 }
 impl< 'a> INode< 'a> for HexShard
 {
-    fn	MatchGrammar( &self, parser: *mut (), marker: u32) -> Option< u32>
+    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
 {
-        let  	parserRef = parser.MutRef::< Parser< '_>>();
-        return self.Match( parserRef, U32( marker)).map( |u| u.0);
+        let  	p = parser.MutRef::< Parser< '_>>();
+        self.Match( p, marker)
     }
 }
 impl IGrammar for HexShard
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> Option< U32>
+    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
 {
         let  	mut currentMark = marker;
         let  	mut curr = parser.Curr( currentMark);
@@ -174,7 +173,7 @@ impl IGrammar for HexShard
                 currentMark = nextMark;
                 curr = parser.Curr( currentMark);
             } else {
-                return None;
+                return (false, marker);
             }
         }
         
@@ -206,9 +205,9 @@ impl IGrammar for HexShard
             }
         }
         if matched {
-            return Some( currentMark);
+            return (true, currentMark);
         }
-        return None;
+        (false, marker)
     }
 }
 impl fmt::Display for HexShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Hex") } }
@@ -225,15 +224,15 @@ impl IXFluxSource for RealShard
 }
 impl< 'a> INode< 'a> for RealShard
 {
-    fn	MatchGrammar( &self, parser: *mut (), marker: u32) -> Option< u32>
+    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
 {
-        let  	parserRef = parser.MutRef::< Parser< '_>>();
-        return self.Match( parserRef, U32( marker)).map( |u| u.0);
+        let  	p = parser.MutRef::< Parser< '_>>();
+        self.Match( p, marker)
     }
 }
 impl IGrammar for RealShard
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> Option< U32>
+    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
 {
         let  	mut currentMark = marker;
         let  	curr = parser.Curr( currentMark);
@@ -241,7 +240,7 @@ impl IGrammar for RealShard
             if let  	Some( nextMark) = parser.Next( currentMark) {
                 currentMark = nextMark;
             } else {
-                return None;
+                return (false, marker);
             }
         }
 
@@ -282,7 +281,7 @@ impl IGrammar for RealShard
         }
 
         if !has_integer_digits && !has_fractional_digits {
-            return None;
+            return (false, marker);
         }
 
         let  	curr = parser.Curr( currentMark);
@@ -315,7 +314,7 @@ impl IGrammar for RealShard
             }
         }
 
-        Some( currentMark)
+        (true, currentMark)
     }
 }
 impl fmt::Display for RealShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Real") } }
@@ -332,15 +331,15 @@ impl IXFluxSource for HexRealShard
 }
 impl< 'a> INode< 'a> for HexRealShard
 {
-    fn	MatchGrammar( &self, parser: *mut (), marker: u32) -> Option< u32>
+    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
 {
-        let  	parserRef = parser.MutRef::< Parser< '_>>();
-        return self.Match( parserRef, U32( marker)).map( |u| u.0);
+        let  	p = parser.MutRef::< Parser< '_>>();
+        self.Match( p, marker)
     }
 }
 impl IGrammar for HexRealShard
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> Option< U32>
+    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
 {
         let  	mut currentMark = marker;
         let  	mut curr = parser.Curr( currentMark);
@@ -349,7 +348,7 @@ impl IGrammar for HexRealShard
                 currentMark = nextMark;
                 curr = parser.Curr( currentMark);
             } else {
-                return None;
+                return (false, marker);
             }
         }
 
@@ -360,16 +359,16 @@ impl IGrammar for HexRealShard
                     if let  	Some( nextMark2) = parser.Next( nextMark) {
                         currentMark = nextMark2;
                     } else {
-                        return None;
+                        return (false, marker);
                     }
                 } else {
-                    return None;
+                    return (false, marker);
                 }
             } else {
-                return None;
+                return (false, marker);
             }
         } else {
-            return None;
+            return (false, marker);
         }
 
         let  	mut has_integer_digits = false;
@@ -409,7 +408,7 @@ impl IGrammar for HexRealShard
         }
 
         if !has_integer_digits && !has_fractional_digits {
-            return None;
+            return (false, marker);
         }
 
         let  	curr = parser.Curr( currentMark);
@@ -442,7 +441,7 @@ impl IGrammar for HexRealShard
             }
         }
 
-        Some( currentMark)
+        (true, currentMark)
     }
 }
 impl fmt::Display for HexRealShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "HexReal") } }

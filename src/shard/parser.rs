@@ -9,7 +9,7 @@ use	crate::stalks::{ DynINode, DynIWorker, IWorker, WorkPtr };
 
 pub trait IGrammar
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> Option<U32>;
+    fn	Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -74,7 +74,8 @@ impl<'p> Parser<'p>
 
     pub fn Parse< G: IGrammar + ?Sized>( &mut self, grammar: &'p G) -> bool
     {
-        grammar.Match( self, U32(0)).is_some()
+        let marker = U32(0);
+        grammar.Match( self, marker).0
     }
 
     pub fn InStream( &mut self) -> &mut dyn IStream
@@ -102,14 +103,15 @@ impl<'p> Parser<'p>
 
 impl IGrammar for Charset
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> Option<U32>
+    fn	Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
     {
         let  	curr = parser.Curr( marker);
-        if self.Get( curr) {
-            parser.Next( marker)
-        } else {
-            None
+        if self.Get( curr.0) {
+            if let Some(next) = parser.Next( marker) {
+                return (true, next);
+            }
         }
+        (false, marker)
     }
 }
 
@@ -117,14 +119,15 @@ impl IGrammar for Charset
 
 impl IGrammar for char
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> Option<U32>
+    fn	Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
     {
         let  	curr = parser.Curr( marker);
         if curr == U8( *self as u8) {
-            parser.Next( marker)
-        } else {
-            None
+            if let Some(next) = parser.Next( marker) {
+                return (true, next);
+            }
         }
+        (false, marker)
     }
 }
 
@@ -132,28 +135,29 @@ impl IGrammar for char
 
 impl IGrammar for str
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser<'p>, mut marker: U32) -> Option<U32>
+    fn	Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
     {
         // Ensure that empty string matches without consuming
         if self.is_empty() {
-            return Some( marker);
+            return (true, marker);
         }
 
+        let mut m = marker;
         for c in self.chars() {
-            let  	curr = parser.Curr( marker);
+            let  	curr = parser.Curr( m);
             if curr == U8( c as u8) {
                 // If it's the last char, we just advance and we're good.
-                if let Some( next_mark) = parser.Next( marker) {
-                    marker = next_mark;
+                if let Some( next_mark) = parser.Next( m) {
+                    m = next_mark;
                 } else {
-                    return None;
+                    return (false, marker);
                 }
             } else {
-                return None;
+                return (false, marker);
             }
         }
 
-        Some( marker)
+        (true, m)
     }
 }
 
@@ -161,10 +165,10 @@ impl IGrammar for str
 
 impl<'a> IGrammar for DynINode<'a>
 {
-    fn Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> Option<U32>
+    fn Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
     {
         let parser_ptr = parser as *mut _ as *mut ();
-        self.MatchGrammar(parser_ptr, marker.0).map(U32)
+        self.MatchGrammar(parser_ptr, marker)
     }
 }
 
@@ -172,7 +176,7 @@ impl<'a> IGrammar for DynINode<'a>
 
 impl<'a, 'r> IGrammar for &'r DynINode<'a>
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> Option<U32>
+    fn	Match< 'p>( &'p self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
     {
         (*self).Match( parser, marker)
     }

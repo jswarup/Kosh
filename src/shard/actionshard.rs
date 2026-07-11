@@ -1,5 +1,5 @@
 //-- actionshard.rs -----------------------------------------------------------------------------------------------------------------
-use	crate::silo::{U32, IVoidPtrExt};
+use	crate::silo::{ U32, IVoidPtrExt };
 use	crate::stalks::{ DynINode, INode };
 use	crate::stalks::work::DynIWork;
 use	crate::flux::{ IXFluxSource, xflux::XField };
@@ -56,10 +56,10 @@ impl< 'a> INode< 'a> for ActionShard< 'a>
 {
         Some( self._Action.as_ref() as *const _)
     }
-    fn	MatchGrammar( &self, parser: *mut (), marker: u32) -> Option< u32>
+    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
 {
-        let  	p = parser.MutRef::< crate::shard::Parser< '_>>();
-        self.Match( p, crate::silo::U32( marker)).map( |u| u.0)
+        let  	p = parser.MutRef::< Parser< '_>>();
+        self.Match( p, marker)
     }
 }
 
@@ -67,16 +67,17 @@ impl< 'a> INode< 'a> for ActionShard< 'a>
 
 impl< 'a> IGrammar for ActionShard< 'a>
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> Option< U32>
+    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
 {
-        if let  	Some( childMark) = self._Child.Match( parser, marker) {
+        let (matched, new_mark) = self._Child.Match( parser, marker);
+        if matched {
             let  	actionPtr = &*self._Action as *const DynIWork< 'static>;
             #[allow( invalid_reference_casting)]
             let  	actionMut = unsafe { &mut *( actionPtr as *mut DynIWork< 'static>) };
             actionMut.DoWork( parser);
-            return Some( childMark);
+            return (true, new_mark);
         }
-        None
+        (false, marker)
     }
 }
 

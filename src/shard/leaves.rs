@@ -4,7 +4,7 @@ use	std::fmt;
 
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::shard::{ Charset, IGrammar, Parser };
-use	crate::silo::{U32, IVoidPtrExt};
+use	crate::silo::{ U32, IVoidPtrExt };
 use	crate::stalks::INode;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -28,11 +28,10 @@ impl< 'a> IXFluxSource for StrShard< 'a>
 
 impl< 'a> INode< 'a> for StrShard< 'a>
 { 
-    fn	MatchGrammar( &self, parser: *mut (), marker: u32) -> Option< u32>
+    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
     {
-        let  	parserRef = parser.MutRef::< Parser< '_>>();
-        
-        return self.Match( parserRef, U32( marker)).map( |u| u.0);
+        let  	p = parser.MutRef::< Parser< '_>>();
+        self.Match( p, marker)
     }
 }
 
@@ -40,9 +39,9 @@ impl< 'a> INode< 'a> for StrShard< 'a>
 
 impl< 'a> IGrammar for StrShard< 'a>
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> Option< U32>
+    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
     {
-        return self._Val.Match( parser, marker);
+        self._Val.Match( parser, marker)
     }
 }
 
@@ -90,11 +89,10 @@ impl< 'a> INode< 'a> for CharsetShard
 {
 
 
-    fn	MatchGrammar( &self, parser: *mut (), marker: u32) -> Option< u32>
+    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
     {
-        let  	parserRef = parser.MutRef::< Parser< '_>>();
-        
-        return self.Match( parserRef, U32( marker)).map( |u| u.0);
+        let  	p = parser.MutRef::< Parser< '_>>();
+        self.Match( p, marker)
     }
 }
 
@@ -102,9 +100,9 @@ impl< 'a> INode< 'a> for CharsetShard
 
 impl IGrammar for CharsetShard
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> Option< U32>
+    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
     {
-        return self._Val.Match( parser, marker);
+        self._Val.Match( parser, marker)
     }
 }
 

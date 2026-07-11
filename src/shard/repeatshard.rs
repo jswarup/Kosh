@@ -1,5 +1,5 @@
 //-- repeatshard.rs -----------------------------------------------------------------------------------------------------------------
-use	crate::silo::{U32, IVoidPtrExt};
+use	crate::silo::{ U32, IVoidPtrExt };
 use	crate::stalks::{ DynINode, INode };
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	std::fmt;
@@ -51,10 +51,10 @@ impl< 'a> INode< 'a> for RepeatShard< 'a>
         }
     }
 
-    fn	MatchGrammar( &self, parser: *mut (), marker: u32) -> Option< u32>
+    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
 {
-        let  	p = parser.MutRef::< crate::shard::Parser< '_>>();
-        self.Match( p, crate::silo::U32( marker)).map( |u| u.0)
+        let  	p = parser.MutRef::< Parser< '_>>();
+        self.Match( p, marker)
     }
 }
 
@@ -62,7 +62,7 @@ impl< 'a> INode< 'a> for RepeatShard< 'a>
 
 impl< 'a> IGrammar for RepeatShard< 'a>
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> Option< U32>
+    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
 {
         let  	mut count = U32( 0);
         let  	first = self._USeg.First();
@@ -70,12 +70,13 @@ impl< 'a> IGrammar for RepeatShard< 'a>
         let  	mut currMark = marker;
 
         while count < last {
-            if let  	Some( newMark) = self._Child.Match( parser, currMark) {
-                if newMark == currMark {
+            let (matched, m) = self._Child.Match( parser, currMark);
+            if matched {
+                if m == currMark {
                     count += U32( 1);
                     break;
                 }
-                currMark = newMark;
+                currMark = m;
                 count += U32( 1);
             } else {
                 break;
@@ -83,9 +84,9 @@ impl< 'a> IGrammar for RepeatShard< 'a>
         }
 
         if count >= first {
-            Some( currMark)
+            (true, currMark)
         } else {
-            None
+            (false, marker)
         }
     }
 }

@@ -4,7 +4,7 @@ use	std::fmt;
 
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::shard::{ IGrammar, Parser };
-use	crate::silo::{U32, IVoidPtrExt};
+use	crate::silo::{ U32, IVoidPtrExt };
 use	crate::stalks::{ BinOp, DynINode, INode };
 use	crate::stalks::work::DynIWork;
 
@@ -105,11 +105,10 @@ impl< 'a> INode< 'a> for BinShard< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchGrammar( &self, parser: *mut (), marker: u32) -> Option< u32>
+    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
     {
-        let  	p = parser.MutRef::< crate::shard::Parser< '_>>();
-        
-        return self.Match( p, crate::silo::U32( marker)).map( |u| u.0);
+        let  	p = parser.MutRef::< Parser< '_>>();
+        self.Match( p, marker)
     }
 }
 
@@ -117,27 +116,31 @@ impl< 'a> INode< 'a> for BinShard< 'a>
 
 impl< 'a> IGrammar for BinShard< 'a>
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> Option< U32>
+    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
     {
         match self._Op {
             BinShardOp::Choice => {
-                if let  	Some( leftMark) = self._Left.Match( parser, marker) {
-                    return Some( leftMark);
+                let (matched, m) = self._Left.Match( parser, marker);
+                if matched {
+                    return (true, m);
                 }
-                if let  	Some( rightMark) = self._Right.Match( parser, marker) {
-                    return Some( rightMark);
+                let (matched, m) = self._Right.Match( parser, marker);
+                if matched {
+                    return (true, m);
                 }
                 
-                return None;
+                (false, marker)
             }
             BinShardOp::Sequence => {
-                if let  	Some( leftMark) = self._Left.Match( parser, marker) {
-                    if let  	Some( rightMark) = self._Right.Match( parser, leftMark) {
-                        return Some( rightMark);
+                let (matched, m) = self._Left.Match( parser, marker);
+                if matched {
+                    let (matched_right, m2) = self._Right.Match( parser, m);
+                    if matched_right {
+                        return (true, m2);
                     }
                 }
                 
-                return None;
+                (false, marker)
             }
         }
     }

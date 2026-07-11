@@ -2,10 +2,11 @@
 
 use	std::fmt;
 use	crate::flux::{ IXFluxSource, xflux::XField };
-use	crate::shard::{ IGrammar, Parser };
-use	crate::silo::{ U32, U8, IVoidPtrExt };
+use	crate::shard::{ Charset, IGrammar, Parser };
+use	crate::silo::{U32, U8, IVoidPtrExt};
 use	crate::stalks::INode;
 use	crate::shard::numbers::Real;
+use	crate::Whitespace;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -26,10 +27,10 @@ impl IXFluxSource for JsonShard
 
 impl< 'a> INode< 'a> for JsonShard
 {
-    fn	MatchGrammar( &self, parser: *mut (), marker: u32) -> Option< u32>
+    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
 {
         let  	parserRef = parser.MutRef::< Parser< '_>>();
-        return self.Match( parserRef, U32( marker)).map( |u| u.0);
+        self.Match( parserRef, marker)
     }
 }
 
@@ -37,12 +38,13 @@ impl< 'a> INode< 'a> for JsonShard
 
 impl IGrammar for JsonShard
 {
-    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> Option< U32>
-{
-        if let  	Some( m) = JsonShard::MatchValue( parser, marker) {
-            Some( JsonShard::SkipWhitespace( parser, m))
+    fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    {
+        let (matched, new_mark) = JsonShard::MatchValue( parser, marker);
+        if matched {
+            (true, JsonShard::SkipWhitespace( parser, new_mark))
         } else {
-            None
+            (false, marker)
         }
     }
 }
@@ -51,13 +53,16 @@ impl IGrammar for JsonShard
 
 impl JsonShard
 {
-    fn	SkipWhitespace< 'p>( parser: &mut Parser< 'p>, mut marker: U32) -> U32
-{
+
+    fn	SkipWhitespace< 'p>( parser: &mut Parser< 'p>, marker: U32) -> U32
+    {
+        let     whiteSpace = Charset::Space();
+        let mut m = marker;
         loop {
-            let  	curr = parser.Curr( marker);
-            if curr == U8( b' ') || curr == U8( b'\n') || curr == U8( b'\r') || curr == U8( b'\t') {
-                if let  	Some( nextMark) = parser.Next( marker) {
-                    marker = nextMark;
+            let  	curr = parser.Curr( m);
+            if whiteSpace.Get( curr)  {
+                if let  	Some( nextMark) = parser.Next( m) {
+                    m = nextMark;
                 } else {
                     break;
                 }
@@ -65,27 +70,27 @@ impl JsonShard
                 break;
             }
         }
-        marker
+        m
     }
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchString< 'p>( parser: &mut Parser< 'p>, marker: U32) -> Option< U32>
+    fn	MatchString< 'p>( parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
     {
-        let  	curr = parser.Curr( marker);
+        let mut m = marker;
+        let  	curr = parser.Curr( m);
         if curr != U8( b'"') {
-            return None;
+            return (false, marker);
         }
         
-        if let  	Some( mut m) = parser.Next( marker) {
+        if let  	Some( next) = parser.Next( m) {
+            m = next;
             let  	mut escape = false;
             loop {
-                // If we reach the end of the stream without closing quote, return None.
-                // U8( 0) might technically be valid in some contexts but usually not in JSON strings.
-                // We'll rely on parser.Next returning None if we go out of bounds.
+                // If we reach the end of the stream without closing quote, return false.
                 let  	c = parser.Curr( m);
                 if c == U8( 0) && m.0 as usize >= parser.InStream().Size() {
-                    return None;
+                    return (false, marker);
                 }
 
                 if escape {
@@ -93,44 +98,48 @@ impl JsonShard
                 } else if c == U8( b'\\') {
                     escape = true;
                 } else if c == U8( b'"') {
-                    return parser.Next( m);
+                    if let Some(nxt) = parser.Next( m) {
+                        return (true, nxt);
+                    } else {
+                        return (false, marker);
+                    }
                 }
                 
                 if let  	Some( nxt) = parser.Next( m) {
                     m = nxt;
                 } else {
-                    return None; // EOF before closing quote
+                    return (false, marker); // EOF before closing quote
                 }
             }
         }
-        None
+        (false, marker)
     }
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchKeyword< 'p>( parser: &mut Parser< 'p>, marker: U32, keyword: &[u8]) -> Option< U32>
+    fn	MatchKeyword< 'p>( parser: &mut Parser< 'p>, marker: U32, keyword: &[u8]) -> (bool, U32)
     {
         let  	mut m = marker;
         for &b in keyword {
             if parser.Curr( m) != U8( b) {
-                return None;
+                return (false, marker);
             }
             if let  	Some( nxt) = parser.Next( m) {
                 m = nxt;
             } else {
-                // If it's the last character of the stream and the keyword matches,
-                // nxt is Some( m+1) because Size includes it. So if Next fails, it really failed.
-                return None;
+                return (false, marker);
             }
         }
-        Some( m)
+        (true, m)
     }
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchValue< 'p>( parser: &mut Parser< 'p>, marker: U32) -> Option< U32>
+    fn	MatchValue< 'p>( parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
     {
-        let  	m = Self::SkipWhitespace( parser, marker);
+        let     ws = Whitespace!();
+        let     parser_ptr = parser as *mut _ as *mut ();
+        let     (_, m) = ws.MatchGrammar( parser_ptr, marker);
         let  	curr = parser.Curr( m);
         
         if curr == U8( b'{') {
@@ -144,88 +153,116 @@ impl JsonShard
         } else if curr == U8( b'f') {
             return Self::MatchKeyword( parser, m, b"false");
         } else if curr == U8( b'n') {
-            // JsonOutStream writes "null" as a string, which MatchString handles,
-            // but it can also write unquoted null in some contexts, so we support it.
             return Self::MatchKeyword( parser, m, b"null");
         } else if curr == U8( b'-') || ( curr >= U8( b'0') && curr <= U8( b'9')) {
             return Real.Match( parser, m);
         }
         
-        None
+        (false, marker)
     }
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchArray< 'p>( parser: &mut Parser< 'p>, mut marker: U32) -> Option< U32>
+    fn	MatchArray< 'p>( parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
     {
-        if parser.Curr( marker) != U8( b'[') {
-            return None;
+        let mut m = marker;
+        if parser.Curr( m) != U8( b'[') {
+            return (false, marker);
         }
-        marker = if let  	Some( nxt) = parser.Next( marker) { nxt } else {
-            return None;
+        m = if let  	Some( nxt) = parser.Next( m) { nxt } else {
+            return (false, marker);
         };
         
-        marker = Self::SkipWhitespace( parser, marker);
-        if parser.Curr( marker) == U8( b']') {
-            return parser.Next( marker);
+        m = Self::SkipWhitespace( parser, m);
+        if parser.Curr( m) == U8( b']') {
+            if let Some(nxt) = parser.Next( m) {
+                return (true, nxt);
+            } else {
+                return (false, marker);
+            }
         }
         
         loop {
-            marker = Self::MatchValue( parser, marker)?;
-            marker = Self::SkipWhitespace( parser, marker);
-            let  	curr = parser.Curr( marker);
+            let (matched, next_m) = Self::MatchValue( parser, m);
+            if !matched {
+                return (false, marker);
+            }
+            m = next_m;
+            m = Self::SkipWhitespace( parser, m);
+            let  	curr = parser.Curr( m);
             if curr == U8( b',') {
-                marker = if let  	Some( nxt) = parser.Next( marker) { nxt } else {
-                    return None;
+                m = if let  	Some( nxt) = parser.Next( m) { nxt } else {
+                    return (false, marker);
                 };
             } else if curr == U8( b']') {
-                return parser.Next( marker);
+                if let Some(nxt) = parser.Next( m) {
+                    return (true, nxt);
+                } else {
+                    return (false, marker);
+                }
             } else {
-                return None;
+                return (false, marker);
             }
         }
     }
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchObject< 'p>( parser: &mut Parser< 'p>, mut marker: U32) -> Option< U32>
+    fn	MatchObject< 'p>( parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
     {
-        if parser.Curr( marker) != U8( b'{') {
-            return None;
+        let mut m = marker;
+        if parser.Curr( m) != U8( b'{') {
+            return (false, marker);
         }
-        marker = if let  	Some( nxt) = parser.Next( marker) { nxt } else {
-            return None;
+        m = if let  	Some( nxt) = parser.Next( m) { nxt } else {
+            return (false, marker);
         };
         
-        marker = Self::SkipWhitespace( parser, marker);
-        if parser.Curr( marker) == U8( b'}') {
-            return parser.Next( marker);
+        m = Self::SkipWhitespace( parser, m);
+        if parser.Curr( m) == U8( b'}') {
+            if let Some(nxt) = parser.Next( m) {
+                return (true, nxt);
+            } else {
+                return (false, marker);
+            }
         }
         
         loop {
-            marker = Self::SkipWhitespace( parser, marker);
-            marker = Self::MatchString( parser, marker)?;
-            marker = Self::SkipWhitespace( parser, marker);
-            
-            if parser.Curr( marker) != U8( b':') {
-                return None;
+            m = Self::SkipWhitespace( parser, m);
+            let (matched, next_m) = Self::MatchString( parser, m);
+            if !matched {
+                return (false, marker);
             }
-            marker = if let  	Some( nxt) = parser.Next( marker) { nxt } else {
-                return None;
+            m = next_m;
+            m = Self::SkipWhitespace( parser, m);
+            
+            if parser.Curr( m) != U8( b':') {
+                return (false, marker);
+            }
+            m = if let  	Some( nxt) = parser.Next( m) { nxt } else {
+                return (false, marker);
             };
             
-            marker = Self::MatchValue( parser, marker)?;
-            marker = Self::SkipWhitespace( parser, marker);
+            let (matched, next_m) = Self::MatchValue( parser, m);
+            if !matched {
+                return (false, marker);
+            }
+            m = next_m;
+            m = Self::SkipWhitespace( parser, m);
             
-            let  	curr = parser.Curr( marker);
+            let  	curr = parser.Curr( m);
             if curr == U8( b',') {
-                marker = if let  	Some( nxt) = parser.Next( marker) { nxt } else {
-                    return None;
+                m = if let  	Some( nxt) = parser.Next( m) { nxt } else {
+                    return (false, marker);
                 };
             } else if curr == U8( b'}') {
-                return parser.Next( marker);
+                if let Some(nxt) = parser.Next( m) {
+                    return (true, nxt);
+                } else {
+                    return (false, marker);
+                }
             } else {
-                return None;
+                return (false, marker);
             }
         }
     }

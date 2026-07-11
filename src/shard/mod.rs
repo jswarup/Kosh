@@ -15,6 +15,8 @@ pub use leaves::{ StrShard, CharsetShard };
 pub mod jsonshard;
 pub use jsonshard::{ JsonShard, Json };
 pub use numbers::{ UIntShard, UInt, IntShard, Int, HexShard, Hex, RealShard, Real, HexRealShard, HexReal };
+pub mod primshard;
+pub use primshard::PrimShard;
 #[cfg( test)]
 mod _tests;
 
