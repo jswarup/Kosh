@@ -346,6 +346,146 @@ pub enum Nodule<'a, T> {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+pub struct ParNode< L, R>
+{
+    pub _Left: L,
+    pub _Right: R,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< L, R> IXFluxSource for ParNode< L, R>
+where
+    L: IXFluxSource,
+    R: IXFluxSource,
+{
+    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    {
+        let  	mut step = 0u32;
+        let  	node = self;
+        *field = XField::Obj( Box::new( move |key, item| {
+            if step == 0 {
+                *key = "Left".to_string();
+                node._Left.ToXField( item);
+                step += 1;
+                true
+            } else if step == 1 {
+                *key = "Right".to_string();
+                node._Right.ToXField( item);
+                step += 1;
+                true
+            } else {
+                false
+            }
+        }));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, L, R> INode< 'a> for ParNode< L, R>
+where
+    L: INode< 'a> + Send + Sync + 'a,
+    R: INode< 'a> + Send + Sync + 'a,
+{
+    fn	_Size( &self) -> U32
+    {
+        U32( 2)
+    }
+
+    fn	_At( &self, idx: U32) -> &DynINode< 'a>
+    {
+        match idx.0 {
+            0 => {
+                &self._Left
+            }
+            1 => {
+                &self._Right
+            }
+            _ => {
+                panic!( "At called on ParNode with index > 1");
+            }
+        }
+    }
+
+    fn	BinOp( &self) -> BinOp
+    {
+        BinOp::Bor
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub struct CatNode< L, R>
+{
+    pub _Left: L,
+    pub _Right: R,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< L, R> IXFluxSource for CatNode< L, R>
+where
+    L: IXFluxSource,
+    R: IXFluxSource,
+{
+    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    {
+        let  	mut step = 0u32;
+        let  	node = self;
+        *field = XField::Obj( Box::new( move |key, item| {
+            if step == 0 {
+                *key = "Left".to_string();
+                node._Left.ToXField( item);
+                step += 1;
+                true
+            } else if step == 1 {
+                *key = "Right".to_string();
+                node._Right.ToXField( item);
+                step += 1;
+                true
+            } else {
+                false
+            }
+        }));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, L, R> INode< 'a> for CatNode< L, R>
+where
+    L: INode< 'a> + Send + Sync + 'a,
+    R: INode< 'a> + Send + Sync + 'a,
+{
+    fn	_Size( &self) -> U32
+    {
+        U32( 2)
+    }
+
+    fn	_At( &self, idx: U32) -> &DynINode< 'a>
+    {
+        match idx.0 {
+            0 => {
+                &self._Left
+            }
+            1 => {
+                &self._Right
+            }
+            _ => {
+                panic!( "At called on CatNode with index > 1");
+            }
+        }
+    }
+
+    fn	BinOp( &self) -> BinOp
+    {
+        BinOp::Less
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 unsafe impl<'a, T> Send for Nodule<'a, T> {}
 unsafe impl<'a, T> Sync for Nodule<'a, T> {}
 

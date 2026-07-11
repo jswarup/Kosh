@@ -3,7 +3,7 @@ use	crate::flux::{ JsonOutStream, xflux::XField, IXFluxSink };
 use	std::fs;
 use	crate::{
     heist::
-    { Atelier, Chore, Maestro },
+    { Atelier, Maestro },
     silo::
     { Buff, IAccess, IArr, U16, U32 },
     stalks::

@@ -1,8 +1,8 @@
 //-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
 use	std::ptr::null;
 use	crate::heist::Atelier;
-use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, Stk, USeg, U16, U32 };
-use	crate::stalks::{ Atm, DynINode, DynIWorker, IWorker, IntoWorkPtr, Spinlock, WorkPtr, BinOp};
+use	crate::silo::{ Arr, Buff, IAccess, Stash, Stk, U16, U32 };
+use	crate::stalks::{ Atm, DynIWorker, IWorker, IntoWorkPtr, Spinlock, WorkPtr};
 use	std::sync::atomic::Ordering;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -173,69 +173,15 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	PostChoreTree( &self, node: &DynINode< 'a>)
+    pub fn	PostChoreTree< T: crate::heist::chore::IChoreNode>( &self, node: &T)
     {
-        let  	tailStash = Stash::<U16>::New( U32( 1024), 0, U16( 0));
-        let  	tailStk = tailStash.Stk();
-        let  	arrowStash = Stash::<(U16, USeg)>::New( U32( 1024), 0, (U16( 0), USeg::New( 0, 0)));
-        let  	mut arrowStk = arrowStash.Stk();
-        let  	opStash = Stash::<(BinOp, U32)>::New( U32( 1024), 0, (BinOp::None, U32( 0)));
-        let  	opStk = opStash.Stk();
+        let  	mut tails = crate::silo::Buff::NewEmpty();
+        let  	head = node.Post( self, &mut tails);
         let  	succId = self.CurSuccId();
-
-        node.DiveDf( &mut |probe, enterFlg| {
-            let  	curNode = probe.CurNode().unwrap();
-            let  	curOp = curNode.BinOp();
-            if enterFlg {
-                if curOp != BinOp::None {
-                    opStk.Push( ( curOp, arrowStk.Size()));
-                    return;
-                }
-                let  	jobId = self.ConstructJob( U16( 0), curNode.Value().unwrap(), curNode.DocStr());
-                arrowStk.Push( (jobId, USeg::New( tailStk.Size(), 1)));
-                tailStk.Push( jobId);
-                return;
-            }
-            if curOp == BinOp::None {
-                return;
-            }
-            let  	mut opCtx = ( BinOp::None, U32( 0));
-            opStk.Pop( &mut opCtx);
-
-            let  	parentOp = if opStk.Size() != 0 { opStk.Arr().Last().0 } else { BinOp::None };
-            if parentOp == curOp {
-                return;
-            }
-
-            let  	arr = arrowStk.Arr().Subset( opCtx.1, arrowStk.Size() - opCtx.1);
-            arrowStk.SetSize( opCtx.1);
-            if curOp == BinOp::Less {
-                USeg::New( 0, arr.Size() -1).Traverse( |i| {
-                    let  	nextHead = arr.At( i +1).0;
-                    arr.At( i).1.Traverse( |k| {
-                        self.Atelier().SetSucc( *tailStk.Arr().At( k), nextHead);
-                    });
-                });
-                arrowStk.Push( ( arr.First().0, arr.Last().1));
-            }
-            if curOp == BinOp::Bor {
-                let  	mut headsBuff = Buff::<U16>::NewEmpty();
-                let  	tailStart = tailStk.Size();
-                arr.USeg().Traverse( |i| {
-                    let  	(head, tails) = *arr.At( i);
-                    headsBuff.Push( head);
-                    tails.Traverse( |k| { tailStk.Push( *tailStk.Arr().At( k)); });
-                });
-                let  	enqId = self.ConstructEnqueArr( U16( 0), headsBuff.clone(), "EnqPar");
-                arrowStk.Push( (enqId, USeg::New( tailStart, tailStk.Size() - tailStart)));
-            }
-        });
-        arrowStk.Arr().Traverse( |arrow| {
-            arrow.1.Traverse( |k| {
-                self.Atelier().SetSucc( *tailStk.Arr().At( k), succId);
-            });
-            self.EnqueueJob( arrow.0);
-        });
+        while let  	Some( tail) = tails.Pop() {
+            self.Atelier().SetSucc( crate::silo::U16( tail), succId);
+        }
+        self.EnqueueJob( crate::silo::U16( head));
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

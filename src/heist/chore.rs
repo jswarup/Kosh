@@ -1,5 +1,5 @@
 //-- chore.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::{ flux::{ IXFluxSource, xflux::XField }, silo::U32, stalks::{ BinOp, DynINode, INode, IntoWorkPtr, WorkPtr } };
+use	crate::{ flux::{ IXFluxSource, xflux::XField }, stalks::IntoWorkPtr };
 use	std::fmt;
 use	crate::stalks::{ DynIWorker, IWork };
 
@@ -97,34 +97,152 @@ macro_rules! Chore {
 
 #[macro_export]
 macro_rules! ChoreTree {
-    // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
-    ( @feature_LT  $( $args:tt)* ) => { $crate::NodeTree!( @feature_LT  $( $args)* ) };
-    ( @feature_BOR $( $args:tt)* ) => { $crate::NodeTree!( @feature_BOR $( $args)* ) };
-    ( @feature_NEW $( $args:tt)* ) => { $crate::NodeTree!( @feature_NEW $( $args)* ) };
-    ( @feature_PostBoxet $( $args:tt)* ) => { $crate::NodeTree!( @feature_PostBoxet $( $args)* ) };
-    // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
-    // Forward unhandled internal callbacks to NodeTree (e.g., disallowed features like @feature_SHL)
-    ( @ $( $inner:tt )+ ) => {
-        $crate::NodeTree!( @ $( $inner )+ )
+    // 1. Grouping with remainder
+    ( ( $( $inner:tt )+ ) < $( $rest:tt )+ ) => {
+        &$crate::stalks::node::CatNode {
+            _Left: $crate::ChoreTree!( ( $( $inner )+ ) ),
+            _Right: $crate::ChoreTree!( $( $rest )+ ),
+        }
     };
-    // Top-level entry (user code)
-    ( $( $inner:tt)+ )  => {
-        $crate::NodeTree!( @define [ $crate::ChoreTree ], Chore, $( $inner)+ )
+    ( ( $( $inner:tt )+ ) | $( $rest:tt )+ ) => {
+        &$crate::stalks::node::ParNode {
+            _Left: $crate::ChoreTree!( ( $( $inner )+ ) ),
+            _Right: $crate::ChoreTree!( $( $rest )+ ),
+        }
+    };
+
+    // 2. Closure with remainder
+    ( | $arg:ident | $body:block < $( $rest:tt )+ ) => {
+        &$crate::stalks::node::CatNode {
+            _Left: &$crate::heist::Chore::New( |$arg| $body ),
+            _Right: $crate::ChoreTree!( $( $rest )+ ),
+        }
+    };
+    ( | $arg:ident | $body:block | $( $rest:tt )+ ) => {
+        &$crate::stalks::node::ParNode {
+            _Left: &$crate::heist::Chore::New( |$arg| $body ),
+            _Right: $crate::ChoreTree!( $( $rest )+ ),
+        }
+    };
+    ( move | $arg:ident | $body:block < $( $rest:tt )+ ) => {
+        &$crate::stalks::node::CatNode {
+            _Left: &$crate::heist::Chore::New( move |$arg| $body ),
+            _Right: $crate::ChoreTree!( $( $rest )+ ),
+        }
+    };
+    ( move | $arg:ident | $body:block | $( $rest:tt )+ ) => {
+        &$crate::stalks::node::ParNode {
+            _Left: &$crate::heist::Chore::New( move |$arg| $body ),
+            _Right: $crate::ChoreTree!( $( $rest )+ ),
+        }
+    };
+
+    // 3. Ident with remainder
+    ( $l:ident < $( $rest:tt )+ ) => {
+        &$crate::stalks::node::CatNode {
+            _Left: &$l,
+            _Right: $crate::ChoreTree!( $( $rest )+ ),
+        }
+    };
+    ( $l:ident | $( $rest:tt )+ ) => {
+        &$crate::stalks::node::ParNode {
+            _Left: &$l,
+            _Right: $crate::ChoreTree!( $( $rest )+ ),
+        }
+    };
+
+    // Base Case: Group
+    ( ( $( $inner:tt )+ ) ) => {
+        $crate::ChoreTree!( $( $inner )+ )
+    };
+
+    // Base Case: Closure
+    ( | $arg:ident | $body:block ) => {
+        &$crate::heist::Chore::New( |$arg| $body )
+    };
+    ( move | $arg:ident | $body:block ) => {
+        &$crate::heist::Chore::New( move |$arg| $body )
+    };
+
+    // Base Case: Expr
+    ( $leaf:expr ) => {
+        &$leaf
     };
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> INode< 'a> for Chore
+pub trait IChoreNode
 {
-    fn	_Size( &self) -> U32 { U32(0) }
-    fn	_At( &self, _idx: U32) -> &DynINode< 'a> { panic!("Leaf") }
-    fn	Value( &self) -> Option< WorkPtr< 'a>>
+    fn	Post( &self, maestro: &crate::heist::Maestro, tails: &mut crate::silo::Buff< u16>) -> u16;
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'r, T: IChoreNode + ?Sized> IChoreNode for &'r T
+{
+    fn	Post( &self, maestro: &crate::heist::Maestro, tails: &mut crate::silo::Buff< u16>) -> u16
     {
-        Some( IntoWorkPtr::IntoWorkPtr( *self))
+        return (**self).Post( maestro, tails);
     }
-    fn	DocStr( &self) -> &'static str { self._DocStr }
-    fn	BinOp( &self) -> BinOp { BinOp::None }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IChoreNode for Chore
+{
+    fn	Post( &self, maestro: &crate::heist::Maestro, tails: &mut crate::silo::Buff< u16>) -> u16
+    {
+        let  	jobId = maestro.ConstructJob( crate::silo::U16( 0), IntoWorkPtr::IntoWorkPtr( *self), self._DocStr);
+        tails.Push( jobId.0);
+        return jobId.0;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< L, R> IChoreNode for crate::stalks::node::ParNode< L, R>
+where
+    L: IChoreNode,
+    R: IChoreNode,
+{
+    fn	Post( &self, maestro: &crate::heist::Maestro, tails: &mut crate::silo::Buff< u16>) -> u16
+    {
+        let  	mut leftTails = crate::silo::Buff::NewEmpty();
+        let  	mut rightTails = crate::silo::Buff::NewEmpty();
+        let  	headL = self._Left.Post( maestro, &mut leftTails);
+        let  	headR = self._Right.Post( maestro, &mut rightTails);
+        while let  	Some( t) = leftTails.Pop() {
+            tails.Push( t);
+        }
+        while let  	Some( t) = rightTails.Pop() {
+            tails.Push( t);
+        }
+        let  	mut heads = crate::silo::Buff::NewEmpty();
+        heads.Push( crate::silo::U16( headL));
+        heads.Push( crate::silo::U16( headR));
+        let  	enqId = maestro.ConstructEnqueArr( crate::silo::U16( 0), heads, "EnqPar");
+        return enqId.0;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< L, R> IChoreNode for crate::stalks::node::CatNode< L, R>
+where
+    L: IChoreNode,
+    R: IChoreNode,
+{
+    fn	Post( &self, maestro: &crate::heist::Maestro, tails: &mut crate::silo::Buff< u16>) -> u16
+    {
+        let  	mut leftTails = crate::silo::Buff::NewEmpty();
+        let  	headL = self._Left.Post( maestro, &mut leftTails);
+        let  	headR = self._Right.Post( maestro, tails);
+        while let  	Some( leftTail) = leftTails.Pop() {
+            maestro.Atelier().SetSucc( crate::silo::U16( leftTail), crate::silo::U16( headR));
+        }
+        return headL;
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
