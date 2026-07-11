@@ -162,9 +162,9 @@ pub trait INode< 'a>: Send + Sync + crate::flux::IXFluxSource
         None
     }
 
-    fn	MatchGrammar( &self, _parser: *mut (), _marker: u32) -> Option< u32>
+    fn	MatchGrammar( &self, _parser: *mut (), _marker: U32) -> (bool, U32)
     {
-        None
+        (false, _marker)
     }
 
     fn	TraverseDF( &'a self, fnMut: &mut dyn FnMut( &'a DynINode< 'a>, TraversalEvent))
@@ -485,10 +485,10 @@ where
             _ => None,
         }
     }
-    fn MatchGrammar(&self, parser: *mut (), marker: u32) -> Option<u32> {
+    fn MatchGrammar(&self, parser: *mut (), marker: U32) -> (bool, U32) {
         match self {
             Nodule::Leaf { _Val, .. } => _Val.MatchGrammar(parser, marker),
-            _ => None
+            _ => (false, marker)
         }
     }
 }
