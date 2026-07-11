@@ -1,6 +1,5 @@
 //-- actionshard.rs -----------------------------------------------------------------------------------------------------------------
 use	crate::silo::U32;
-use	crate::stalks::{ DynINode, INode };
 use	crate::stalks::work::DynIWork;
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	std::fmt;
@@ -12,6 +11,15 @@ pub struct ActionShard< C, W>
 {
     pub _Child: C,
     pub _Action: W,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub fn	Coerce< F>( f: F) -> F
+where
+    F: crate::stalks::work::IWork + 'static
+{
+    f
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -38,29 +46,6 @@ where
                 true
             } else { false }
         }));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< 'a, C, W> INode< 'a> for ActionShard< C, W>
-where
-    C: INode< 'a> + IGrammar + Send + Sync + 'a,
-    W: crate::stalks::work::IWork + Send + Sync + 'static,
-{
-    fn	_Size( &self) -> U32 { U32( 1) }
-    fn	_At( &self, idx: U32) -> &DynINode< 'a>
-{
-        if idx.0 == 0 {
-            &self._Child
-        } else {
-            panic!( "At called on ActionShard with index > 0")
-        }
-    }
-
-    fn	Action( &self) -> Option< *const DynIWork< 'static>>
-{
-        Some( &self._Action as &DynIWork<'static> as *const _)
     }
 }
 

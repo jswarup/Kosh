@@ -4,62 +4,485 @@
 
 #[macro_export]
 macro_rules! ShardTree {
-    // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
-    ( @feature_STAR   $( $args:tt)* ) => { $crate::NodeTree!( @feature_STAR   $( $args)* ) };
-    ( @feature_PLUS   $( $args:tt)* ) => { $crate::NodeTree!( @feature_PLUS   $( $args)* ) };
+    // 1. Postfix action with remainder: `(expr) [ |p| body ] < rest` or `(expr) [ |p| body ] | rest`
+    ( ( $( $inner:tt )+ ) [ | $p:ident | $( $body:tt )+ ] < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::actionshard::ActionShard {
+                _Child: $crate::ShardTree!( ( $( $inner )+ ) ),
+                _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( ( $( $inner:tt )+ ) [ | $p:ident | $( $body:tt )+ ] | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::actionshard::ActionShard {
+                _Child: $crate::ShardTree!( ( $( $inner )+ ) ),
+                _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
+    ( $l:ident [ | $p:ident | $( $body:tt )+ ] < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::actionshard::ActionShard {
+                _Child: $crate::ShardTree!( $l ),
+                _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( $l:ident [ | $p:ident | $( $body:tt )+ ] | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::actionshard::ActionShard {
+                _Child: $crate::ShardTree!( $l ),
+                _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
+    ( $l:literal [ | $p:ident | $( $body:tt )+ ] < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::actionshard::ActionShard {
+                _Child: &$crate::shard::leaves::StrShard { _Val: $l },
+                _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( $l:literal [ | $p:ident | $( $body:tt )+ ] | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::actionshard::ActionShard {
+                _Child: &$crate::shard::leaves::StrShard { _Val: $l },
+                _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
+    ( [ $s:literal ] [ | $p:ident | $( $body:tt )+ ] < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::actionshard::ActionShard {
+                _Child: &$crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) },
+                _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( [ $s:literal ] [ | $p:ident | $( $body:tt )+ ] | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::actionshard::ActionShard {
+                _Child: &$crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) },
+                _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
 
-    ( @feature_LT     $( $args:tt)* ) => { $crate::NodeTree!( @feature_LT     $( $args)* ) };
-    ( @feature_SHL    $( $args:tt)* ) => { $crate::NodeTree!( @feature_SHL    $( $args)* ) };
-
-    ( @feature_NEW    $( $args:tt)* ) => { $crate::NodeTree!( @feature_NEW    $( $args)* ) };
-    ( @feature_PostBoxet $( $args:tt)* ) => { $crate::NodeTree!( @feature_PostBoxet $( $args)* ) };
-
-    // ── Shard AST Hooks (overrides NodeTree default) ──────────────────────────────────────────────
-    ( @feature_RESOLVE_LEAF [ $( $cb:tt)* ], $Arg:ident, $val:literal ) => {
-        &$crate::shard::leaves::StrShard { _Val: $val }
+    // 2. Postfix action base cases (no rest):
+    ( ( $( $inner:tt )+ ) [ | $p:ident | $( $body:tt )+ ] ) => {
+        &$crate::shard::actionshard::ActionShard {
+            _Child: $crate::ShardTree!( ( $( $inner )+ ) ),
+            _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+        }
     };
-    ( @feature_RESOLVE_LEAF [ $( $cb:tt)* ], $Arg:ident, $val:expr ) => {
-        $val
+    ( $l:ident [ | $p:ident | $( $body:tt )+ ] ) => {
+        &$crate::shard::actionshard::ActionShard {
+            _Child: $crate::ShardTree!( $l ),
+            _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+        }
     };
-    
-    ( @feature_NEWLEAF [ $( $cb:tt)* ], $Arg:ident, $val:literal ) => {
-        &$crate::shard::leaves::StrShard { _Val: $val }
+    ( $l:literal [ | $p:ident | $( $body:tt )+ ] ) => {
+        &$crate::shard::actionshard::ActionShard {
+            _Child: &$crate::shard::leaves::StrShard { _Val: $l },
+            _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+        }
     };
-    ( @feature_NEWLEAF [ $( $cb:tt)* ], $Arg:ident, $val:expr ) => {
-        $val
-    };
-    ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, Bor, $l:expr, $r:expr ) => {
-        &$crate::shard::binshard::BinShard { _Left: $l, _Right: $r, _Op: $crate::shard::binshard::BinShardOp::Choice }
-    };
-    ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, Less, $l:expr, $r:expr ) => {
-        &$crate::shard::binshard::BinShard { _Left: $l, _Right: $r, _Op: $crate::shard::binshard::BinShardOp::Sequence }
-    };
-    ( @feature_NEWBINNODE [ $( $cb:tt)* ], $Arg:ident, $op:ident, $l:expr, $r:expr ) => {
-        compile_error!("ShardTree only supports ParShard (Bor) and CatShard (Less).")
-    };
-    ( @feature_ACTION [ $( $cb:tt)* ], $Arg:ident, $action:expr, $child:expr ) => {
-        &$crate::shard::actionshard::ActionShard { _Child: $child, _Action: $action }
-    };
-    ( @feature_REPEAT_STAR [ $( $cb:tt)* ], $Arg:ident, $child:expr ) => {
-        &$crate::shard::repeatshard::RepeatShard { _Child: $child, _USeg: $crate::silo::USeg::NewInf( 0) }
-    };
-    ( @feature_REPEAT_PLUS [ $( $cb:tt)* ], $Arg:ident, $child:expr ) => {
-        &$crate::shard::repeatshard::RepeatShard { _Child: $child, _USeg: $crate::silo::USeg::NewInf( 1) }
+    ( [ $s:literal ] [ | $p:ident | $( $body:tt )+ ] ) => {
+        &$crate::shard::actionshard::ActionShard {
+            _Child: &$crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) },
+            _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+        }
     };
 
-    // ── Custom: Boxet stringification (overrides NodeTree default) ─────────────────────────────────
-    ( @feature_BOXET [ $( $cb:tt)* ], $Arg:ident, $s:literal ) => {
+    // 2b. Repeat with action (no remainder/rest):
+    ( * $l:ident [ | $p:ident | $( $body:tt )+ ] ) => {
+        &$crate::shard::actionshard::ActionShard {
+            _Child: &$crate::shard::repeatshard::RepeatShard {
+                _Child: $crate::ShardTree!( $l ),
+                _USeg: $crate::silo::USeg::NewInf( 0 ),
+            },
+            _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+        }
+    };
+    ( + $l:ident [ | $p:ident | $( $body:tt )+ ] ) => {
+        &$crate::shard::actionshard::ActionShard {
+            _Child: &$crate::shard::repeatshard::RepeatShard {
+                _Child: $crate::ShardTree!( $l ),
+                _USeg: $crate::silo::USeg::NewInf( 1 ),
+            },
+            _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+        }
+    };
+
+    // 2c. Repeat with action and remainder:
+    ( * $l:ident [ | $p:ident | $( $body:tt )+ ] < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::actionshard::ActionShard {
+                _Child: &$crate::shard::repeatshard::RepeatShard {
+                    _Child: $crate::ShardTree!( $l ),
+                    _USeg: $crate::silo::USeg::NewInf( 0 ),
+                },
+                _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( * $l:ident [ | $p:ident | $( $body:tt )+ ] | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::actionshard::ActionShard {
+                _Child: &$crate::shard::repeatshard::RepeatShard {
+                    _Child: $crate::ShardTree!( $l ),
+                    _USeg: $crate::silo::USeg::NewInf( 0 ),
+                },
+                _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
+    ( + $l:ident [ | $p:ident | $( $body:tt )+ ] < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::actionshard::ActionShard {
+                _Child: &$crate::shard::repeatshard::RepeatShard {
+                    _Child: $crate::ShardTree!( $l ),
+                    _USeg: $crate::silo::USeg::NewInf( 1 ),
+                },
+                _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( + $l:ident [ | $p:ident | $( $body:tt )+ ] | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::actionshard::ActionShard {
+                _Child: &$crate::shard::repeatshard::RepeatShard {
+                    _Child: $crate::ShardTree!( $l ),
+                    _USeg: $crate::silo::USeg::NewInf( 1 ),
+                },
+                _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
+
+    // 3. Binary operators < and | with group LHS:
+    ( ( $( $inner:tt )+ ) < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: $crate::ShardTree!( ( $( $inner )+ ) ),
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( ( $( $inner:tt )+ ) | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: $crate::ShardTree!( ( $( $inner )+ ) ),
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
+
+    // 4. Prefix Repeat star/plus with remainder:
+    ( * [ $s:literal ] < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::repeatshard::RepeatShard {
+                _Child: &$crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) },
+                _USeg: $crate::silo::USeg::NewInf( 0 ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( * [ $s:literal ] | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::repeatshard::RepeatShard {
+                _Child: &$crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) },
+                _USeg: $crate::silo::USeg::NewInf( 0 ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
+    ( + [ $s:literal ] < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::repeatshard::RepeatShard {
+                _Child: &$crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) },
+                _USeg: $crate::silo::USeg::NewInf( 1 ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( + [ $s:literal ] | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::repeatshard::RepeatShard {
+                _Child: &$crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) },
+                _USeg: $crate::silo::USeg::NewInf( 1 ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
+
+    ( * ( $( $inner:tt )+ ) < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::repeatshard::RepeatShard {
+                _Child: $crate::ShardTree!( ( $( $inner )+ ) ),
+                _USeg: $crate::silo::USeg::NewInf( 0 ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( * ( $( $inner:tt )+ ) | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::repeatshard::RepeatShard {
+                _Child: $crate::ShardTree!( ( $( $inner )+ ) ),
+                _USeg: $crate::silo::USeg::NewInf( 0 ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
+    ( + ( $( $inner:tt )+ ) < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::repeatshard::RepeatShard {
+                _Child: $crate::ShardTree!( ( $( $inner )+ ) ),
+                _USeg: $crate::silo::USeg::NewInf( 1 ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( + ( $( $inner:tt )+ ) | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::repeatshard::RepeatShard {
+                _Child: $crate::ShardTree!( ( $( $inner )+ ) ),
+                _USeg: $crate::silo::USeg::NewInf( 1 ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
+
+    ( * $l:ident < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::repeatshard::RepeatShard {
+                _Child: $crate::ShardTree!( $l ),
+                _USeg: $crate::silo::USeg::NewInf( 0 ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( * $l:ident | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::repeatshard::RepeatShard {
+                _Child: $crate::ShardTree!( $l ),
+                _USeg: $crate::silo::USeg::NewInf( 0 ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
+    ( + $l:ident < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::repeatshard::RepeatShard {
+                _Child: $crate::ShardTree!( $l ),
+                _USeg: $crate::silo::USeg::NewInf( 1 ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( + $l:ident | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::repeatshard::RepeatShard {
+                _Child: $crate::ShardTree!( $l ),
+                _USeg: $crate::silo::USeg::NewInf( 1 ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
+
+    ( * $l:literal < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::repeatshard::RepeatShard {
+                _Child: &$crate::shard::leaves::StrShard { _Val: $l },
+                _USeg: $crate::silo::USeg::NewInf( 0 ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( * $l:literal | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::repeatshard::RepeatShard {
+                _Child: &$crate::shard::leaves::StrShard { _Val: $l },
+                _USeg: $crate::silo::USeg::NewInf( 0 ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
+    ( + $l:literal < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::repeatshard::RepeatShard {
+                _Child: &$crate::shard::leaves::StrShard { _Val: $l },
+                _USeg: $crate::silo::USeg::NewInf( 1 ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( + $l:literal | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::repeatshard::RepeatShard {
+                _Child: &$crate::shard::leaves::StrShard { _Val: $l },
+                _USeg: $crate::silo::USeg::NewInf( 1 ),
+            },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
+
+    // 5. Boxet (charset) with remainder:
+    ( [ $s:literal ] < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( [ $s:literal ] | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
+
+    // 6. String literal with remainder:
+    ( $l:literal < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::leaves::StrShard { _Val: $l },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( $l:literal | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: &$crate::shard::leaves::StrShard { _Val: $l },
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
+
+    // 7. Ident with remainder:
+    ( $l:ident < $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: $l,
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+        }
+    };
+    ( $l:ident | $( $rest:tt )+ ) => {
+        &$crate::shard::binshard::BinShard {
+            _Left: $l,
+            _Right: $crate::ShardTree!( $( $rest )+ ),
+            _Op: $crate::shard::binshard::BinShardOp::Choice,
+        }
+    };
+
+    // Base Case: Group
+    ( ( $( $inner:tt )+ ) ) => {
+        $crate::ShardTree!( $( $inner )+ )
+    };
+
+    // Base Case: Repeat star/plus
+    ( * [ $s:literal ] ) => {
+        &$crate::shard::repeatshard::RepeatShard {
+            _Child: &$crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) },
+            _USeg: $crate::silo::USeg::NewInf( 0 ),
+        }
+    };
+    ( + [ $s:literal ] ) => {
+        &$crate::shard::repeatshard::RepeatShard {
+            _Child: &$crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) },
+            _USeg: $crate::silo::USeg::NewInf( 1 ),
+        }
+    };
+
+    ( * ( $( $inner:tt )+ ) ) => {
+        &$crate::shard::repeatshard::RepeatShard {
+            _Child: $crate::ShardTree!( ( $( $inner )+ ) ),
+            _USeg: $crate::silo::USeg::NewInf( 0 ),
+        }
+    };
+    ( + ( $( $inner:tt )+ ) ) => {
+        &$crate::shard::repeatshard::RepeatShard {
+            _Child: $crate::ShardTree!( ( $( $inner )+ ) ),
+            _USeg: $crate::silo::USeg::NewInf( 1 ),
+        }
+    };
+    ( * $l:ident ) => {
+        &$crate::shard::repeatshard::RepeatShard {
+            _Child: $crate::ShardTree!( $l ),
+            _USeg: $crate::silo::USeg::NewInf( 0 ),
+        }
+    };
+    ( + $l:ident ) => {
+        &$crate::shard::repeatshard::RepeatShard {
+            _Child: $crate::ShardTree!( $l ),
+            _USeg: $crate::silo::USeg::NewInf( 1 ),
+        }
+    };
+    ( * $l:literal ) => {
+        &$crate::shard::repeatshard::RepeatShard {
+            _Child: &$crate::shard::leaves::StrShard { _Val: $l },
+            _USeg: $crate::silo::USeg::NewInf( 0 ),
+        }
+    };
+    ( + $l:literal ) => {
+        &$crate::shard::repeatshard::RepeatShard {
+            _Child: &$crate::shard::leaves::StrShard { _Val: $l },
+            _USeg: $crate::silo::USeg::NewInf( 1 ),
+        }
+    };
+
+    // Base Case: Boxet
+    ( [ $s:literal ] ) => {
         &$crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) }
     };
 
-    // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
-    ( @ $( $inner:tt )+ ) => {
-        $crate::NodeTree!( @ $( $inner )+ )
+    // Base Case: Literal
+    ( $l:literal ) => {
+        &$crate::shard::leaves::StrShard { _Val: $l }
     };
-    // Top-level entry (user code)
-    ( $( $inner:tt)+ )  => {
-        $crate::NodeTree!( @define [ $crate::ShardTree ], DynINode, $( $inner)+ )
+
+    // Base Case: Expr/Ident
+    ( $leaf:expr ) => {
+        $leaf
     };
 }
-
-//---------------------------------------------------------------------------------------------------------------------------------

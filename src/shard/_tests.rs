@@ -3,7 +3,6 @@
 use	crate::{
     flux::FixedStream,
     shard::{ Charset, Parser, IGrammar, UInt, Int, Hex, Real, HexReal, Json },
-    stalks::DynINode,
     silo::U32,
 };
 
@@ -121,9 +120,7 @@ fn TestUIntShard()
 {
     let  	tree = crate::ShardTree!( UInt );
     
-    let  	dynNode: &DynINode<'_> = &*tree;
-    assert_eq!( dynNode._Size().AsUsize(), 0);
-    
+
     // Test that the UInt shard correctly parses unsigned integer strings
     let  	mut stream1 = FixedStream::from( "12345");
     let  	mut parser1 = Parser::New( &mut stream1);

@@ -1,6 +1,5 @@
 //-- repeatshard.rs -----------------------------------------------------------------------------------------------------------------
 use	crate::silo::U32;
-use	crate::stalks::{ DynINode, INode };
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	std::fmt;
 use	crate::shard::{ IGrammar, Parser };
@@ -37,25 +36,6 @@ where
             } else { false }
         }));
     }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< 'a, C> INode< 'a> for RepeatShard< C>
-where
-    C: INode< 'a> + IGrammar + Send + Sync + 'a,
-{
-    fn	_Size( &self) -> U32 { U32( 1) }
-    fn	_At( &self, idx: U32) -> &DynINode< 'a>
-{
-        if idx.0 == 0 {
-            &self._Child
-        } else {
-            panic!( "At called on RepeatShard with index > 0")
-        }
-    }
-
-    fn	IsLeaf( &self) -> bool { false }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

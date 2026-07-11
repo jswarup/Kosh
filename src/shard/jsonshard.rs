@@ -4,7 +4,6 @@ use	std::fmt;
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::shard::{ Charset, IGrammar, Parser };
 use	crate::silo::{U32, U8};
-use	crate::stalks::INode;
 use	crate::shard::numbers::Real;
 use	crate::WSpc;
 
@@ -21,12 +20,6 @@ impl IXFluxSource for JsonShard
 {
         *field = XField::String( "Json".to_string());
     }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< 'a> INode< 'a> for JsonShard
-{
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

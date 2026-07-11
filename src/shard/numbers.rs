@@ -4,7 +4,6 @@ use	std::fmt;
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::shard::{ IGrammar, Parser };
 use	crate::silo::{ U32, U8 };
-use	crate::stalks::INode;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -19,12 +18,6 @@ impl IXFluxSource for UIntShard
     {
         *field = XField::String( "UInt".to_string());
     }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< 'a> INode< 'a> for UIntShard
-{
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -90,12 +83,6 @@ impl IXFluxSource for IntShard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> INode< 'a> for IntShard
-{
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
 impl IGrammar for IntShard
 {
     fn	Match<'p>(&self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
@@ -143,9 +130,6 @@ pub const Hex: &HexShard = &HexShard;
 impl IXFluxSource for HexShard
 {
     fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>) { *field = XField::String( "Hex".to_string()); }
-}
-impl< 'a> INode< 'a> for HexShard
-{
 }
 impl IGrammar for HexShard
 {
@@ -206,9 +190,6 @@ pub const Real: &RealShard = &RealShard;
 impl IXFluxSource for RealShard
 {
     fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>) { *field = XField::String( "Real".to_string()); }
-}
-impl< 'a> INode< 'a> for RealShard
-{
 }
 impl IGrammar for RealShard
 {
@@ -308,9 +289,6 @@ pub const HexReal: &HexRealShard = &HexRealShard;
 impl IXFluxSource for HexRealShard
 {
     fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>) { *field = XField::String( "HexReal".to_string()); }
-}
-impl< 'a> INode< 'a> for HexRealShard
-{
 }
 impl IGrammar for HexRealShard
 {
