@@ -18,16 +18,19 @@ pub enum BinShardOp
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct BinShard< 'a>
+pub struct BinShard< L, R>
 {
-    pub _Left: &'a DynINode< 'a>,
-    pub _Right: &'a DynINode< 'a>,
+    pub _Left: L,
+    pub _Right: R,
     pub _Op: BinShardOp,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> IXFluxSource for BinShard< 'a>
+impl< L, R> IXFluxSource for BinShard< L, R>
+where
+    L: IXFluxSource,
+    R: IXFluxSource,
 {
     fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
     {
@@ -56,7 +59,10 @@ impl< 'a> IXFluxSource for BinShard< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> INode< 'a> for BinShard< 'a>
+impl< 'a, L, R> INode< 'a> for BinShard< L, R>
+where
+    L: INode< 'a> + IGrammar + Send + Sync + 'a,
+    R: INode< 'a> + IGrammar + Send + Sync + 'a,
 {
     //-----------------------------------------------------------------------------------------------------------------------------
     
@@ -71,10 +77,10 @@ impl< 'a> INode< 'a> for BinShard< 'a>
     {
         match idx.0 {
             0 => {
-                return self._Left;
+                return &self._Left;
             }
             1 => {
-                return self._Right;
+                return &self._Right;
             }
             _ => {
                 panic!( "At called on BinShard with index > 1");
@@ -114,7 +120,10 @@ impl< 'a> INode< 'a> for BinShard< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> IGrammar for BinShard< 'a>
+impl< L, R> IGrammar for BinShard< L, R>
+where
+    L: IGrammar,
+    R: IGrammar,
 {
     fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
     {
@@ -148,7 +157,7 @@ impl< 'a> IGrammar for BinShard< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> fmt::Display for BinShard< 'a>
+impl< L, R> fmt::Display for BinShard< L, R>
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
@@ -165,7 +174,7 @@ impl< 'a> fmt::Display for BinShard< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> fmt::Debug for BinShard< 'a>
+impl< L, R> fmt::Debug for BinShard< L, R>
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {

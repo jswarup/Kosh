@@ -209,6 +209,32 @@ impl< 'a> DynINode< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl< 'a, 'r> crate::flux::IXFluxSource for &'r DynINode< 'a>
+{
+    fn	ToXField< 'b>( &'b self, field: &mut crate::flux::xflux::XField< 'b>)
+    {
+        (**self).ToXField( field);
+    }
+}
+
+impl< 'a, 'r> INode< 'a> for &'r DynINode< 'a>
+{
+    fn	_Size( &self) -> U32 { (**self)._Size() }
+    fn	_At( &self, idx: U32) -> &DynINode< 'a> { (**self)._At( idx) }
+    fn	Value( &self) -> Option< crate::stalks::WorkPtr< 'a>> { (**self).Value() }
+    fn	DocStr( &self) -> &'static str { (**self).DocStr() }
+    fn	BinOp( &self) -> BinOp { (**self).BinOp() }
+    fn	Action( &self) -> Option< *const crate::stalks::work::DynIWork< 'static>> { (**self).Action() }
+    fn	AsRawLeaf( &self) -> *const () { (**self).AsRawLeaf() }
+    fn	Attrib( &self) -> Option< &Attrib> { (**self).Attrib() }
+    fn	IsLeaf( &self) -> bool { (**self).IsLeaf() }
+    fn	AsAny( &self) -> Option<&dyn core::any::Any> { (**self).AsAny() }
+    fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32) { (**self).MatchGrammar( parser, marker) }
+    fn	TraverseDF( &'a self, fnMut: &mut dyn FnMut( &'a DynINode< 'a>, TraversalEvent)) where Self: Sized { TraverseDepthFirst(&(**self), fnMut) }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub fn	TraverseDepthFirst< 'b, 'a>( node: &'b DynINode< 'a>, fnMut: &mut dyn FnMut( &'b DynINode< 'a>, TraversalEvent))
 {
     let  	mut stash = Stash::New( 1024, 1, ( node, U32( 0)));

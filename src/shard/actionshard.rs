@@ -8,15 +8,18 @@ use	crate::shard::{ IGrammar, Parser };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct ActionShard< 'a>
+pub struct ActionShard< C, W>
 {
-    pub _Child: &'a DynINode< 'a>,
-    pub _Action: Box< DynIWork< 'static>>,
+    pub _Child: C,
+    pub _Action: W,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> IXFluxSource for ActionShard< 'a>
+impl< C, W> IXFluxSource for ActionShard< C, W>
+where
+    C: IXFluxSource,
+    W: Send + Sync,
 {
     fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
 {
@@ -40,13 +43,16 @@ impl< 'a> IXFluxSource for ActionShard< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> INode< 'a> for ActionShard< 'a>
+impl< 'a, C, W> INode< 'a> for ActionShard< C, W>
+where
+    C: INode< 'a> + IGrammar + Send + Sync + 'a,
+    W: crate::stalks::work::IWork + Send + Sync + 'static,
 {
     fn	_Size( &self) -> U32 { U32( 1) }
     fn	_At( &self, idx: U32) -> &DynINode< 'a>
 {
         if idx.0 == 0 {
-            self._Child
+            &self._Child
         } else {
             panic!( "At called on ActionShard with index > 0")
         }
@@ -54,7 +60,7 @@ impl< 'a> INode< 'a> for ActionShard< 'a>
 
     fn	Action( &self) -> Option< *const DynIWork< 'static>>
 {
-        Some( self._Action.as_ref() as *const _)
+        Some( &self._Action as &DynIWork<'static> as *const _)
     }
     fn	MatchGrammar( &self, parser: *mut (), marker: U32) -> (bool, U32)
 {
@@ -65,13 +71,16 @@ impl< 'a> INode< 'a> for ActionShard< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> IGrammar for ActionShard< 'a>
+impl< C, W> IGrammar for ActionShard< C, W>
+where
+    C: IGrammar,
+    W: crate::stalks::work::IWork + 'static,
 {
     fn	Match< 'p>( &'p self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
 {
         let (matched, new_mark) = self._Child.Match( parser, marker);
         if matched {
-            let  	actionPtr = &*self._Action as *const DynIWork< 'static>;
+            let  	actionPtr = &self._Action as &DynIWork< 'static> as *const DynIWork< 'static>;
             #[allow( invalid_reference_casting)]
             let  	actionMut = unsafe { &mut *( actionPtr as *mut DynIWork< 'static>) };
             actionMut.DoWork( parser);
@@ -83,7 +92,7 @@ impl< 'a> IGrammar for ActionShard< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> fmt::Display for ActionShard< 'a>
+impl< C, W> fmt::Display for ActionShard< C, W>
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
 {
@@ -93,7 +102,7 @@ impl< 'a> fmt::Display for ActionShard< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> fmt::Debug for ActionShard< 'a>
+impl< C, W> fmt::Debug for ActionShard< C, W>
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
 {

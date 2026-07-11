@@ -6,7 +6,7 @@ use	crate::shard::{ Charset, IGrammar, Parser };
 use	crate::silo::{U32, U8, IVoidPtrExt};
 use	crate::stalks::INode;
 use	crate::shard::numbers::Real;
-use	crate::Whitespace;
+use	crate::WSpc;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -137,7 +137,7 @@ impl JsonShard
 
     fn	MatchValue< 'p>( parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
     {
-        let     ws = Whitespace!();
+        let     ws = WSpc!();
         let     parser_ptr = parser as *mut _ as *mut ();
         let     (_, m) = ws.MatchGrammar( parser_ptr, marker);
         let  	curr = parser.Curr( m);
