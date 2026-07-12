@@ -33,6 +33,16 @@ pub trait IXFluxSource
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl< 'r, T: IXFluxSource + ?Sized> IXFluxSource for &'r T
+{
+    fn	ToXField< 'a>( &'a self, field: &mut XField< 'a>)
+    {
+        ( **self).ToXField( field);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 #[macro_export]
 macro_rules! ImplIXFluxSource
 {

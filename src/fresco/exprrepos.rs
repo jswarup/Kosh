@@ -6,8 +6,7 @@ use	crate::fresco::realexpr::RealExpr;
 use	crate::fresco::sumexpr::SumExpr;
 use	crate::fresco::prodexpr::ProdExpr;
 use	crate::fresco::powexpr::PowExpr;
-use	crate::fresco::Term;
-use	crate::stalks::{ BinOp, DynINode };
+use	crate::fresco::term::{ Term, ITermNode, TermOp };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -225,53 +224,71 @@ impl ExprRepos
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	PostTermTree( &mut self, node: &DynINode< '_>) -> U32
+    pub fn	PostTermTree( &mut self, node: &dyn ITermNode) -> U32
     {
         let  	exprStash = Stash::<U32>::New( 1024, 0, 0.into());
         let  	mut exprStk = exprStash.Stk();
-        let  	opStash = Stash::<(BinOp, U32)>::New( 1024, 0, (BinOp::None, 0.into()));
-        let  	opStk = opStash.Stk();
 
-        node.DiveDf( &mut |probe, enterFlg| {
-            let  	curNode = probe.CurNode().unwrap();
-            let  	curOp = curNode.BinOp();
-            if enterFlg {
-                if curOp != BinOp::None {
-                    opStk.Push( ( curOp, exprStk.Size()));
-                    return;
+        fn	Collect( repos: &mut ExprRepos, child: &dyn ITermNode, parentOp: TermOp, exprStk: &mut crate::silo::Stk< '_, '_, U32>)
+        {
+            if child.Op() == parentOp {
+                for i in 0 .. child.ChildrenCount() {
+                    Collect( repos, child.Child( i), parentOp, exprStk);
                 }
-                let  	term = curNode.AsAny().unwrap().downcast_ref::<Term>().unwrap();
+            } else {
+                Traverse( repos, child, exprStk);
+            }
+        }
+
+        fn	Traverse( repos: &mut ExprRepos, node: &dyn ITermNode, exprStk: &mut crate::silo::Stk< '_, '_, U32>)
+        {
+            let  	curOp = node.Op();
+            if curOp == TermOp::None {
+                let  	term = node.AsLeaf().unwrap();
                 let  	exprId = match term {
-                    Term::String( s) => self.VarCreate( s.clone(), false),
-                    Term::Real( v) => self.RealCreate( *v),
+                    Term::String( s) => {
+                        repos.VarCreate( s.clone(), false)
+                    }
+                    Term::Real( v) => {
+                        repos.RealCreate( *v)
+                    }
                 };
                 exprStk.Push( exprId);
                 return;
             }
-            if curOp == BinOp::None {
-                return;
-            }
-            let  	mut opCtx = ( BinOp::None, 0.into());
-            opStk.Pop( &mut opCtx);
 
-            let  	parentOp = if opStk.Size() != 0 { opStk.Arr().Last().0 } else { BinOp::None };
-            if parentOp == curOp {
-                return;
-            }
+            let  	startIdx = exprStk.Size();
 
-            let  	arr = exprStk.Arr().Subset( opCtx.1, exprStk.Size() - opCtx.1);
-            exprStk.SetSize( opCtx.1);
+            Collect( repos, node.Child( 0), curOp, exprStk);
+            Collect( repos, node.Child( 1), curOp, exprStk);
+
+            let  	arr = exprStk.Arr().Subset( startIdx, exprStk.Size() - startIdx);
+            exprStk.SetSize( startIdx);
             let  	emptyArr = Arr::from( &[][..]);
             let  	exprId = match curOp {
-                BinOp::Sum => self.SumCreate( arr, emptyArr),
-                BinOp::Prod => self.ProdCreate( arr, emptyArr),
-                BinOp::Sub => self.SumCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1)),
-                BinOp::Div => self.ProdCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1)),
-                BinOp::Pow => self.PowCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1)),
-                _ => panic!( "Unsupported BinOp in PostTermTree: {:?}", curOp),
+                TermOp::Sum => {
+                    repos.SumCreate( arr, emptyArr)
+                }
+                TermOp::Prod => {
+                    repos.ProdCreate( arr, emptyArr)
+                }
+                TermOp::Sub => {
+                    repos.SumCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1))
+                }
+                TermOp::Div => {
+                    repos.ProdCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1))
+                }
+                TermOp::Pow => {
+                    repos.PowCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1))
+                }
+                _ => {
+                    panic!( "Unsupported TermOp in PostTermTree: {:?}", curOp);
+                }
             };
             exprStk.Push( exprId);
-        });
+        }
+
+        Traverse( self, node, &mut exprStk);
 
         if exprStk.Size() == 0 {
             0.into()

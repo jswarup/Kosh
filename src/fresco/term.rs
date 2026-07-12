@@ -1,5 +1,5 @@
 //-- term.rs -------------------------------------------------------------------------------------------------------------------------
-use	crate::{ flux::{ IXFluxSource, xflux::XField }, silo::U32, stalks::{ BinOp, DynINode, INode, IntoWorkPtr, WorkPtr } };
+use	crate::flux::{ IXFluxSource, xflux::XField };
 use	std::fmt;
 use	crate::stalks::{ DynIWorker, IWork };
 
@@ -118,42 +118,206 @@ impl From< f64> for Term
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> INode< 'a> for Term
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[derive( Clone, Copy, PartialEq, Eq, Debug)]
+#[repr(u64)]
+pub enum TermOp
 {
-    fn	_Size( &self) -> U32 { U32(0) }
-    fn	_At( &self, _idx: U32) -> &DynINode< 'a> { panic!("Leaf") }
-    fn	Value( &self) -> Option< WorkPtr< 'a>>
+    Sum = 0,
+    Prod = 1,
+    Sub = 2,
+    Div = 3,
+    Pow = 4,
+    None = 5,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait ITermNode
+{
+    fn	ChildrenCount( &self) -> usize;
+    fn	Child( &self, idx: usize) -> &dyn ITermNode;
+    fn	Op( &self) -> TermOp;
+    fn	AsLeaf( &self) -> Option< &Term>;
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl ITermNode for Term
+{
+    fn	ChildrenCount( &self) -> usize
     {
-        Some( IntoWorkPtr::IntoWorkPtr( self.clone()))
+        0
     }
-    fn	AsAny( &self) -> Option<&dyn core::any::Any>
+
+    fn	Child( &self, _idx: usize) -> &dyn ITermNode
+    {
+        panic!( "Leaf has no children");
+    }
+
+    fn	Op( &self) -> TermOp
+    {
+        TermOp::None
+    }
+
+    fn	AsLeaf( &self) -> Option< &Term>
     {
         Some( self)
     }
-    fn	DocStr( &self) -> &'static str { "" }
-    fn	BinOp( &self) -> BinOp { BinOp::None }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T: ITermNode + ?Sized> ITermNode for &T
+{
+    fn	ChildrenCount( &self) -> usize
+    {
+        ( **self).ChildrenCount()
+    }
+
+    fn	Child( &self, idx: usize) -> &dyn ITermNode
+    {
+        ( **self).Child( idx)
+    }
+
+    fn	Op( &self) -> TermOp
+    {
+        ( **self).Op()
+    }
+
+    fn	AsLeaf( &self) -> Option< &Term>
+    {
+        ( **self).AsLeaf()
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub struct TermBinNode< L, R>
+{
+    pub _Left: L,
+    pub _Right: R,
+    pub _Op: TermOp,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< L, R> IXFluxSource for TermBinNode< L, R>
+where
+    L: IXFluxSource,
+    R: IXFluxSource,
+{
+    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    {
+        let  	mut step = 0u32;
+        let  	node = self;
+        *field = XField::Obj( Box::new( move |key, item| {
+            if step == 0 {
+                *key = "Op".to_string();
+                *item = XField::U64( node._Op as u64);
+                step += 1;
+                
+                true
+            } else if step == 1 {
+                *key = "LeftChild".to_string();
+                node._Left.ToXField( item);
+                step += 1;
+                
+                true
+            } else if step == 2 {
+                *key = "RightChild".to_string();
+                node._Right.ToXField( item);
+                step += 1;
+                
+                true
+            } else {
+                false
+            }
+        }));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< L, R> ITermNode for TermBinNode< L, R>
+where
+    L: ITermNode,
+    R: ITermNode,
+{
+    fn	ChildrenCount( &self) -> usize
+    {
+        2
+    }
+
+    fn	Child( &self, idx: usize) -> &dyn ITermNode
+    {
+        match idx {
+            0 => {
+                &self._Left
+            }
+            1 => {
+                &self._Right
+            }
+            _ => {
+                panic!( "Index out of bounds");
+            }
+        }
+    }
+
+    fn	Op( &self) -> TermOp
+    {
+        self._Op
+    }
+
+    fn	AsLeaf( &self) -> Option< &Term>
+    {
+        None
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[macro_export]
 macro_rules! TermTree {
-    // ---- OPT-IN FEATURES -----------------------------------------------------------------------------------------------------
-    ( @feature_STAR   $( $args:tt)* ) => { $crate::NodeTree!( @feature_STAR   $( $args)* ) };
-    ( @feature_PLUS   $( $args:tt)* ) => { $crate::NodeTree!( @feature_PLUS   $( $args)* ) };
-    ( @feature_MINUS  $( $args:tt)* ) => { $crate::NodeTree!( @feature_MINUS  $( $args)* ) };
-    ( @feature_DIV    $( $args:tt)* ) => { $crate::NodeTree!( @feature_DIV    $( $args)* ) };
-    ( @feature_POW    $( $args:tt)* ) => { $crate::NodeTree!( @feature_POW    $( $args)* ) };
-    ( @feature_NEW    $( $args:tt)* ) => { $crate::NodeTree!( @feature_NEW    $( $args)* ) };
-    ( @feature_PostBoxet $( $args:tt)* ) => { $crate::NodeTree!( @feature_PostBoxet $( $args)* ) };
-
-    // ---- FALLBACKS -------------------------------------------------------------------------------------------------------------
-    ( @ $( $inner:tt )+ ) => {
-        $crate::NodeTree!( @ $( $inner )+ )
+    // Helper to construct binary nodes
+    ( @bin $op:ident, $l:expr, $( $r:tt )+ ) => {
+        &$crate::fresco::term::TermBinNode {
+            _Left: $l,
+            _Right: $crate::TermTree!( $( $r )+ ),
+            _Op: $crate::fresco::term::TermOp::$op,
+        }
     };
-    // Top-level entry (user code)
-    ( $( $inner:tt)+ )  => {
-        $crate::NodeTree!( @define [ $crate::TermTree ], Term, $( $inner)+ )
+
+    // Group with remainder
+    ( ( $( $inner:tt )+ ) + $( $rest:tt )+ ) => { $crate::TermTree!( @bin Sum,  $crate::TermTree!( ( $( $inner )+ ) ), $( $rest )+ ) };
+    ( ( $( $inner:tt )+ ) * $( $rest:tt )+ ) => { $crate::TermTree!( @bin Prod, $crate::TermTree!( ( $( $inner )+ ) ), $( $rest )+ ) };
+    ( ( $( $inner:tt )+ ) - $( $rest:tt )+ ) => { $crate::TermTree!( @bin Sub,  $crate::TermTree!( ( $( $inner )+ ) ), $( $rest )+ ) };
+    ( ( $( $inner:tt )+ ) / $( $rest:tt )+ ) => { $crate::TermTree!( @bin Div,  $crate::TermTree!( ( $( $inner )+ ) ), $( $rest )+ ) };
+    ( ( $( $inner:tt )+ ) ^ $( $rest:tt )+ ) => { $crate::TermTree!( @bin Pow,  $crate::TermTree!( ( $( $inner )+ ) ), $( $rest )+ ) };
+
+    // Ident with remainder
+    ( $l:ident + $( $rest:tt )+ ) => { $crate::TermTree!( @bin Sum,  $crate::TermTree!( $l ), $( $rest )+ ) };
+    ( $l:ident * $( $rest:tt )+ ) => { $crate::TermTree!( @bin Prod, $crate::TermTree!( $l ), $( $rest )+ ) };
+    ( $l:ident - $( $rest:tt )+ ) => { $crate::TermTree!( @bin Sub,  $crate::TermTree!( $l ), $( $rest )+ ) };
+    ( $l:ident / $( $rest:tt )+ ) => { $crate::TermTree!( @bin Div,  $crate::TermTree!( $l ), $( $rest )+ ) };
+    ( $l:ident ^ $( $rest:tt )+ ) => { $crate::TermTree!( @bin Pow,  $crate::TermTree!( $l ), $( $rest )+ ) };
+
+    // Literal with remainder
+    ( $l:literal + $( $rest:tt )+ ) => { $crate::TermTree!( @bin Sum,  $crate::TermTree!( $l ), $( $rest )+ ) };
+    ( $l:literal * $( $rest:tt )+ ) => { $crate::TermTree!( @bin Prod, $crate::TermTree!( $l ), $( $rest )+ ) };
+    ( $l:literal - $( $rest:tt )+ ) => { $crate::TermTree!( @bin Sub,  $crate::TermTree!( $l ), $( $rest )+ ) };
+    ( $l:literal / $( $rest:tt )+ ) => { $crate::TermTree!( @bin Div,  $crate::TermTree!( $l ), $( $rest )+ ) };
+    ( $l:literal ^ $( $rest:tt )+ ) => { $crate::TermTree!( @bin Pow,  $crate::TermTree!( $l ), $( $rest )+ ) };
+
+    // Base Case: Group
+    ( ( $( $inner:tt )+ ) ) => {
+        $crate::TermTree!( $( $inner )+ )
+    };
+
+    // Base Case: Leaf
+    ( $leaf:expr ) => {
+        &< Term as From< _>>::from( $leaf )
     };
 }
 

@@ -14,7 +14,7 @@ pub use	realexpr::RealExpr;
 pub use	polyexpr::PolyExpr;
 pub use	sumexpr::SumExpr;
 pub use	prodexpr::ProdExpr;
-pub use	term::Term;
+pub use	term::{ Term, ITermNode, TermOp };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 

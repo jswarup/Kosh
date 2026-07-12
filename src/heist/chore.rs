@@ -97,58 +97,48 @@ macro_rules! Chore {
 
 #[macro_export]
 macro_rules! ChoreTree {
-    // 1. Grouping with remainder
-    ( ( $( $inner:tt )+ ) < $( $rest:tt )+ ) => {
-        &$crate::stalks::node::CatNode {
-            _Left: $crate::ChoreTree!( ( $( $inner )+ ) ),
+    // Helper to construct sequential/parallel nodes
+    ( @cat $left:expr, $( $rest:tt )+ ) => {
+        &$crate::heist::chore::ChoreCatNode {
+            _Left: $left,
             _Right: $crate::ChoreTree!( $( $rest )+ ),
         }
     };
-    ( ( $( $inner:tt )+ ) | $( $rest:tt )+ ) => {
-        &$crate::stalks::node::ParNode {
-            _Left: $crate::ChoreTree!( ( $( $inner )+ ) ),
+    ( @par $left:expr, $( $rest:tt )+ ) => {
+        &$crate::heist::chore::ChoreParNode {
+            _Left: $left,
             _Right: $crate::ChoreTree!( $( $rest )+ ),
         }
+    };
+
+    // 1. Grouping with remainder
+    ( ( $( $inner:tt )+ ) < $( $rest:tt )+ ) => {
+        $crate::ChoreTree!( @cat $crate::ChoreTree!( ( $( $inner )+ ) ), $( $rest )+ )
+    };
+    ( ( $( $inner:tt )+ ) | $( $rest:tt )+ ) => {
+        $crate::ChoreTree!( @par $crate::ChoreTree!( ( $( $inner )+ ) ), $( $rest )+ )
     };
 
     // 2. Closure with remainder
     ( | $arg:ident | $body:block < $( $rest:tt )+ ) => {
-        &$crate::stalks::node::CatNode {
-            _Left: &$crate::heist::Chore::New( |$arg| $body ),
-            _Right: $crate::ChoreTree!( $( $rest )+ ),
-        }
+        $crate::ChoreTree!( @cat &$crate::heist::Chore::New( |$arg| $body ), $( $rest )+ )
     };
     ( | $arg:ident | $body:block | $( $rest:tt )+ ) => {
-        &$crate::stalks::node::ParNode {
-            _Left: &$crate::heist::Chore::New( |$arg| $body ),
-            _Right: $crate::ChoreTree!( $( $rest )+ ),
-        }
+        $crate::ChoreTree!( @par &$crate::heist::Chore::New( |$arg| $body ), $( $rest )+ )
     };
     ( move | $arg:ident | $body:block < $( $rest:tt )+ ) => {
-        &$crate::stalks::node::CatNode {
-            _Left: &$crate::heist::Chore::New( move |$arg| $body ),
-            _Right: $crate::ChoreTree!( $( $rest )+ ),
-        }
+        $crate::ChoreTree!( @cat &$crate::heist::Chore::New( move |$arg| $body ), $( $rest )+ )
     };
     ( move | $arg:ident | $body:block | $( $rest:tt )+ ) => {
-        &$crate::stalks::node::ParNode {
-            _Left: &$crate::heist::Chore::New( move |$arg| $body ),
-            _Right: $crate::ChoreTree!( $( $rest )+ ),
-        }
+        $crate::ChoreTree!( @par &$crate::heist::Chore::New( move |$arg| $body ), $( $rest )+ )
     };
 
     // 3. Ident with remainder
     ( $l:ident < $( $rest:tt )+ ) => {
-        &$crate::stalks::node::CatNode {
-            _Left: &$l,
-            _Right: $crate::ChoreTree!( $( $rest )+ ),
-        }
+        $crate::ChoreTree!( @cat &$l, $( $rest )+ )
     };
     ( $l:ident | $( $rest:tt )+ ) => {
-        &$crate::stalks::node::ParNode {
-            _Left: &$l,
-            _Right: $crate::ChoreTree!( $( $rest )+ ),
-        }
+        $crate::ChoreTree!( @par &$l, $( $rest )+ )
     };
 
     // Base Case: Group
@@ -179,11 +169,11 @@ pub trait IChoreNode
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'r, T: IChoreNode + ?Sized> IChoreNode for &'r T
+impl< T: IChoreNode + ?Sized> IChoreNode for &T
 {
     fn	Post( &self, maestro: &crate::heist::Maestro, tails: &mut crate::silo::Buff< u16>) -> u16
     {
-        return (**self).Post( maestro, tails);
+        ( **self).Post( maestro, tails)
     }
 }
 
@@ -195,13 +185,50 @@ impl IChoreNode for Chore
     {
         let  	jobId = maestro.ConstructJob( crate::silo::U16( 0), IntoWorkPtr::IntoWorkPtr( *self), self._DocStr);
         tails.Push( jobId.0);
-        return jobId.0;
+        jobId.0
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< L, R> IChoreNode for crate::stalks::node::ParNode< L, R>
+pub struct ChoreParNode< L, R>
+{
+    pub _Left: L,
+    pub _Right: R,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< L, R> IXFluxSource for ChoreParNode< L, R>
+where
+    L: IXFluxSource,
+    R: IXFluxSource,
+{
+    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    {
+        let  	mut step = 0u32;
+        let  	node = self;
+        *field = XField::Obj( Box::new( move |key, item| {
+            if step == 0 {
+                *key = "Left".to_string();
+                node._Left.ToXField( item);
+                step += 1;
+                true
+            } else if step == 1 {
+                *key = "Right".to_string();
+                node._Right.ToXField( item);
+                step += 1;
+                true
+            } else {
+                false
+            }
+        }));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< L, R> IChoreNode for ChoreParNode< L, R>
 where
     L: IChoreNode,
     R: IChoreNode,
@@ -222,13 +249,50 @@ where
         heads.Push( crate::silo::U16( headL));
         heads.Push( crate::silo::U16( headR));
         let  	enqId = maestro.ConstructEnqueArr( crate::silo::U16( 0), heads, "EnqPar");
-        return enqId.0;
+        enqId.0
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< L, R> IChoreNode for crate::stalks::node::CatNode< L, R>
+pub struct ChoreCatNode< L, R>
+{
+    pub _Left: L,
+    pub _Right: R,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< L, R> IXFluxSource for ChoreCatNode< L, R>
+where
+    L: IXFluxSource,
+    R: IXFluxSource,
+{
+    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    {
+        let  	mut step = 0u32;
+        let  	node = self;
+        *field = XField::Obj( Box::new( move |key, item| {
+            if step == 0 {
+                *key = "Left".to_string();
+                node._Left.ToXField( item);
+                step += 1;
+                true
+            } else if step == 1 {
+                *key = "Right".to_string();
+                node._Right.ToXField( item);
+                step += 1;
+                true
+            } else {
+                false
+            }
+        }));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< L, R> IChoreNode for ChoreCatNode< L, R>
 where
     L: IChoreNode,
     R: IChoreNode,
@@ -241,7 +305,7 @@ where
         while let  	Some( leftTail) = leftTails.Pop() {
             maestro.Atelier().SetSucc( crate::silo::U16( leftTail), crate::silo::U16( headR));
         }
-        return headL;
+        headL
     }
 }
 
