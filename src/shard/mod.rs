@@ -16,7 +16,7 @@ pub mod jsonshard;
 pub use jsonshard::{ JsonShard, Json };
 pub use numbers::{ UIntShard, UInt, IntShard, Int, HexShard, Hex, RealShard, Real, HexRealShard, HexReal };
 pub mod primeshard;
-pub use primeshard::PrimeShard;
+pub use primeshard::{ PrimeShard, WSpc };
 #[cfg( test)]
 mod _tests;
 

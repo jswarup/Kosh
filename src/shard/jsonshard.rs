@@ -5,7 +5,7 @@ use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::shard::{ Charset, IGrammar, Parser };
 use	crate::silo::{U32, U8};
 use	crate::shard::numbers::Real;
-use	crate::WSpc;
+use	crate::shard::WSpc;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -124,9 +124,8 @@ impl JsonShard
     //---------------------------------------------------------------------------------------------------------------------------------
 
     fn	MatchValue< 'p>( parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
-    {
-        let     ws = WSpc!();
-        let     (_, m) = ws.Match( parser, marker);
+    { 
+        let     (_, m) = WSpc().Match( parser, marker);
         let  	curr = parser.Curr( m);
         
         if curr == U8( b'{') {

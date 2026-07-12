@@ -8,10 +8,10 @@ macro_rules! ShardTree {
 
     // Helper to resolve leaves
     ( @resolve [ $s:literal ] ) => {
-        &$crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) }
+        $crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) }
     };
     ( @resolve $l:literal ) => {
-        &$crate::shard::leaves::StrShard { _Val: $l }
+        $crate::shard::leaves::StrShard { _Val: $l }
     };
     ( @resolve ( $( $inner:tt )+ ) ) => {
         $crate::ShardTree!( $( $inner )+ )
@@ -25,14 +25,14 @@ macro_rules! ShardTree {
 
     // Helper to construct binary operators
     ( @bin Sequence, $left:expr, $( $rest:tt )+ ) => {
-        &$crate::shard::binshard::BinShard {
+        $crate::shard::binshard::BinShard {
             _Left: $left,
             _Right: $crate::ShardTree!( $( $rest )+ ),
             _Op: $crate::shard::binshard::BinShardOp::Sequence,
         }
     };
     ( @bin Choice, $left:expr, $( $rest:tt )+ ) => {
-        &$crate::shard::binshard::BinShard {
+        $crate::shard::binshard::BinShard {
             _Left: $left,
             _Right: $crate::ShardTree!( $( $rest )+ ),
             _Op: $crate::shard::binshard::BinShardOp::Choice,
@@ -41,7 +41,7 @@ macro_rules! ShardTree {
 
     // Helper to construct actions
     ( @action $child:expr, $p:ident, $( $body:tt )+ ) => {
-        &$crate::shard::actionshard::ActionShard {
+        $crate::shard::actionshard::ActionShard {
             _Child: $child,
             _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
         }
@@ -49,7 +49,7 @@ macro_rules! ShardTree {
 
     // Helper to construct repeat shards
     ( @repeat $child:expr, $min:expr ) => {
-        &$crate::shard::repeatshard::RepeatShard {
+        $crate::shard::repeatshard::RepeatShard {
             _Child: $child,
             _USeg: $crate::silo::USeg::NewInf( $min ),
         }

@@ -92,7 +92,7 @@ fn TestRgx2()
     let  	mut output = String::new();
     {
         let  	mut jsonStream = crate::flux::JsonOutStream::New( &mut output, true);
-        jsonStream.KeyField( "identRgx", crate::flux::xflux::XField::FluxSource( &*identRgx));
+        jsonStream.KeyField( "identRgx", crate::flux::xflux::XField::FluxSource( &identRgx));
     }
     println!( "{}", output);
 
