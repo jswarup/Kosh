@@ -1,8 +1,8 @@
 //-- xflux.rs -----------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Arr, U16, U32, U64, U8, USeg };
+use	std::fmt;
 
-//---------------------------------------------------------------------------------------------------------------------------------
-use	crate::silo::IAccess;
+use	super::JsonOutStream;
+use	crate::silo::{ Arr, IAccess, U16, U32, U64, U8, USeg };
 
 pub enum XField< 'a>
 {
@@ -178,3 +178,34 @@ impl IXFluxSource for USeg
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a> fmt::Display for dyn IXFluxSource + 'a
+{
+    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
+    {
+        let  	mut output = String::new();
+        {
+            let  	mut jsonStream = JsonOutStream::New( &mut output, false);
+            jsonStream.FromXField( XField::FluxSource( self));
+        }
+        return write!( f, "{}", output);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a> fmt::Debug for dyn IXFluxSource + 'a
+{
+    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
+    {
+        let  	mut output = String::new();
+        {
+            let  	mut jsonStream = JsonOutStream::New( &mut output, true);
+            jsonStream.FromXField( XField::FluxSource( self));
+        }
+        return write!( f, "{}", output);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+

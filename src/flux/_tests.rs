@@ -1,5 +1,5 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::{ flux::{ JsonOutStream, xflux::XField, FixedStream, BuffStream, IStream }, silo::{ U8, U32 } };
+use	crate::{ flux::{ JsonOutStream, xflux::XField, FixedStream, BuffStream, IStream, IXFluxSource }, silo::{ U8, U32 } };
 use	std::fs;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -77,3 +77,20 @@ fn	TestInStreamFromFile()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestFluxSourceDisplayDebug()
+{
+    let  	pt = Point { _X: 10.0, _Y: 30.3 };
+    let  	source: &dyn IXFluxSource = &pt;
+
+    let  	disp = format!( "{}", source);
+    let  	debug = format!( "{:?}", source);
+
+    assert!( disp.contains( "\"_X\": 10"));
+    assert!( disp.contains( "\"_Y\": 30.3"));
+    assert!( debug.contains( "\n"));
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+

@@ -1,6 +1,5 @@
 //-- leaves.rs -------------------------------------------------------------------------------------------------------------------------
 
-use	std::fmt;
 
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::shard::{ Charset, IGrammar, Parser };
@@ -35,26 +34,6 @@ impl< 'a> IGrammar for StrShard< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> fmt::Display for StrShard< 'a>
-{
-    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
-    {
-        return write!( f, "StrShard( {:?})", self._Val);
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< 'a> fmt::Debug for StrShard< 'a>
-{
-    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
-    {
-        return fmt::Display::fmt( self, f);
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
 pub struct CharsetShard
 {
     pub _Val: Charset,
@@ -80,25 +59,3 @@ impl IGrammar for CharsetShard
         self._Val.Match( parser, marker)
     }
 }
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl fmt::Display for CharsetShard
-{
-    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
-    {
-        return write!( f, "{}", self._Val);
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl fmt::Debug for CharsetShard
-{
-    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
-    {
-        return write!( f, "{:?}", self._Val);
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
