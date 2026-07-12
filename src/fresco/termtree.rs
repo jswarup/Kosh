@@ -1,4 +1,4 @@
-//-- term.rs -------------------------------------------------------------------------------------------------------------------------
+//-- termtree.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	std::fmt;
 use	crate::stalks::{ DynIWorker, IWork };
@@ -282,10 +282,10 @@ where
 macro_rules! TermTree {
     // Helper to construct binary nodes
     ( @bin $op:ident, $l:expr, $( $r:tt )+ ) => {
-        &$crate::fresco::term::TermBinNode {
+        &$crate::fresco::termtree::TermBinNode {
             _Left: $l,
             _Right: $crate::TermTree!( $( $r )+ ),
-            _Op: $crate::fresco::term::TermOp::$op,
+            _Op: $crate::fresco::termtree::TermOp::$op,
         }
     };
 

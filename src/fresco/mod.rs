@@ -6,7 +6,7 @@ pub mod polyexpr;
 pub mod sumexpr;
 pub mod prodexpr;
 pub mod powexpr;
-pub mod term;
+pub mod termtree;
 
 pub use	exprrepos::{ BaseExpr, ExprEntry, ExprRepos };
 pub use	varexpr::{ VarAttrib, VarExpr, VarKind };
@@ -14,7 +14,7 @@ pub use	realexpr::RealExpr;
 pub use	polyexpr::PolyExpr;
 pub use	sumexpr::SumExpr;
 pub use	prodexpr::ProdExpr;
-pub use	term::{ Term, ITermNode, TermOp };
+pub use	termtree::{ Term, ITermNode, TermOp };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 

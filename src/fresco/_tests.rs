@@ -1,7 +1,7 @@
 //-- _tests.rs ------------------------------------------------------------------------------------------------------------------------
 use	crate::fresco::exprrepos::ExprRepos;
 use	crate::fresco::varexpr::{ VarKind, VarExpr };
-use	crate::fresco::term::Term;
+use	crate::fresco::termtree::Term;
 use	crate::silo::U32;
 use	crate::flux::{ JsonOutStream, XField };
 

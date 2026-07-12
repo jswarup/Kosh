@@ -2,10 +2,10 @@
 #[cfg( test)]
 mod _tests;
 pub mod atelier;
-pub mod chore;
+pub mod choretree;
 pub mod maestro;
 pub use	atelier::Atelier;
-pub use	chore::Chore;
+pub use	choretree::Chore;
 pub use	maestro::Maestro;
 
 //---------------------------------------------------------------------------------------------------------------------------------

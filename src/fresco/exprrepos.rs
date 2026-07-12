@@ -6,7 +6,7 @@ use	crate::fresco::realexpr::RealExpr;
 use	crate::fresco::sumexpr::SumExpr;
 use	crate::fresco::prodexpr::ProdExpr;
 use	crate::fresco::powexpr::PowExpr;
-use	crate::fresco::term::{ Term, ITermNode, TermOp };
+use	crate::fresco::termtree::{ Term, ITermNode, TermOp };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 

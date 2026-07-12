@@ -1,4 +1,4 @@
-//-- chore.rs -------------------------------------------------------------------------------------------------------------------------
+//-- choretree.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::{ flux::{ IXFluxSource, xflux::XField }, stalks::IntoWorkPtr };
 use	std::fmt;
 use	crate::stalks::{ DynIWorker, IWork };
@@ -99,13 +99,13 @@ macro_rules! Chore {
 macro_rules! ChoreTree {
     // Helper to construct sequential/parallel nodes
     ( @cat $left:expr, $( $rest:tt )+ ) => {
-        &$crate::heist::chore::ChoreCatNode {
+        &$crate::heist::choretree::ChoreCatNode {
             _Left: $left,
             _Right: $crate::ChoreTree!( $( $rest )+ ),
         }
     };
     ( @par $left:expr, $( $rest:tt )+ ) => {
-        &$crate::heist::chore::ChoreParNode {
+        &$crate::heist::choretree::ChoreParNode {
             _Left: $left,
             _Right: $crate::ChoreTree!( $( $rest )+ ),
         }

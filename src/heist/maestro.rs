@@ -173,7 +173,7 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	PostChoreTree< T: crate::heist::chore::IChoreNode>( &self, node: &T)
+    pub fn	PostChoreTree< T: crate::heist::choretree::IChoreNode>( &self, node: &T)
     {
         let  	mut tails = crate::silo::Buff::NewEmpty();
         let  	head = node.Post( self, &mut tails);
