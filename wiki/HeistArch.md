@@ -51,10 +51,11 @@ Defined in [maestro.rs](../src/heist/maestro.rs), a `Maestro` represents a worke
 > Jobs enqueued via `EnqueueJob` are first pushed to a thread-local `_TempQueue` during execution. They are only flushed to the target run queue once the current job finishes executing (`FlushTempQueue()`), drastically reducing spinlock contention.
 
 ### 3. Chore & ChoreTree (Dependency Graph)
-Defined in [chore.rs](../src/heist/chore.rs), `Chore` represents a unit of work that can be structured into a dependent tree (`dyn INode`) using the `ChoreTree!` macro.
+Defined in [choretree.rs](../src/heist/choretree.rs), `Chore` represents a unit of work that can be structured into a dependent tree using the `ChoreTree!` macro.
+* **Architecture**: The framework is completely independent of the stalks node framework and `INode` trait. Instead, it defines its own sequential/parallel nodes (`ChoreCatNode`, `ChoreParNode`) and a modular recursive posting system under the `IChoreNode` trait.
 * **Operators**:
-  * `a | b`: Parallel execution (OR dependency).
-  * `a < b`: Sequencing (a runs before b).
+  * `a | b`: Parallel execution (OR dependency, constructs a `ChoreParNode`).
+  * `a < b`: Sequencing (a runs before b, constructs a `ChoreCatNode`).
 * When a chore tree is posted (`maestro.PostChoreTree(&choreTree)`), it compiles the tree into `WorkPtr`s with correct successor chains, and schedules them onto the `Atelier`.
 
 ---

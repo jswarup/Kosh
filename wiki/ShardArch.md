@@ -1,12 +1,12 @@
 # Shard Architecture
 
-The Shard framework is a robust, zero-heap-allocation Abstract Syntax Tree (AST) designed for high-performance grammar parsing and backtracking recursive descent execution. The architecture focuses on CPU cache locality, eliminating dynamic memory allocation during tree construction, and maintaining a strict, generic interface via the `INode` and `IGrammar` traits.
+The Shard framework is a robust, zero-heap-allocation Abstract Syntax Tree (AST) designed for high-performance grammar parsing and backtracking recursive descent execution. The architecture focuses on CPU cache locality, eliminating dynamic memory allocation during tree construction, and maintaining a strict, generic interface via the `IGrammar` trait.
 
 ## Core Design Principles
 
-1. **Zero-Heap Allocation**: The Shard AST nodes prioritize stack-allocated references (`&'a DynINode<'a>`) rather than owned heap allocations (`Box<DynINode<'a>>`). This design significantly reduces overhead during parser initialization and ensures that tree traversal is highly cache-efficient.
+1. **Zero-Heap Allocation**: The Shard AST nodes prioritize stack-allocated references rather than owned heap allocations (like `Box`). This design significantly reduces overhead during parser initialization and ensures that tree traversal is highly cache-efficient.
 2. **Rust Temporary Lifetime Extension**: The node construction logic relies heavily on inline struct instantiation directly within the `ShardTree!` macro. By expanding structs like `BinShard` and `StrShard` behind borrow references (`&`) inline, Rust's temporary lifetime extension guarantees that these stack-allocated trees live as long as the enclosing block.
-3. **Trait-driven Modularity**: Nodes implement `INode` (to define structural size and traversal) and `IGrammar` (to define the recursive parser matching semantics).
+3. **Trait-driven Modularity**: Nodes implement `IGrammar` (to define the recursive parser matching semantics) and `IXFluxSource` (to enable serialization).
 
 ## Node Types
 
@@ -41,7 +41,7 @@ pub trait IGrammar {
 
 ## ShardTree Macro
 
-The `ShardTree!` macro is the DSL interface for defining grammars. It overrides the generic `NodeTree!` hooks to provide node resolution tailored specifically to the stack-allocated Shard types:
-* Intercepts `Bor` (`|`) and `Less` (`<`) to generate `BinShard` structures.
-* Intercepts string literals to construct `StrShard` structures inline.
-* Employs the `@feature_BOXET` override to construct `CharsetShard` instances.
+The `ShardTree!` macro is the DSL interface for defining grammars. It is implemented as a clean, highly optimized, and modular recursive macro using internal helper sub-rules (`@resolve`, `@bin`, `@action`, `@repeat`):
+* Utilizes a generic token tree pattern (`$l:tt`) to resolve leaves (identifiers, literals, charsets, and parenthesized groups) via the `@resolve` helper, eliminating redundant rules.
+* Intercepts choices (`|`) and sequences (`<`) to generate `BinShard` structures via the `@bin` helper.
+* Handles repetitions (`*` and `+`) and attached closures (`[ |p| body ]`) via the `@repeat` and `@action` helpers.
