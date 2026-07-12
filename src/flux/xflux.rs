@@ -28,7 +28,9 @@ pub trait IXFluxSink
 
 pub trait IXFluxSource
 {
-    fn	ToXField< 'a>( &'a self, field: &mut XField< 'a>);
+    fn	ToXField< 'a>( &'a self, _field: &mut XField< 'a>)
+    {
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

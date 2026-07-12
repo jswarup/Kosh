@@ -2,7 +2,6 @@
 
 
 use	crate::shard::IGrammar;
-use	crate::flux::IXFluxSource;
 
 
 pub struct PrimeShard
@@ -12,7 +11,7 @@ pub struct PrimeShard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub fn	WSpc( ) -> impl IGrammar + IXFluxSource
+pub fn	WSpc( ) -> impl IGrammar
 {
     crate::ShardTree!( +[ " \t\n\r\x0B\x0C" ] )
 }

@@ -1,13 +1,14 @@
 //-- parser.rs -------------------------------------------------------------------------------------------------------------------
 
 use	crate::flux::instream::IStream;
+use	crate::flux::IXFluxSource;
 use crate::shard::Charset;
 use	crate::silo::{ U32, U8 };
 use	crate::stalks::{ DynIWorker, IWorker, WorkPtr };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IGrammar
+pub trait IGrammar: IXFluxSource
 {
     fn	Match<'p>(&self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32);
 }
@@ -29,10 +30,10 @@ pub struct ParseForge<'p>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-// SAFETY: Parser is used single-threaded within a parse session.
-// The raw pointers in _Stash are not shared across threads.
 unsafe impl<'p> Send for Parser<'p> {}
 unsafe impl<'p> Sync for Parser<'p> {}
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 impl<'p> IWorker for Parser<'p>
 {
@@ -50,7 +51,6 @@ impl<'p> IWorker for Parser<'p>
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
 /// Extension trait to easily downcast a generic IWorker into a Parser
 pub trait IWorkerExt {
     fn AsParser<'p>(&self) -> Option<&mut Parser<'p>>;
@@ -68,7 +68,6 @@ impl IWorkerExt for DynIWorker<'_> {
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
 
 impl<'p> Parser<'p>
 {
@@ -141,6 +140,12 @@ impl IGrammar for char
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl IXFluxSource for char
+{
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl IGrammar for str
 {
     fn	Match<'p>(&self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
@@ -171,11 +176,6 @@ impl IGrammar for str
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-// removed impl<'a> IGrammar for DynINode<'a>
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-
 impl<'a, 'r, T: IGrammar> IGrammar for &'r T
 {
     fn	Match<'p>(&self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
@@ -183,6 +183,5 @@ impl<'a, 'r, T: IGrammar> IGrammar for &'r T
         (**self).Match( parser, marker)
     }
 }
-
 
 //---------------------------------------------------------------------------------------------------------------------------------
