@@ -278,11 +278,74 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+pub trait AsTermNode
+{
+    type Node: ITermNode;
+    fn	AsTermNode( self) -> Self::Node;
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T: ITermNode> AsTermNode for T
+{
+    type Node = T;
+    fn	AsTermNode( self) -> Self::Node
+    {
+        self
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl AsTermNode for char
+{
+    type Node = Term;
+    fn	AsTermNode( self) -> Self::Node
+    {
+        Term::from( self)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl AsTermNode for &str
+{
+    type Node = Term;
+    fn	AsTermNode( self) -> Self::Node
+    {
+        Term::from( self)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl AsTermNode for String
+{
+    type Node = Term;
+    fn	AsTermNode( self) -> Self::Node
+    {
+        Term::from( self)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl AsTermNode for f64
+{
+    type Node = Term;
+    fn	AsTermNode( self) -> Self::Node
+    {
+        Term::from( self)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 #[macro_export]
 macro_rules! TermTree {
     // Helper to construct binary nodes
     ( @bin $op:ident, $l:expr, $( $r:tt )+ ) => {
-        &$crate::fresco::termtree::TermBinNode {
+        $crate::fresco::termtree::TermBinNode {
             _Left: $l,
             _Right: $crate::TermTree!( $( $r )+ ),
             _Op: $crate::fresco::termtree::TermOp::$op,
@@ -317,7 +380,10 @@ macro_rules! TermTree {
 
     // Base Case: Leaf
     ( $leaf:expr ) => {
-        &< Term as From< _>>::from( $leaf )
+        {
+            use	$crate::fresco::termtree::AsTermNode;
+            ( $leaf ).AsTermNode()
+        }
     };
 }
 

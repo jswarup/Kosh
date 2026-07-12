@@ -1,7 +1,7 @@
 //-- _tests.rs ------------------------------------------------------------------------------------------------------------------------
 use	crate::fresco::exprrepos::ExprRepos;
 use	crate::fresco::varexpr::{ VarKind, VarExpr };
-use	crate::fresco::termtree::Term;
+use	crate::fresco::termtree::ITermNode;
 use	crate::silo::U32;
 use	crate::flux::{ JsonOutStream, XField };
 
@@ -27,13 +27,22 @@ fn	TestExprRepos()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+fn	TestTermTreeHelper( ) -> impl ITermNode + crate::flux::IXFluxSource
+{
+    crate::TermTree!(  "a" +"b" +"x" +"d")
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 #[test]
 fn	TestTermTree()
 {
+    let  	q = TestTermTreeHelper();
+    
     let  	x = 'x';
     let  	y = 'y';
     let  	z = "z";
-    let  	nodeTree = crate::TermTree!(  x + y *( z + "a" +"b" +"x" +"d"));
+    let  	nodeTree = crate::TermTree!( q + x + y *( z + "a" +"b" +"x" +"d"));
 
     let  	mut output = String::new();
     {
