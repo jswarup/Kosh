@@ -2,7 +2,7 @@
 use	crate::flux::{ IXFluxSource, xflux::XField };
 
 use	core::any::Any;
-use	crate::silo::U32;
+use	crate::silo::{ U32, U64};
 use	crate::fresco::exprrepos::BaseExpr;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -114,17 +114,17 @@ impl IXFluxSource for VarAttrib
                 true
             } else if step == 1 {
                 *key = "DepTok".to_string();
-                *item = XField::U64( attr._DepTok.0 as u64);
+                *item = XField::U64( U64::From( attr._DepTok.0 as u64));
                 step += 1;
                 true
             } else if step == 2 {
                 *key = "AggrIndex".to_string();
-                *item = XField::U64( attr._AggrIndex.0 as u64);
+                *item = XField::U64( U64::From( attr._AggrIndex.0 as u64));
                 step += 1;
                 true
             } else if step == 3 {
                 *key = "VarFlags".to_string();
-                *item = XField::U64( attr._VarFlags.0 as u64);
+                *item = XField::U64( U64::From( attr._VarFlags.0 as u64));
                 step += 1;
                 true
             } else {
@@ -150,7 +150,7 @@ impl IXFluxSource for VarExpr
                 true
             } else if step == 1 {
                 *key = "VarIndex".to_string();
-                *item = XField::U64( expr._VarIndex.0 as u64);
+                *item = XField::U64( U64::From( expr._VarIndex.0 as u64));
                 step += 1;
                 true
             } else {

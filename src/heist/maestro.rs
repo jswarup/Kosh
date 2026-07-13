@@ -175,13 +175,13 @@ impl< 'a> Maestro< 'a>
 
     pub fn	PostChoreTree< T: crate::heist::choretree::IChoreNode>( &self, node: &T)
     {
-        let  	mut tails = crate::silo::Buff::NewEmpty();
+        let  	mut tails = Buff::NewEmpty();
         let  	head = node.Post( self, &mut tails);
         let  	succId = self.CurSuccId();
         while let  	Some( tail) = tails.Pop() {
-            self.Atelier().SetSucc( crate::silo::U16( tail), succId);
+            self.Atelier().SetSucc( tail, succId);
         }
-        self.EnqueueJob( crate::silo::U16( head));
+        self.EnqueueJob( head);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

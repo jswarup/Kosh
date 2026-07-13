@@ -2,7 +2,7 @@
 
 use	std::{ cmp, fmt, ops::{ BitAnd, BitAndAssign, BitOr, BitOrAssign, Not } };
 use	std::sync::LazyLock;
-use	crate::silo::{ Arr, Buff, U8, U64 };
+use	crate::silo::{ Arr, Buff, U8, U32, U64 };
 use	crate::flux::{IXFluxSource, XField};
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -249,9 +249,9 @@ impl Charset
     //-----------------------------------------------------------------------------------------------------------------------------
 
     /// Count of set bits ( population count).
-    pub fn	Weight( &self) -> u32
+    pub fn	Weight( &self) -> U32
     {
-        self._Bits.iter().map( |w| w.0.count_ones()).sum()
+        U32::From( self._Bits.iter().map( |w| w.0.count_ones()).sum())
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 //-- stalks/node.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::flux::{ IXFluxSource, xflux::XField };
+use crate::silo::U64;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -69,7 +70,7 @@ where
         *field = XField::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Op".to_string();
-                *item = XField::U64( opVal);
+                *item = XField::U64( U64::From(opVal));
                 step += 1;
                 return true;
             }

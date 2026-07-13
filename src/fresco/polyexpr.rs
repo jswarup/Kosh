@@ -1,7 +1,7 @@
 //-- polyexpr.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::fresco::exprrepos::BaseExpr;
-use	crate::silo::{ U32, Buff };
+use	crate::silo::{ U32, U64, Buff };
 use	core::any::Any;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -80,7 +80,7 @@ impl IXFluxSource for PolyExpr
         *field = XField::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "CoSz".to_string();
-                *item = XField::U64( poly._CoSz.0 as u64);
+                *item = XField::U64( U64::From( poly._CoSz.0 as u64));
                 step += 1;
                 true
             } else if step == 1 {
@@ -88,7 +88,7 @@ impl IXFluxSource for PolyExpr
                 let  	mut iterStep = 0usize;
                 *item = XField::Arr( Box::new( move |elem| {
                     if iterStep < poly._Childs.len() {
-                        *elem = XField::U64( poly._Childs[iterStep].0 as u64);
+                        *elem = XField::U64( U64::From( poly._Childs[iterStep].0 as u64));
                         iterStep += 1;
                         true
                     } else {

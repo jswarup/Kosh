@@ -114,8 +114,8 @@ fn	TestArrFromArr()
     assert_eq!( *arrMut.At( 1), 250);
     assert_eq!( arrDataMut[1], 250);
     // Test creating an Arr from a slice
-    let  	sliceData: &[u32] = &[1, 2, 3, 4];
-    let  	arrSlice = Arr::from( sliceData);
+    let  	sliceData = &[ 1, 2, 3, 4];
+    let  	arrSlice: Arr<U32> = Arr::from( sliceData).into();
     assert_eq!( arrSlice.len(), 4);
     assert_eq!( *arrSlice.At( 3), 4);
     // Test Arr<'a, U8>::Str()
@@ -457,7 +457,7 @@ fn	TestConcurrentStackOps()
     assert_eq!( values.len(), 100);
     values.sort();
     for i in 0..100 {
-        assert_eq!( values[i], i as u32);
+        assert_eq!( values[i], U32(i as u32));
     }
 }
 

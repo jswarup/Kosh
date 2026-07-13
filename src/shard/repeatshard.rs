@@ -5,17 +5,17 @@ use	std::fmt;
 use	crate::{
     flux::{ IXFluxSource, xflux::XField },
     shard::{ IGrammar, IForge },
-    silo::U32,
+    silo::{ USeg, U32},
     stalks::UniNode,
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub type RepeatShard< C> = UniNode< C, crate::silo::USeg>;
+pub type RepeatShard< C> = UniNode< C, USeg>;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< C> IXFluxSource for UniNode< C, crate::silo::USeg>
+impl< C> IXFluxSource for UniNode< C, USeg>
 where
     C: IXFluxSource,
 {
@@ -43,7 +43,7 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< C> IGrammar for UniNode< C, crate::silo::USeg>
+impl< C> IGrammar for UniNode< C, USeg>
 where
     C: IGrammar,
 {
@@ -51,7 +51,7 @@ where
     {
         let  	mut count = U32( 0);
         let  	first = self._Op.First();
-        let  	last = if self._Op.IsEmpty() { U32( std::u32::MAX) } else { self._Op.Last() };
+        let  	last = if self._Op.IsEmpty() { U32::_X } else { self._Op.Last() };
         let  	origMark = forge.Mark();
         let  	mut currMark = origMark;
         let  	mut f = forge;
@@ -82,7 +82,7 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< C> fmt::Display for UniNode< C, crate::silo::USeg>
+impl< C> fmt::Display for UniNode< C, USeg>
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
@@ -92,7 +92,7 @@ impl< C> fmt::Display for UniNode< C, crate::silo::USeg>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< C> fmt::Debug for UniNode< C, crate::silo::USeg>
+impl< C> fmt::Debug for UniNode< C, USeg>
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {

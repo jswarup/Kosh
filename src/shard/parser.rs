@@ -4,7 +4,7 @@ use	crate::flux::instream::IStream;
 use	crate::flux::IXFluxSource;
 use crate::shard::Charset;
 use	crate::silo::{ U32, U8 };
-use	crate::stalks::{ DynIWorker, IWorker, WorkPtr, INode };
+use	crate::stalks::{ IWorker, WorkPtr, INode };
 
 //---------------------------------------------------------------------------------------------------------------------------------
  
@@ -52,9 +52,7 @@ impl<'a, 'p> ParseForge<'a, 'p>
             _Rslt: succ,
         }
     }
-}
-
-
+} 
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -108,23 +106,6 @@ impl<'p> IWorker for Parser<'p>
     fn	AsRawWorker( &self) -> *const ()
     {
         self as *const _ as *const ()
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-/// Extension trait to easily downcast a generic IWorker into a Parser
-pub trait IWorkerExt {
-    fn AsParser<'p>(&self) -> Option<&mut Parser<'p>>;
-}
-
-impl IWorkerExt for DynIWorker<'_> {
-    fn AsParser<'p>(&self) -> Option<&mut Parser<'p>> {
-        let raw_ptr = self.AsRawWorker() as *mut Parser<'p>;
-        if raw_ptr.is_null() {
-            None
-        } else {
-            Some(unsafe { &mut *raw_ptr })
-        }
     }
 }
 

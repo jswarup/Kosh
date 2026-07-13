@@ -9,7 +9,7 @@ pub enum XField< 'a>
     Null,
     Str( &'a str),
     String( String),
-    U64( u64),
+    U64( U64),
     F64( f64),
     Bool( bool),
     Arr( Box< dyn FnMut( &mut XField< 'a>) -> bool + 'a>),
@@ -86,7 +86,7 @@ macro_rules! ImplIXFluxSourceUInt
             {
                 fn	ToXField< 'a>( &'a self, field: &mut XField< 'a>)
                 {
-                    *field = XField::U64( self.0 as u64);
+                    *field = XField::U64(  U64::From( self.0 as u64));
                 }
             }
         )+
