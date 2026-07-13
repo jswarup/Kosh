@@ -25,33 +25,35 @@ macro_rules! ShardTree {
 
     // Helper to construct binary operators
     ( @bin Sequence, $left:expr, $( $rest:tt )+ ) => {
-        $crate::shard::binshard::BinShard {
+        $crate::stalks::BinNode {
             _Left: $left,
             _Right: $crate::ShardTree!( $( $rest )+ ),
-            _Op: $crate::shard::binshard::BinShardOp::Sequence,
+            _Op: $crate::stalks::BinOp::Less,
         }
     };
     ( @bin Choice, $left:expr, $( $rest:tt )+ ) => {
-        $crate::shard::binshard::BinShard {
+        $crate::stalks::BinNode {
             _Left: $left,
             _Right: $crate::ShardTree!( $( $rest )+ ),
-            _Op: $crate::shard::binshard::BinShardOp::Choice,
+            _Op: $crate::stalks::BinOp::Bor,
         }
     };
 
     // Helper to construct actions
     ( @action $child:expr, $p:ident, $( $body:tt )+ ) => {
-        $crate::shard::actionshard::ActionShard {
+        $crate::stalks::UniNode {
             _Child: $child,
-            _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+            _Op: $crate::shard::actionshard::ActionOp {
+                _Action: $crate::shard::actionshard::Coerce( | $p: &crate::stalks::work::DynIWorker<'_> | { $( $body )+ } ),
+            },
         }
     };
 
     // Helper to construct repeat shards
     ( @repeat $child:expr, $min:expr ) => {
-        $crate::shard::repeatshard::RepeatShard {
+        $crate::stalks::UniNode {
             _Child: $child,
-            _USeg: $crate::silo::USeg::NewInf( $min ),
+            _Op: $crate::silo::USeg::NewInf( $min ),
         }
     };
 

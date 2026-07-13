@@ -1,7 +1,9 @@
 //-- termtree.rs ---------------------------------------------------------------------------------------------------------------------
-use	crate::flux::{ IXFluxSource, xflux::XField };
+use	crate::{
+    flux::{ IXFluxSource, xflux::XField },
+    stalks::{ DynIWorker, IWork, BinNode, INode, BinOp },
+};
 use	std::fmt;
-use	crate::stalks::{ DynIWorker, IWork };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -120,25 +122,11 @@ impl From< f64> for Term
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Clone, Copy, PartialEq, Eq, Debug)]
-#[repr(u64)]
-pub enum TermOp
-{
-    Sum = 0,
-    Prod = 1,
-    Sub = 2,
-    Div = 3,
-    Pow = 4,
-    None = 5,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-pub trait ITermNode
+pub trait ITermNode: INode
 {
     fn	ChildrenCount( &self) -> usize;
     fn	Child( &self, idx: usize) -> &dyn ITermNode;
-    fn	Op( &self) -> TermOp;
+    fn	Op( &self) -> BinOp;
     fn	AsLeaf( &self) -> Option< &Term>;
 }
 
@@ -156,9 +144,9 @@ impl ITermNode for Term
         panic!( "Leaf has no children");
     }
 
-    fn	Op( &self) -> TermOp
+    fn	Op( &self) -> BinOp
     {
-        TermOp::None
+        BinOp::None
     }
 
     fn	AsLeaf( &self) -> Option< &Term>
@@ -181,7 +169,7 @@ impl< T: ITermNode + ?Sized> ITermNode for &T
         ( **self).Child( idx)
     }
 
-    fn	Op( &self) -> TermOp
+    fn	Op( &self) -> BinOp
     {
         ( **self).Op()
     }
@@ -194,53 +182,11 @@ impl< T: ITermNode + ?Sized> ITermNode for &T
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct TermBinNode< L, R>
-{
-    pub _Left: L,
-    pub _Right: R,
-    pub _Op: TermOp,
-}
+pub type TermBinNode< L, R> = BinNode< L, R>;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< L, R> IXFluxSource for TermBinNode< L, R>
-where
-    L: IXFluxSource,
-    R: IXFluxSource,
-{
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
-    {
-        let  	mut step = 0u32;
-        let  	node = self;
-        *field = XField::Obj( Box::new( move |key, item| {
-            if step == 0 {
-                *key = "Op".to_string();
-                *item = XField::U64( node._Op as u64);
-                step += 1;
-                
-                true
-            } else if step == 1 {
-                *key = "LeftChild".to_string();
-                node._Left.ToXField( item);
-                step += 1;
-                
-                true
-            } else if step == 2 {
-                *key = "RightChild".to_string();
-                node._Right.ToXField( item);
-                step += 1;
-                
-                true
-            } else {
-                false
-            }
-        }));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< L, R> ITermNode for TermBinNode< L, R>
+impl< L, R> ITermNode for BinNode< L, R>
 where
     L: ITermNode,
     R: ITermNode,
@@ -265,7 +211,7 @@ where
         }
     }
 
-    fn	Op( &self) -> TermOp
+    fn	Op( &self) -> BinOp
     {
         self._Op
     }
@@ -345,10 +291,10 @@ impl AsTermNode for f64
 macro_rules! TermTree {
     // Helper to construct binary nodes
     ( @bin $op:ident, $l:expr, $( $r:tt )+ ) => {
-        $crate::fresco::termtree::TermBinNode {
+        $crate::stalks::BinNode {
             _Left: $l,
             _Right: $crate::TermTree!( $( $r )+ ),
-            _Op: $crate::fresco::termtree::TermOp::$op,
+            _Op: $crate::stalks::BinOp::$op,
         }
     };
 

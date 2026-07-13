@@ -1,17 +1,24 @@
 //-- actionshard.rs -----------------------------------------------------------------------------------------------------------------
-use	crate::silo::U32;
-use	crate::stalks::work::DynIWork;
-use	crate::flux::{ IXFluxSource, xflux::XField };
+
 use	std::fmt;
-use	crate::shard::{ IGrammar, Parser };
+
+use	crate::{
+    flux::{ IXFluxSource, xflux::XField },
+    shard::{ IGrammar, Parser },
+    silo::U32,
+    stalks::{ work::DynIWork, UniNode },
+};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct ActionShard< C, W>
+pub struct ActionOp< W>
 {
-    pub _Child: C,
     pub _Action: W,
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub type ActionShard< C, W> = UniNode< C, ActionOp< W>>;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -24,13 +31,13 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< C, W> IXFluxSource for ActionShard< C, W>
+impl< C, W> IXFluxSource for UniNode< C, ActionOp< W>>
 where
     C: IXFluxSource,
     W: Send + Sync,
 {
     fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
-{
+    {
         let  	mut step = 0u32;
         let  	node = self;
         *field = XField::Obj( Box::new( move |key, item| {
@@ -44,23 +51,25 @@ where
                 *item = XField::Str( "Action");
                 step += 1;
                 true
-            } else { false }
+            } else {
+                false
+            }
         }));
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< C, W> IGrammar for ActionShard< C, W>
+impl< C, W> IGrammar for UniNode< C, ActionOp< W>>
 where
     C: IGrammar,
     W: crate::stalks::work::IWork + 'static,
 {
     fn	Match<'p>(&self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
-{
-        let (matched, new_mark) = self._Child.Match( parser, marker);
+    {
+        let  	(matched, new_mark) = self._Child.Match( parser, marker);
         if matched {
-            let  	actionPtr = &self._Action as &DynIWork< 'static> as *const DynIWork< 'static>;
+            let  	actionPtr = &self._Op._Action as &DynIWork< 'static> as *const DynIWork< 'static>;
             #[allow( invalid_reference_casting)]
             let  	actionMut = unsafe { &mut *( actionPtr as *mut DynIWork< 'static>) };
             actionMut.DoWork( parser);
@@ -72,20 +81,20 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< C, W> fmt::Display for ActionShard< C, W>
+impl< C, W> fmt::Display for UniNode< C, ActionOp< W>>
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
-{
+    {
         write!( f, "Action")
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< C, W> fmt::Debug for ActionShard< C, W>
+impl< C, W> fmt::Debug for UniNode< C, ActionOp< W>>
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
-{
+    {
         fmt::Display::fmt( self, f)
     }
 }

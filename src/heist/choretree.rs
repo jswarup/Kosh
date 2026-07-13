@@ -1,7 +1,9 @@
 //-- choretree.rs ---------------------------------------------------------------------------------------------------------------------
-use	crate::{ flux::{ IXFluxSource, xflux::XField }, stalks::IntoWorkPtr };
+use	crate::{
+    flux::{ IXFluxSource, xflux::XField },
+    stalks::{ IntoWorkPtr, BinNode, DynIWorker, IWork, INode, BinOp },
+};
 use	std::fmt;
-use	crate::stalks::{ DynIWorker, IWork };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -99,15 +101,17 @@ macro_rules! Chore {
 macro_rules! ChoreTree {
     // Helper to construct sequential/parallel nodes
     ( @cat $left:expr, $( $rest:tt )+ ) => {
-        $crate::heist::choretree::ChoreCatNode {
+        $crate::stalks::BinNode {
             _Left: $left,
             _Right: $crate::ChoreTree!( $( $rest )+ ),
+            _Op: $crate::stalks::BinOp::Less,
         }
     };
     ( @par $left:expr, $( $rest:tt )+ ) => {
-        $crate::heist::choretree::ChoreParNode {
+        $crate::stalks::BinNode {
             _Left: $left,
             _Right: $crate::ChoreTree!( $( $rest )+ ),
+            _Op: $crate::stalks::BinOp::Bor,
         }
     };
 
@@ -162,7 +166,7 @@ macro_rules! ChoreTree {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IChoreNode
+pub trait IChoreNode: INode
 {
     fn	Post( &self, maestro: &crate::heist::Maestro, tails: &mut crate::silo::Buff< u16>) -> u16;
 }
@@ -190,122 +194,42 @@ impl IChoreNode for Chore
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
-pub struct ChoreParNode< L, R>
-{
-    pub _Left: L,
-    pub _Right: R,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< L, R> IXFluxSource for ChoreParNode< L, R>
-where
-    L: IXFluxSource,
-    R: IXFluxSource,
-{
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
-    {
-        let  	mut step = 0u32;
-        let  	node = self;
-        *field = XField::Obj( Box::new( move |key, item| {
-            if step == 0 {
-                *key = "Left".to_string();
-                node._Left.ToXField( item);
-                step += 1;
-                true
-            } else if step == 1 {
-                *key = "Right".to_string();
-                node._Right.ToXField( item);
-                step += 1;
-                true
-            } else {
-                false
-            }
-        }));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< L, R> IChoreNode for ChoreParNode< L, R>
+impl< L, R> IChoreNode for BinNode< L, R>
 where
     L: IChoreNode,
     R: IChoreNode,
 {
     fn	Post( &self, maestro: &crate::heist::Maestro, tails: &mut crate::silo::Buff< u16>) -> u16
     {
-        let  	mut leftTails = crate::silo::Buff::NewEmpty();
-        let  	mut rightTails = crate::silo::Buff::NewEmpty();
-        let  	headL = self._Left.Post( maestro, &mut leftTails);
-        let  	headR = self._Right.Post( maestro, &mut rightTails);
-        while let  	Some( t) = leftTails.Pop() {
-            tails.Push( t);
-        }
-        while let  	Some( t) = rightTails.Pop() {
-            tails.Push( t);
-        }
-        let  	mut heads = crate::silo::Buff::NewEmpty();
-        heads.Push( crate::silo::U16( headL));
-        heads.Push( crate::silo::U16( headR));
-        let  	enqId = maestro.ConstructEnqueArr( crate::silo::U16( 0), heads, "EnqPar");
-        enqId.0
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-pub struct ChoreCatNode< L, R>
-{
-    pub _Left: L,
-    pub _Right: R,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< L, R> IXFluxSource for ChoreCatNode< L, R>
-where
-    L: IXFluxSource,
-    R: IXFluxSource,
-{
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
-    {
-        let  	mut step = 0u32;
-        let  	node = self;
-        *field = XField::Obj( Box::new( move |key, item| {
-            if step == 0 {
-                *key = "Left".to_string();
-                node._Left.ToXField( item);
-                step += 1;
-                true
-            } else if step == 1 {
-                *key = "Right".to_string();
-                node._Right.ToXField( item);
-                step += 1;
-                true
-            } else {
-                false
+        match self._Op {
+            BinOp::Bor => {
+                let  	mut leftTails = crate::silo::Buff::NewEmpty();
+                let  	mut rightTails = crate::silo::Buff::NewEmpty();
+                let  	headL = self._Left.Post( maestro, &mut leftTails);
+                let  	headR = self._Right.Post( maestro, &mut rightTails);
+                while let  	Some( t) = leftTails.Pop() {
+                    tails.Push( t);
+                }
+                while let  	Some( t) = rightTails.Pop() {
+                    tails.Push( t);
+                }
+                let  	mut heads = crate::silo::Buff::NewEmpty();
+                heads.Push( crate::silo::U16( headL));
+                heads.Push( crate::silo::U16( headR));
+                let  	enqId = maestro.ConstructEnqueArr( crate::silo::U16( 0), heads, "EnqPar");
+                enqId.0
             }
-        }));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< L, R> IChoreNode for ChoreCatNode< L, R>
-where
-    L: IChoreNode,
-    R: IChoreNode,
-{
-    fn	Post( &self, maestro: &crate::heist::Maestro, tails: &mut crate::silo::Buff< u16>) -> u16
-    {
-        let  	mut leftTails = crate::silo::Buff::NewEmpty();
-        let  	headL = self._Left.Post( maestro, &mut leftTails);
-        let  	headR = self._Right.Post( maestro, tails);
-        while let  	Some( leftTail) = leftTails.Pop() {
-            maestro.Atelier().SetSucc( crate::silo::U16( leftTail), crate::silo::U16( headR));
+            BinOp::Less => {
+                let  	mut leftTails = crate::silo::Buff::NewEmpty();
+                let  	headL = self._Left.Post( maestro, &mut leftTails);
+                let  	headR = self._Right.Post( maestro, tails);
+                while let  	Some( leftTail) = leftTails.Pop() {
+                    maestro.Atelier().SetSucc( crate::silo::U16( leftTail), crate::silo::U16( headR));
+                }
+                headL
+            }
+            _ => panic!( "Unsupported operator in ChoreTree Post"),
         }
-        headL
     }
 }
 

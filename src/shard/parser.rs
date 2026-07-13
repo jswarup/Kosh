@@ -4,11 +4,11 @@ use	crate::flux::instream::IStream;
 use	crate::flux::IXFluxSource;
 use crate::shard::Charset;
 use	crate::silo::{ U32, U8 };
-use	crate::stalks::{ DynIWorker, IWorker, WorkPtr };
+use	crate::stalks::{ DynIWorker, IWorker, WorkPtr, INode };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IGrammar: IXFluxSource
+pub trait IGrammar: INode
 {
     fn	Match<'p>(&self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32);
 }

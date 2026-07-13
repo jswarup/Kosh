@@ -6,7 +6,8 @@ use	crate::fresco::realexpr::RealExpr;
 use	crate::fresco::sumexpr::SumExpr;
 use	crate::fresco::prodexpr::ProdExpr;
 use	crate::fresco::powexpr::PowExpr;
-use	crate::fresco::termtree::{ Term, ITermNode, TermOp };
+use	crate::fresco::termtree::{ Term, ITermNode };
+use	crate::stalks::BinOp;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -229,7 +230,7 @@ impl ExprRepos
         let  	exprStash = Stash::<U32>::New( 1024, 0, 0.into());
         let  	mut exprStk = exprStash.Stk();
 
-        fn	Collect( repos: &mut ExprRepos, child: &dyn ITermNode, parentOp: TermOp, exprStk: &mut crate::silo::Stk< '_, '_, U32>)
+        fn	Collect( repos: &mut ExprRepos, child: &dyn ITermNode, parentOp: BinOp, exprStk: &mut crate::silo::Stk< '_, '_, U32>)
         {
             if child.Op() == parentOp {
                 for i in 0 .. child.ChildrenCount() {
@@ -243,7 +244,7 @@ impl ExprRepos
         fn	Traverse( repos: &mut ExprRepos, node: &dyn ITermNode, exprStk: &mut crate::silo::Stk< '_, '_, U32>)
         {
             let  	curOp = node.Op();
-            if curOp == TermOp::None {
+            if curOp == BinOp::None {
                 let  	term = node.AsLeaf().unwrap();
                 let  	exprId = match term {
                     Term::String( s) => {
@@ -266,23 +267,23 @@ impl ExprRepos
             exprStk.SetSize( startIdx);
             let  	emptyArr = Arr::from( &[][..]);
             let  	exprId = match curOp {
-                TermOp::Sum => {
+                BinOp::Sum => {
                     repos.SumCreate( arr, emptyArr)
                 }
-                TermOp::Prod => {
+                BinOp::Prod => {
                     repos.ProdCreate( arr, emptyArr)
                 }
-                TermOp::Sub => {
+                BinOp::Sub => {
                     repos.SumCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1))
                 }
-                TermOp::Div => {
+                BinOp::Div => {
                     repos.ProdCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1))
                 }
-                TermOp::Pow => {
+                BinOp::Pow => {
                     repos.PowCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1))
                 }
                 _ => {
-                    panic!( "Unsupported TermOp in PostTermTree: {:?}", curOp);
+                    panic!( "Unsupported BinOp in PostTermTree: {:?}", curOp);
                 }
             };
             exprStk.Push( exprId);
