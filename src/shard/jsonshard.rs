@@ -26,16 +26,14 @@ impl IXFluxSource for JsonShard
 
 impl IGrammar for JsonShard
 {
-    fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F) -> Option< U32>
+    fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F)
     {
         let  	res = JsonShard::MatchValue( forge);
         if let Some( newM) = res {
             let  	nextM = JsonShard::SkipWhitespace( forge.Parser(), newM);
             forge.Deposit( Some( nextM));
-            Some( nextM)
         } else {
             forge.Deposit( None);
-            None
         }
     }
 }
@@ -131,9 +129,8 @@ impl JsonShard
         {
             let  	wspc = WSpc();
             let  	mut wspcForge = wspc.Forge( forge);
-            let  	res = wspc.Match( &mut wspcForge);
-            wspcForge.Deposit( res);
-            if res.is_some() {
+            wspc.Match( &mut wspcForge);
+            if wspcForge.Result().is_some() {
                 m = wspcForge.Mark();
             }
         }
@@ -178,9 +175,8 @@ impl JsonShard
             forge.SetMark( m);
             let  	real = Real;
             let  	mut realForge = real.Forge( forge);
-            let  	res = real.Match( &mut realForge);
-            realForge.Deposit( res);
-            if res.is_some() {
+            real.Match( &mut realForge);
+            if realForge.Result().is_some() {
                 let  	nextM = realForge.Mark();
                 return Some( nextM);
             }

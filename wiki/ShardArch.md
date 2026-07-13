@@ -12,10 +12,10 @@ The Shard framework is a robust, zero-heap-allocation Abstract Syntax Tree (AST)
 
 The Shard AST consists of consolidated, lightweight structs, separated broadly into leaves, binary nodes, and unary modifiers.
 
-### Leaves (`leaves.rs`)
+### Leaves (`leaves.rs` and `charset.rs`)
 Terminal nodes in the AST represent basic consumable elements from the input stream.
 * **`StrShard`**: Wraps a static or temporary string slice (`&str`). Used to match literal token strings. The `ShardTree!` macro matches raw string literals (`$val:literal`) directly and evaluates them into `StrShard`s.
-* **`CharsetShard`**: Wraps a `Charset` bitset to match any character belonging to a custom set (e.g., via `Boxet!`).
+* **`Charset`**: A 256-bit set representing character classes, matching any character in the set (e.g., constructed via `Boxet!`).
 
 ### Binary Nodes (`binshard.rs`)
 Nodes that manage two child paths.
@@ -42,5 +42,5 @@ pub trait IGrammar: INode {
 ## ShardTree Macro
 
 The `ShardTree!` macro is the DSL interface for defining grammars:
-* It keeps only the leaf resolution rules (`CharsetShard`, `StrShard`) and UniNode constructor helpers (`@action`, `@repeat`).
+* It keeps only the leaf resolution rules (`Charset`, `StrShard`) and UniNode constructor helpers (`@action`, `@repeat`).
 * Delegates all recursive operator precedence parsing (infix choice `|`, sequencing `<`) and modifiers (`*`, `+`, `[ |p| body ]`) directly to Kosh's centralized `NodeTree!` macro.

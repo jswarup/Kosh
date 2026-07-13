@@ -116,6 +116,11 @@ impl< 'a, 'p, P: IForge< 'p>, W: crate::stalks::work::IWork + 'static> IForge< '
             self._CurrMark = mark;
         }
     }
+
+    fn	Result( &self) -> Option< U32>
+    {
+        self._Result
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -128,7 +133,7 @@ impl< 'a, 'p, P: IForge< 'p>, W: crate::stalks::work::IWork + 'static> Drop for 
             let  	actionPtr = self._Action as &DynIWork< 'static> as *const DynIWork< 'static>;
             let  	actionMut = actionPtr.MutRef();
             actionMut.DoWork( self._Parent.Parser());
-            self._Parent.SetMark( mark);
+            self._Parent.Deposit( Some( mark));
         } else {
             self._Parent.SetMark( self._OrigMark);
         }
@@ -154,12 +159,10 @@ where
         ActionForge::New( parent, &self._Op._Action)
     }
 
-    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F) -> Option< U32>
+    fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F)
     {
-        let  	mut action_forge = self.Forge( forge);
-        let  	res = self._Child.Match( &mut action_forge);
-        action_forge.Deposit( res);
-        res
+        let  	mut actionForge = self.Forge( forge);
+        self._Child.Match( &mut actionForge);
     }
 }
 

@@ -11,7 +11,7 @@ pub use charset::Charset;
 pub use parser::{ Parser, IGrammar, IForge };
 pub use binshard::BinShard;
 pub mod numbers;
-pub use leaves::{ StrShard, CharsetShard };
+pub use leaves::StrShard;
 pub mod jsonshard;
 pub use jsonshard::{ JsonShard, Json };
 pub use numbers::{ UIntShard, UInt, IntShard, Int, HexShard, Hex, RealShard, Real, HexRealShard, HexReal };

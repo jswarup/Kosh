@@ -2,7 +2,6 @@
 use	crate::{
     shard::{ IGrammar, IForge },
     stalks::{ BinNode, BinOp },
-    silo::U32,
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -16,50 +15,44 @@ where
     L: IGrammar,
     R: IGrammar,
 {
-    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F) -> Option< U32>
+    fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F)
     {
         match self._Op {
             BinOp::Bor => {
-                let  	res = {
-                    let  	mut left_forge = self._Left.Forge( forge);
-                    let  	res = self._Left.Match( &mut left_forge);
-                    left_forge.Deposit( res);
-                    res
+                let  	leftRes = {
+                    let  	mut leftForge = self._Left.Forge( forge);
+                    self._Left.Match( &mut leftForge);
+                    leftForge.Result()
                 };
-                if res.is_some() {
-                    forge.Deposit( res);
-                    return res;
+                if leftRes.is_some() {
+                    forge.Deposit( leftRes);
+                    return;
                 }
                 
-                let  	res = {
-                    let  	mut right_forge = self._Right.Forge( forge);
-                    let  	res = self._Right.Match( &mut right_forge);
-                    right_forge.Deposit( res);
-                    res
+                let  	rightRes = {
+                    let  	mut rightForge = self._Right.Forge( forge);
+                    self._Right.Match( &mut rightForge);
+                    rightForge.Result()
                 };
-                forge.Deposit( res);
-                res
+                forge.Deposit( rightRes);
             }
             BinOp::Less => {
-                let  	m1_res = {
-                    let  	mut left_forge = self._Left.Forge( forge);
-                    let  	res = self._Left.Match( &mut left_forge);
-                    left_forge.Deposit( res);
-                    res
+                let  	leftRes = {
+                    let  	mut leftForge = self._Left.Forge( forge);
+                    self._Left.Match( &mut leftForge);
+                    leftForge.Result()
                 };
-                if m1_res.is_none() {
+                if leftRes.is_none() {
                     forge.Deposit( None);
-                    return None;
+                    return;
                 }
                 
-                let  	m2 = {
-                    let  	mut right_forge = self._Right.Forge( forge);
-                    let  	res = self._Right.Match( &mut right_forge);
-                    right_forge.Deposit( res);
-                    res
+                let  	rightRes = {
+                    let  	mut rightForge = self._Right.Forge( forge);
+                    self._Right.Match( &mut rightForge);
+                    rightForge.Result()
                 };
-                forge.Deposit( m2);
-                m2
+                forge.Deposit( rightRes);
             }
             _ => panic!( "Unsupported operator in BinShard Match"),
         }

@@ -14,6 +14,7 @@ pub trait IForge< 'p>: Send + Sync
     fn	Mark( &self) -> U32; 
     fn	SetMark( &mut self, mark: U32);
     fn	Deposit( &mut self, result: Option< U32>);
+    fn	Result( &self) -> Option< U32>;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -70,6 +71,11 @@ impl< 'a, 'p, P: IForge< 'p>> IForge< 'p> for BaseForge< 'a, 'p, P>
             self._CurrMark = mark;
         }
     }
+
+    fn	Result( &self) -> Option< U32>
+    {
+        self._Result
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -79,7 +85,7 @@ impl< 'a, 'p, P: IForge< 'p>> Drop for BaseForge< 'a, 'p, P>
     fn	drop( &mut self)
     {
         if let Some( mark) = self._Result {
-            self._Parent.SetMark( mark);
+            self._Parent.Deposit( Some( mark));
         } else {
             self._Parent.SetMark( self._OrigMark);
         }
@@ -102,7 +108,7 @@ pub trait IGrammar: INode
         BaseForge::New( parent)
     }
 
-    fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F) -> Option< U32>;
+    fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -161,6 +167,11 @@ impl<'a, 'p> IForge<'p> for ParseForge<'a, 'p>
             self._Marker = mark;
         }
     }
+
+    fn	Result( &self) -> Option< U32>
+    {
+        self._Result
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -200,9 +211,8 @@ impl<'p> Parser<'p>
     pub fn Parse< G: IGrammar + ?Sized>( &mut self, grammar: &'p G) -> bool
     {
         let  	mut forge = ParseForge::New( self, U32( 0));
-        let  	res = grammar.Match( &mut forge);
-        forge.Deposit( res);
-        let  	matched = res.is_some();
+        grammar.Match( &mut forge);
+        let  	matched = forge.Result().is_some();
         matched
     }
 
@@ -231,17 +241,15 @@ impl<'p> Parser<'p>
 
 impl IGrammar for Charset
 {
-    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F) -> Option< U32>
+    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F)
     {
         let  	mark = forge.Mark();
         let  	curr = forge.Parser().Curr( mark);
         if self.Get( curr.0) {
             let  	res = Some( mark + U32( 1));
             forge.Deposit( res);
-            res
         } else {
             forge.Deposit( None);
-            None
         }
     }
 }
@@ -250,17 +258,15 @@ impl IGrammar for Charset
 
 impl IGrammar for char
 {
-    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F) -> Option< U32>
+    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F)
     {
         let  	mark = forge.Mark();
         let  	curr = forge.Parser().Curr( mark);
         if curr == U8( *self as u8) {
             let  	res = Some( mark + U32( 1));
             forge.Deposit( res);
-            res
         } else {
             forge.Deposit( None);
-            None
         }
     }
 }
@@ -275,13 +281,13 @@ impl IXFluxSource for char
 
 impl IGrammar for str
 {
-    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F) -> Option< U32>
+    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F)
     {
         // Ensure that empty string matches without consuming
         if self.is_empty() {
             let  	res = Some( forge.Mark());
             forge.Deposit( res);
-            return res;
+            return;
         }
 
         let  	mark = forge.Mark();
@@ -291,14 +297,13 @@ impl IGrammar for str
             let  	curr = forge.Parser().Curr( m);
             if curr.0 != b {
                 forge.Deposit( None);
-                return None;
+                return;
             }
             m += U32( 1);
         }
 
         let  	res = Some( m);
         forge.Deposit( res);
-        res
     }
 }
 
@@ -306,11 +311,9 @@ impl IGrammar for str
 
 impl< 'a, 'r, T: IGrammar> IGrammar for &'r T
 {
-    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F) -> Option< U32>
+    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F)
     {
-        let  	res = (**self).Match( forge);
-        forge.Deposit( res);
-        res
+        (**self).Match( forge);
     }
 }
 

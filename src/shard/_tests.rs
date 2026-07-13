@@ -50,9 +50,8 @@ fn	TestParserBasic()
         let  	matched = {
             let  	g = &'h';
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
         let mut m = forge.Mark();
         assert!( matched);
@@ -60,9 +59,8 @@ fn	TestParserBasic()
         let  	matched = {
             let  	g = &'e';
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
         m = forge.Mark();
         assert!( matched);
@@ -72,9 +70,8 @@ fn	TestParserBasic()
         let  	matched = {
             let  	g = &"llo ";
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
         m = forge.Mark();
         assert!( matched);
@@ -83,9 +80,8 @@ fn	TestParserBasic()
         let  	matched = {
             let  	g = &cs;
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
         m = forge.Mark();
         assert!( matched);
@@ -95,9 +91,8 @@ fn	TestParserBasic()
         let  	matched = {
             let  	g = &"fail";
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };assert!( !matched);
     }
 }
@@ -116,9 +111,8 @@ fn TestPostBoxet()
     let  	matched = {
             let  	g = &tree;
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };assert!(matched);
 }
 
@@ -145,9 +139,8 @@ fn TestRgx2()
     let  	matched = {
             let  	g = &identRgx;
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
     let m1 = forge.Mark(); // Should match greedy
     assert!(matched);
@@ -160,9 +153,8 @@ fn TestRgx2()
     let  	matched = {
             let  	g = &identRgx;
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
     let m2 = forge.Mark(); // Should succeed but match 6 chars 
     assert!(matched);
@@ -184,9 +176,8 @@ fn TestUIntShard()
     let  	matched = {
             let  	g = &tree;
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
     let m1 = forge.Mark();
     assert!(matched);
@@ -199,9 +190,8 @@ fn TestUIntShard()
     let  	matched = {
             let  	g = &tree;
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };assert!(!matched);
     
     // Test with mixed string
@@ -211,9 +201,8 @@ fn TestUIntShard()
     let  	matched = {
             let  	g = &tree;
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
     let m3 = forge.Mark();
     assert!(matched);
@@ -233,9 +222,8 @@ fn TestIntShard() {
     let  	matched = {
             let  	g = &tree;
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
     let m1 = forge.Mark();
     assert!(matched);
@@ -248,9 +236,8 @@ fn TestIntShard() {
     let  	matched = {
             let  	g = &tree;
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
     let m2 = forge.Mark();
     assert!(matched);
@@ -268,9 +255,8 @@ fn TestHexShard() {
     let  	matched = {
             let  	g = &tree;
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
     let m1 = forge.Mark();
     assert!(matched);
@@ -283,9 +269,8 @@ fn TestHexShard() {
     let  	matched = {
             let  	g = &tree;
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
     let m2 = forge.Mark();
     assert!(matched);
@@ -303,9 +288,8 @@ fn TestRealShard() {
     let  	matched = {
             let  	g = &tree;
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
     let m1 = forge.Mark();
     assert!(matched);
@@ -318,9 +302,8 @@ fn TestRealShard() {
     let  	matched = {
             let  	g = &tree;
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
     let m2 = forge.Mark();
     assert!(matched);
@@ -338,9 +321,8 @@ fn TestHexRealShard() {
     let  	matched = {
             let  	g = &tree;
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
     let m1 = forge.Mark();
     assert!(matched);
@@ -353,9 +335,8 @@ fn TestHexRealShard() {
     let  	matched = {
             let  	g = &tree;
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
     let m2 = forge.Mark();
     assert!(matched);
@@ -375,9 +356,8 @@ fn TestJsonShard() {
     let  	matched = {
             let  	g = &tree;
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
     let m1 = forge.Mark();
     assert!(matched);
@@ -399,9 +379,8 @@ fn TestJsonShard() {
     let  	matched = {
             let  	g = &tree;
             let  	mut subForge = g.Forge( &mut forge);
-            let  	res = g.Match( &mut subForge);
-            subForge.Deposit( res);
-            res.is_some()
+            g.Match( &mut subForge);
+            subForge.Result().is_some()
         };
     let m2 = forge.Mark();
     assert!(matched);

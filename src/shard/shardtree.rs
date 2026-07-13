@@ -6,7 +6,7 @@
 macro_rules! ShardTree {
     // Leaf / node creation calls
     ( @leaf [ $s:literal ] ) => {
-        $crate::shard::leaves::CharsetShard { _Val: <$crate::shard::Charset>::from( $s.as_bytes() ) }
+        <$crate::shard::Charset>::from( $s.as_bytes() )
     };
     ( @leaf $l:literal ) => {
         $crate::shard::leaves::StrShard { _Val: $l }
