@@ -28,15 +28,28 @@ Nodes that wrap a single child grammar path for modified execution semantics.
 * **`RepeatShard`**: A type alias of Kosh's generic `UniNode<C, crate::silo::USeg>`. It encapsulates a child node and allows for unbounded repetitions (e.g., Kleene star `*` or plus `+`), leveraging `USeg` logic.
 * **`ActionShard`**: A type alias of Kosh's generic `UniNode<C, ActionOp<W>>`. It encapsulates a child node and attaches a semantic action (worker closure) that executes upon a successful match.
 
-## Grammar Parsing
+## Grammar Parsing and Detached Processing
 
-The `IGrammar` trait is the core matching interface implemented by all shards.
+The `IGrammar` and `IForge` traits form the core matching and detached processing architecture of the Shard framework.
 ```rust
 pub trait IGrammar: INode {
-    fn Match<'p>(&'p self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32);
+    fn	Forge< 'a, 'p, P: IForge< 'p> + 'a>( &'a self, parent: &'a mut P) -> impl IForge< 'p> + 'a
+    where
+        'p: 'a;
+
+    fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F);
+}
+
+pub trait IForge< 'p>: Send + Sync {
+    fn	Parser( &mut self) -> &mut Parser< 'p>;
+    fn	Mark( &self) -> U32;
+    fn	SetMark( &mut self, mark: U32);
+    fn	Deposit( &mut self, result: Option< U32>);
+    fn	Result( &self) -> Option< U32>;
 }
 ```
-* **Backtracking**: The `Parser` maintains the state of the stream via markers (`U32`). If a grammar path matches successfully, it returns `(true, marker)`. If it fails, it backtrack-restores the original marker.
+* **Detached Match & Processing**: The match phase (`IGrammar::Match`) is decoupled from processing semantics. When a shard's grammar matches, it deposits its results (such as matching offsets or markers) onto the local `IForge` instance created for that grammar.
+* **Drop-Based Backtracking**: If matching fails, the `Drop` implementation of the local forge automatically rolls back the parent's marker to its original starting state. If matching succeeds, the local forge propagates its outcome (and triggers any related semantic actions, as in `ActionForge`) by calling `self._Parent.Deposit(Some(mark))` upon destruction.
 * **Stream Coupling**: The parser reads tokens directly utilizing the `IXFluxSource` data stream mechanism, seamlessly integrating with Kosh's broader ecosystem.
 
 ## ShardTree Macro
