@@ -2,7 +2,7 @@
 
 use	std::fmt;
 use	crate::flux::{ IXFluxSource, xflux::XField };
-use	crate::shard::{ Charset, IGrammar, Parser, IForge, parser::ParseForge };
+use	crate::shard::{ Charset, IGrammar, Parser, IForge };
 use	crate::silo::{U32, U8};
 use	crate::shard::numbers::Real;
 use	crate::shard::WSpc;
@@ -26,15 +26,13 @@ impl IXFluxSource for JsonShard
 
 impl IGrammar for JsonShard
 {
-    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F) -> Option< U32>
+    fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F) -> Option< U32>
     {
-        let  	mark = forge.Mark();
-        let ( matched, new_mark) = JsonShard::MatchValue( forge.Parser(), mark);
-        if matched {
-            let  	next_mark = JsonShard::SkipWhitespace( forge.Parser(), new_mark);
-            let  	res = Some( next_mark);
-            forge.Deposit( res);
-            res
+        let  	res = JsonShard::MatchValue( forge);
+        if let Some( newM) = res {
+            let  	nextM = JsonShard::SkipWhitespace( forge.Parser(), newM);
+            forge.Deposit( Some( nextM));
+            Some( nextM)
         } else {
             forge.Deposit( None);
             None
@@ -49,11 +47,11 @@ impl JsonShard
 
     fn	SkipWhitespace< 'p>( parser: &mut Parser< 'p>, marker: U32) -> U32
     {
-        let     whiteSpace = Charset::Space();
-        let mut m = marker;
+        let  	whiteSpace = Charset::Space();
+        let  	mut m = marker;
         loop {
             let  	curr = parser.Curr( m);
-            if whiteSpace.Get( curr)  {
+            if whiteSpace.Get( curr) {
                 if let  	Some( nextMark) = parser.Next( m) {
                     m = nextMark;
                 } else {
@@ -70,20 +68,19 @@ impl JsonShard
 
     fn	MatchString< 'p>( parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
     {
-        let mut m = marker;
+        let  	mut m = marker;
         let  	curr = parser.Curr( m);
         if curr != U8( b'"') {
-            return (false, marker);
+            return ( false, marker);
         }
         
         if let  	Some( next) = parser.Next( m) {
             m = next;
             let  	mut escape = false;
             loop {
-                // If we reach the end of the stream without closing quote, return false.
                 let  	c = parser.Curr( m);
                 if c == U8( 0) && m.0 as usize >= parser.InStream().Size() {
-                    return (false, marker);
+                    return ( false, marker);
                 }
 
                 if escape {
@@ -91,21 +88,21 @@ impl JsonShard
                 } else if c == U8( b'\\') {
                     escape = true;
                 } else if c == U8( b'"') {
-                    if let Some(nxt) = parser.Next( m) {
-                        return (true, nxt);
+                    if let Some( nxt) = parser.Next( m) {
+                        return ( true, nxt);
                     } else {
-                        return (false, marker);
+                        return ( false, marker);
                     }
                 }
                 
                 if let  	Some( nxt) = parser.Next( m) {
                     m = nxt;
                 } else {
-                    return (false, marker); // EOF before closing quote
+                    return ( false, marker);
                 }
             }
         }
-        (false, marker)
+        ( false, marker)
     }
 
     //---------------------------------------------------------------------------------------------------------------------------------
@@ -115,160 +112,196 @@ impl JsonShard
         let  	mut m = marker;
         for &b in keyword {
             if parser.Curr( m) != U8( b) {
-                return (false, marker);
+                return ( false, marker);
             }
             if let  	Some( nxt) = parser.Next( m) {
                 m = nxt;
             } else {
-                return (false, marker);
+                return ( false, marker);
             }
         }
-        (true, m)
+        ( true, m)
     }
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchValue< 'p>( parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    fn	MatchValue< 'p, F: IForge< 'p>>( forge: &mut F) -> Option< U32>
     {
-        let m = {
-            let mut forge = ParseForge::New(parser, marker);
-            let  	res = WSpc().Match( &mut forge);
-            forge.Deposit( res);
+        let  	mut m = forge.Mark();
+        {
+            let  	wspc = WSpc();
+            let  	mut wspcForge = wspc.Forge( forge);
+            let  	res = wspc.Match( &mut wspcForge);
+            wspcForge.Deposit( res);
             if res.is_some() {
-                forge.Mark()
-            } else {
-                marker
+                m = wspcForge.Mark();
             }
-        };
-        let  	curr = parser.Curr( m);
+        }
+        
+        let  	curr = forge.Parser().Curr( m);
         
         if curr == U8( b'{') {
-            return Self::MatchObject( parser, m);
+            forge.SetMark( m);
+            return Self::MatchObject( forge);
         } else if curr == U8( b'[') {
-            return Self::MatchArray( parser, m);
+            forge.SetMark( m);
+            return Self::MatchArray( forge);
         } else if curr == U8( b'"') {
-            return Self::MatchString( parser, m);
-        } else if curr == U8( b't') {
-            return Self::MatchKeyword( parser, m, b"true");
-        } else if curr == U8( b'f') {
-            return Self::MatchKeyword( parser, m, b"false");
-        } else if curr == U8( b'n') {
-            return Self::MatchKeyword( parser, m, b"null");
-        } else if curr == U8( b'-') || ( curr >= U8( b'0') && curr <= U8( b'9')) {
-            let mut sub_forge = ParseForge::New(parser, m);
-            let  	res = Real.Match( &mut sub_forge );
-            sub_forge.Deposit( res);
-            if res.is_some() {
-                return (true, sub_forge.Mark());
+            let ( matched, nextM) = Self::MatchString( forge.Parser(), m);
+            if matched {
+                forge.SetMark( nextM);
+                return Some( nextM);
             }
-            return (false, marker);
+            return None;
+        } else if curr == U8( b't') {
+            let ( matched, nextM) = Self::MatchKeyword( forge.Parser(), m, b"true");
+            if matched {
+                forge.SetMark( nextM);
+                return Some( nextM);
+            }
+            return None;
+        } else if curr == U8( b'f') {
+            let ( matched, nextM) = Self::MatchKeyword( forge.Parser(), m, b"false");
+            if matched {
+                forge.SetMark( nextM);
+                return Some( nextM);
+            }
+            return None;
+        } else if curr == U8( b'n') {
+            let ( matched, nextM) = Self::MatchKeyword( forge.Parser(), m, b"null");
+            if matched {
+                forge.SetMark( nextM);
+                return Some( nextM);
+            }
+            return None;
+        } else if curr == U8( b'-') || ( curr >= U8( b'0') && curr <= U8( b'9')) {
+            forge.SetMark( m);
+            let  	real = Real;
+            let  	mut realForge = real.Forge( forge);
+            let  	res = real.Match( &mut realForge);
+            realForge.Deposit( res);
+            if res.is_some() {
+                let  	nextM = realForge.Mark();
+                return Some( nextM);
+            }
+            return None;
         }
         
-        (false, marker)
+        None
     }
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchArray< 'p>( parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    fn	MatchArray< 'p, F: IForge< 'p>>( forge: &mut F) -> Option< U32>
     {
-        let mut m = marker;
-        if parser.Curr( m) != U8( b'[') {
-            return (false, marker);
+        let  	mut m = forge.Mark();
+        if forge.Parser().Curr( m) != U8( b'[') {
+            return None;
         }
-        m = if let  	Some( nxt) = parser.Next( m) { nxt } else {
-            return (false, marker);
+        m = if let  	Some( nxt) = forge.Parser().Next( m) { nxt } else {
+            return None;
         };
         
-        m = Self::SkipWhitespace( parser, m);
-        if parser.Curr( m) == U8( b']') {
-            if let Some(nxt) = parser.Next( m) {
-                return (true, nxt);
+        m = Self::SkipWhitespace( forge.Parser(), m);
+        if forge.Parser().Curr( m) == U8( b']') {
+            if let Some( nxt) = forge.Parser().Next( m) {
+                forge.SetMark( nxt);
+                return Some( nxt);
             } else {
-                return (false, marker);
+                return None;
             }
         }
         
+        forge.SetMark( m);
         loop {
-            let (matched, next_m) = Self::MatchValue( parser, m);
-            if !matched {
-                return (false, marker);
+            let  	nextM = Self::MatchValue( forge);
+            if let Some( nxt) = nextM {
+                m = nxt;
+            } else {
+                return None;
             }
-            m = next_m;
-            m = Self::SkipWhitespace( parser, m);
-            let  	curr = parser.Curr( m);
+            
+            m = Self::SkipWhitespace( forge.Parser(), m);
+            let  	curr = forge.Parser().Curr( m);
             if curr == U8( b',') {
-                m = if let  	Some( nxt) = parser.Next( m) { nxt } else {
-                    return (false, marker);
+                m = if let  	Some( nxt) = forge.Parser().Next( m) { nxt } else {
+                    return None;
                 };
+                forge.SetMark( m);
             } else if curr == U8( b']') {
-                if let Some(nxt) = parser.Next( m) {
-                    return (true, nxt);
+                if let Some( nxt) = forge.Parser().Next( m) {
+                    forge.SetMark( nxt);
+                    return Some( nxt);
                 } else {
-                    return (false, marker);
+                    return None;
                 }
             } else {
-                return (false, marker);
+                return None;
             }
         }
     }
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchObject< 'p>( parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    fn	MatchObject< 'p, F: IForge< 'p>>( forge: &mut F) -> Option< U32>
     {
-        let mut m = marker;
-        if parser.Curr( m) != U8( b'{') {
-            return (false, marker);
+        let  	mut m = forge.Mark();
+        if forge.Parser().Curr( m) != U8( b'{') {
+            return None;
         }
-        m = if let  	Some( nxt) = parser.Next( m) { nxt } else {
-            return (false, marker);
+        m = if let  	Some( nxt) = forge.Parser().Next( m) { nxt } else {
+            return None;
         };
         
-        m = Self::SkipWhitespace( parser, m);
-        if parser.Curr( m) == U8( b'}') {
-            if let Some(nxt) = parser.Next( m) {
-                return (true, nxt);
+        m = Self::SkipWhitespace( forge.Parser(), m);
+        if forge.Parser().Curr( m) == U8( b'}') {
+            if let Some( nxt) = forge.Parser().Next( m) {
+                forge.SetMark( nxt);
+                return Some( nxt);
             } else {
-                return (false, marker);
+                return None;
             }
         }
         
         loop {
-            m = Self::SkipWhitespace( parser, m);
-            let (matched, next_m) = Self::MatchString( parser, m);
+            m = Self::SkipWhitespace( forge.Parser(), m);
+            let ( matched, nextM) = Self::MatchString( forge.Parser(), m);
             if !matched {
-                return (false, marker);
+                return None;
             }
-            m = next_m;
-            m = Self::SkipWhitespace( parser, m);
+            m = nextM;
+            m = Self::SkipWhitespace( forge.Parser(), m);
             
-            if parser.Curr( m) != U8( b':') {
-                return (false, marker);
+            if forge.Parser().Curr( m) != U8( b':') {
+                return None;
             }
-            m = if let  	Some( nxt) = parser.Next( m) { nxt } else {
-                return (false, marker);
+            m = if let  	Some( nxt) = forge.Parser().Next( m) { nxt } else {
+                return None;
             };
             
-            let (matched, next_m) = Self::MatchValue( parser, m);
-            if !matched {
-                return (false, marker);
+            forge.SetMark( m);
+            let  	nextValM = Self::MatchValue( forge);
+            if let Some( nxt) = nextValM {
+                m = nxt;
+            } else {
+                return None;
             }
-            m = next_m;
-            m = Self::SkipWhitespace( parser, m);
+            m = Self::SkipWhitespace( forge.Parser(), m);
             
-            let  	curr = parser.Curr( m);
+            let  	curr = forge.Parser().Curr( m);
             if curr == U8( b',') {
-                m = if let  	Some( nxt) = parser.Next( m) { nxt } else {
-                    return (false, marker);
+                m = if let  	Some( nxt) = forge.Parser().Next( m) { nxt } else {
+                    return None;
                 };
             } else if curr == U8( b'}') {
-                if let Some(nxt) = parser.Next( m) {
-                    return (true, nxt);
+                if let Some( nxt) = forge.Parser().Next( m) {
+                    forge.SetMark( nxt);
+                    return Some( nxt);
                 } else {
-                    return (false, marker);
+                    return None;
                 }
             } else {
-                return (false, marker);
+                return None;
             }
         }
     }
