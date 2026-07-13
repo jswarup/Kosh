@@ -91,9 +91,9 @@ fn	TestChoreHelper() -> impl IChoreNode
     crate::ChoreTree!( ( cChore
             < ( bChore
                 | aChore
-                | ( |_m| {
+                | |_m| {
                     print!( "{} ", 50);
-                })))
+                }))
     )
 }
 
