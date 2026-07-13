@@ -91,3 +91,55 @@ where
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[macro_export]
+macro_rules! NodeTree {
+    // Helper to construct binary nodes
+    ( @bin $op:ident, $left:expr, $macro:ident, $( $rest:tt )+ ) => {
+        $crate::stalks::BinNode {
+            _Left: $left,
+            _Right: $crate::$macro!( $( $rest )+ ),
+            _Op: $crate::stalks::BinOp::$op,
+        }
+    };
+
+    // Parser rules:
+    // Group with remainder
+    ( @parse $macro:ident, ( $( $inner:tt )+ ) + $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Sum,  $crate::$macro!( ( $( $inner )+ ) ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, ( $( $inner:tt )+ ) * $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Prod, $crate::$macro!( ( $( $inner )+ ) ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, ( $( $inner:tt )+ ) - $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Sub,  $crate::$macro!( ( $( $inner )+ ) ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, ( $( $inner:tt )+ ) / $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Div,  $crate::$macro!( ( $( $inner )+ ) ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, ( $( $inner:tt )+ ) ^ $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Pow,  $crate::$macro!( ( $( $inner )+ ) ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, ( $( $inner:tt )+ ) < $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Less, $crate::$macro!( ( $( $inner )+ ) ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, ( $( $inner:tt )+ ) | $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Bor,  $crate::$macro!( ( $( $inner )+ ) ), $macro, $( $rest )+ ) };
+
+    // Ident with remainder
+    ( @parse $macro:ident, $l:ident + $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Sum,  $crate::$macro!( $l ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, $l:ident * $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Prod, $crate::$macro!( $l ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, $l:ident - $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Sub,  $crate::$macro!( $l ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, $l:ident / $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Div,  $crate::$macro!( $l ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, $l:ident ^ $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Pow,  $crate::$macro!( $l ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, $l:ident < $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Less, $crate::$macro!( $l ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, $l:ident | $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Bor,  $crate::$macro!( $l ), $macro, $( $rest )+ ) };
+
+    // Literal with remainder
+    ( @parse $macro:ident, $l:literal + $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Sum,  $crate::$macro!( $l ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, $l:literal * $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Prod, $crate::$macro!( $l ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, $l:literal - $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Sub,  $crate::$macro!( $l ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, $l:literal / $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Div,  $crate::$macro!( $l ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, $l:literal ^ $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Pow,  $crate::$macro!( $l ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, $l:literal < $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Less, $crate::$macro!( $l ), $macro, $( $rest )+ ) };
+    ( @parse $macro:ident, $l:literal | $( $rest:tt )+ ) => { $crate::NodeTree!( @bin Bor,  $crate::$macro!( $l ), $macro, $( $rest )+ ) };
+
+    // Group base case
+    ( @parse $macro:ident, ( $( $inner:tt )+ ) ) => {
+        $crate::$macro!( $( $inner )+ )
+    };
+
+    // Fallback leaf rule
+    ( @parse $macro:ident, $( $leaf:tt )+ ) => {
+        $crate::$macro!( @leaf $( $leaf )+ )
+    };
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------

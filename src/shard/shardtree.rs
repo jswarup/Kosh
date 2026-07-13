@@ -25,18 +25,10 @@ macro_rules! ShardTree {
 
     // Helper to construct binary operators
     ( @bin Sequence, $left:expr, $( $rest:tt )+ ) => {
-        $crate::stalks::BinNode {
-            _Left: $left,
-            _Right: $crate::ShardTree!( $( $rest )+ ),
-            _Op: $crate::stalks::BinOp::Less,
-        }
+        $crate::NodeTree!( @bin Less, $left, ShardTree, $( $rest )+ )
     };
     ( @bin Choice, $left:expr, $( $rest:tt )+ ) => {
-        $crate::stalks::BinNode {
-            _Left: $left,
-            _Right: $crate::ShardTree!( $( $rest )+ ),
-            _Op: $crate::stalks::BinOp::Bor,
-        }
+        $crate::NodeTree!( @bin Bor, $left, ShardTree, $( $rest )+ )
     };
 
     // Helper to construct actions

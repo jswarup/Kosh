@@ -289,47 +289,17 @@ impl AsTermNode for f64
 
 #[macro_export]
 macro_rules! TermTree {
-    // Helper to construct binary nodes
-    ( @bin $op:ident, $l:expr, $( $r:tt )+ ) => {
-        $crate::stalks::BinNode {
-            _Left: $l,
-            _Right: $crate::TermTree!( $( $r )+ ),
-            _Op: $crate::stalks::BinOp::$op,
-        }
-    };
-
-    // Group with remainder
-    ( ( $( $inner:tt )+ ) + $( $rest:tt )+ ) => { $crate::TermTree!( @bin Sum,  $crate::TermTree!( ( $( $inner )+ ) ), $( $rest )+ ) };
-    ( ( $( $inner:tt )+ ) * $( $rest:tt )+ ) => { $crate::TermTree!( @bin Prod, $crate::TermTree!( ( $( $inner )+ ) ), $( $rest )+ ) };
-    ( ( $( $inner:tt )+ ) - $( $rest:tt )+ ) => { $crate::TermTree!( @bin Sub,  $crate::TermTree!( ( $( $inner )+ ) ), $( $rest )+ ) };
-    ( ( $( $inner:tt )+ ) / $( $rest:tt )+ ) => { $crate::TermTree!( @bin Div,  $crate::TermTree!( ( $( $inner )+ ) ), $( $rest )+ ) };
-    ( ( $( $inner:tt )+ ) ^ $( $rest:tt )+ ) => { $crate::TermTree!( @bin Pow,  $crate::TermTree!( ( $( $inner )+ ) ), $( $rest )+ ) };
-
-    // Ident with remainder
-    ( $l:ident + $( $rest:tt )+ ) => { $crate::TermTree!( @bin Sum,  $crate::TermTree!( $l ), $( $rest )+ ) };
-    ( $l:ident * $( $rest:tt )+ ) => { $crate::TermTree!( @bin Prod, $crate::TermTree!( $l ), $( $rest )+ ) };
-    ( $l:ident - $( $rest:tt )+ ) => { $crate::TermTree!( @bin Sub,  $crate::TermTree!( $l ), $( $rest )+ ) };
-    ( $l:ident / $( $rest:tt )+ ) => { $crate::TermTree!( @bin Div,  $crate::TermTree!( $l ), $( $rest )+ ) };
-    ( $l:ident ^ $( $rest:tt )+ ) => { $crate::TermTree!( @bin Pow,  $crate::TermTree!( $l ), $( $rest )+ ) };
-
-    // Literal with remainder
-    ( $l:literal + $( $rest:tt )+ ) => { $crate::TermTree!( @bin Sum,  $crate::TermTree!( $l ), $( $rest )+ ) };
-    ( $l:literal * $( $rest:tt )+ ) => { $crate::TermTree!( @bin Prod, $crate::TermTree!( $l ), $( $rest )+ ) };
-    ( $l:literal - $( $rest:tt )+ ) => { $crate::TermTree!( @bin Sub,  $crate::TermTree!( $l ), $( $rest )+ ) };
-    ( $l:literal / $( $rest:tt )+ ) => { $crate::TermTree!( @bin Div,  $crate::TermTree!( $l ), $( $rest )+ ) };
-    ( $l:literal ^ $( $rest:tt )+ ) => { $crate::TermTree!( @bin Pow,  $crate::TermTree!( $l ), $( $rest )+ ) };
-
-    // Base Case: Group
-    ( ( $( $inner:tt )+ ) ) => {
-        $crate::TermTree!( $( $inner )+ )
-    };
-
-    // Base Case: Leaf
-    ( $leaf:expr ) => {
+    // 1. leaf rule
+    ( @leaf $( $leaf:tt )+ ) => {
         {
             use	$crate::fresco::termtree::AsTermNode;
-            ( $leaf ).AsTermNode()
+            ( $( $leaf )+ ).AsTermNode()
         }
+    };
+
+    // 2. Delegate to NodeTree
+    ( $( $tt:tt )+ ) => {
+        $crate::NodeTree!( @parse TermTree, $( $tt )+ )
     };
 }
 

@@ -99,68 +99,34 @@ macro_rules! Chore {
 
 #[macro_export]
 macro_rules! ChoreTree {
-    // Helper to construct sequential/parallel nodes
-    ( @cat $left:expr, $( $rest:tt )+ ) => {
-        $crate::stalks::BinNode {
-            _Left: $left,
-            _Right: $crate::ChoreTree!( $( $rest )+ ),
-            _Op: $crate::stalks::BinOp::Less,
-        }
-    };
-    ( @par $left:expr, $( $rest:tt )+ ) => {
-        $crate::stalks::BinNode {
-            _Left: $left,
-            _Right: $crate::ChoreTree!( $( $rest )+ ),
-            _Op: $crate::stalks::BinOp::Bor,
-        }
-    };
-
-    // 1. Grouping with remainder
-    ( ( $( $inner:tt )+ ) < $( $rest:tt )+ ) => {
-        $crate::ChoreTree!( @cat $crate::ChoreTree!( ( $( $inner )+ ) ), $( $rest )+ )
-    };
-    ( ( $( $inner:tt )+ ) | $( $rest:tt )+ ) => {
-        $crate::ChoreTree!( @par $crate::ChoreTree!( ( $( $inner )+ ) ), $( $rest )+ )
-    };
-
-    // 2. Closure with remainder
-    ( | $arg:ident | $body:block < $( $rest:tt )+ ) => {
-        $crate::ChoreTree!( @cat $crate::heist::Chore::New( |$arg| $body ), $( $rest )+ )
-    };
-    ( | $arg:ident | $body:block | $( $rest:tt )+ ) => {
-        $crate::ChoreTree!( @par $crate::heist::Chore::New( |$arg| $body ), $( $rest )+ )
-    };
-    ( move | $arg:ident | $body:block < $( $rest:tt )+ ) => {
-        $crate::ChoreTree!( @cat $crate::heist::Chore::New( move |$arg| $body ), $( $rest )+ )
-    };
-    ( move | $arg:ident | $body:block | $( $rest:tt )+ ) => {
-        $crate::ChoreTree!( @par $crate::heist::Chore::New( move |$arg| $body ), $( $rest )+ )
-    };
-
-    // 3. Ident with remainder
-    ( $l:ident < $( $rest:tt )+ ) => {
-        $crate::ChoreTree!( @cat $l, $( $rest )+ )
-    };
-    ( $l:ident | $( $rest:tt )+ ) => {
-        $crate::ChoreTree!( @par $l, $( $rest )+ )
-    };
-
-    // Base Case: Group
-    ( ( $( $inner:tt )+ ) ) => {
-        $crate::ChoreTree!( $( $inner )+ )
-    };
-
-    // Base Case: Closure
+    // 1. Pre-parse closures:
     ( | $arg:ident | $body:block ) => {
         $crate::heist::Chore::New( |$arg| $body )
     };
     ( move | $arg:ident | $body:block ) => {
         $crate::heist::Chore::New( move |$arg| $body )
     };
+    ( | $arg:ident | $body:block < $( $rest:tt )+ ) => {
+        $crate::NodeTree!( @bin Less, $crate::heist::Chore::New( |$arg| $body ), ChoreTree, $( $rest )+ )
+    };
+    ( | $arg:ident | $body:block | $( $rest:tt )+ ) => {
+        $crate::NodeTree!( @bin Bor, $crate::heist::Chore::New( |$arg| $body ), ChoreTree, $( $rest )+ )
+    };
+    ( move | $arg:ident | $body:block < $( $rest:tt )+ ) => {
+        $crate::NodeTree!( @bin Less, $crate::heist::Chore::New( move |$arg| $body ), ChoreTree, $( $rest )+ )
+    };
+    ( move | $arg:ident | $body:block | $( $rest:tt )+ ) => {
+        $crate::NodeTree!( @bin Bor, $crate::heist::Chore::New( move |$arg| $body ), ChoreTree, $( $rest )+ )
+    };
 
-    // Base Case: Expr
-    ( $leaf:expr ) => {
-        $leaf
+    // 2. leaf rule
+    ( @leaf $( $leaf:tt )+ ) => {
+        $( $leaf )+
+    };
+
+    // 3. Delegate to NodeTree
+    ( $( $tt:tt )+ ) => {
+        $crate::NodeTree!( @parse ChoreTree, $( $tt )+ )
     };
 }
 
