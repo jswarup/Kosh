@@ -19,29 +19,28 @@ Terminal nodes in the AST represent basic consumable elements from the input str
 
 ### Binary Nodes (`binshard.rs`)
 Nodes that manage two child paths.
-* **`BinShard`**: A parameterized binary node that encapsulates the `_Left` and `_Right` child branches. It uses a `BinShardOp` to determine its behavior:
-  * `BinShardOp::Choice`: Corresponds to the `|` (Bor) operator, branching to find the first matching sub-grammar.
-  * `BinShardOp::Sequence`: Corresponds to the `<` (Less) operator, consecutively matching the left and right branches.
+* **`BinShard`**: A type alias of Kosh's generic `BinNode<L, R>`. It encapsulates the `_Left` and `_Right` child branches. It uses the unified `BinOp` enum to determine its behavior:
+  - `BinOp::Bor`: Corresponds to the `|` (Bor) operator, branching to find the first matching sub-grammar.
+  - `BinOp::Less`: Corresponds to the `<` (Less) operator, consecutively matching the left and right branches.
 
 ### Unary Nodes
 Nodes that wrap a single child grammar path for modified execution semantics.
-* **`RepeatShard`**: Encapsulates a child node and allows for unbounded repetitions (e.g., Kleene star `*` or plus `+`), leveraging `USeg` logic.
-* **`ActionShard`**: Encapsulates a child node and attaches a semantic action (worker closure) that executes upon a successful match.
+* **`RepeatShard`**: A type alias of Kosh's generic `UniNode<C, crate::silo::USeg>`. It encapsulates a child node and allows for unbounded repetitions (e.g., Kleene star `*` or plus `+`), leveraging `USeg` logic.
+* **`ActionShard`**: A type alias of Kosh's generic `UniNode<C, ActionOp<W>>`. It encapsulates a child node and attaches a semantic action (worker closure) that executes upon a successful match.
 
 ## Grammar Parsing
 
 The `IGrammar` trait is the core matching interface implemented by all shards.
 ```rust
-pub trait IGrammar {
-    fn Match<'p>(&'p self, parser: &mut Parser<'p>, marker: U32) -> Option<U32>;
+pub trait IGrammar: INode {
+    fn Match<'p>(&'p self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32);
 }
 ```
-* **Backtracking**: The `Parser` maintains the state of the stream via markers (`U32`). If a grammar path matches successfully, it returns a new stream marker wrapped in `Some`. If it fails, it returns `None`, allowing choice nodes like `BinShardOp::Choice` to safely backtrack to the original marker and attempt alternative branches.
+* **Backtracking**: The `Parser` maintains the state of the stream via markers (`U32`). If a grammar path matches successfully, it returns `(true, marker)`. If it fails, it backtrack-restores the original marker.
 * **Stream Coupling**: The parser reads tokens directly utilizing the `IXFluxSource` data stream mechanism, seamlessly integrating with Kosh's broader ecosystem.
 
 ## ShardTree Macro
 
-The `ShardTree!` macro is the DSL interface for defining grammars. It is implemented as a clean, highly optimized, and modular recursive macro using internal helper sub-rules (`@resolve`, `@bin`, `@action`, `@repeat`):
-* Utilizes a generic token tree pattern (`$l:tt`) to resolve leaves (identifiers, literals, charsets, and parenthesized groups) via the `@resolve` helper, eliminating redundant rules.
-* Intercepts choices (`|`) and sequences (`<`) to generate `BinShard` structures via the `@bin` helper.
-* Handles repetitions (`*` and `+`) and attached closures (`[ |p| body ]`) via the `@repeat` and `@action` helpers.
+The `ShardTree!` macro is the DSL interface for defining grammars:
+* It keeps only the leaf resolution rules (`CharsetShard`, `StrShard`) and UniNode constructor helpers (`@action`, `@repeat`).
+* Delegates all recursive operator precedence parsing (infix choice `|`, sequencing `<`) and modifiers (`*`, `+`, `[ |p| body ]`) directly to Kosh's centralized `NodeTree!` macro.

@@ -52,10 +52,11 @@ Defined in [maestro.rs](../src/heist/maestro.rs), a `Maestro` represents a worke
 
 ### 3. Chore & ChoreTree (Dependency Graph)
 Defined in [choretree.rs](../src/heist/choretree.rs), `Chore` represents a unit of work that can be structured into a dependent tree using the `ChoreTree!` macro.
-* **Architecture**: The framework is completely independent of the stalks node framework and `INode` trait. Instead, it defines its own sequential/parallel nodes (`ChoreCatNode`, `ChoreParNode`) and a modular recursive posting system under the `IChoreNode` trait.
+* **Architecture**: The framework inherits from Kosh's unified stalks node framework and `INode` trait. Sequential and parallel dependency nodes are represented generics-first using `BinNode<L, R>` with the unified `BinOp` operator enum. Recursive posting is defined under the `IChoreNode` trait.
 * **Operators**:
-  * `a | b`: Parallel execution (OR dependency, constructs a `ChoreParNode`).
-  * `a < b`: Sequencing (a runs before b, constructs a `ChoreCatNode`).
+  * `a | b`: Parallel execution (OR dependency, constructs a `BinNode` with `BinOp::Bor`).
+  * `a < b`: Sequencing (a runs before b, constructs a `BinNode` with `BinOp::Less`).
+* **DSL Parsing**: The `ChoreTree!` macro delegates its infix parsing directly to Kosh's generic `NodeTree!` macro, keeping its implementation focused solely on leaf `Chore` node instantiation.
 * When a chore tree is posted (`maestro.PostChoreTree(&choreTree)`), it compiles the tree into `WorkPtr`s with correct successor chains, and schedules them onto the `Atelier`.
 
 ---

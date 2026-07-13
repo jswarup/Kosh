@@ -20,24 +20,18 @@ A leaf node representing either a variable or a real numeric literal:
 * `Term::Real(f64)`: Floating-point numeric literal.
 
 ### 2. TermBinNode (Binary Nodes)
-A generic struct holding binary arithmetic operation branches:
-```rust
-pub struct TermBinNode< L, R> {
-    pub _Left: L,
-    pub _Right: R,
-    pub _Op: TermOp,
-}
-```
-It is parameterized over left (`L`) and right (`R`) branches, allowing nested trees of diverse types to compile down to nested stack-allocated structures.
+A type alias of Kosh's generic `BinNode<L, R>`. It is parameterized over left (`L`) and right (`R`) branches, allowing nested trees of diverse types to compile down to nested stack-allocated structures.
 
-### 3. TermOp Enum
-Represents supported arithmetic operations:
-* `Sum`: Addition (`+`)
-* `Prod`: Multiplication (`*`)
-* `Sub`: Subtraction (`-`)
-* `Div`: Division (`/`)
-* `Pow`: Exponentiation (`^`)
-* `None`: Terminal leaf sentinel
+### 3. BinOp Enum (Unified Binary Operators)
+Represents supported arithmetic and structural operations across all modules in Kosh:
+* `Sum = 0`: Addition (`+`)
+* `Prod = 1`: Multiplication (`*`)
+* `Sub = 2`: Subtraction (`-`)
+* `Div = 3`: Division (`/`)
+* `Pow = 4`: Exponentiation (`^`)
+* `None = 5`: Terminal leaf sentinel
+* `Less = 6`: Sequential sequence
+* `Bor = 7`: Parallel choice
 
 ---
 
@@ -48,23 +42,25 @@ Nodes implement the following traits:
 ### 1. `ITermNode`
 Provides generic tree-walking operations:
 ```rust
-pub trait ITermNode {
+pub trait ITermNode: INode {
     fn ChildrenCount(&self) -> usize;
     fn Child(&self, idx: usize) -> &dyn ITermNode;
-    fn Op(&self) -> TermOp;
+    fn Op(&self) -> BinOp;
     fn AsLeaf(&self) -> Option<&Term>;
 }
 ```
-Implementations are provided for `Term`, `TermBinNode`, and references `&T`.
+Implementations are provided for `Term`, `BinNode` (aliased as `TermBinNode`), and references `&T`.
 
 ### 2. `IXFluxSource`
-Enables serializing TermTree nodes into JSON or other stream formats (e.g., for logging or tracing expressions).
+Enables serializing TermTree nodes into JSON or other stream formats (e.g., for logging or tracing expressions) with standard `"Op"`, `"Left"`, and `"Right"` keys.
 
 ---
 
 ## DSL Macro (`TermTree!`)
 
-The `TermTree!` macro builds right-associative algebraic trees on the stack. To keep the macro dry and maintainable, it leverages an internal `@bin` helper rule:
+The `TermTree!` macro builds right-associative algebraic trees on the stack:
+* Delegates all recursive operator precedence parsing (infix `+`, `*`, `-`, `/`, `^`) directly to Kosh's centralized `NodeTree!` macro.
+* Defines a custom `@leaf` mapping that automatically wraps literals/identifiers using `.AsTermNode()`.
 
 ```rust
 let tree = TermTree!( a + b * c );
