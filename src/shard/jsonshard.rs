@@ -26,16 +26,18 @@ impl IXFluxSource for JsonShard
 
 impl IGrammar for JsonShard
 {
-    fn	Match<'p, F: IForge<'p>>(&self, forge: &mut F) -> bool
+    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F) -> Option< U32>
     {
-        let mark = forge.Mark();
-        let (matched, new_mark) = JsonShard::MatchValue( forge.Parser(), mark);
+        let  	mark = forge.Mark();
+        let ( matched, new_mark) = JsonShard::MatchValue( forge.Parser(), mark);
         if matched {
-            let next_mark = JsonShard::SkipWhitespace( forge.Parser(), new_mark);
-            forge.SetMark( next_mark);
-            true
+            let  	next_mark = JsonShard::SkipWhitespace( forge.Parser(), new_mark);
+            let  	res = Some( next_mark);
+            forge.Deposit( res);
+            res
         } else {
-            false
+            forge.Deposit( None);
+            None
         }
     }
 }
@@ -130,7 +132,9 @@ impl JsonShard
     {
         let m = {
             let mut forge = ParseForge::New(parser, marker);
-            if WSpc().Match( &mut forge) {
+            let  	res = WSpc().Match( &mut forge);
+            forge.Deposit( res);
+            if res.is_some() {
                 forge.Mark()
             } else {
                 marker
@@ -152,7 +156,9 @@ impl JsonShard
             return Self::MatchKeyword( parser, m, b"null");
         } else if curr == U8( b'-') || ( curr >= U8( b'0') && curr <= U8( b'9')) {
             let mut sub_forge = ParseForge::New(parser, m);
-            if Real.Match( &mut sub_forge ) {
+            let  	res = Real.Match( &mut sub_forge );
+            sub_forge.Deposit( res);
+            if res.is_some() {
                 return (true, sub_forge.Mark());
             }
             return (false, marker);

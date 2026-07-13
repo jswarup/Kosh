@@ -26,9 +26,11 @@ impl< 'a> IXFluxSource for StrShard< 'a>
 
 impl< 'a> IGrammar for StrShard< 'a>
 {
-    fn	Match<'p, F: IForge<'p>>(&self, forge: &mut F) -> bool
+    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F) -> Option< U32>
     {
-        self._Val.Match( forge)
+        let  	res = self._Val.Match( forge);
+        forge.Deposit( res);
+        res
     }
 }
 
@@ -54,8 +56,10 @@ impl IXFluxSource for CharsetShard
 
 impl IGrammar for CharsetShard
 {
-    fn	Match<'p, F: IForge<'p>>(&self, forge: &mut F) -> bool
+    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F) -> Option< U32>
     {
-        self._Val.Match( forge)
+        let  	res = self._Val.Match( forge);
+        forge.Deposit( res);
+        res
     }
 }

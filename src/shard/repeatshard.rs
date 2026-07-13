@@ -4,7 +4,7 @@ use	std::fmt;
 
 use	crate::{
     flux::{ IXFluxSource, xflux::XField },
-    shard::{ IGrammar, IForge, parser::ParseForge },
+    shard::{ IGrammar, IForge },
     silo::{ USeg, U32 },
     stalks::UniNode,
 };
@@ -47,35 +47,40 @@ impl< C> IGrammar for UniNode< C, USeg>
 where
     C: IGrammar,
 {
-    fn	Match<'p, F: IForge<'p>>(&self, forge: &mut F) -> bool
+    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F) -> Option< U32>
     {
         let  	mut count = U32( 0);
         let  	first = self._Op.First();
         let  	last = if self._Op.IsEmpty() { U32::_X } else { self._Op.Last() };
         
-        let  	origMark = forge.Mark();
+        let  	mut m = forge.Mark();
 
         while count < last {
-            let currMark = forge.Mark();
-            if self._Child.Match( forge) {
-                let m = forge.Mark();
-                if m == currMark {
+            let  	res = {
+                let  	mut child_forge = self._Child.Forge( forge);
+                let  	res = self._Child.Match( &mut child_forge);
+                child_forge.Deposit( res);
+                res
+            };
+            if let Some( new_m) = res {
+                if new_m == m {
                     count += U32( 1);
                     break;
                 }
+                m = new_m;
                 count += U32( 1);
             } else {
-                // If it fails, restore the marker to before the failed attempt just in case
-                forge.SetMark(currMark);
                 break;
             }
         }
         
         if count >= first {
-            true
+            let  	res = Some( m);
+            forge.Deposit( res);
+            res
         } else {
-            forge.SetMark( origMark);
-            false
+            forge.Deposit( None);
+            None
         }
     }
 }

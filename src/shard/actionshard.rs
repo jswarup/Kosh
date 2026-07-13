@@ -4,7 +4,7 @@ use	std::fmt;
 
 use	crate::{
     flux::{ IXFluxSource, xflux::XField },
-    shard::{ IGrammar, IForge, parser::ParseForge },
+    shard::{ IGrammar, IForge, Parser },
     stalks::{ work::DynIWork, UniNode },
     silo::{ U32, cast::IConstPtrMutRefExt },
 };
@@ -60,20 +60,105 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+pub struct ActionForge< 'a, 'p, P: IForge< 'p>, W>
+where
+    W: crate::stalks::work::IWork + 'static,
+{
+    pub     _Parent: &'a mut P,
+    pub     _Action: &'a W,
+    pub     _OrigMark: U32,
+    pub     _CurrMark: U32,
+    pub     _Result: Option< U32>,
+    pub     _Phantom: std::marker::PhantomData<&'p ()>,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, 'p, P: IForge< 'p>, W: crate::stalks::work::IWork + 'static> ActionForge< 'a, 'p, P, W>
+{
+    pub fn	New( parent: &'a mut P, action: &'a W) -> Self
+    {
+        let  	mark = parent.Mark();
+        ActionForge {
+            _Parent: parent,
+            _Action: action,
+            _OrigMark: mark,
+            _CurrMark: mark,
+            _Result: None,
+            _Phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, 'p, P: IForge< 'p>, W: crate::stalks::work::IWork + 'static> IForge< 'p> for ActionForge< 'a, 'p, P, W>
+{
+    fn	Parser( &mut self) -> &mut Parser< 'p>
+    {
+        self._Parent.Parser()
+    }
+     
+    fn	Mark( &self) -> U32
+    {
+        self._CurrMark
+    }
+
+    fn	SetMark( &mut self, mark: U32)
+    {
+        self._CurrMark = mark;
+    }
+
+    fn	Deposit( &mut self, result: Option< U32>)
+    {
+        self._Result = result;
+        if let Some( mark) = result {
+            self._CurrMark = mark;
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, 'p, P: IForge< 'p>, W: crate::stalks::work::IWork + 'static> Drop for ActionForge< 'a, 'p, P, W>
+{
+    fn	drop( &mut self)
+    {
+        if let Some( mark) = self._Result {
+            let  	actionPtr = self._Action as &DynIWork< 'static> as *const DynIWork< 'static>;
+            let  	actionMut = actionPtr.MutRef();
+            actionMut.DoWork( self._Parent.Parser());
+            self._Parent.SetMark( mark);
+        } else {
+            self._Parent.SetMark( self._OrigMark);
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+unsafe impl< 'a, 'p, P: IForge< 'p>, W> Send for ActionForge< 'a, 'p, P, W> where W: crate::stalks::work::IWork + 'static {}
+unsafe impl< 'a, 'p, P: IForge< 'p>, W> Sync for ActionForge< 'a, 'p, P, W> where W: crate::stalks::work::IWork + 'static {}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl< C, W> IGrammar for UniNode< C, ActionOp< W>>
 where
     C: IGrammar,
     W: crate::stalks::work::IWork + 'static,
 {
-    fn	Match<'p, F: IForge<'p>>(&self, forge: &mut F) -> bool
+    fn	Forge< 'a, 'p, P: IForge< 'p> + 'a>( &'a self, parent: &'a mut P) -> impl IForge< 'p> + 'a
+    where
+        'p: 'a
     {
-        let res = self._Child.Match( forge);
-        if res {
-            let  	actionPtr = &self._Op._Action as &DynIWork< 'static> as *const DynIWork< 'static>;
-            let  	actionMut = actionPtr.MutRef();
-            actionMut.DoWork( forge.Parser());
-            
-        }
+        ActionForge::New( parent, &self._Op._Action)
+    }
+
+    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F) -> Option< U32>
+    {
+        let  	mut action_forge = self.Forge( forge);
+        let  	res = self._Child.Match( &mut action_forge);
+        action_forge.Deposit( res);
         res
     }
 }
