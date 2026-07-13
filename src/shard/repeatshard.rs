@@ -4,7 +4,7 @@ use	std::fmt;
 
 use	crate::{
     flux::{ IXFluxSource, xflux::XField },
-    shard::{ IGrammar, Parser },
+    shard::{ IGrammar, IForge },
     silo::U32,
     stalks::UniNode,
 };
@@ -47,16 +47,20 @@ impl< C> IGrammar for UniNode< C, crate::silo::USeg>
 where
     C: IGrammar,
 {
-    fn	Match<'p>(&self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p, F: IForge<'p>>(&self, forge: F) -> F
     {
         let  	mut count = U32( 0);
         let  	first = self._Op.First();
         let  	last = if self._Op.IsEmpty() { U32( std::u32::MAX) } else { self._Op.Last() };
-        let  	mut currMark = marker;
+        let  	origMark = forge.Mark();
+        let  	mut currMark = origMark;
+        let  	mut f = forge;
 
         while count < last {
-            let  	(matched, m) = self._Child.Match( parser, currMark);
-            if matched {
+            f = f.Success( currMark);
+            f = self._Child.Match( f);
+            if f.Ok() {
+                let  	m = f.Mark();
                 if m == currMark {
                     count += U32( 1);
                     break;
@@ -69,9 +73,9 @@ where
         }
 
         if count >= first {
-            (true, currMark)
+            f.Success( currMark)
         } else {
-            (false, marker)
+            f.Success( origMark).Failure()
         }
     }
 }

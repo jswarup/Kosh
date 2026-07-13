@@ -4,8 +4,7 @@ use	std::fmt;
 
 use	crate::{
     flux::{ IXFluxSource, xflux::XField },
-    shard::{ IGrammar, Parser },
-    silo::U32,
+    shard::{ IGrammar, IForge },
     stalks::{ work::DynIWork, UniNode },
 };
 
@@ -65,17 +64,17 @@ where
     C: IGrammar,
     W: crate::stalks::work::IWork + 'static,
 {
-    fn	Match<'p>(&self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p, F: IForge<'p>>(&self, forge: F) -> F
     {
-        let  	(matched, new_mark) = self._Child.Match( parser, marker);
-        if matched {
+        let     mut f = self._Child.Match( forge);
+        if f.Ok() {
             let  	actionPtr = &self._Op._Action as &DynIWork< 'static> as *const DynIWork< 'static>;
             #[allow( invalid_reference_casting)]
             let  	actionMut = unsafe { &mut *( actionPtr as *mut DynIWork< 'static>) };
-            actionMut.DoWork( parser);
-            return (true, new_mark);
+            actionMut.DoWork( f.Parser());
+            
         }
-        (false, marker)
+        f
     }
 }
 

@@ -1,8 +1,7 @@
 //-- binshard.rs -----------------------------------------------------------------------------------------------------------------------
 use	crate::{
-    shard::{ IGrammar, Parser },
+    shard::{ IGrammar, IForge },
     stalks::{ BinNode, BinOp },
-    silo::U32,
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -16,31 +15,33 @@ where
     L: IGrammar,
     R: IGrammar,
 {
-    fn	Match<'p>(&self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p, F: IForge<'p>>(&self, forge: F) -> F
     {
         match self._Op {
             BinOp::Bor => {
-                let  	(matched, m) = self._Left.Match( parser, marker);
-                if matched {
-                    return (true, m);
+                let  	orig_mark = forge.Mark();
+                let  	mut f = self._Left.Match( forge);
+                if f.Ok() {
+                    return f;
                 }
-                let  	(matched, m) = self._Right.Match( parser, marker);
-                if matched {
-                    return (true, m);
+                f = f.Success( orig_mark); 
+                let  	f = self._Right.Match( f);
+                if f.Ok() {
+                    return f;
                 }
-                
-                (false, marker)
+                f.Success( orig_mark).Failure()
             }
             BinOp::Less => {
-                let  	(matched, m) = self._Left.Match( parser, marker);
-                if matched {
-                    let  	(matched_right, m2) = self._Right.Match( parser, m);
-                    if matched_right {
-                        return (true, m2);
+                let  	orig_mark = forge.Mark();
+                let  	f = self._Left.Match( forge);
+                if f.Ok() {
+                    let  	f = self._Right.Match( f);
+                    if f.Ok() {
+                        return f;
                     }
+                    return f.Success( orig_mark).Failure();
                 }
-                
-                (false, marker)
+                f.Success( orig_mark).Failure()
             }
             _ => panic!( "Unsupported operator in BinShard Match"),
         }

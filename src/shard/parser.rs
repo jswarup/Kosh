@@ -7,10 +7,21 @@ use	crate::silo::{ U32, U8 };
 use	crate::stalks::{ DynIWorker, IWorker, WorkPtr, INode };
 
 //---------------------------------------------------------------------------------------------------------------------------------
+ 
+pub trait IForge< 'p>: Send + Sync
+{
+    fn	Parser( &mut self) -> &mut Parser< 'p>; 
+    fn	Mark( &self) -> U32; 
+    fn	Ok( &self) -> bool; 
+    fn  Success( self, mark: U32) -> Self;
+    fn  Failure( self) -> Self;
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 pub trait IGrammar: INode
 {
-    fn	Match<'p>(&self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32);
+    fn	Match<'p, F: IForge<'p>>( &self, forge: F) -> F;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -19,13 +30,63 @@ pub struct Parser<'p>
 {
     pub     _InStream: &'p mut dyn IStream,
 }
+
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct ParseForge<'p>
+pub struct ParseForge<'a, 'p> 
 {
-    pub     _Parser: &'p mut Parser<'p>,
+    pub     _Parser: &'a mut Parser<'p>,
     pub     _Marker: U32,
-    pub     _MatchRslt: bool, 
+    pub     _Rslt: bool, 
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl<'a, 'p> ParseForge<'a, 'p>
+{
+    pub fn	New( parser: &'a mut Parser<'p>, mark: U32, succ: bool) -> Self
+    {
+        ParseForge {
+            _Parser: parser,
+            _Marker: mark,
+            _Rslt: succ,
+        }
+    }
+}
+
+
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl<'a, 'p> IForge<'p> for ParseForge<'a, 'p>
+{
+    fn	Parser( &mut self) -> &mut Parser< 'p>
+    {
+        self._Parser
+    }
+     
+    fn	Mark( &self) -> U32
+    {
+        self._Marker
+    }
+
+    fn	Ok( &self) -> bool
+    {
+        self._Rslt
+    }
+
+    fn  Success( mut self, mark: U32) -> Self
+    {
+        self._Marker = mark;
+        self._Rslt = true;
+        self
+    }
+
+    fn  Failure( mut self) -> Self
+    {
+        self._Rslt = false;
+        self
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -81,8 +142,8 @@ impl<'p> Parser<'p>
 
     pub fn Parse< G: IGrammar + ?Sized>( &mut self, grammar: &'p G) -> bool
     {
-        let marker = U32(0);
-        grammar.Match( self, marker).0
+        let  	forge = ParseForge::New( self, U32( 0), false);
+        grammar.Match( forge).Ok()
     }
 
     pub fn InStream( &mut self) -> &mut dyn IStream
@@ -110,15 +171,16 @@ impl<'p> Parser<'p>
 
 impl IGrammar for Charset
 {
-    fn	Match<'p>(&self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p, F: IForge<'p>>(&self, mut forge: F) -> F
     {
-        let  	curr = parser.Curr( marker);
+        let mark = forge.Mark();
+        let  	curr = forge.Parser().Curr( mark);
         if self.Get( curr.0) {
-            if let Some(next) = parser.Next( marker) {
-                return (true, next);
+            if let Some(next) = forge.Parser().Next( mark) {
+                return forge.Success( next);
             }
         }
-        (false, marker)
+        forge.Failure()
     }
 }
 
@@ -126,15 +188,16 @@ impl IGrammar for Charset
 
 impl IGrammar for char
 {
-    fn	Match<'p>(&self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p, F: IForge<'p>>(&self, mut forge: F) -> F
     {
-        let  	curr = parser.Curr( marker);
+        let mark = forge.Mark();
+        let  	curr = forge.Parser().Curr( mark);
         if curr == U8( *self as u8) {
-            if let Some(next) = parser.Next( marker) {
-                return (true, next);
+            if let Some(next) = forge.Parser().Next( mark) {
+                return forge.Success( next);
             }
         }
-        (false, marker)
+        forge.Failure()
     }
 }
 
@@ -148,29 +211,31 @@ impl IXFluxSource for char
 
 impl IGrammar for str
 {
-    fn	Match<'p>(&self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p, F: IForge<'p>>(&self, mut forge: F) -> F
     {
         // Ensure that empty string matches without consuming
         if self.is_empty() {
-            return (true, marker);
+            let m = forge.Mark();
+            return forge.Success( m);
         }
 
-        let mut m = marker;
+        let  	orig_mark = forge.Mark();
+        let  	mut m = orig_mark;
         for c in self.chars() {
-            let  	curr = parser.Curr( m);
+            let  	curr = forge.Parser().Curr( m);
             if curr == U8( c as u8) {
                 // If it's the last char, we just advance and we're good.
-                if let Some( next_mark) = parser.Next( m) {
+                if let Some( next_mark) = forge.Parser().Next( m) {
                     m = next_mark;
                 } else {
-                    return (false, marker);
+                    return forge.Failure();
                 }
             } else {
-                return (false, marker);
+                return forge.Failure();
             }
         }
 
-        (true, m)
+        forge.Success( m)
     }
 }
 
@@ -178,9 +243,9 @@ impl IGrammar for str
 
 impl<'a, 'r, T: IGrammar> IGrammar for &'r T
 {
-    fn	Match<'p>(&self, parser: &mut Parser<'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p, F: IForge<'p>>(&self, forge: F) -> F
     {
-        (**self).Match( parser, marker)
+        (**self).Match( forge)
     }
 }
 

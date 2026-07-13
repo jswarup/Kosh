@@ -8,7 +8,7 @@ pub mod charset;
 pub mod parser;
 pub mod leaves;
 pub use charset::Charset;
-pub use parser::{ Parser, IGrammar };
+pub use parser::{ Parser, IGrammar, IForge };
 pub use binshard::BinShard;
 pub mod numbers;
 pub use leaves::{ StrShard, CharsetShard };

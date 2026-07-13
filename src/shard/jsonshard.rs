@@ -2,7 +2,7 @@
 
 use	std::fmt;
 use	crate::flux::{ IXFluxSource, xflux::XField };
-use	crate::shard::{ Charset, IGrammar, Parser };
+use	crate::shard::{ Charset, IGrammar, Parser, IForge };
 use	crate::silo::{U32, U8};
 use	crate::shard::numbers::Real;
 use	crate::shard::WSpc;
@@ -26,13 +26,15 @@ impl IXFluxSource for JsonShard
 
 impl IGrammar for JsonShard
 {
-    fn	Match<'p>(&self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p, F: IForge<'p>>(&self, mut forge: F) -> F
     {
-        let (matched, new_mark) = JsonShard::MatchValue( parser, marker);
+        let mark = forge.Mark();
+        let (matched, new_mark) = JsonShard::MatchValue( forge.Parser(), mark);
         if matched {
-            (true, JsonShard::SkipWhitespace( parser, new_mark))
+            let next_mark = JsonShard::SkipWhitespace( forge.Parser(), new_mark);
+            forge.Success( next_mark)
         } else {
-            (false, marker)
+            forge.Failure()
         }
     }
 }
@@ -124,24 +126,27 @@ impl JsonShard
     //---------------------------------------------------------------------------------------------------------------------------------
 
     fn	MatchValue< 'p>( parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
-    { 
-        let     (_, m) = WSpc().Match( parser, marker);
-        let  	curr = parser.Curr( m);
+    {
+        let  	mut forge = crate::shard::parser::ParseForge::New( parser, marker, false);
+        forge = WSpc().Match( forge);
+        let m = forge.Mark();
+        let  	curr = forge.Parser().Curr( m);
         
         if curr == U8( b'{') {
-            return Self::MatchObject( parser, m);
+            return Self::MatchObject( forge._Parser, m);
         } else if curr == U8( b'[') {
-            return Self::MatchArray( parser, m);
+            return Self::MatchArray( forge._Parser, m);
         } else if curr == U8( b'"') {
-            return Self::MatchString( parser, m);
+            return Self::MatchString( forge._Parser, m);
         } else if curr == U8( b't') {
-            return Self::MatchKeyword( parser, m, b"true");
+            return Self::MatchKeyword( forge._Parser, m, b"true");
         } else if curr == U8( b'f') {
-            return Self::MatchKeyword( parser, m, b"false");
+            return Self::MatchKeyword( forge._Parser, m, b"false");
         } else if curr == U8( b'n') {
-            return Self::MatchKeyword( parser, m, b"null");
+            return Self::MatchKeyword( forge._Parser, m, b"null");
         } else if curr == U8( b'-') || ( curr >= U8( b'0') && curr <= U8( b'9')) {
-            return Real.Match( parser, m);
+            forge = Real.Match( forge.Success(m) );
+            return (forge.Ok(), forge.Mark());
         }
         
         (false, marker)

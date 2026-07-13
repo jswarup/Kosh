@@ -2,8 +2,7 @@
 
 
 use	crate::flux::{ IXFluxSource, xflux::XField };
-use	crate::shard::{ Charset, IGrammar, Parser };
-use	crate::silo::U32;
+use	crate::shard::{ Charset, IGrammar, IForge };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -26,9 +25,9 @@ impl< 'a> IXFluxSource for StrShard< 'a>
 
 impl< 'a> IGrammar for StrShard< 'a>
 {
-    fn	Match<'p>(&self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p, F: IForge<'p>>(&self, forge: F) -> F
     {
-        self._Val.Match( parser, marker)
+        self._Val.Match( forge)
     }
 }
 
@@ -54,8 +53,8 @@ impl IXFluxSource for CharsetShard
 
 impl IGrammar for CharsetShard
 {
-    fn	Match<'p>(&self, parser: &mut Parser< 'p>, marker: U32) -> (bool, U32)
+    fn	Match<'p, F: IForge<'p>>(&self, forge: F) -> F
     {
-        self._Val.Match( parser, marker)
+        self._Val.Match( forge)
     }
 }
