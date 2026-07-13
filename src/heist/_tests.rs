@@ -3,7 +3,7 @@ use	crate::flux::{ JsonOutStream, xflux::XField, IXFluxSink };
 use	std::fs;
 use	crate::{
     heist::
-    { Atelier, Maestro },
+    { Atelier, Maestro, choretree::IChoreNode },
     silo::
     { Buff, IAccess, IArr, U16, U32 },
     stalks::
@@ -77,9 +77,8 @@ fn	TestMaestroBasicOps()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[test]
-fn	TestChoreBuds()
-{
+fn	TestChoreHelper() -> impl IChoreNode
+{ 
     let  	aChore = crate::Chore!( "10S", |_m| {
         print!( "{} ", 10);
     });
@@ -89,18 +88,24 @@ fn	TestChoreBuds()
     let  	cChore = crate::Chore!( "40S", |_m| {
         print!( "{} ", 40);
     });
-    let  	_choreTreeMacro = crate::ChoreTree!( ( cChore
+    crate::ChoreTree!( ( cChore
             < ( bChore
                 | aChore
                 | ( |_m| {
                     print!( "{} ", 50);
                 })))
-    );
-    let  	worker = Worker::New();
-    worker.PostJob( aChore.IntoWorkPtr());
+    )
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestChoreBuds()
+{ 
+    let  	choreTree  = TestChoreHelper();
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
-    mainMaestro.PostJob( aChore.IntoWorkPtr());
+    mainMaestro.PostChoreTree( &choreTree);
     atelier.DoLaunch();
 }
 

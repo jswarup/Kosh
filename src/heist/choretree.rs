@@ -99,13 +99,13 @@ macro_rules! Chore {
 macro_rules! ChoreTree {
     // Helper to construct sequential/parallel nodes
     ( @cat $left:expr, $( $rest:tt )+ ) => {
-        &$crate::heist::choretree::ChoreCatNode {
+        $crate::heist::choretree::ChoreCatNode {
             _Left: $left,
             _Right: $crate::ChoreTree!( $( $rest )+ ),
         }
     };
     ( @par $left:expr, $( $rest:tt )+ ) => {
-        &$crate::heist::choretree::ChoreParNode {
+        $crate::heist::choretree::ChoreParNode {
             _Left: $left,
             _Right: $crate::ChoreTree!( $( $rest )+ ),
         }
@@ -121,24 +121,24 @@ macro_rules! ChoreTree {
 
     // 2. Closure with remainder
     ( | $arg:ident | $body:block < $( $rest:tt )+ ) => {
-        $crate::ChoreTree!( @cat &$crate::heist::Chore::New( |$arg| $body ), $( $rest )+ )
+        $crate::ChoreTree!( @cat $crate::heist::Chore::New( |$arg| $body ), $( $rest )+ )
     };
     ( | $arg:ident | $body:block | $( $rest:tt )+ ) => {
-        $crate::ChoreTree!( @par &$crate::heist::Chore::New( |$arg| $body ), $( $rest )+ )
+        $crate::ChoreTree!( @par $crate::heist::Chore::New( |$arg| $body ), $( $rest )+ )
     };
     ( move | $arg:ident | $body:block < $( $rest:tt )+ ) => {
-        $crate::ChoreTree!( @cat &$crate::heist::Chore::New( move |$arg| $body ), $( $rest )+ )
+        $crate::ChoreTree!( @cat $crate::heist::Chore::New( move |$arg| $body ), $( $rest )+ )
     };
     ( move | $arg:ident | $body:block | $( $rest:tt )+ ) => {
-        $crate::ChoreTree!( @par &$crate::heist::Chore::New( move |$arg| $body ), $( $rest )+ )
+        $crate::ChoreTree!( @par $crate::heist::Chore::New( move |$arg| $body ), $( $rest )+ )
     };
 
     // 3. Ident with remainder
     ( $l:ident < $( $rest:tt )+ ) => {
-        $crate::ChoreTree!( @cat &$l, $( $rest )+ )
+        $crate::ChoreTree!( @cat $l, $( $rest )+ )
     };
     ( $l:ident | $( $rest:tt )+ ) => {
-        $crate::ChoreTree!( @par &$l, $( $rest )+ )
+        $crate::ChoreTree!( @par $l, $( $rest )+ )
     };
 
     // Base Case: Group
@@ -148,15 +148,15 @@ macro_rules! ChoreTree {
 
     // Base Case: Closure
     ( | $arg:ident | $body:block ) => {
-        &$crate::heist::Chore::New( |$arg| $body )
+        $crate::heist::Chore::New( |$arg| $body )
     };
     ( move | $arg:ident | $body:block ) => {
-        &$crate::heist::Chore::New( move |$arg| $body )
+        $crate::heist::Chore::New( move |$arg| $body )
     };
 
     // Base Case: Expr
     ( $leaf:expr ) => {
-        &$leaf
+        $leaf
     };
 }
 
