@@ -3,7 +3,7 @@
 use	std::fmt;
 use	crate::flux::{ IXFluxSource, xflux::XField };
 use	crate::shard::{ IGrammar, IForge };
-use	crate::silo::U8;
+use	crate::silo::{ U8, U32 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -24,7 +24,7 @@ impl IXFluxSource for UIntShard
 
 impl IGrammar for UIntShard
 {
-    fn	Match<'p, F: IForge<'p>>(&self, mut forge: F) -> F
+    fn	Match<'p, F: IForge<'p>>(&self, forge: &mut F) -> bool
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
@@ -45,9 +45,10 @@ impl IGrammar for UIntShard
         }
         
         if matched {
-            forge.Success( currentMark)
+            forge.SetMark( currentMark);
+            true
         } else {
-            forge.Failure()
+            false
         }
     }
 }
@@ -86,7 +87,7 @@ impl IXFluxSource for IntShard
 
 impl IGrammar for IntShard
 {
-    fn	Match<'p, F: IForge<'p>>(&self, mut forge: F) -> F
+    fn	Match<'p, F: IForge<'p>>(&self, forge: &mut F) -> bool
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
@@ -95,7 +96,7 @@ impl IGrammar for IntShard
             if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
                 currentMark = nextMark;
             } else {
-                return forge.Failure();
+                return false;
             }
         }
         let  	mut matched = false;
@@ -113,9 +114,10 @@ impl IGrammar for IntShard
             }
         }
         if matched {
-            forge.Success( currentMark)
+            forge.SetMark( currentMark);
+            true
         } else {
-            forge.Failure()
+            false
         }
     }
 }
@@ -136,7 +138,7 @@ impl IXFluxSource for HexShard
 }
 impl IGrammar for HexShard
 {
-    fn	Match<'p, F: IForge<'p>>(&self, mut forge: F) -> F
+    fn	Match<'p, F: IForge<'p>>(&self, forge: &mut F) -> bool
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
@@ -146,7 +148,7 @@ impl IGrammar for HexShard
                 currentMark = nextMark;
                 curr = forge.Parser().Curr( currentMark);
             } else {
-                return forge.Failure();
+                return false;
             }
         }
         
@@ -178,9 +180,10 @@ impl IGrammar for HexShard
             }
         }
         if matched {
-            forge.Success( currentMark)
+            forge.SetMark( currentMark);
+            true
         } else {
-            forge.Failure()
+            false
         }
     }
 }
@@ -198,7 +201,7 @@ impl IXFluxSource for RealShard
 }
 impl IGrammar for RealShard
 {
-    fn	Match<'p, F: IForge<'p>>(&self, mut forge: F) -> F
+    fn	Match<'p, F: IForge<'p>>(&self, forge: &mut F) -> bool
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
@@ -207,7 +210,7 @@ impl IGrammar for RealShard
             if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
                 currentMark = nextMark;
             } else {
-                return forge.Failure();
+                return false;
             }
         }
 
@@ -248,7 +251,7 @@ impl IGrammar for RealShard
         }
 
         if !has_integer_digits && !has_fractional_digits {
-            return forge.Failure();
+            return false;
         }
 
         let  	curr = forge.Parser().Curr( currentMark);
@@ -280,8 +283,8 @@ impl IGrammar for RealShard
                 }
             }
         }
-
-        forge.Success( currentMark)
+        forge.SetMark( currentMark);
+        true
     }
 }
 impl fmt::Display for RealShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Real") } }
@@ -298,7 +301,7 @@ impl IXFluxSource for HexRealShard
 }
 impl IGrammar for HexRealShard
 {
-    fn	Match<'p, F: IForge<'p>>(&self, mut forge: F) -> F
+    fn	Match<'p, F: IForge<'p>>(&self, forge: &mut F) -> bool
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
@@ -308,7 +311,7 @@ impl IGrammar for HexRealShard
                 currentMark = nextMark;
                 curr = forge.Parser().Curr( currentMark);
             } else {
-                return forge.Failure();
+                return false;
             }
         }
 
@@ -319,16 +322,16 @@ impl IGrammar for HexRealShard
                     if let  	Some( nextMark2) = forge.Parser().Next( nextMark) {
                         currentMark = nextMark2;
                     } else {
-                        return forge.Failure();
+                        return false;
                     }
                 } else {
-                    return forge.Failure();
+                    return false;
                 }
             } else {
-                return forge.Failure();
+                return false;
             }
         } else {
-            return forge.Failure();
+            return false;
         }
 
         let  	mut has_integer_digits = false;
@@ -368,7 +371,7 @@ impl IGrammar for HexRealShard
         }
 
         if !has_integer_digits && !has_fractional_digits {
-            return forge.Failure();
+            return false;
         }
 
         let  	curr = forge.Parser().Curr( currentMark);
@@ -400,8 +403,8 @@ impl IGrammar for HexRealShard
                 }
             }
         }
-
-        forge.Success( currentMark)
+        forge.SetMark( currentMark);
+        true
     }
 }
 impl fmt::Display for HexRealShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "HexReal") } }

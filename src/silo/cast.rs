@@ -53,6 +53,23 @@ impl< T: ?Sized> IConstPtrExt for *const T
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+pub trait IConstPtrMutRefExt< T: ?Sized>
+{
+    fn	MutRef< 'a>( self) -> &'a mut T;
+}
+
+impl< T: ?Sized> IConstPtrMutRefExt< T> for *const T
+{
+    #[inline( always)]
+    #[allow( invalid_reference_casting)]
+    fn	MutRef< 'a>( self) -> &'a mut T
+    {
+        unsafe { &mut *( self as *mut T) }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub trait IAllocRawExt
 {
     // Allocates a value on the heap and returns a raw pointer to it.

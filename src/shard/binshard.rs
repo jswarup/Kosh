@@ -15,37 +15,33 @@ where
     L: IGrammar,
     R: IGrammar,
 {
-    fn	Match<'p, F: IForge<'p>>(&self, forge: F) -> F
+    fn	Match<'p, F: IForge<'p>>(&self, forge: &mut F) -> bool
     {
         match self._Op {
             BinOp::Bor => {
                 let  	orig_mark = forge.Mark();
-                let  	mut f = self._Left.Match( forge);
-                if f.Ok() {
-                    return f;
+                if self._Left.Match( forge) {
+                    return true;
                 }
-                f = f.Success( orig_mark); 
-                let  	f = self._Right.Match( f);
-                if f.Ok() {
-                    return f;
+                forge.SetMark( orig_mark);
+                if self._Right.Match( forge) {
+                    return true;
                 }
-                f.Success( orig_mark).Failure()
+                false
             }
             BinOp::Less => {
                 let  	orig_mark = forge.Mark();
-                let  	f = self._Left.Match( forge);
-                if f.Ok() {
-                    let  	f = self._Right.Match( f);
-                    if f.Ok() {
-                        return f;
+                if self._Left.Match( forge) {
+                    // Less (concatenation) means left then right
+                    if self._Right.Match( forge) {
+                        return true;
                     }
-                    return f.Success( orig_mark).Failure();
                 }
-                f.Success( orig_mark).Failure()
+                forge.SetMark( orig_mark);
+                false
             }
             _ => panic!( "Unsupported operator in BinShard Match"),
         }
     }
 }
-
 

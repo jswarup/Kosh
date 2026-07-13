@@ -1,0 +1,57 @@
+{
+  "Op": 6,
+  "Left": {
+    "Op": 7,
+    "Left": {
+      "Op": 6,
+      "Left": {
+        "Op": 7,
+        "Left": {
+          "Op": 6,
+          "Left": {
+            "DocStr": "A"
+          },
+          "Right": {
+            "DocStr": "B"
+          }
+        },
+        "Right": {
+          "Op": 6,
+          "Left": {
+            "DocStr": "C"
+          },
+          "Right": {
+            "DocStr": "D"
+          }
+        }
+      },
+      "Right": {
+        "DocStr": "E"
+      }
+    },
+    "Right": {
+      "Op": 7,
+      "Left": {
+        "Op": 6,
+        "Left": {
+          "Op": 7,
+          "Left": {
+            "DocStr": "F"
+          },
+          "Right": {
+            "DocStr": "G"
+          }
+        },
+        "Right": {
+          "DocStr": "H"
+        }
+      },
+      "Right": {
+        "DocStr": "i"
+      }
+    }
+  },
+  "Right": {
+    "DocStr": "J"
+  }
+}
