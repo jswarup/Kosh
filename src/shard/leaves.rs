@@ -1,7 +1,9 @@
 //-- leaves.rs -------------------------------------------------------------------------------------------------------------------------
 
 
+use	crate::shard::Parser;
 use	crate::flux::{ IFluxOutSource, fluxout::FieldOut };
+use	crate::flux::fluxin::FieldIn;
 use	crate::shard::IGrammar;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -26,7 +28,7 @@ impl< 'a> IFluxOutSource for StrShard< 'a>
 impl< 'a> IGrammar for StrShard< 'a>
 {
 
-    fn	Match( &self, parser: &mut crate::shard::Parser, sink: crate::flux::fluxin::FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
     {
         self._Val.Match( parser, crate::flux::fluxin::FieldIn::Null);
     }

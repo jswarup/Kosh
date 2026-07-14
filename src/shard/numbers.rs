@@ -1,7 +1,9 @@
 //-- numbers.rs -----------------------------------------------------------------------------------------------------------------------
 
 use	std::fmt;
+use	crate::shard::Parser;
 use	crate::flux::{ IFluxOutSource, fluxout::FieldOut };
+use	crate::flux::fluxin::FieldIn;
 use	crate::shard::{ IGrammar, IForge };
 use	crate::silo::U8;
 
@@ -24,7 +26,7 @@ impl IFluxOutSource for UIntShard
 
 impl IGrammar for UIntShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser, sink: crate::flux::fluxin::FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut m = origMark;
@@ -86,7 +88,7 @@ impl IFluxOutSource for IntShard
 
 impl IGrammar for IntShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser, sink: crate::flux::fluxin::FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut m = origMark;
@@ -140,7 +142,7 @@ impl IFluxOutSource for HexShard
 }
 impl IGrammar for HexShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser, sink: crate::flux::fluxin::FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut currentMark = origMark;
@@ -204,7 +206,7 @@ impl IFluxOutSource for RealShard
 }
 impl IGrammar for RealShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser, sink: crate::flux::fluxin::FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut m = origMark;
@@ -289,7 +291,7 @@ impl IFluxOutSource for HexRealShard
 }
 impl IGrammar for HexRealShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser, sink: crate::flux::fluxin::FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut m = origMark;

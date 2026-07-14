@@ -9,6 +9,7 @@ use	std::fmt;
 
 #[derive( Clone, Debug)]
 pub enum Term {
+    Null,
     String( String),
     Real( f64),
 }
@@ -19,7 +20,7 @@ impl Default for Term
 {
     fn	default() -> Self
     {
-        Self::String( "".to_string())
+        Self::Null
     }
 }
 
@@ -34,6 +35,10 @@ impl IFluxOutSource for Term
         *field = FieldOut::Obj( Box::new( move |key, item| {
             if step == 0 {
                 match term {
+                    Term::Null => {
+                        *key = "Null".to_string();
+                        *item = FieldOut::Null;
+                    }
                     Term::String( s) => {
                         *key = "String".to_string();
                         *item = FieldOut::Str( s);
@@ -59,6 +64,7 @@ impl IWork for Term
     fn	DoWork( &mut self, _worker: &DynIWorker< '_>)
     {
         match self {
+            Self::Null => print!( "Null "),
             Self::String( s) => print!( "{} ", s),
             Self::Real( v) => print!( "{} ", v),
         }
@@ -72,6 +78,7 @@ impl fmt::Display for Term
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         match self {
+            Self::Null => write!( f, "Term( Null)"),
             Self::String( s) => write!( f, "Term( {})", s),
             Self::Real( v) => write!( f, "Term( {})", v),
         }
@@ -127,7 +134,7 @@ pub trait ITermNode: INode
     fn	ChildrenCount( &self) -> usize;
     fn	Child( &self, idx: usize) -> &dyn ITermNode;
     fn	Op( &self) -> BinOp;
-    fn	AsLeaf( &self) -> Option< &Term>;
+    fn	AsLeaf( &self) -> &Term;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -149,9 +156,9 @@ impl ITermNode for Term
         BinOp::None
     }
 
-    fn	AsLeaf( &self) -> Option< &Term>
+    fn	AsLeaf( &self) -> &Term
     {
-        Some( self)
+        self
     }
 }
 
@@ -174,7 +181,7 @@ impl< T: ITermNode + ?Sized> ITermNode for &T
         ( **self).Op()
     }
 
-    fn	AsLeaf( &self) -> Option< &Term>
+    fn	AsLeaf( &self) -> &Term
     {
         ( **self).AsLeaf()
     }
@@ -216,9 +223,10 @@ where
         self._Op
     }
 
-    fn	AsLeaf( &self) -> Option< &Term>
+    fn	AsLeaf( &self) -> &Term
     {
-        None
+        static NULL_TERM: Term = Term::Null;
+        &NULL_TERM
     }
 }
 

@@ -245,8 +245,11 @@ impl ExprRepos
         {
             let  	curOp = node.Op();
             if curOp == BinOp::None {
-                let  	term = node.AsLeaf().unwrap();
+                let  	term = node.AsLeaf();
                 let  	exprId = match term {
+                    Term::Null => {
+                        panic!( "Null term in ExprRepos");
+                    }
                     Term::String( s) => {
                         repos.VarCreate( s.clone(), false)
                     }

@@ -2,6 +2,7 @@
 
 use	std::fmt;
 
+use	crate::flux::fluxin::FieldIn;
 use	crate::{
     flux::{ IFluxOutSource, fluxout::FieldOut },
     shard::{ IGrammar, IForge, Parser },
@@ -67,7 +68,7 @@ where
     C: IGrammar,
     W: crate::stalks::work::IWork + 'static,
 {
-    fn	Match( &self, parser: &mut Parser, sink: crate::flux::fluxin::FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
     {
         let  	m = parser.Forge().Mark();
         let  	res = self._Child.Parse( parser, m, crate::flux::fluxin::FieldIn::Null);

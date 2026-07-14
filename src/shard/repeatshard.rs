@@ -2,6 +2,8 @@
 
 use	std::fmt;
 
+use	crate::flux::fluxin::FieldIn;
+use	crate::shard::Parser;
 use	crate::{
     flux::{ IFluxOutSource, fluxout::FieldOut },
     shard::{ IGrammar, IForge },
@@ -48,7 +50,7 @@ where
     C: IGrammar,
 {
 
-fn	Match( &self, parser: &mut crate::shard::Parser, sink: crate::flux::fluxin::FieldIn< '_>)
+fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
     {
         let  	mut count = U32( 0);
         let  	first = self._Op.First();

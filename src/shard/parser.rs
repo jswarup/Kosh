@@ -1,5 +1,6 @@
 //-- parser.rs -------------------------------------------------------------------------------------------------------------------
 
+use	crate::flux::fluxin::FieldIn;
 use	crate::flux::instream::IStream;
 use	crate::flux::IFluxOutSource;
 use crate::shard::Charset;
@@ -66,9 +67,9 @@ unsafe impl Sync for Forge {}
 
 pub trait IGrammar: INode
 {
-    fn	Match( &self, parser: &mut Parser, sink: crate::flux::fluxin::FieldIn< '_>);
+    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>);
 
-    fn	Parse( &self, parser: &mut Parser, mark: U32, sink: crate::flux::fluxin::FieldIn< '_>) -> Option< U32>
+    fn	Parse( &self, parser: &mut Parser, mark: U32, sink: FieldIn< '_>) -> Option< U32>
     {
         let  	node = Forge {
             prev: parser._TopForge,
@@ -183,7 +184,7 @@ impl<'p> Parser<'p>
 
 impl IGrammar for Charset
 {
-    fn	Match( &self, parser: &mut Parser, sink: crate::flux::fluxin::FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
     {
         let  	mark = parser.Forge().Mark();
         let  	curr = parser.GetAt( mark);
@@ -200,7 +201,7 @@ impl IGrammar for Charset
 
 impl IGrammar for char
 {
-    fn	Match( &self, parser: &mut Parser, sink: crate::flux::fluxin::FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
     {
         let  	mark = parser.Forge().Mark();
         let  	curr = parser.GetAt( mark);
@@ -223,7 +224,7 @@ impl IFluxOutSource for char
 
 impl IGrammar for str
 {
-    fn	Match( &self, parser: &mut Parser, sink: crate::flux::fluxin::FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
     {
         let  	mark = parser.Forge().Mark();
         let  	key = self.as_bytes();
@@ -252,7 +253,7 @@ impl IGrammar for str
 
 impl< 'a, 'r, T: IGrammar> IGrammar for &'r T
 {
-    fn	Match( &self, parser: &mut Parser, sink: crate::flux::fluxin::FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
     {
         (**self).Match( parser, crate::flux::fluxin::FieldIn::Null);
     }

@@ -46,12 +46,12 @@ pub trait ITermNode: INode {
     fn ChildrenCount(&self) -> usize;
     fn Child(&self, idx: usize) -> &dyn ITermNode;
     fn Op(&self) -> BinOp;
-    fn AsLeaf(&self) -> Option<&Term>;
+    fn AsLeaf(&self) -> &Term;
 }
 ```
 Implementations are provided for `Term`, `BinNode` (aliased as `TermBinNode`), and references `&T`.
 
-### 2. `IXFluxSource`
+### 2. `IFluxOutSource`
 Enables serializing TermTree nodes into JSON or other stream formats (e.g., for logging or tracing expressions) with standard `"Op"`, `"Left"`, and `"Right"` keys.
 
 ---

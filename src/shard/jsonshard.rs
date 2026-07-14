@@ -2,6 +2,7 @@
 
 use	std::fmt;
 use	crate::flux::{ IFluxOutSource, fluxout::FieldOut };
+use	crate::flux::fluxin::FieldIn;
 use	crate::shard::{ Charset, IGrammar, Parser, IForge };
 use	crate::silo::{U32, U8};
 use	crate::shard::numbers::Real;
@@ -26,7 +27,7 @@ impl IFluxOutSource for JsonShard
 
 impl IGrammar for JsonShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser, sink: crate::flux::fluxin::FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
     {
         let  	mark = parser.Forge().Mark();
         let  	res = JsonShard::MatchValue( parser, mark);
@@ -65,7 +66,7 @@ impl JsonShard
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchString( parser: &mut crate::shard::Parser, marker: U32) -> (bool, U32)
+    fn	MatchString( parser: &mut Parser, marker: U32) -> (bool, U32)
     {
         let  	mut m = marker;
         let  	curr = parser.GetAt( m);
@@ -106,7 +107,7 @@ impl JsonShard
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchKeyword( parser: &mut crate::shard::Parser, marker: U32, keyword: &[u8]) -> (bool, U32)
+    fn	MatchKeyword( parser: &mut Parser, marker: U32, keyword: &[u8]) -> (bool, U32)
     {
         let  	mut m = marker;
         for &b in keyword {
@@ -124,7 +125,7 @@ impl JsonShard
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchValue( parser: &mut crate::shard::Parser, mut m: U32) -> Option< U32>
+    fn	MatchValue( parser: &mut Parser, mut m: U32) -> Option< U32>
     {
         if let Some( newM) = WSpc().Parse( parser, m, crate::flux::fluxin::FieldIn::Null) {
             m = newM;
@@ -164,7 +165,7 @@ impl JsonShard
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchArray( parser: &mut crate::shard::Parser, mut m: U32) -> Option< U32>
+    fn	MatchArray( parser: &mut Parser, mut m: U32) -> Option< U32>
     {
         if parser.GetAt( m) != U8( b'[') {
             return None;
@@ -201,7 +202,7 @@ impl JsonShard
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchObject( parser: &mut crate::shard::Parser, mut m: U32) -> Option< U32>
+    fn	MatchObject( parser: &mut Parser, mut m: U32) -> Option< U32>
     {
         if parser.GetAt( m) != U8( b'{') {
             return None;
