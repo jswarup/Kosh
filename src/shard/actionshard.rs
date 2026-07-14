@@ -60,43 +60,40 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct ActionForge< 'a, 'p, P: IForge< 'p>, W>
+pub struct ActionForge< 'a, 'p, W>
 where
     W: crate::stalks::work::IWork + 'static,
 {
-    pub     _Parent: &'a mut P,
+    pub     _Parser: &'a mut Parser< 'p>,
     pub     _Action: &'a W,
     pub     _OrigMark: U32,
     pub     _CurrMark: U32,
     pub     _Result: Option< U32>,
-    pub     _Phantom: std::marker::PhantomData<&'p ()>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, 'p, P: IForge< 'p>, W: crate::stalks::work::IWork + 'static> ActionForge< 'a, 'p, P, W>
+impl< 'a, 'p, W: crate::stalks::work::IWork + 'static> ActionForge< 'a, 'p, W>
 {
-    pub fn	New( parent: &'a mut P, action: &'a W) -> Self
+    pub fn	New( parser: &'a mut Parser< 'p>, action: &'a W) -> Self
     {
-        let  	mark = parent.Mark();
         ActionForge {
-            _Parent: parent,
+            _Parser: parser,
             _Action: action,
-            _OrigMark: mark,
-            _CurrMark: mark,
+            _OrigMark: U32( 0),
+            _CurrMark: U32( 0),
             _Result: None,
-            _Phantom: std::marker::PhantomData,
         }
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, 'p, P: IForge< 'p>, W: crate::stalks::work::IWork + 'static> IForge< 'p> for ActionForge< 'a, 'p, P, W>
+impl< 'a, 'p, W: crate::stalks::work::IWork + 'static> IForge< 'p> for ActionForge< 'a, 'p, W>
 {
     fn	Parser( &mut self) -> &mut Parser< 'p>
     {
-        self._Parent.Parser()
+        self._Parser
     }
      
     fn	Mark( &self) -> U32
@@ -125,25 +122,22 @@ impl< 'a, 'p, P: IForge< 'p>, W: crate::stalks::work::IWork + 'static> IForge< '
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, 'p, P: IForge< 'p>, W: crate::stalks::work::IWork + 'static> Drop for ActionForge< 'a, 'p, P, W>
+impl< 'a, 'p, W: crate::stalks::work::IWork + 'static> Drop for ActionForge< 'a, 'p, W>
 {
     fn	drop( &mut self)
     {
-        if let Some( mark) = self._Result {
+        if let Some( _mark) = self._Result {
             let  	actionPtr = self._Action as &DynIWork< 'static> as *const DynIWork< 'static>;
             let  	actionMut = actionPtr.MutRef();
-            actionMut.DoWork( self._Parent.Parser());
-            self._Parent.Deposit( Some( mark));
-        } else {
-            self._Parent.SetMark( self._OrigMark);
+            actionMut.DoWork( self._Parser);
         }
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-unsafe impl< 'a, 'p, P: IForge< 'p>, W> Send for ActionForge< 'a, 'p, P, W> where W: crate::stalks::work::IWork + 'static {}
-unsafe impl< 'a, 'p, P: IForge< 'p>, W> Sync for ActionForge< 'a, 'p, P, W> where W: crate::stalks::work::IWork + 'static {}
+unsafe impl< 'a, 'p, W> Send for ActionForge< 'a, 'p, W> where W: crate::stalks::work::IWork + 'static {}
+unsafe impl< 'a, 'p, W> Sync for ActionForge< 'a, 'p, W> where W: crate::stalks::work::IWork + 'static {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -152,17 +146,23 @@ where
     C: IGrammar,
     W: crate::stalks::work::IWork + 'static,
 {
-    fn	Forge< 'a, 'p, P: IForge< 'p> + 'a>( &'a self, parent: &'a mut P) -> impl IForge< 'p> + 'a
+    fn	Forge< 'a, 'p>( &'a self, parser: &'a mut Parser< 'p>) -> impl IForge< 'p> + 'a
     where
         'p: 'a
     {
-        ActionForge::New( parent, &self._Op._Action)
+        ActionForge::New( parser, &self._Op._Action)
     }
 
     fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F)
     {
-        let  	mut actionForge = self.Forge( forge);
-        self._Child.Match( &mut actionForge);
+        let  	res = {
+            let  	mark = forge.Mark();
+            let  	mut actionForge = self.Forge( forge.Parser());
+            actionForge.SetMark( mark);
+            self._Child.Match( &mut actionForge);
+            actionForge.Result()
+        };
+        forge.Deposit( res);
     }
 }
 

@@ -128,7 +128,8 @@ impl JsonShard
         let  	mut m = forge.Mark();
         {
             let  	wspc = WSpc();
-            let  	mut wspcForge = wspc.Forge( forge);
+            let  	mut wspcForge = wspc.Forge( forge.Parser());
+            wspcForge.SetMark( m);
             wspc.Match( &mut wspcForge);
             if wspcForge.Result().is_some() {
                 m = wspcForge.Mark();
@@ -174,7 +175,8 @@ impl JsonShard
         } else if curr == U8( b'-') || ( curr >= U8( b'0') && curr <= U8( b'9')) {
             forge.SetMark( m);
             let  	real = Real;
-            let  	mut realForge = real.Forge( forge);
+            let  	mut realForge = real.Forge( forge.Parser());
+            realForge.SetMark( m);
             real.Match( &mut realForge);
             if realForge.Result().is_some() {
                 let  	nextM = realForge.Mark();

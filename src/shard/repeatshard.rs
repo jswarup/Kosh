@@ -57,7 +57,8 @@ where
 
         while count < last {
             let  	res = {
-                let  	mut childForge = self._Child.Forge( forge);
+                let  	mut childForge = self._Child.Forge( forge.Parser());
+                childForge.SetMark( m);
                 self._Child.Match( &mut childForge);
                 childForge.Result()
             };

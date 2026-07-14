@@ -20,7 +20,9 @@ where
         match self._Op {
             BinOp::Bor => {
                 let  	leftRes = {
-                    let  	mut leftForge = self._Left.Forge( forge);
+                    let  	mark = forge.Mark();
+                    let  	mut leftForge = self._Left.Forge( forge.Parser());
+                    leftForge.SetMark( mark);
                     self._Left.Match( &mut leftForge);
                     leftForge.Result()
                 };
@@ -30,7 +32,9 @@ where
                 }
                 
                 let  	rightRes = {
-                    let  	mut rightForge = self._Right.Forge( forge);
+                    let  	mark = forge.Mark();
+                    let  	mut rightForge = self._Right.Forge( forge.Parser());
+                    rightForge.SetMark( mark);
                     self._Right.Match( &mut rightForge);
                     rightForge.Result()
                 };
@@ -38,21 +42,23 @@ where
             }
             BinOp::Less => {
                 let  	leftRes = {
-                    let  	mut leftForge = self._Left.Forge( forge);
+                    let  	mark = forge.Mark();
+                    let  	mut leftForge = self._Left.Forge( forge.Parser());
+                    leftForge.SetMark( mark);
                     self._Left.Match( &mut leftForge);
                     leftForge.Result()
                 };
-                if leftRes.is_none() {
+                if let Some( newM) = leftRes {
+                    let  	rightRes = {
+                        let  	mut rightForge = self._Right.Forge( forge.Parser());
+                        rightForge.SetMark( newM);
+                        self._Right.Match( &mut rightForge);
+                        rightForge.Result()
+                    };
+                    forge.Deposit( rightRes);
+                } else {
                     forge.Deposit( None);
-                    return;
                 }
-                
-                let  	rightRes = {
-                    let  	mut rightForge = self._Right.Forge( forge);
-                    self._Right.Match( &mut rightForge);
-                    rightForge.Result()
-                };
-                forge.Deposit( rightRes);
             }
             _ => panic!( "Unsupported operator in BinShard Match"),
         }

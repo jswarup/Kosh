@@ -19,39 +19,36 @@ pub trait IForge< 'p>: Send + Sync
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct BaseForge< 'a, 'p, P: IForge< 'p>>
+pub struct BaseForge< 'a, 'p>
 {
-    pub     _Parent: &'a mut P,
+    pub     _Parser: &'a mut Parser< 'p>,
     pub     _OrigMark: U32,
     pub     _CurrMark: U32,
     pub     _Result: Option< U32>,
-    pub     _Phantom: std::marker::PhantomData<&'p ()>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, 'p, P: IForge< 'p>> BaseForge< 'a, 'p, P>
+impl< 'a, 'p> BaseForge< 'a, 'p>
 {
-    pub fn	New( parent: &'a mut P) -> Self
+    pub fn	New( parser: &'a mut Parser< 'p>) -> Self
     {
-        let  	mark = parent.Mark();
         BaseForge {
-            _Parent: parent,
-            _OrigMark: mark,
-            _CurrMark: mark,
+            _Parser: parser,
+            _OrigMark: U32( 0),
+            _CurrMark: U32( 0),
             _Result: None,
-            _Phantom: std::marker::PhantomData,
         }
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, 'p, P: IForge< 'p>> IForge< 'p> for BaseForge< 'a, 'p, P>
+impl< 'a, 'p> IForge< 'p> for BaseForge< 'a, 'p>
 {
     fn	Parser( &mut self) -> &mut Parser< 'p>
     {
-        self._Parent.Parser()
+        self._Parser
     }
      
     fn	Mark( &self) -> U32
@@ -80,32 +77,18 @@ impl< 'a, 'p, P: IForge< 'p>> IForge< 'p> for BaseForge< 'a, 'p, P>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, 'p, P: IForge< 'p>> Drop for BaseForge< 'a, 'p, P>
-{
-    fn	drop( &mut self)
-    {
-        if let Some( mark) = self._Result {
-            self._Parent.Deposit( Some( mark));
-        } else {
-            self._Parent.SetMark( self._OrigMark);
-        }
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-unsafe impl< 'a, 'p, P: IForge< 'p>> Send for BaseForge< 'a, 'p, P> {}
-unsafe impl< 'a, 'p, P: IForge< 'p>> Sync for BaseForge< 'a, 'p, P> {}
+unsafe impl< 'a, 'p> Send for BaseForge< 'a, 'p> {}
+unsafe impl< 'a, 'p> Sync for BaseForge< 'a, 'p> {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub trait IGrammar: INode
 {
-    fn	Forge< 'a, 'p, P: IForge< 'p> + 'a>( &'a self, parent: &'a mut P) -> impl IForge< 'p> + 'a
+    fn	Forge< 'a, 'p>( &'a self, parser: &'a mut Parser< 'p>) -> impl IForge< 'p> + 'a
     where
         'p: 'a
     {
-        BaseForge::New( parent)
+        BaseForge::New( parser)
     }
 
     fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F);
@@ -120,59 +103,7 @@ pub struct Parser<'p>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct ParseForge<'a, 'p> 
-{
-    pub     _Parser: &'a mut Parser<'p>,
-    pub     _Marker: U32,
-    pub     _Result: Option< U32>,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl<'a, 'p> ParseForge<'a, 'p>
-{
-    pub fn	New( parser: &'a mut Parser<'p>, mark: U32) -> Self
-    {
-        ParseForge {
-            _Parser: parser,
-            _Marker: mark,
-            _Result: None,
-        }
-    }
-} 
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl<'a, 'p> IForge<'p> for ParseForge<'a, 'p>
-{
-    fn	Parser( &mut self) -> &mut Parser< 'p>
-    {
-        self._Parser
-    }
-     
-    fn	Mark( &self) -> U32
-    {
-        self._Marker
-    }
-
-    fn	SetMark( &mut self, mark: U32)
-    {
-        self._Marker = mark;
-    }
-
-    fn	Deposit( &mut self, result: Option< U32>)
-    {
-        self._Result = result;
-        if let Some( mark) = result {
-            self._Marker = mark;
-        }
-    }
-
-    fn	Result( &self) -> Option< U32>
-    {
-        self._Result
-    }
-}
+// ParseForge removed completely
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -208,9 +139,9 @@ impl<'p> Parser<'p>
     }
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn Parse< G: IGrammar + ?Sized>( &mut self, grammar: &'p G) -> bool
+    pub fn	Parse< G: IGrammar + ?Sized>( &mut self, grammar: &'p G) -> bool
     {
-        let  	mut forge = ParseForge::New( self, U32( 0));
+        let  	mut forge = grammar.Forge( self);
         grammar.Match( &mut forge);
         let  	matched = forge.Result().is_some();
         matched
