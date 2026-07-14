@@ -183,7 +183,6 @@ impl IGrammar for HexShard
             }
         }
         if matched {
-            parser.Forge().SetMark( currentMark);
             let  	res = Some( currentMark);
             parser.Forge().Deposit( res);
         } else {

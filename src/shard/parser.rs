@@ -10,11 +10,8 @@ use	crate::stalks::{ IWorker, WorkPtr, INode };
  
 pub trait IForge: Send + Sync + 'static
 {
-    fn  New() -> Self where Self: Sized;
     fn	Mark( &self) -> U32; 
-    fn	SetMark( &mut self, mark: U32);
     fn	Deposit( &mut self, result: Option< U32>);
-    fn	Result( &self) -> Option< U32>;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -30,25 +27,23 @@ pub struct BaseForge
 
 impl BaseForge
 {
+    pub fn	Result( &self) -> Option< U32>
+    {
+        if self._IsMatched {
+            Some( self._CurrMark)
+        } else {
+            None
+        }
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl IForge for BaseForge
 {
-    fn  New() -> Self
-    {
-        panic!("Not meant to be instantiated via New")
-    }
-
     fn	Mark( &self) -> U32
     {
         self._CurrMark
-    }
-
-    fn	SetMark( &mut self, mark: U32)
-    {
-        self._CurrMark = mark;
     }
 
     fn	Deposit( &mut self, result: Option< U32>)
@@ -58,15 +53,6 @@ impl IForge for BaseForge
             self._IsMatched = true;
         } else {
             self._IsMatched = false;
-        }
-    }
-
-    fn	Result( &self) -> Option< U32>
-    {
-        if self._IsMatched {
-            Some( self._CurrMark)
-        } else {
-            None
         }
     }
 }
@@ -258,7 +244,6 @@ impl IGrammar for str
             }
         }
         
-        parser.Forge().SetMark( currentMark);
         parser.Forge().Deposit( Some( currentMark));
     }
 }

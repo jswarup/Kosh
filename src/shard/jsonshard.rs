@@ -32,7 +32,6 @@ impl IGrammar for JsonShard
         let  	res = JsonShard::MatchValue( parser, mark);
         if let Some( newM) = res {
             let  	nextM = JsonShard::SkipWhitespace( parser, newM);
-            parser.Forge().SetMark( nextM);
             parser.Forge().Deposit( Some( nextM));
         } else {
             parser.Forge().Deposit( None);
