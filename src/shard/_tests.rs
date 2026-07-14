@@ -108,9 +108,9 @@ fn	TestPostBoxet()
     } ] );
     let  	mut stream = FixedStream::from( data);
     let  	mut parser = Parser::New( &mut stream);
-    let res = tree.Parse( &mut parser, U32(0, crate::flux::fluxin::FieldIn::Null));
+    let res = tree.Parse( &mut parser, U32(0), crate::flux::fluxin::FieldIn::Null);
     let matched = res.is_some();
-    let m = res.unwrap_or(U32(0));
+    let  	_m = res.unwrap_or(U32(0));
     assert!( matched);
 }
 
@@ -133,7 +133,7 @@ fn TestRgx2()
     // Test that the Repeat and Action correctly parse strings
     let  	mut stream1 = FixedStream::from( "aBcxYZ");
     let  	mut parser1 = Parser::New( &mut stream1);
-    let res1 = identRgx.Parse( &mut parser1, U32(0, crate::flux::fluxin::FieldIn::Null));
+    let res1 = identRgx.Parse( &mut parser1, U32(0), crate::flux::fluxin::FieldIn::Null);
     let matched1 = res1.is_some();
     let m1 = res1.unwrap_or(U32(0)); // Should match greedy
     assert!( matched1);
@@ -142,7 +142,7 @@ fn TestRgx2()
     // Test with non-matching string
     let  	mut stream2 = FixedStream::from( "aBcxYZ123");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let res2 = identRgx.Parse( &mut parser2, U32(0, crate::flux::fluxin::FieldIn::Null));
+    let res2 = identRgx.Parse( &mut parser2, U32(0), crate::flux::fluxin::FieldIn::Null);
     let matched2 = res2.is_some();
     let m2 = res2.unwrap_or(U32(0)); // Should succeed but match 6 chars 
     assert!( matched2);
@@ -160,7 +160,7 @@ fn TestUIntShard()
     // Test that the UInt shard correctly parses unsigned integer strings
     let  	mut stream1 = FixedStream::from( "12345");
     let  	mut parser1 = Parser::New( &mut stream1);
-    let res1 = tree.Parse( &mut parser1, U32(0, crate::flux::fluxin::FieldIn::Null));
+    let res1 = tree.Parse( &mut parser1, U32(0), crate::flux::fluxin::FieldIn::Null);
     let matched1 = res1.is_some();
     let m1 = res1.unwrap_or(U32(0));
     assert!( matched1);
@@ -169,15 +169,15 @@ fn TestUIntShard()
     // Test with non-matching string
     let  	mut stream2 = FixedStream::from( "abc");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let res2 = tree.Parse( &mut parser2, U32(0, crate::flux::fluxin::FieldIn::Null));
+    let res2 = tree.Parse( &mut parser2, U32(0), crate::flux::fluxin::FieldIn::Null);
     let matched2 = res2.is_some();
-    let m2 = res2.unwrap_or(U32(0));
+    let  	_m2 = res2.unwrap_or(U32(0));
     assert!( !matched2);
     
     // Test with mixed string
     let  	mut stream3 = FixedStream::from( "42xyz");
     let  	mut parser3 = Parser::New( &mut stream3);
-    let res3 = tree.Parse( &mut parser3, U32(0, crate::flux::fluxin::FieldIn::Null));
+    let res3 = tree.Parse( &mut parser3, U32(0), crate::flux::fluxin::FieldIn::Null);
     let matched3 = res3.is_some();
     let m3 = res3.unwrap_or(U32(0));
     assert!( matched3);
@@ -193,7 +193,7 @@ fn TestIntShard() {
     // Positive int
     let  	mut stream = FixedStream::from( "+12345");
     let  	mut parser = Parser::New( &mut stream);
-    let res = tree.Parse( &mut parser, U32(0, crate::flux::fluxin::FieldIn::Null));
+    let res = tree.Parse( &mut parser, U32(0), crate::flux::fluxin::FieldIn::Null);
     let matched = res.is_some();
     let m = res.unwrap_or(U32(0));
     
@@ -203,7 +203,7 @@ fn TestIntShard() {
     // Negative int
     let  	mut stream2 = FixedStream::from( "-42");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let res2 = tree.Parse( &mut parser2, U32(0, crate::flux::fluxin::FieldIn::Null));
+    let res2 = tree.Parse( &mut parser2, U32(0), crate::flux::fluxin::FieldIn::Null);
     let matched2 = res2.is_some();
     let m2 = res2.unwrap_or(U32(0));
     assert!( matched2);
@@ -217,7 +217,7 @@ fn TestHexShard() {
     // Standard hex
     let  	mut stream = FixedStream::from( "0x1a2B");
     let  	mut parser = Parser::New( &mut stream);
-    let res = tree.Parse( &mut parser, U32(0, crate::flux::fluxin::FieldIn::Null));
+    let res = tree.Parse( &mut parser, U32(0), crate::flux::fluxin::FieldIn::Null);
     let matched = res.is_some();
     let m = res.unwrap_or(U32(0));
     
@@ -227,7 +227,7 @@ fn TestHexShard() {
     // Hex with sign
     let  	mut stream2 = FixedStream::from( "-0XF");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let res2 = tree.Parse( &mut parser2, U32(0, crate::flux::fluxin::FieldIn::Null));
+    let res2 = tree.Parse( &mut parser2, U32(0), crate::flux::fluxin::FieldIn::Null);
     let matched2 = res2.is_some();
     let m2 = res2.unwrap_or(U32(0));
     assert!( matched2);
@@ -241,7 +241,7 @@ fn TestRealShard() {
     // Standard real
     let  	mut stream = FixedStream::from( "3.14159");
     let  	mut parser = Parser::New( &mut stream);
-    let res = tree.Parse( &mut parser, U32(0, crate::flux::fluxin::FieldIn::Null));
+    let res = tree.Parse( &mut parser, U32(0), crate::flux::fluxin::FieldIn::Null);
     let matched = res.is_some();
     let m = res.unwrap_or(U32(0));
     
@@ -251,7 +251,7 @@ fn TestRealShard() {
     // Real with exponent
     let  	mut stream2 = FixedStream::from( "-1.5e+10");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let res2 = tree.Parse( &mut parser2, U32(0, crate::flux::fluxin::FieldIn::Null));
+    let res2 = tree.Parse( &mut parser2, U32(0), crate::flux::fluxin::FieldIn::Null);
     let matched2 = res2.is_some();
     let m2 = res2.unwrap_or(U32(0));
     assert!( matched2);
@@ -265,7 +265,7 @@ fn TestHexRealShard() {
     // Hex real with fraction
     let  	mut stream = FixedStream::from( "0x1.f");
     let  	mut parser = Parser::New( &mut stream);
-    let res = tree.Parse( &mut parser, U32(0, crate::flux::fluxin::FieldIn::Null));
+    let res = tree.Parse( &mut parser, U32(0), crate::flux::fluxin::FieldIn::Null);
     let matched = res.is_some();
     let m = res.unwrap_or(U32(0));
     
@@ -275,7 +275,7 @@ fn TestHexRealShard() {
     // Hex real with binary exponent
     let  	mut stream2 = FixedStream::from( "-0x1.abcP-4");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let res2 = tree.Parse( &mut parser2, U32(0, crate::flux::fluxin::FieldIn::Null));
+    let res2 = tree.Parse( &mut parser2, U32(0), crate::flux::fluxin::FieldIn::Null);
     let matched2 = res2.is_some();
     let m2 = res2.unwrap_or(U32(0));
     assert!( matched2);
@@ -291,7 +291,7 @@ fn TestJsonShard() {
     // JSON String
     let  	mut stream1 = FixedStream::from( r#"  "hello world"  "#);
     let  	mut parser1 = Parser::New( &mut stream1);
-    let res1 = tree.Parse( &mut parser1, U32(0, crate::flux::fluxin::FieldIn::Null));
+    let res1 = tree.Parse( &mut parser1, U32(0), crate::flux::fluxin::FieldIn::Null);
     let matched1 = res1.is_some();
     let m1 = res1.unwrap_or(U32(0));
     assert!( matched1);
@@ -309,7 +309,7 @@ fn TestJsonShard() {
     "#;
     let  	mut stream2 = FixedStream::from( json_text);
     let  	mut parser2 = Parser::New( &mut stream2);
-    let res2 = tree.Parse( &mut parser2, U32(0, crate::flux::fluxin::FieldIn::Null));
+    let res2 = tree.Parse( &mut parser2, U32(0), crate::flux::fluxin::FieldIn::Null);
     let matched2 = res2.is_some();
     let m2 = res2.unwrap_or(U32(0));
     assert!( matched2);
@@ -317,3 +317,59 @@ fn TestJsonShard() {
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestJsonParsingStruct()
+{
+    use crate::flux::fluxin::{ FieldIn, IFluxInSource };
+    use crate::silo::U64;
+
+    #[derive( Default, Debug, PartialEq)]
+    struct Person {
+        name: String,
+        age: U64,
+        is_active: bool,
+    }
+
+    impl IFluxInSource for Person {
+        fn	ToFieldIn< 'a>( &'a mut self, field: &mut FieldIn< 'a>) {
+            let person_ptr = self as *mut Person;
+            *field = FieldIn::Obj( Box::new( move |key, child| {
+                let person = unsafe { &mut *person_ptr };
+                if key == "name" {
+                    *child = FieldIn::String( &mut person.name);
+                    true
+                } else if key == "age" {
+                    *child = FieldIn::U64( &mut person.age);
+                    true
+                } else if key == "is_active" {
+                    *child = FieldIn::Bool( &mut person.is_active);
+                    true
+                } else {
+                    false
+                }
+            }));
+        }
+    }
+
+    let  	str = r#"{ "name": "Alice", "age": 30, "is_active": true }"#;
+    let  	mut stream = crate::flux::FixedStream::from( str);
+    let  	mut parser = Parser::New( &mut stream);
+    
+    let  	mut person = Person::default();
+    let  	m = U32(0);
+    
+    let  	sink = FieldIn::FluxSource( &mut person);
+    
+    // We expect Json.Parse to update `person` via the sink closure!
+    let  	matched = Json.Parse( &mut parser, m, sink);
+    
+    assert!( matched.is_some());
+    assert_eq!( person.name, "Alice");
+    assert_eq!( person.age, U64( 30));
+    assert_eq!( person.is_active, true);
+}
+

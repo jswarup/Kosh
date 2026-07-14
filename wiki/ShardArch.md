@@ -6,7 +6,7 @@ The Shard framework is a robust, zero-heap-allocation Abstract Syntax Tree (AST)
 
 1. **Zero-Heap Allocation**: The Shard AST nodes prioritize stack-allocated references rather than owned heap allocations (like `Box`). This design significantly reduces overhead during parser initialization and ensures that tree traversal is highly cache-efficient.
 2. **Rust Temporary Lifetime Extension**: The node construction logic relies heavily on inline struct instantiation directly within the `ShardTree!` macro. By expanding structs like `BinShard` and `StrShard` behind borrow references (`&`) inline, Rust's temporary lifetime extension guarantees that these stack-allocated trees live as long as the enclosing block.
-3. **Trait-driven Modularity**: Nodes implement `IGrammar` (to define the recursive parser matching semantics) and `IXFluxSource` (to enable serialization).
+3. **Trait-driven Modularity**: Nodes implement `IGrammar` (to define the recursive parser matching semantics) and `IFluxOutSource` (to enable serialization).
 
 ## Node Types
 
@@ -33,24 +33,13 @@ Nodes that wrap a single child grammar path for modified execution semantics.
 The `IGrammar` and `IForge` traits form the core matching and detached processing architecture of the Shard framework.
 ```rust
 pub trait IGrammar: INode {
-    fn	Forge< 'a, 'p, P: IForge< 'p> + 'a>( &'a self, parent: &'a mut P) -> impl IForge< 'p> + 'a
-    where
-        'p: 'a;
-
-    fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F);
-}
-
-pub trait IForge< 'p>: Send + Sync {
-    fn	Parser( &mut self) -> &mut Parser< 'p>;
-    fn	Mark( &self) -> U32;
-    fn	SetMark( &mut self, mark: U32);
-    fn	Deposit( &mut self, result: Option< U32>);
-    fn	Result( &self) -> Option< U32>;
+    fn  Match( &self, parser: &mut Parser, sink: FieldIn< '_>);
+    fn  Parse( &self, parser: &mut Parser, mark: U32, sink: FieldIn< '_>) -> Option< U32>;
 }
 ```
 * **Detached Match & Processing**: The match phase (`IGrammar::Match`) is decoupled from processing semantics. When a shard's grammar matches, it deposits its results (such as matching offsets or markers) onto the local `IForge` instance created for that grammar.
 * **Drop-Based Backtracking**: If matching fails, the `Drop` implementation of the local forge automatically rolls back the parent's marker to its original starting state. If matching succeeds, the local forge propagates its outcome (and triggers any related semantic actions, as in `ActionForge`) by calling `self._Parent.Deposit(Some(mark))` upon destruction.
-* **Stream Coupling**: The parser reads tokens directly utilizing the `IXFluxSource` data stream mechanism, seamlessly integrating with Kosh's broader ecosystem.
+* **Stream Coupling**: The parser reads tokens directly utilizing the `IFluxOutSource` data stream mechanism, seamlessly integrating with Kosh's broader ecosystem.
 
 ## ShardTree Macro
 

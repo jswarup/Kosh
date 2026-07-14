@@ -30,7 +30,7 @@ impl IGrammar for JsonShard
     fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
     {
         let  	mark = parser.Forge().Mark();
-        let  	res = JsonShard::MatchValue( parser, mark);
+        let  	res = JsonShard::MatchValue( parser, mark, sink);
         if let Some( newM) = res {
             let  	nextM = JsonShard::SkipWhitespace( parser, newM);
             parser.Forge().Deposit( Some( nextM));
@@ -66,7 +66,7 @@ impl JsonShard
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchString( parser: &mut Parser, marker: U32) -> (bool, U32)
+    fn	MatchString<'a>( parser: &mut Parser, marker: U32, mut sink: crate::flux::fluxin::FieldIn< 'a>) -> (bool, U32)
     {
         let  	mut m = marker;
         let  	curr = parser.GetAt( m);
@@ -89,6 +89,18 @@ impl JsonShard
                     escape = true;
                 } else if c == U8( b'"') {
                     if let Some( nxt) = parser.Incr( m) {
+                        sink.Resolve();
+                        if matches!( sink, crate::flux::fluxin::FieldIn::String( _) | crate::flux::fluxin::FieldIn::Str( _) | crate::flux::fluxin::FieldIn::FluxSink( _)) {
+                            let  	bytes = parser.InStream().BytesAt( marker + crate::silo::U32( 1), m - marker - crate::silo::U32( 1));
+                            if let  	Ok( s) = std::str::from_utf8( bytes) {
+                                if let  	crate::flux::fluxin::FieldIn::String( dst) = sink {
+                                    *dst = s.to_string();
+                                } else if let  	crate::flux::fluxin::FieldIn::FluxSink( flx) = sink {
+                                    let  	mut temp = s.to_string();
+                                    flx.FromFieldIn( crate::flux::fluxin::FieldIn::String( &mut temp));
+                                }
+                            }
+                        }
                         return ( true, nxt);
                     } else {
                         return ( false, marker);
@@ -107,7 +119,7 @@ impl JsonShard
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchKeyword( parser: &mut Parser, marker: U32, keyword: &[u8]) -> (bool, U32)
+    fn	MatchKeyword<'a>( parser: &mut Parser, marker: U32, keyword: &[u8], mut sink: crate::flux::fluxin::FieldIn< 'a>) -> (bool, U32)
     {
         let  	mut m = marker;
         for &b in keyword {
@@ -120,12 +132,27 @@ impl JsonShard
                 return ( false, marker);
             }
         }
+        sink.Resolve();
+        if let  	crate::flux::fluxin::FieldIn::Bool( dst) = sink {
+            if keyword == b"true" { *dst = true; }
+            else if keyword == b"false" { *dst = false; }
+        } else if let  	crate::flux::fluxin::FieldIn::FluxSink( flx) = sink {
+            if keyword == b"true" {
+                let  	mut temp = true;
+                flx.FromFieldIn( crate::flux::fluxin::FieldIn::Bool( &mut temp));
+            } else if keyword == b"false" {
+                let  	mut temp = false;
+                flx.FromFieldIn( crate::flux::fluxin::FieldIn::Bool( &mut temp));
+            } else if keyword == b"null" {
+                flx.FromFieldIn( crate::flux::fluxin::FieldIn::Null);
+            }
+        }
         ( true, m)
     }
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchValue( parser: &mut Parser, mut m: U32) -> Option< U32>
+    fn	MatchValue<'a>( parser: &mut Parser, mut m: U32, sink: crate::flux::fluxin::FieldIn< 'a>) -> Option< U32>
     {
         if let Some( newM) = WSpc().Parse( parser, m, crate::flux::fluxin::FieldIn::Null) {
             m = newM;
@@ -134,27 +161,27 @@ impl JsonShard
         let  	curr = parser.GetAt( m);
         
         if curr == U8( b'{') {
-            return Self::MatchObject( parser, m);
+            return Self::MatchObject( parser, m, sink);
         } else if curr == U8( b'[') {
-            return Self::MatchArray( parser, m);
+            return Self::MatchArray( parser, m, sink);
         } else if curr == U8( b'"') {
-            let ( matched, nextM) = Self::MatchString( parser, m);
+            let ( matched, nextM) = Self::MatchString( parser, m, sink);
             if matched { return Some( nextM); }
             return None;
         } else if curr == U8( b't') {
-            let ( matched, nextM) = Self::MatchKeyword( parser, m, b"true");
+            let ( matched, nextM) = Self::MatchKeyword( parser, m, b"true", sink);
             if matched { return Some( nextM); }
             return None;
         } else if curr == U8( b'f') {
-            let ( matched, nextM) = Self::MatchKeyword( parser, m, b"false");
+            let ( matched, nextM) = Self::MatchKeyword( parser, m, b"false", sink);
             if matched { return Some( nextM); }
             return None;
         } else if curr == U8( b'n') {
-            let ( matched, nextM) = Self::MatchKeyword( parser, m, b"null");
+            let ( matched, nextM) = Self::MatchKeyword( parser, m, b"null", sink);
             if matched { return Some( nextM); }
             return None;
         } else if curr == U8( b'-') || ( curr >= U8( b'0') && curr <= U8( b'9')) {
-            if let Some( nextM) = Real.Parse( parser, m, crate::flux::fluxin::FieldIn::Null) {
+            if let Some( nextM) = Real.Parse( parser, m, sink) {
                 return Some( nextM);
             }
             return None;
@@ -165,7 +192,7 @@ impl JsonShard
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchArray( parser: &mut Parser, mut m: U32) -> Option< U32>
+    fn	MatchArray<'a>( parser: &mut Parser, mut m: U32, mut sink: crate::flux::fluxin::FieldIn< 'a>) -> Option< U32>
     {
         if parser.GetAt( m) != U8( b'[') {
             return None;
@@ -180,7 +207,18 @@ impl JsonShard
         }
         
         loop {
-            if let Some( nxt) = Self::MatchValue( parser, m) {
+            
+            sink.Resolve();
+            let  	mut temp_sink = crate::flux::fluxin::FieldIn::Null;
+            std::mem::swap( &mut temp_sink, &mut sink);
+            
+            let  	mut child_sink = crate::flux::fluxin::FieldIn::Null;
+            if let crate::flux::fluxin::FieldIn::Arr( ref mut closure) = temp_sink {
+                closure( &mut child_sink);
+            }
+            std::mem::swap( &mut temp_sink, &mut sink);
+
+            if let Some( nxt) = Self::MatchValue( parser, m, child_sink) {
                 m = nxt;
             } else {
                 return None;
@@ -202,7 +240,7 @@ impl JsonShard
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchObject( parser: &mut Parser, mut m: U32) -> Option< U32>
+    fn	MatchObject<'a>( parser: &mut Parser, mut m: U32, mut sink: crate::flux::fluxin::FieldIn< 'a>) -> Option< U32>
     {
         if parser.GetAt( m) != U8( b'{') {
             return None;
@@ -218,10 +256,12 @@ impl JsonShard
         
         loop {
             m = Self::SkipWhitespace( parser, m);
-            let ( matched, nextM) = Self::MatchString( parser, m);
+            let  	key_start = m + crate::silo::U32( 1);
+            let ( matched, nextM) = Self::MatchString( parser, m, crate::flux::fluxin::FieldIn::Null);
             if !matched {
                 return None;
             }
+            let  	key_end = nextM - crate::silo::U32( 1);
             m = nextM;
             m = Self::SkipWhitespace( parser, m);
             
@@ -232,7 +272,21 @@ impl JsonShard
                 return None;
             };
             
-            if let Some( nxt) = Self::MatchValue( parser, m) {
+            
+            sink.Resolve();
+            let  	mut temp_sink = crate::flux::fluxin::FieldIn::Null;
+            std::mem::swap( &mut temp_sink, &mut sink);
+            
+            let  	mut child_sink = crate::flux::fluxin::FieldIn::Null;
+            if let crate::flux::fluxin::FieldIn::Obj( ref mut closure) = temp_sink {
+                let  	bytes = parser.InStream().BytesAt( key_start, key_end - key_start);
+                if let  	Ok( s) = std::str::from_utf8( bytes) {
+                    closure( s, &mut child_sink);
+                }
+            }
+            std::mem::swap( &mut temp_sink, &mut sink);
+
+            if let Some( nxt) = Self::MatchValue( parser, m, child_sink) {
                 m = nxt;
             } else {
                 return None;

@@ -50,7 +50,7 @@ where
     C: IGrammar,
 {
 
-fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
+fn	Match( &self, parser: &mut Parser, mut sink: FieldIn< '_>)
     {
         let  	mut count = U32( 0);
         let  	first = self._Op.First();
@@ -59,7 +59,17 @@ fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
         let  	mut m = parser.Forge().Mark();
 
         while count < last {
-            let  	res = self._Child.Parse( parser, m, crate::flux::fluxin::FieldIn::Null);
+            sink.Resolve();
+            let  	mut temp_sink = crate::flux::fluxin::FieldIn::Null;
+            std::mem::swap( &mut temp_sink, &mut sink);
+            
+            let  	mut child_sink = crate::flux::fluxin::FieldIn::Null;
+            if let crate::flux::fluxin::FieldIn::Arr( ref mut closure) = temp_sink {
+                closure( &mut child_sink);
+            }
+            std::mem::swap( &mut temp_sink, &mut sink);
+
+            let  	res = self._Child.Parse( parser, m, child_sink);
             if let Some( newM) = res {
                 if newM == m {
                     count += U32( 1);

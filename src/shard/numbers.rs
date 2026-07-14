@@ -5,7 +5,7 @@ use	crate::shard::Parser;
 use	crate::flux::{ IFluxOutSource, fluxout::FieldOut };
 use	crate::flux::fluxin::FieldIn;
 use	crate::shard::{ IGrammar, IForge };
-use	crate::silo::U8;
+use	crate::silo::{ U8, U32, U64 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -26,7 +26,7 @@ impl IFluxOutSource for UIntShard
 
 impl IGrammar for UIntShard
 {
-    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, mut sink: FieldIn< '_>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut m = origMark;
@@ -47,6 +47,20 @@ impl IGrammar for UIntShard
         }
         
         if matched {
+            sink.Resolve();
+            if matches!( sink, FieldIn::U64( _) | FieldIn::FluxSink( _)) {
+                let  	bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
+                if let  	Ok( s) = std::str::from_utf8( bytes) {
+                    if let  	Ok( val) = s.parse::<u64>() {
+                        if let  	FieldIn::U64( dst) = sink {
+                            *dst = U64( val);
+                        } else if let  	FieldIn::FluxSink( flx) = sink {
+                            let  	mut temp = U64( val);
+                            flx.FromFieldIn( FieldIn::U64( &mut temp));
+                        }
+                    }
+                }
+            }
             parser.Forge().Deposit( Some( m));
         } else {
             parser.Forge().Deposit( None);
@@ -88,7 +102,7 @@ impl IFluxOutSource for IntShard
 
 impl IGrammar for IntShard
 {
-    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, mut sink: FieldIn< '_>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut m = origMark;
@@ -119,6 +133,24 @@ impl IGrammar for IntShard
         }
         
         if matched {
+            sink.Resolve();
+            if matches!( sink, FieldIn::U64( _) | FieldIn::FluxSink( _)) {
+                let  	bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
+                if let  	Ok( s) = std::str::from_utf8( bytes) {
+                    let  	s_trim = s.trim_start_matches('+');
+                    let  	sign = if s_trim.starts_with('-') { -1 } else { 1 };
+                    let  	s_num = s_trim.trim_start_matches('-');
+                    if let  	Ok( val) = s_num.parse::<u64>() {
+                        let  	final_val = if sign == -1 { ( -( val as i64)) as u64 } else { val };
+                        if let  	FieldIn::U64( dst) = sink {
+                            *dst = U64( final_val);
+                        } else if let  	FieldIn::FluxSink( flx) = sink {
+                            let  	mut temp = U64( final_val);
+                            flx.FromFieldIn( FieldIn::U64( &mut temp));
+                        }
+                    }
+                }
+            }
             parser.Forge().Deposit( Some( m));
         } else {
             parser.Forge().Deposit( None);
@@ -142,7 +174,7 @@ impl IFluxOutSource for HexShard
 }
 impl IGrammar for HexShard
 {
-    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, mut sink: FieldIn< '_>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut currentMark = origMark;
@@ -185,6 +217,26 @@ impl IGrammar for HexShard
             }
         }
         if matched {
+            sink.Resolve();
+            if matches!( sink, FieldIn::U64( _) | FieldIn::FluxSink( _)) {
+                let  	bytes = parser.InStream().BytesAt( origMark, U32( currentMark.0 - origMark.0));
+                if let  	Ok( s) = std::str::from_utf8( bytes) {
+                    let  	mut s_trim = s.trim_start_matches(|c| c == '+' || c == '-');
+                    let  	sign = if s.starts_with('-') { -1 } else { 1 };
+                    if s_trim.starts_with("0x") || s_trim.starts_with("0X") {
+                        s_trim = &s_trim[2..];
+                    }
+                    if let  	Ok( val) = u64::from_str_radix( s_trim, 16) {
+                        let  	final_val = if sign == -1 { ( -( val as i64)) as u64 } else { val };
+                        if let  	FieldIn::U64( dst) = sink {
+                            *dst = U64( final_val);
+                        } else if let  	FieldIn::FluxSink( flx) = sink {
+                            let  	mut temp = U64( final_val);
+                            flx.FromFieldIn( FieldIn::U64( &mut temp));
+                        }
+                    }
+                }
+            }
             let  	res = Some( currentMark);
             parser.Forge().Deposit( res);
         } else {
@@ -206,7 +258,7 @@ impl IFluxOutSource for RealShard
 }
 impl IGrammar for RealShard
 {
-    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, mut sink: FieldIn< '_>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut m = origMark;
@@ -274,6 +326,23 @@ impl IGrammar for RealShard
             }
         }
         
+        sink.Resolve();
+        if matches!( sink, FieldIn::F64( _) | FieldIn::U64( _) | FieldIn::FluxSink( _)) {
+            let  	bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
+            if let  	Ok( s) = std::str::from_utf8( bytes) {
+                if let  	Ok( val) = s.parse::<f64>() {
+                    if let  	FieldIn::F64( dst) = sink {
+                        *dst = val;
+                    } else if let  	FieldIn::U64( dst) = sink {
+                        *dst = U64( val as u64);
+                    } else if let  	FieldIn::FluxSink( flx) = sink {
+                        let  	mut temp = val;
+                        flx.FromFieldIn( FieldIn::F64( &mut temp));
+                    }
+                }
+            }
+        }
+        
         parser.Forge().Deposit( Some( m));
     }
 }
@@ -291,7 +360,7 @@ impl IFluxOutSource for HexRealShard
 }
 impl IGrammar for HexRealShard
 {
-    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, mut sink: FieldIn< '_>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut m = origMark;
@@ -386,6 +455,16 @@ impl IGrammar for HexRealShard
                     parser.Forge().Deposit( None);
                     return;
                 }
+            }
+        }
+        
+        sink.Resolve();
+        // Parsing HexReal string into f64 isn't natively supported by std::str::parse, so we just populate string for now if it's String.
+        // Actually, we will just parse it to F64 if possible, else skip.
+        if matches!( sink, FieldIn::F64( _) | FieldIn::FluxSink( _)) {
+            let  	bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
+            if let  	Ok( _s) = std::str::from_utf8( bytes) {
+                // TODO: hex float parsing
             }
         }
         

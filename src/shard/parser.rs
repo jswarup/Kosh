@@ -184,7 +184,7 @@ impl<'p> Parser<'p>
 
 impl IGrammar for Charset
 {
-    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, _sink: FieldIn< '_>)
     {
         let  	mark = parser.Forge().Mark();
         let  	curr = parser.GetAt( mark);
@@ -201,7 +201,7 @@ impl IGrammar for Charset
 
 impl IGrammar for char
 {
-    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, _sink: FieldIn< '_>)
     {
         let  	mark = parser.Forge().Mark();
         let  	curr = parser.GetAt( mark);
@@ -224,7 +224,7 @@ impl IFluxOutSource for char
 
 impl IGrammar for str
 {
-    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, _sink: FieldIn< '_>)
     {
         let  	mark = parser.Forge().Mark();
         let  	key = self.as_bytes();
@@ -253,7 +253,7 @@ impl IGrammar for str
 
 impl< 'a, 'r, T: IGrammar> IGrammar for &'r T
 {
-    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, _sink: FieldIn< '_>)
     {
         (**self).Match( parser, crate::flux::fluxin::FieldIn::Null);
     }

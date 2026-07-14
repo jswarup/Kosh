@@ -28,7 +28,7 @@ impl< 'a> IFluxOutSource for StrShard< 'a>
 impl< 'a> IGrammar for StrShard< 'a>
 {
 
-    fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, _sink: FieldIn< '_>)
     {
         self._Val.Match( parser, crate::flux::fluxin::FieldIn::Null);
     }

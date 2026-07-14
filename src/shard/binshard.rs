@@ -18,7 +18,7 @@ where
     R: IGrammar,
 {
 
-fn	Match( &self, parser: &mut Parser, sink: FieldIn< '_>)
+fn	Match( &self, parser: &mut Parser, _sink: FieldIn< '_>)
     {
         match self._Op {
             BinOp::Bor => {
