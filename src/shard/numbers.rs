@@ -24,20 +24,18 @@ impl IXFluxSource for UIntShard
 
 impl IGrammar for UIntShard
 {
-    type Forge = crate::shard::parser::BaseForge;
-
-    fn	Match( &self, parser: &mut crate::shard::Parser, forge: &mut Self::Forge)
+    fn	Match( &self, parser: &mut crate::shard::Parser)
     {
-        let  	origMark = forge.Mark();
-        let  	mut currentMark = origMark;
+        let  	origMark = parser.Forge().Mark();
+        let  	mut m = origMark;
         let  	mut matched = false;
         
         loop {
-            let  	curr = parser.GetAt( currentMark);
+            let  	curr = parser.GetAt( m);
             if curr >= U8( b'0') && curr <= U8( b'9') {
                 matched = true;
-                if let  	Some( nextMark) = parser.Incr( currentMark) {
-                    currentMark = nextMark;
+                if let  	Some( nextM) = parser.Incr( m) {
+                    m = nextM;
                 } else {
                     break;
                 }
@@ -47,11 +45,9 @@ impl IGrammar for UIntShard
         }
         
         if matched {
-            forge.SetMark( currentMark);
-            let  	res = Some( currentMark);
-            forge.Deposit( res);
+            parser.Forge().Deposit( Some( m));
         } else {
-            forge.Deposit( None);
+            parser.Forge().Deposit( None);
         }
     }
 }
@@ -90,28 +86,28 @@ impl IXFluxSource for IntShard
 
 impl IGrammar for IntShard
 {
-    type Forge = crate::shard::parser::BaseForge;
-
-    fn	Match( &self, parser: &mut crate::shard::Parser, forge: &mut Self::Forge)
+    fn	Match( &self, parser: &mut crate::shard::Parser)
     {
-        let  	origMark = forge.Mark();
-        let  	mut currentMark = origMark;
-        let  	curr = parser.GetAt( currentMark);
-        if curr == U8( b'+') || curr == U8( b'-') {
-            if let  	Some( nextMark) = parser.Incr( currentMark) {
-                currentMark = nextMark;
+        let  	origMark = parser.Forge().Mark();
+        let  	mut m = origMark;
+        
+        let  	curr = parser.GetAt( m);
+        if curr == U8( b'-') || curr == U8( b'+') {
+            if let  	Some( nextM) = parser.Incr( m) {
+                m = nextM;
             } else {
-                forge.Deposit( None);
+                parser.Forge().Deposit( None);
                 return;
             }
         }
+        
         let  	mut matched = false;
         loop {
-            let  	curr = parser.GetAt( currentMark);
+            let  	curr = parser.GetAt( m);
             if curr >= U8( b'0') && curr <= U8( b'9') {
                 matched = true;
-                if let  	Some( nextMark) = parser.Incr( currentMark) {
-                    currentMark = nextMark;
+                if let  	Some( nextM) = parser.Incr( m) {
+                    m = nextM;
                 } else {
                     break;
                 }
@@ -119,12 +115,11 @@ impl IGrammar for IntShard
                 break;
             }
         }
+        
         if matched {
-            forge.SetMark( currentMark);
-            let  	res = Some( currentMark);
-            forge.Deposit( res);
+            parser.Forge().Deposit( Some( m));
         } else {
-            forge.Deposit( None);
+            parser.Forge().Deposit( None);
         }
     }
 }
@@ -145,11 +140,9 @@ impl IXFluxSource for HexShard
 }
 impl IGrammar for HexShard
 {
-    type Forge = crate::shard::parser::BaseForge;
-
-    fn	Match( &self, parser: &mut crate::shard::Parser, forge: &mut Self::Forge)
+    fn	Match( &self, parser: &mut crate::shard::Parser)
     {
-        let  	origMark = forge.Mark();
+        let  	origMark = parser.Forge().Mark();
         let  	mut currentMark = origMark;
         let  	mut curr = parser.GetAt( currentMark);
         if curr == U8( b'+') || curr == U8( b'-') {
@@ -157,7 +150,7 @@ impl IGrammar for HexShard
                 currentMark = nextMark;
                 curr = parser.GetAt( currentMark);
             } else {
-                forge.Deposit( None);
+                parser.Forge().Deposit( None);
                 return;
             }
         }
@@ -190,11 +183,11 @@ impl IGrammar for HexShard
             }
         }
         if matched {
-            forge.SetMark( currentMark);
+            parser.Forge().SetMark( currentMark);
             let  	res = Some( currentMark);
-            forge.Deposit( res);
+            parser.Forge().Deposit( res);
         } else {
-            forge.Deposit( None);
+            parser.Forge().Deposit( None);
         }
     }
 }
@@ -212,95 +205,75 @@ impl IXFluxSource for RealShard
 }
 impl IGrammar for RealShard
 {
-    type Forge = crate::shard::parser::BaseForge;
-
-    fn	Match( &self, parser: &mut crate::shard::Parser, forge: &mut Self::Forge)
+    fn	Match( &self, parser: &mut crate::shard::Parser)
     {
-        let  	origMark = forge.Mark();
-        let  	mut currentMark = origMark;
-        let  	curr = parser.GetAt( currentMark);
-        if curr == U8( b'+') || curr == U8( b'-') {
-            if let  	Some( nextMark) = parser.Incr( currentMark) {
-                currentMark = nextMark;
+        let  	origMark = parser.Forge().Mark();
+        let  	mut m = origMark;
+        
+        // Match optional sign
+        let  	curr = parser.GetAt( m);
+        if curr == U8( b'-') || curr == U8( b'+') {
+            if let  	Some( nextM) = parser.Incr( m) {
+                m = nextM;
             } else {
-                forge.Deposit( None);
+                parser.Forge().Deposit( None);
                 return;
             }
         }
-
-        let  	mut has_integer_digits = false;
+        
+        let  	mut matched_digits = false;
         loop {
-            let  	curr = parser.GetAt( currentMark);
+            let  	curr = parser.GetAt( m);
             if curr >= U8( b'0') && curr <= U8( b'9') {
-                has_integer_digits = true;
-                if let  	Some( nextMark) = parser.Incr( currentMark) {
-                    currentMark = nextMark;
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            }
+                matched_digits = true;
+                if let  	Some( nextM) = parser.Incr( m) { m = nextM; } else { break; }
+            } else { break; }
         }
-
-        let  	mut has_fractional_digits = false;
-        let  	curr = parser.GetAt( currentMark);
-        if curr == U8( b'.') {
-            if let  	Some( nextMark) = parser.Incr( currentMark) {
-                currentMark = nextMark;
+        
+        if parser.GetAt( m) == U8( b'.') {
+            if let  	Some( nextM) = parser.Incr( m) {
+                m = nextM;
+                matched_digits = false;
                 loop {
-                    let  	curr = parser.GetAt( currentMark);
+                    let  	curr = parser.GetAt( m);
                     if curr >= U8( b'0') && curr <= U8( b'9') {
-                        has_fractional_digits = true;
-                        if let  	Some( nextMark) = parser.Incr( currentMark) {
-                            currentMark = nextMark;
-                        } else {
-                            break;
-                        }
-                    } else {
-                        break;
-                    }
+                        matched_digits = true;
+                        if let  	Some( nextM) = parser.Incr( m) { m = nextM; } else { break; }
+                    } else { break; }
                 }
             }
         }
-
-        if !has_integer_digits && !has_fractional_digits {
-            forge.Deposit( None);
+        
+        if !matched_digits {
+            parser.Forge().Deposit( None);
             return;
         }
-
-        let  	curr = parser.GetAt( currentMark);
+        
+        let  	curr = parser.GetAt( m);
         if curr == U8( b'e') || curr == U8( b'E') {
-            if let  	Some( nextMark) = parser.Incr( currentMark) {
-                let  	mut expMark = nextMark;
-                let  	curr_exp = parser.GetAt( expMark);
-                if curr_exp == U8( b'+') || curr_exp == U8( b'-') {
-                    if let  	Some( n) = parser.Incr( expMark) {
-                        expMark = n;
-                    }
+            if let  	Some( nextM) = parser.Incr( m) {
+                m = nextM;
+                let  	curr = parser.GetAt( m);
+                if curr == U8( b'-') || curr == U8( b'+') {
+                    if let  	Some( nextM) = parser.Incr( m) { m = nextM; }
                 }
-                let  	mut has_exp_digits = false;
+                
+                let  	mut matched_exp = false;
                 loop {
-                    let  	curr = parser.GetAt( expMark);
+                    let  	curr = parser.GetAt( m);
                     if curr >= U8( b'0') && curr <= U8( b'9') {
-                        has_exp_digits = true;
-                        if let  	Some( n) = parser.Incr( expMark) {
-                            expMark = n;
-                        } else {
-                            break;
-                        }
-                    } else {
-                        break;
-                    }
+                        matched_exp = true;
+                        if let  	Some( nextM) = parser.Incr( m) { m = nextM; } else { break; }
+                    } else { break; }
                 }
-                if has_exp_digits {
-                    currentMark = expMark;
+                if !matched_exp {
+                    parser.Forge().Deposit( None);
+                    return;
                 }
             }
         }
-        forge.SetMark( currentMark);
-        let  	res = Some( currentMark);
-        forge.Deposit( res);
+        
+        parser.Forge().Deposit( Some( m));
     }
 }
 impl fmt::Display for RealShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Real") } }
@@ -317,119 +290,105 @@ impl IXFluxSource for HexRealShard
 }
 impl IGrammar for HexRealShard
 {
-    type Forge = crate::shard::parser::BaseForge;
-
-    fn	Match( &self, parser: &mut crate::shard::Parser, forge: &mut Self::Forge)
+    fn	Match( &self, parser: &mut crate::shard::Parser)
     {
-        let  	origMark = forge.Mark();
-        let  	mut currentMark = origMark;
-        let  	mut curr = parser.GetAt( currentMark);
-        if curr == U8( b'+') || curr == U8( b'-') {
-            if let  	Some( nextMark) = parser.Incr( currentMark) {
-                currentMark = nextMark;
-                curr = parser.GetAt( currentMark);
+        let  	origMark = parser.Forge().Mark();
+        let  	mut m = origMark;
+        
+        // Match optional sign
+        let  	curr = parser.GetAt( m);
+        if curr == U8( b'-') || curr == U8( b'+') {
+            if let  	Some( nextM) = parser.Incr( m) {
+                m = nextM;
             } else {
-                forge.Deposit( None);
+                parser.Forge().Deposit( None);
                 return;
             }
         }
-
+        
+        // Match 0x prefix
+        let  	curr = parser.GetAt( m);
         if curr == U8( b'0') {
-            if let  	Some( nextMark) = parser.Incr( currentMark) {
-                let  	curr2 = parser.GetAt( nextMark);
-                if curr2 == U8( b'x') || curr2 == U8( b'X') {
-                    if let  	Some( nextMark2) = parser.Incr( nextMark) {
-                        currentMark = nextMark2;
+            if let  	Some( nextM) = parser.Incr( m) {
+                m = nextM;
+                let  	curr = parser.GetAt( m);
+                if curr == U8( b'x') || curr == U8( b'X') {
+                    if let  	Some( nextM) = parser.Incr( m) {
+                        m = nextM;
                     } else {
-                        forge.Deposit( None);
+                        parser.Forge().Deposit( None);
                         return;
                     }
                 } else {
-                    forge.Deposit( None);
+                    parser.Forge().Deposit( None);
                     return;
                 }
             } else {
-                forge.Deposit( None);
+                parser.Forge().Deposit( None);
                 return;
             }
         } else {
-            forge.Deposit( None);
+            parser.Forge().Deposit( None);
             return;
         }
-
-        let  	mut has_integer_digits = false;
+        
+        let  	mut matched_digits = false;
         loop {
-            let  	curr = parser.GetAt( currentMark);
-            if ( curr >= U8( b'0') && curr <= U8( b'9')) || ( curr >= U8( b'a') && curr <= U8( b'f')) || ( curr >= U8( b'A') && curr <= U8( b'F')) {
-                has_integer_digits = true;
-                if let  	Some( nextMark) = parser.Incr( currentMark) {
-                    currentMark = nextMark;
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            }
+            let  	curr = parser.GetAt( m);
+            if ( curr >= U8( b'0') && curr <= U8( b'9')) ||
+               ( curr >= U8( b'a') && curr <= U8( b'f')) ||
+               ( curr >= U8( b'A') && curr <= U8( b'F')) {
+                matched_digits = true;
+                if let  	Some( nextM) = parser.Incr( m) { m = nextM; } else { break; }
+            } else { break; }
         }
-
-        let  	mut has_fractional_digits = false;
-        let  	curr = parser.GetAt( currentMark);
-        if curr == U8( b'.') {
-            if let  	Some( nextMark) = parser.Incr( currentMark) {
-                currentMark = nextMark;
+        
+        if parser.GetAt( m) == U8( b'.') {
+            if let  	Some( nextM) = parser.Incr( m) {
+                m = nextM;
+                matched_digits = false; // Reset to ensure we match digits after point
                 loop {
-                    let  	curr = parser.GetAt( currentMark);
-                    if ( curr >= U8( b'0') && curr <= U8( b'9')) || ( curr >= U8( b'a') && curr <= U8( b'f')) || ( curr >= U8( b'A') && curr <= U8( b'F')) {
-                        has_fractional_digits = true;
-                        if let  	Some( nextMark) = parser.Incr( currentMark) {
-                            currentMark = nextMark;
-                        } else {
-                            break;
-                        }
-                    } else {
-                        break;
-                    }
+                    let  	curr = parser.GetAt( m);
+                    if ( curr >= U8( b'0') && curr <= U8( b'9')) ||
+                       ( curr >= U8( b'a') && curr <= U8( b'f')) ||
+                       ( curr >= U8( b'A') && curr <= U8( b'F')) {
+                        matched_digits = true;
+                        if let  	Some( nextM) = parser.Incr( m) { m = nextM; } else { break; }
+                    } else { break; }
                 }
             }
         }
-
-        if !has_integer_digits && !has_fractional_digits {
-            forge.Deposit( None);
+        
+        if !matched_digits {
+            parser.Forge().Deposit( None);
             return;
         }
-
-        let  	curr = parser.GetAt( currentMark);
+        
+        let  	curr = parser.GetAt( m);
         if curr == U8( b'p') || curr == U8( b'P') {
-            if let  	Some( nextMark) = parser.Incr( currentMark) {
-                let  	mut expMark = nextMark;
-                let  	curr_exp = parser.GetAt( expMark);
-                if curr_exp == U8( b'+') || curr_exp == U8( b'-') {
-                    if let  	Some( n) = parser.Incr( expMark) {
-                        expMark = n;
-                    }
+            if let  	Some( nextM) = parser.Incr( m) {
+                m = nextM;
+                let  	curr = parser.GetAt( m);
+                if curr == U8( b'-') || curr == U8( b'+') {
+                    if let  	Some( nextM) = parser.Incr( m) { m = nextM; }
                 }
-                let  	mut has_exp_digits = false;
+                
+                let  	mut matched_exp = false;
                 loop {
-                    let  	curr = parser.GetAt( expMark);
+                    let  	curr = parser.GetAt( m);
                     if curr >= U8( b'0') && curr <= U8( b'9') {
-                        has_exp_digits = true;
-                        if let  	Some( n) = parser.Incr( expMark) {
-                            expMark = n;
-                        } else {
-                            break;
-                        }
-                    } else {
-                        break;
-                    }
+                        matched_exp = true;
+                        if let  	Some( nextM) = parser.Incr( m) { m = nextM; } else { break; }
+                    } else { break; }
                 }
-                if has_exp_digits {
-                    currentMark = expMark;
+                if !matched_exp {
+                    parser.Forge().Deposit( None);
+                    return;
                 }
             }
         }
-        forge.SetMark( currentMark);
-        let  	res = Some( currentMark);
-        forge.Deposit( res);
+        
+        parser.Forge().Deposit( Some( m));
     }
 }
 impl fmt::Display for HexRealShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "HexReal") } }

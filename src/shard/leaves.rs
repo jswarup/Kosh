@@ -25,11 +25,9 @@ impl< 'a> IXFluxSource for StrShard< 'a>
 
 impl< 'a> IGrammar for StrShard< 'a>
 {
-    type Forge = crate::shard::parser::BaseForge;
 
-    fn	Match( &self, parser: &mut crate::shard::Parser, forge: &mut Self::Forge)
+    fn	Match( &self, parser: &mut crate::shard::Parser)
     {
-        self._Val.Match( parser, forge);
+        self._Val.Match( parser);
     }
 }
-

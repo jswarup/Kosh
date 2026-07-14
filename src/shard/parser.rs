@@ -21,8 +21,9 @@ pub trait IForge: Send + Sync + 'static
 
 pub struct BaseForge
 {
+    pub     prev: *const BaseForge,
     pub     _CurrMark: U32,
-    pub     _Result: Option< U32>,
+    pub     _IsMatched: bool,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -37,10 +38,7 @@ impl IForge for BaseForge
 {
     fn  New() -> Self
     {
-        BaseForge {
-            _CurrMark: U32( 0),
-            _Result: None,
-        }
+        panic!("Not meant to be instantiated via New")
     }
 
     fn	Mark( &self) -> U32
@@ -55,15 +53,21 @@ impl IForge for BaseForge
 
     fn	Deposit( &mut self, result: Option< U32>)
     {
-        self._Result = result;
         if let Some( mark) = result {
             self._CurrMark = mark;
+            self._IsMatched = true;
+        } else {
+            self._IsMatched = false;
         }
     }
 
     fn	Result( &self) -> Option< U32>
     {
-        self._Result
+        if self._IsMatched {
+            Some( self._CurrMark)
+        } else {
+            None
+        }
     }
 }
 
@@ -74,34 +78,27 @@ unsafe impl Sync for BaseForge {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct ForgeStackNode
-{
-    pub     forge: *mut dyn IForge,
-    pub     prev: *const ForgeStackNode,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
 pub trait IGrammar: INode
 {
-    type Forge: IForge;
+    fn	Match( &self, parser: &mut Parser);
 
-    fn	Match( &self, parser: &mut Parser, forge: &mut Self::Forge);
-
-    fn	Parse( &self, parser: &mut Parser, parentForge: &mut dyn IForge, mark: U32) -> Option< U32>
+    fn	Parse( &self, parser: &mut Parser, mark: U32) -> Option< U32>
     {
-        let  	mut forge = Self::Forge::New();
-        forge.SetMark( mark);
-        let  	node = ForgeStackNode {
-            forge: parentForge as *mut dyn IForge,
+        let  	node = BaseForge {
             prev: parser._TopForge,
+            _CurrMark: mark,
+            _IsMatched: false,
         };
         let  	prevTop = parser._TopForge;
-        parser._TopForge = &node as *const ForgeStackNode;
-        self.Match( parser, &mut forge);
+        parser._TopForge = &node as *const BaseForge;
+        self.Match( parser);
         parser._TopForge = prevTop;
-        let  	res = forge.Result();
-        parentForge.Deposit( res);
+        let  	res = node.Result();
+        if !prevTop.is_null() {
+            unsafe {
+                ( *( prevTop as *mut BaseForge)).Deposit( res);
+            }
+        }
         res
     }
 }
@@ -111,7 +108,7 @@ pub trait IGrammar: INode
 pub struct Parser<'p>
 {
     pub     _InStream: &'p mut dyn IStream,
-    pub     _TopForge: *const ForgeStackNode,
+    pub     _TopForge: *const BaseForge,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -153,22 +150,25 @@ impl<'p> Parser<'p>
     }
     //-----------------------------------------------------------------------------------------------------------------------------
 
+
     pub fn	Parse< G: IGrammar + ?Sized>( &mut self, grammar: &'p G) -> bool
     {
-        let  	mut forge = <G as IGrammar>::Forge::New();
-        grammar.Match( self, &mut forge);
-        let  	matched = forge.Result().is_some();
+        let  	node = BaseForge {
+            prev: std::ptr::null(),
+            _CurrMark: U32( 0),
+            _IsMatched: false,
+        };
+        self._TopForge = &node as *const BaseForge;
+        grammar.Match( self);
+        self._TopForge = std::ptr::null();
+        let  	matched = node.Result().is_some();
         matched
     }
 
-    pub fn	ParentForge( &self) -> Option< &mut dyn IForge>
+    pub fn	Forge<'a>( &'a self) -> &'a mut BaseForge
     {
-        if self._TopForge.is_null() {
-            None
-        } else {
-            unsafe {
-                Some( &mut *( *self._TopForge).forge)
-            }
+        unsafe {
+            &mut *( self._TopForge as *mut BaseForge)
         }
     }
 
@@ -197,17 +197,15 @@ impl<'p> Parser<'p>
 
 impl IGrammar for Charset
 {
-    type Forge = BaseForge;
-
-    fn	Match( &self, parser: &mut Parser, forge: &mut Self::Forge)
+    fn	Match( &self, parser: &mut Parser)
     {
-        let  	mark = forge.Mark();
+        let  	mark = parser.Forge().Mark();
         let  	curr = parser.GetAt( mark);
         if self.Get( curr.0) {
             let  	res = Some( mark + U32( 1));
-            forge.Deposit( res);
+            parser.Forge().Deposit( res);
         } else {
-            forge.Deposit( None);
+            parser.Forge().Deposit( None);
         }
     }
 }
@@ -216,17 +214,15 @@ impl IGrammar for Charset
 
 impl IGrammar for char
 {
-    type Forge = BaseForge;
-
-    fn	Match( &self, parser: &mut Parser, forge: &mut Self::Forge)
+    fn	Match( &self, parser: &mut Parser)
     {
-        let  	mark = forge.Mark();
+        let  	mark = parser.Forge().Mark();
         let  	curr = parser.GetAt( mark);
         if curr == U8( *self as u8) {
             let  	res = Some( mark + U32( 1));
-            forge.Deposit( res);
+            parser.Forge().Deposit( res);
         } else {
-            forge.Deposit( None);
+            parser.Forge().Deposit( None);
         }
     }
 }
@@ -241,27 +237,29 @@ impl IXFluxSource for char
 
 impl IGrammar for str
 {
-    type Forge = BaseForge;
-
-    fn	Match( &self, parser: &mut Parser, forge: &mut Self::Forge)
+    fn	Match( &self, parser: &mut Parser)
     {
-        // Ensure that empty string matches without consuming
-        if self.is_empty() {
-            let  	res = Some( forge.Mark());
-            forge.Deposit( res);
-            return;
+        let  	mark = parser.Forge().Mark();
+        let  	key = self.as_bytes();
+        let  	mut currentMark = mark;
+        
+        for &b in key {
+            let  	stream = parser.InStream();
+            let  	curr = stream.At( currentMark);
+            if curr.0 != b {
+                parser.Forge().Deposit( None);
+                return;
+            }
+            if let  	Some( next) = parser.Incr( currentMark) {
+                currentMark = next;
+            } else {
+                parser.Forge().Deposit( None);
+                return;
+            }
         }
-
-        let  	mark = forge.Mark();
-        let  	len = self.len();
-        let  	stream = parser.InStream();
-        let  	bytes = stream.BytesAt( mark, U32( len as u32));
-        if bytes == self.as_bytes() {
-            let  	res = Some( mark + U32( len as u32));
-            forge.Deposit( res);
-        } else {
-            forge.Deposit( None);
-        }
+        
+        parser.Forge().SetMark( currentMark);
+        parser.Forge().Deposit( Some( currentMark));
     }
 }
 
@@ -269,11 +267,9 @@ impl IGrammar for str
 
 impl< 'a, 'r, T: IGrammar> IGrammar for &'r T
 {
-    type Forge = T::Forge;
-
-    fn	Match( &self, parser: &mut Parser, forge: &mut Self::Forge)
+    fn	Match( &self, parser: &mut Parser)
     {
-        (**self).Match( parser, forge);
+        (**self).Match( parser);
     }
 }
 

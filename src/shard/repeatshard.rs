@@ -47,18 +47,17 @@ impl< C> IGrammar for UniNode< C, USeg>
 where
     C: IGrammar,
 {
-    type Forge = crate::shard::parser::BaseForge;
 
-    fn	Match( &self, parser: &mut crate::shard::Parser, forge: &mut Self::Forge)
+fn	Match( &self, parser: &mut crate::shard::Parser)
     {
         let  	mut count = U32( 0);
         let  	first = self._Op.First();
         let  	last = if self._Op.IsEmpty() { U32::_X } else { self._Op.Last() };
         
-        let  	mut m = forge.Mark();
+        let  	mut m = parser.Forge().Mark();
 
         while count < last {
-            let  	res = self._Child.Parse( parser, forge, m);
+            let  	res = self._Child.Parse( parser, m);
             if let Some( newM) = res {
                 if newM == m {
                     count += U32( 1);
@@ -73,9 +72,9 @@ where
         
         if count >= first {
             let  	res = Some( m);
-            forge.Deposit( res);
+            parser.Forge().Deposit( res);
         } else {
-            forge.Deposit( None);
+            parser.Forge().Deposit( None);
         }
     }
 }

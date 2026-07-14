@@ -15,26 +15,25 @@ where
     L: IGrammar,
     R: IGrammar,
 {
-    type Forge = crate::shard::parser::BaseForge;
 
-    fn	Match( &self, parser: &mut crate::shard::Parser, forge: &mut Self::Forge)
+fn	Match( &self, parser: &mut crate::shard::Parser)
     {
         match self._Op {
             BinOp::Bor => {
-                let  	m1 = forge.Mark();
-                let  	leftRes = self._Left.Parse( parser, forge, m1);
+                let  	m1 = parser.Forge().Mark();
+                let  	leftRes = self._Left.Parse( parser, m1);
                 if leftRes.is_some() {
                     return;
                 }
                 
-                let  	m2 = forge.Mark();
-                self._Right.Parse( parser, forge, m2);
+                let  	m2 = parser.Forge().Mark();
+                self._Right.Parse( parser, m2);
             }
             BinOp::Less => {
-                let  	m1 = forge.Mark();
-                let  	leftRes = self._Left.Parse( parser, forge, m1);
+                let  	m1 = parser.Forge().Mark();
+                let  	leftRes = self._Left.Parse( parser, m1);
                 if let Some( newM) = leftRes {
-                    self._Right.Parse( parser, forge, newM);
+                    self._Right.Parse( parser, newM);
                 }
             }
             _ => panic!( "Unsupported operator in BinShard Match"),

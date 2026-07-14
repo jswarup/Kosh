@@ -67,12 +67,10 @@ where
     C: IGrammar,
     W: crate::stalks::work::IWork + 'static,
 {
-    type Forge = crate::shard::parser::BaseForge;
-
-    fn	Match( &self, parser: &mut Parser, forge: &mut Self::Forge)
+    fn	Match( &self, parser: &mut Parser)
     {
-        let  	m = forge.Mark();
-        let  	res = self._Child.Parse( parser, forge, m);
+        let  	m = parser.Forge().Mark();
+        let  	res = self._Child.Parse( parser, m);
         
         if res.is_some() {
             let  	actionPtr = &self._Op._Action as &DynIWork< 'static> as *const DynIWork< 'static>;
