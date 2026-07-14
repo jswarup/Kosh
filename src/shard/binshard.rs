@@ -15,15 +15,17 @@ where
     L: IGrammar,
     R: IGrammar,
 {
-    fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F)
+    fn	Match< F: IForge>( &self, parser: &mut crate::shard::Parser, forge: &mut F)
     {
         match self._Op {
             BinOp::Bor => {
                 let  	leftRes = {
                     let  	mark = forge.Mark();
-                    let  	mut leftForge = self._Left.Forge( forge.Parser());
+                    let  	mut leftForge = self._Left.Forge();
                     leftForge.SetMark( mark);
-                    self._Left.Match( &mut leftForge);
+                    parser.PushForge( forge as *mut _ as *mut dyn IForge);
+                    self._Left.Match( parser, &mut leftForge);
+                    parser.PopForge();
                     leftForge.Result()
                 };
                 if leftRes.is_some() {
@@ -33,9 +35,11 @@ where
                 
                 let  	rightRes = {
                     let  	mark = forge.Mark();
-                    let  	mut rightForge = self._Right.Forge( forge.Parser());
+                    let  	mut rightForge = self._Right.Forge();
                     rightForge.SetMark( mark);
-                    self._Right.Match( &mut rightForge);
+                    parser.PushForge( forge as *mut _ as *mut dyn IForge);
+                    self._Right.Match( parser, &mut rightForge);
+                    parser.PopForge();
                     rightForge.Result()
                 };
                 forge.Deposit( rightRes);
@@ -43,16 +47,20 @@ where
             BinOp::Less => {
                 let  	leftRes = {
                     let  	mark = forge.Mark();
-                    let  	mut leftForge = self._Left.Forge( forge.Parser());
+                    let  	mut leftForge = self._Left.Forge();
                     leftForge.SetMark( mark);
-                    self._Left.Match( &mut leftForge);
+                    parser.PushForge( forge as *mut _ as *mut dyn IForge);
+                    self._Left.Match( parser, &mut leftForge);
+                    parser.PopForge();
                     leftForge.Result()
                 };
                 if let Some( newM) = leftRes {
                     let  	rightRes = {
-                        let  	mut rightForge = self._Right.Forge( forge.Parser());
+                        let  	mut rightForge = self._Right.Forge();
                         rightForge.SetMark( newM);
-                        self._Right.Match( &mut rightForge);
+                        parser.PushForge( forge as *mut _ as *mut dyn IForge);
+                        self._Right.Match( parser, &mut rightForge);
+                        parser.PopForge();
                         rightForge.Result()
                     };
                     forge.Deposit( rightRes);

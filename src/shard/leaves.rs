@@ -25,9 +25,9 @@ impl< 'a> IXFluxSource for StrShard< 'a>
 
 impl< 'a> IGrammar for StrShard< 'a>
 {
-    fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F)
+    fn	Match< F: IForge>( &self, parser: &mut crate::shard::Parser, forge: &mut F)
     {
-        self._Val.Match( forge);
+        self._Val.Match( parser, forge);
     }
 }
 

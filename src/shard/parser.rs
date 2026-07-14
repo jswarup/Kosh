@@ -3,14 +3,13 @@
 use	crate::flux::instream::IStream;
 use	crate::flux::IXFluxSource;
 use crate::shard::Charset;
-use	crate::silo::{ U32, U8 };
+use	crate::silo::{ U32, U8, Stash, IAccess };
 use	crate::stalks::{ IWorker, WorkPtr, INode };
 
 //---------------------------------------------------------------------------------------------------------------------------------
  
-pub trait IForge< 'p>: Send + Sync
+pub trait IForge: Send + Sync + 'static
 {
-    fn	Parser( &mut self) -> &mut Parser< 'p>; 
     fn	Mark( &self) -> U32; 
     fn	SetMark( &mut self, mark: U32);
     fn	Deposit( &mut self, result: Option< U32>);
@@ -19,23 +18,19 @@ pub trait IForge< 'p>: Send + Sync
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct BaseForge< 'a, 'p>
+pub struct BaseForge
 {
-    pub     _Parser: &'a mut Parser< 'p>,
-    pub     _OrigMark: U32,
     pub     _CurrMark: U32,
     pub     _Result: Option< U32>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, 'p> BaseForge< 'a, 'p>
+impl BaseForge
 {
-    pub fn	New( parser: &'a mut Parser< 'p>) -> Self
+    pub fn	New() -> Self
     {
         BaseForge {
-            _Parser: parser,
-            _OrigMark: U32( 0),
             _CurrMark: U32( 0),
             _Result: None,
         }
@@ -44,13 +39,8 @@ impl< 'a, 'p> BaseForge< 'a, 'p>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, 'p> IForge< 'p> for BaseForge< 'a, 'p>
+impl IForge for BaseForge
 {
-    fn	Parser( &mut self) -> &mut Parser< 'p>
-    {
-        self._Parser
-    }
-     
     fn	Mark( &self) -> U32
     {
         self._CurrMark
@@ -77,21 +67,19 @@ impl< 'a, 'p> IForge< 'p> for BaseForge< 'a, 'p>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-unsafe impl< 'a, 'p> Send for BaseForge< 'a, 'p> {}
-unsafe impl< 'a, 'p> Sync for BaseForge< 'a, 'p> {}
+unsafe impl Send for BaseForge {}
+unsafe impl Sync for BaseForge {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub trait IGrammar: INode
 {
-    fn	Forge< 'a, 'p>( &'a self, parser: &'a mut Parser< 'p>) -> impl IForge< 'p> + 'a
-    where
-        'p: 'a
+    fn	Forge( &self) -> impl IForge
     {
-        BaseForge::New( parser)
+        BaseForge::New()
     }
 
-    fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F);
+    fn	Match< F: IForge>( &self, parser: &mut Parser, forge: &mut F);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -99,6 +87,7 @@ pub trait IGrammar: INode
 pub struct Parser<'p>
 {
     pub     _InStream: &'p mut dyn IStream,
+    pub     _Forges: Stash< *mut dyn IForge>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -135,16 +124,43 @@ impl<'p> Parser<'p>
     {
         Self {
             _InStream: stream,
+            _Forges: Stash::NewEmpty(),
         }
     }
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	Parse< G: IGrammar + ?Sized>( &mut self, grammar: &'p G) -> bool
     {
-        let  	mut forge = grammar.Forge( self);
-        grammar.Match( &mut forge);
+        let  	mut forge = grammar.Forge();
+        grammar.Match( self, &mut forge);
         let  	matched = forge.Result().is_some();
         matched
+    }
+
+    pub fn	PushForge( &mut self, forge: *mut dyn IForge)
+    {
+        self._Forges.Push( forge);
+    }
+
+    pub fn	PopForge( &mut self)
+    {
+        let  	sz = self._Forges.Size();
+        if sz.0 > 0 {
+            let  	ptr = self._Forges.Stk().Arr().At( sz - U32( 1));
+            let  	mut dummy: *mut dyn IForge = *ptr;
+            self._Forges.Pop( &mut dummy);
+        }
+    }
+
+    pub fn	ParentForge( &self) -> Option< &mut dyn IForge>
+    {
+        let  	sz = self._Forges.Size();
+        if sz.0 > 0 {
+            let  	ptr = self._Forges.Stk().Arr().At( sz - U32( 1));
+            Some( unsafe { &mut **ptr } )
+        } else {
+            None
+        }
     }
 
     pub fn InStream( &mut self) -> &mut dyn IStream
@@ -172,10 +188,10 @@ impl<'p> Parser<'p>
 
 impl IGrammar for Charset
 {
-    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F)
+    fn	Match< F: IForge>(&self, parser: &mut Parser, forge: &mut F)
     {
         let  	mark = forge.Mark();
-        let  	curr = forge.Parser().Curr( mark);
+        let  	curr = parser.Curr( mark);
         if self.Get( curr.0) {
             let  	res = Some( mark + U32( 1));
             forge.Deposit( res);
@@ -189,10 +205,10 @@ impl IGrammar for Charset
 
 impl IGrammar for char
 {
-    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F)
+    fn	Match< F: IForge>(&self, parser: &mut Parser, forge: &mut F)
     {
         let  	mark = forge.Mark();
-        let  	curr = forge.Parser().Curr( mark);
+        let  	curr = parser.Curr( mark);
         if curr == U8( *self as u8) {
             let  	res = Some( mark + U32( 1));
             forge.Deposit( res);
@@ -212,7 +228,7 @@ impl IXFluxSource for char
 
 impl IGrammar for str
 {
-    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F)
+    fn	Match< F: IForge>(&self, parser: &mut Parser, forge: &mut F)
     {
         // Ensure that empty string matches without consuming
         if self.is_empty() {
@@ -225,7 +241,7 @@ impl IGrammar for str
         let  	mut m = mark;
         let  	bytes = self.as_bytes();
         for &b in bytes {
-            let  	curr = forge.Parser().Curr( m);
+            let  	curr = parser.Curr( m);
             if curr.0 != b {
                 forge.Deposit( None);
                 return;
@@ -242,9 +258,9 @@ impl IGrammar for str
 
 impl< 'a, 'r, T: IGrammar> IGrammar for &'r T
 {
-    fn	Match< 'p, F: IForge< 'p>>(&self, forge: &mut F)
+    fn	Match< F: IForge>(&self, parser: &mut Parser, forge: &mut F)
     {
-        (**self).Match( forge);
+        (**self).Match( parser, forge);
     }
 }
 

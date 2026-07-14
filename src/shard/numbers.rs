@@ -24,17 +24,17 @@ impl IXFluxSource for UIntShard
 
 impl IGrammar for UIntShard
 {
-    fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F)
+    fn	Match< F: IForge>( &self, parser: &mut crate::shard::Parser, forge: &mut F)
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
         let  	mut matched = false;
         
         loop {
-            let  	curr = forge.Parser().Curr( currentMark);
+            let  	curr = parser.Curr( currentMark);
             if curr >= U8( b'0') && curr <= U8( b'9') {
                 matched = true;
-                if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
+                if let  	Some( nextMark) = parser.Next( currentMark) {
                     currentMark = nextMark;
                 } else {
                     break;
@@ -88,13 +88,13 @@ impl IXFluxSource for IntShard
 
 impl IGrammar for IntShard
 {
-    fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F)
+    fn	Match< F: IForge>( &self, parser: &mut crate::shard::Parser, forge: &mut F)
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
-        let  	curr = forge.Parser().Curr( currentMark);
+        let  	curr = parser.Curr( currentMark);
         if curr == U8( b'+') || curr == U8( b'-') {
-            if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
+            if let  	Some( nextMark) = parser.Next( currentMark) {
                 currentMark = nextMark;
             } else {
                 forge.Deposit( None);
@@ -103,10 +103,10 @@ impl IGrammar for IntShard
         }
         let  	mut matched = false;
         loop {
-            let  	curr = forge.Parser().Curr( currentMark);
+            let  	curr = parser.Curr( currentMark);
             if curr >= U8( b'0') && curr <= U8( b'9') {
                 matched = true;
-                if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
+                if let  	Some( nextMark) = parser.Next( currentMark) {
                     currentMark = nextMark;
                 } else {
                     break;
@@ -141,15 +141,15 @@ impl IXFluxSource for HexShard
 }
 impl IGrammar for HexShard
 {
-    fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F)
+    fn	Match< F: IForge>( &self, parser: &mut crate::shard::Parser, forge: &mut F)
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
-        let  	mut curr = forge.Parser().Curr( currentMark);
+        let  	mut curr = parser.Curr( currentMark);
         if curr == U8( b'+') || curr == U8( b'-') {
-            if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
+            if let  	Some( nextMark) = parser.Next( currentMark) {
                 currentMark = nextMark;
-                curr = forge.Parser().Curr( currentMark);
+                curr = parser.Curr( currentMark);
             } else {
                 forge.Deposit( None);
                 return;
@@ -158,10 +158,10 @@ impl IGrammar for HexShard
         
         let  	mut mark_after_prefix = currentMark;
         if curr == U8( b'0') {
-            if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
-                let  	curr2 = forge.Parser().Curr( nextMark);
+            if let  	Some( nextMark) = parser.Next( currentMark) {
+                let  	curr2 = parser.Curr( nextMark);
                 if curr2 == U8( b'x') || curr2 == U8( b'X') {
-                    if let  	Some( nextMark2) = forge.Parser().Next( nextMark) {
+                    if let  	Some( nextMark2) = parser.Next( nextMark) {
                         mark_after_prefix = nextMark2;
                     }
                 }
@@ -171,10 +171,10 @@ impl IGrammar for HexShard
         
         let  	mut matched = false;
         loop {
-            let  	curr = forge.Parser().Curr( currentMark);
+            let  	curr = parser.Curr( currentMark);
             if ( curr >= U8( b'0') && curr <= U8( b'9')) || ( curr >= U8( b'a') && curr <= U8( b'f')) || ( curr >= U8( b'A') && curr <= U8( b'F')) {
                 matched = true;
-                if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
+                if let  	Some( nextMark) = parser.Next( currentMark) {
                     currentMark = nextMark;
                 } else {
                     break;
@@ -206,13 +206,13 @@ impl IXFluxSource for RealShard
 }
 impl IGrammar for RealShard
 {
-    fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F)
+    fn	Match< F: IForge>( &self, parser: &mut crate::shard::Parser, forge: &mut F)
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
-        let  	curr = forge.Parser().Curr( currentMark);
+        let  	curr = parser.Curr( currentMark);
         if curr == U8( b'+') || curr == U8( b'-') {
-            if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
+            if let  	Some( nextMark) = parser.Next( currentMark) {
                 currentMark = nextMark;
             } else {
                 forge.Deposit( None);
@@ -222,10 +222,10 @@ impl IGrammar for RealShard
 
         let  	mut has_integer_digits = false;
         loop {
-            let  	curr = forge.Parser().Curr( currentMark);
+            let  	curr = parser.Curr( currentMark);
             if curr >= U8( b'0') && curr <= U8( b'9') {
                 has_integer_digits = true;
-                if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
+                if let  	Some( nextMark) = parser.Next( currentMark) {
                     currentMark = nextMark;
                 } else {
                     break;
@@ -236,15 +236,15 @@ impl IGrammar for RealShard
         }
 
         let  	mut has_fractional_digits = false;
-        let  	curr = forge.Parser().Curr( currentMark);
+        let  	curr = parser.Curr( currentMark);
         if curr == U8( b'.') {
-            if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
+            if let  	Some( nextMark) = parser.Next( currentMark) {
                 currentMark = nextMark;
                 loop {
-                    let  	curr = forge.Parser().Curr( currentMark);
+                    let  	curr = parser.Curr( currentMark);
                     if curr >= U8( b'0') && curr <= U8( b'9') {
                         has_fractional_digits = true;
-                        if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
+                        if let  	Some( nextMark) = parser.Next( currentMark) {
                             currentMark = nextMark;
                         } else {
                             break;
@@ -261,22 +261,22 @@ impl IGrammar for RealShard
             return;
         }
 
-        let  	curr = forge.Parser().Curr( currentMark);
+        let  	curr = parser.Curr( currentMark);
         if curr == U8( b'e') || curr == U8( b'E') {
-            if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
+            if let  	Some( nextMark) = parser.Next( currentMark) {
                 let  	mut expMark = nextMark;
-                let  	curr_exp = forge.Parser().Curr( expMark);
+                let  	curr_exp = parser.Curr( expMark);
                 if curr_exp == U8( b'+') || curr_exp == U8( b'-') {
-                    if let  	Some( n) = forge.Parser().Next( expMark) {
+                    if let  	Some( n) = parser.Next( expMark) {
                         expMark = n;
                     }
                 }
                 let  	mut has_exp_digits = false;
                 loop {
-                    let  	curr = forge.Parser().Curr( expMark);
+                    let  	curr = parser.Curr( expMark);
                     if curr >= U8( b'0') && curr <= U8( b'9') {
                         has_exp_digits = true;
-                        if let  	Some( n) = forge.Parser().Next( expMark) {
+                        if let  	Some( n) = parser.Next( expMark) {
                             expMark = n;
                         } else {
                             break;
@@ -309,15 +309,15 @@ impl IXFluxSource for HexRealShard
 }
 impl IGrammar for HexRealShard
 {
-    fn	Match< 'p, F: IForge< 'p>>( &self, forge: &mut F)
+    fn	Match< F: IForge>( &self, parser: &mut crate::shard::Parser, forge: &mut F)
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
-        let  	mut curr = forge.Parser().Curr( currentMark);
+        let  	mut curr = parser.Curr( currentMark);
         if curr == U8( b'+') || curr == U8( b'-') {
-            if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
+            if let  	Some( nextMark) = parser.Next( currentMark) {
                 currentMark = nextMark;
-                curr = forge.Parser().Curr( currentMark);
+                curr = parser.Curr( currentMark);
             } else {
                 forge.Deposit( None);
                 return;
@@ -325,10 +325,10 @@ impl IGrammar for HexRealShard
         }
 
         if curr == U8( b'0') {
-            if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
-                let  	curr2 = forge.Parser().Curr( nextMark);
+            if let  	Some( nextMark) = parser.Next( currentMark) {
+                let  	curr2 = parser.Curr( nextMark);
                 if curr2 == U8( b'x') || curr2 == U8( b'X') {
-                    if let  	Some( nextMark2) = forge.Parser().Next( nextMark) {
+                    if let  	Some( nextMark2) = parser.Next( nextMark) {
                         currentMark = nextMark2;
                     } else {
                         forge.Deposit( None);
@@ -349,10 +349,10 @@ impl IGrammar for HexRealShard
 
         let  	mut has_integer_digits = false;
         loop {
-            let  	curr = forge.Parser().Curr( currentMark);
+            let  	curr = parser.Curr( currentMark);
             if ( curr >= U8( b'0') && curr <= U8( b'9')) || ( curr >= U8( b'a') && curr <= U8( b'f')) || ( curr >= U8( b'A') && curr <= U8( b'F')) {
                 has_integer_digits = true;
-                if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
+                if let  	Some( nextMark) = parser.Next( currentMark) {
                     currentMark = nextMark;
                 } else {
                     break;
@@ -363,15 +363,15 @@ impl IGrammar for HexRealShard
         }
 
         let  	mut has_fractional_digits = false;
-        let  	curr = forge.Parser().Curr( currentMark);
+        let  	curr = parser.Curr( currentMark);
         if curr == U8( b'.') {
-            if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
+            if let  	Some( nextMark) = parser.Next( currentMark) {
                 currentMark = nextMark;
                 loop {
-                    let  	curr = forge.Parser().Curr( currentMark);
+                    let  	curr = parser.Curr( currentMark);
                     if ( curr >= U8( b'0') && curr <= U8( b'9')) || ( curr >= U8( b'a') && curr <= U8( b'f')) || ( curr >= U8( b'A') && curr <= U8( b'F')) {
                         has_fractional_digits = true;
-                        if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
+                        if let  	Some( nextMark) = parser.Next( currentMark) {
                             currentMark = nextMark;
                         } else {
                             break;
@@ -388,22 +388,22 @@ impl IGrammar for HexRealShard
             return;
         }
 
-        let  	curr = forge.Parser().Curr( currentMark);
+        let  	curr = parser.Curr( currentMark);
         if curr == U8( b'p') || curr == U8( b'P') {
-            if let  	Some( nextMark) = forge.Parser().Next( currentMark) {
+            if let  	Some( nextMark) = parser.Next( currentMark) {
                 let  	mut expMark = nextMark;
-                let  	curr_exp = forge.Parser().Curr( expMark);
+                let  	curr_exp = parser.Curr( expMark);
                 if curr_exp == U8( b'+') || curr_exp == U8( b'-') {
-                    if let  	Some( n) = forge.Parser().Next( expMark) {
+                    if let  	Some( n) = parser.Next( expMark) {
                         expMark = n;
                     }
                 }
                 let  	mut has_exp_digits = false;
                 loop {
-                    let  	curr = forge.Parser().Curr( expMark);
+                    let  	curr = parser.Curr( expMark);
                     if curr >= U8( b'0') && curr <= U8( b'9') {
                         has_exp_digits = true;
-                        if let  	Some( n) = forge.Parser().Next( expMark) {
+                        if let  	Some( n) = parser.Next( expMark) {
                             expMark = n;
                         } else {
                             break;

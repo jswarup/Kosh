@@ -6,3 +6,7 @@
 
 ## Typing Guidelines
 - **Use Project-Defined Numeric Types**: Throughout the project, use the custom numeric types defined in `uint.rs` (e.g. `U8`, `U16`, `U32`, `USz`) instead of Rust's native primitive types (`u8`, `u16`, `u32`, `usize`) as far as possible.
+
+## Implementation Plan Policy
+- **Heap Usage Commentary**: As a strict project policy, EVERY implementation plan MUST include a dedicated section commenting on the anticipated heap usage and allocation impact of the proposed changes.
+
