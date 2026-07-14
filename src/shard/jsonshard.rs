@@ -50,9 +50,9 @@ impl JsonShard
         let  	whiteSpace = Charset::Space();
         let  	mut m = marker;
         loop {
-            let  	curr = parser.Curr( m);
+            let  	curr = parser.GetAt( m);
             if whiteSpace.Get( curr) {
-                if let  	Some( nextMark) = parser.Next( m) {
+                if let  	Some( nextMark) = parser.Incr( m) {
                     m = nextMark;
                 } else {
                     break;
@@ -69,17 +69,17 @@ impl JsonShard
     fn	MatchString( parser: &mut crate::shard::Parser, marker: U32) -> (bool, U32)
     {
         let  	mut m = marker;
-        let  	curr = parser.Curr( m);
+        let  	curr = parser.GetAt( m);
         if curr != U8( b'"') {
             return ( false, marker);
         }
         
-        if let  	Some( next) = parser.Next( m) {
+        if let  	Some( next) = parser.Incr( m) {
             m = next;
             let  	mut escape = false;
             loop {
-                let  	c = parser.Curr( m);
-                if c == U8( 0) && m.0 as usize >= parser.InStream().Size() {
+                let  	c = parser.GetAt( m);
+                if c == U8( 0) && m >= parser.InStream().Size() {
                     return ( false, marker);
                 }
 
@@ -88,14 +88,14 @@ impl JsonShard
                 } else if c == U8( b'\\') {
                     escape = true;
                 } else if c == U8( b'"') {
-                    if let Some( nxt) = parser.Next( m) {
+                    if let Some( nxt) = parser.Incr( m) {
                         return ( true, nxt);
                     } else {
                         return ( false, marker);
                     }
                 }
                 
-                if let  	Some( nxt) = parser.Next( m) {
+                if let  	Some( nxt) = parser.Incr( m) {
                     m = nxt;
                 } else {
                     return ( false, marker);
@@ -111,10 +111,10 @@ impl JsonShard
     {
         let  	mut m = marker;
         for &b in keyword {
-            if parser.Curr( m) != U8( b) {
+            if parser.GetAt( m) != U8( b) {
                 return ( false, marker);
             }
-            if let  	Some( nxt) = parser.Next( m) {
+            if let  	Some( nxt) = parser.Incr( m) {
                 m = nxt;
             } else {
                 return ( false, marker);
@@ -132,7 +132,7 @@ impl JsonShard
             m = newM;
         }
         
-        let  	curr = parser.Curr( m);
+        let  	curr = parser.GetAt( m);
         
         if curr == U8( b'{') {
             forge.SetMark( m);
@@ -183,16 +183,16 @@ impl JsonShard
     fn	MatchArray< F: IForge>( parser: &mut crate::shard::Parser, forge: &mut F) -> Option< U32>
     {
         let  	mut m = forge.Mark();
-        if parser.Curr( m) != U8( b'[') {
+        if parser.GetAt( m) != U8( b'[') {
             return None;
         }
-        m = if let  	Some( nxt) = parser.Next( m) { nxt } else {
+        m = if let  	Some( nxt) = parser.Incr( m) { nxt } else {
             return None;
         };
         
         m = Self::SkipWhitespace( parser, m);
-        if parser.Curr( m) == U8( b']') {
-            if let Some( nxt) = parser.Next( m) {
+        if parser.GetAt( m) == U8( b']') {
+            if let Some( nxt) = parser.Incr( m) {
                 forge.SetMark( nxt);
                 return Some( nxt);
             } else {
@@ -210,14 +210,14 @@ impl JsonShard
             }
             
             m = Self::SkipWhitespace( parser, m);
-            let  	curr = parser.Curr( m);
+            let  	curr = parser.GetAt( m);
             if curr == U8( b',') {
-                m = if let  	Some( nxt) = parser.Next( m) { nxt } else {
+                m = if let  	Some( nxt) = parser.Incr( m) { nxt } else {
                     return None;
                 };
                 forge.SetMark( m);
             } else if curr == U8( b']') {
-                if let Some( nxt) = parser.Next( m) {
+                if let Some( nxt) = parser.Incr( m) {
                     forge.SetMark( nxt);
                     return Some( nxt);
                 } else {
@@ -234,16 +234,16 @@ impl JsonShard
     fn	MatchObject< F: IForge>( parser: &mut crate::shard::Parser, forge: &mut F) -> Option< U32>
     {
         let  	mut m = forge.Mark();
-        if parser.Curr( m) != U8( b'{') {
+        if parser.GetAt( m) != U8( b'{') {
             return None;
         }
-        m = if let  	Some( nxt) = parser.Next( m) { nxt } else {
+        m = if let  	Some( nxt) = parser.Incr( m) { nxt } else {
             return None;
         };
         
         m = Self::SkipWhitespace( parser, m);
-        if parser.Curr( m) == U8( b'}') {
-            if let Some( nxt) = parser.Next( m) {
+        if parser.GetAt( m) == U8( b'}') {
+            if let Some( nxt) = parser.Incr( m) {
                 forge.SetMark( nxt);
                 return Some( nxt);
             } else {
@@ -260,10 +260,10 @@ impl JsonShard
             m = nextM;
             m = Self::SkipWhitespace( parser, m);
             
-            if parser.Curr( m) != U8( b':') {
+            if parser.GetAt( m) != U8( b':') {
                 return None;
             }
-            m = if let  	Some( nxt) = parser.Next( m) { nxt } else {
+            m = if let  	Some( nxt) = parser.Incr( m) { nxt } else {
                 return None;
             };
             
@@ -276,13 +276,13 @@ impl JsonShard
             }
             m = Self::SkipWhitespace( parser, m);
             
-            let  	curr = parser.Curr( m);
+            let  	curr = parser.GetAt( m);
             if curr == U8( b',') {
-                m = if let  	Some( nxt) = parser.Next( m) { nxt } else {
+                m = if let  	Some( nxt) = parser.Incr( m) { nxt } else {
                     return None;
                 };
             } else if curr == U8( b'}') {
-                if let Some( nxt) = parser.Next( m) {
+                if let Some( nxt) = parser.Incr( m) {
                     forge.SetMark( nxt);
                     return Some( nxt);
                 } else {

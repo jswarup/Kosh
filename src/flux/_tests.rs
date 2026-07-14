@@ -38,28 +38,18 @@ fn	TestInStream()
 {
     let  	data = "abc";
     let  	mut stream = FixedStream::from( data);
-    assert_eq!( stream.Curr(), b'a');
-    assert!( stream.Next());
-    assert_eq!( stream.Curr(), b'b');
-    assert!( stream.Next());
-    assert_eq!( stream.Curr(), b'c');
-    assert!( !stream.Next());
-    assert_eq!( stream.Curr(), 0);
-    stream.RollTo( U32( 1));
-    assert_eq!( stream.Curr(), b'b');
-    let  	rest1 = stream.Bytes( 2);
-    assert_eq!( rest1, b"bc");
-    assert_eq!( stream.Bytes( 10), b"bc");
-    stream.RollTo( U32( 5));
-    assert_eq!( stream.Curr(), U8::_0);
-    let  	rest5 = stream.Bytes( 1);
-    assert_eq!( rest5, b"");
-    assert_eq!( stream.Bytes( 10), b"");
+    
     // Test random-access At()
     assert_eq!( stream.At( U32( 0)), b'a');
     assert_eq!( stream.At( U32( 1)), b'b');
     assert_eq!( stream.At( U32( 2)), b'c');
     assert_eq!( stream.At( U32( 5)), U8::_0);
+
+    // Test stateless BytesAt()
+    assert_eq!( stream.BytesAt( U32( 1), U32( 2)), b"bc");
+    assert_eq!( stream.BytesAt( U32( 1), U32( 10)), b"bc");
+    assert_eq!( stream.BytesAt( U32( 5), U32( 1)), b"");
+    assert_eq!( stream.BytesAt( U32( 5), U32( 10)), b"");
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -70,9 +60,9 @@ fn	TestInStreamFromFile()
     let  	path = "test_inbuffstream.txt";
     fs::write( path, b"hello").unwrap();
     let  	mut stream = BuffStream::FromFile( path).unwrap();
-    assert_eq!( stream.Curr(), b'h');
-    assert!( stream.Next());
-    assert_eq!( stream.Curr(), b'e');
+    assert_eq!( stream.At( U32( 0)), b'h');
+    assert_eq!( stream.At( U32( 1)), b'e');
+    assert_eq!( stream.BytesAt( U32( 1), U32( 4)), b"ello");
     fs::remove_file( path).unwrap();
 }
 

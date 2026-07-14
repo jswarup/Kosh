@@ -3,7 +3,7 @@
 use	crate::flux::instream::IStream;
 use	crate::flux::IXFluxSource;
 use crate::shard::Charset;
-use	crate::silo::{ U32, U8, Stash, IAccess };
+use	crate::silo::{ U32, U8 };
 use	crate::stalks::{ IWorker, WorkPtr, INode };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -74,6 +74,14 @@ unsafe impl Sync for BaseForge {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+pub struct ForgeStackNode
+{
+    pub     forge: *mut dyn IForge,
+    pub     prev: *const ForgeStackNode,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub trait IGrammar: INode
 {
     type Forge: IForge;
@@ -84,9 +92,14 @@ pub trait IGrammar: INode
     {
         let  	mut forge = Self::Forge::New();
         forge.SetMark( mark);
-        parser.PushForge( parentForge as *mut _ as *mut dyn IForge);
+        let  	node = ForgeStackNode {
+            forge: parentForge as *mut dyn IForge,
+            prev: parser._TopForge,
+        };
+        let  	prevTop = parser._TopForge;
+        parser._TopForge = &node as *const ForgeStackNode;
         self.Match( parser, &mut forge);
-        parser.PopForge();
+        parser._TopForge = prevTop;
         let  	res = forge.Result();
         parentForge.Deposit( res);
         res
@@ -98,7 +111,7 @@ pub trait IGrammar: INode
 pub struct Parser<'p>
 {
     pub     _InStream: &'p mut dyn IStream,
-    pub     _Forges: Stash< *mut dyn IForge>,
+    pub     _TopForge: *const ForgeStackNode,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -135,7 +148,7 @@ impl<'p> Parser<'p>
     {
         Self {
             _InStream: stream,
-            _Forges: Stash::NewEmpty(),
+            _TopForge: std::ptr::null(),
         }
     }
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -148,29 +161,14 @@ impl<'p> Parser<'p>
         matched
     }
 
-    pub fn	PushForge( &mut self, forge: *mut dyn IForge)
-    {
-        self._Forges.Push( forge);
-    }
-
-    pub fn	PopForge( &mut self)
-    {
-        let  	sz = self._Forges.Size();
-        if sz.0 > 0 {
-            let  	ptr = self._Forges.Stk().Arr().At( sz - U32( 1));
-            let  	mut dummy: *mut dyn IForge = *ptr;
-            self._Forges.Pop( &mut dummy);
-        }
-    }
-
     pub fn	ParentForge( &self) -> Option< &mut dyn IForge>
     {
-        let  	sz = self._Forges.Size();
-        if sz.0 > 0 {
-            let  	ptr = self._Forges.Stk().Arr().At( sz - U32( 1));
-            Some( unsafe { &mut **ptr } )
-        } else {
+        if self._TopForge.is_null() {
             None
+        } else {
+            unsafe {
+                Some( &mut *( *self._TopForge).forge)
+            }
         }
     }
 
@@ -179,15 +177,15 @@ impl<'p> Parser<'p>
         self._InStream
     }
 
-    pub fn	Curr( &mut self, marker: U32) -> U8
+    pub fn	GetAt( &mut self, marker: U32) -> U8
     {
         self._InStream.At( marker)
     }
 
-    pub fn	Next( &mut self, mut marker: U32) -> Option<U32>
+    pub fn	Incr( &mut self, mut marker: U32) -> Option<U32>
     {
         marker += U32( 1);
-        if marker.AsUsize() <= self._InStream.Size() {
+        if marker <= self._InStream.Size() {
             Some(marker)
         } else {
             None
@@ -204,7 +202,7 @@ impl IGrammar for Charset
     fn	Match( &self, parser: &mut Parser, forge: &mut Self::Forge)
     {
         let  	mark = forge.Mark();
-        let  	curr = parser.Curr( mark);
+        let  	curr = parser.GetAt( mark);
         if self.Get( curr.0) {
             let  	res = Some( mark + U32( 1));
             forge.Deposit( res);
@@ -223,7 +221,7 @@ impl IGrammar for char
     fn	Match( &self, parser: &mut Parser, forge: &mut Self::Forge)
     {
         let  	mark = forge.Mark();
-        let  	curr = parser.Curr( mark);
+        let  	curr = parser.GetAt( mark);
         if curr == U8( *self as u8) {
             let  	res = Some( mark + U32( 1));
             forge.Deposit( res);
@@ -255,19 +253,15 @@ impl IGrammar for str
         }
 
         let  	mark = forge.Mark();
-        let  	mut m = mark;
-        let  	bytes = self.as_bytes();
-        for &b in bytes {
-            let  	curr = parser.Curr( m);
-            if curr.0 != b {
-                forge.Deposit( None);
-                return;
-            }
-            m += U32( 1);
+        let  	len = self.len();
+        let  	stream = parser.InStream();
+        let  	bytes = stream.BytesAt( mark, U32( len as u32));
+        if bytes == self.as_bytes() {
+            let  	res = Some( mark + U32( len as u32));
+            forge.Deposit( res);
+        } else {
+            forge.Deposit( None);
         }
-
-        let  	res = Some( m);
-        forge.Deposit( res);
     }
 }
 

@@ -33,10 +33,10 @@ impl IGrammar for UIntShard
         let  	mut matched = false;
         
         loop {
-            let  	curr = parser.Curr( currentMark);
+            let  	curr = parser.GetAt( currentMark);
             if curr >= U8( b'0') && curr <= U8( b'9') {
                 matched = true;
-                if let  	Some( nextMark) = parser.Next( currentMark) {
+                if let  	Some( nextMark) = parser.Incr( currentMark) {
                     currentMark = nextMark;
                 } else {
                     break;
@@ -96,9 +96,9 @@ impl IGrammar for IntShard
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
-        let  	curr = parser.Curr( currentMark);
+        let  	curr = parser.GetAt( currentMark);
         if curr == U8( b'+') || curr == U8( b'-') {
-            if let  	Some( nextMark) = parser.Next( currentMark) {
+            if let  	Some( nextMark) = parser.Incr( currentMark) {
                 currentMark = nextMark;
             } else {
                 forge.Deposit( None);
@@ -107,10 +107,10 @@ impl IGrammar for IntShard
         }
         let  	mut matched = false;
         loop {
-            let  	curr = parser.Curr( currentMark);
+            let  	curr = parser.GetAt( currentMark);
             if curr >= U8( b'0') && curr <= U8( b'9') {
                 matched = true;
-                if let  	Some( nextMark) = parser.Next( currentMark) {
+                if let  	Some( nextMark) = parser.Incr( currentMark) {
                     currentMark = nextMark;
                 } else {
                     break;
@@ -151,11 +151,11 @@ impl IGrammar for HexShard
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
-        let  	mut curr = parser.Curr( currentMark);
+        let  	mut curr = parser.GetAt( currentMark);
         if curr == U8( b'+') || curr == U8( b'-') {
-            if let  	Some( nextMark) = parser.Next( currentMark) {
+            if let  	Some( nextMark) = parser.Incr( currentMark) {
                 currentMark = nextMark;
-                curr = parser.Curr( currentMark);
+                curr = parser.GetAt( currentMark);
             } else {
                 forge.Deposit( None);
                 return;
@@ -164,10 +164,10 @@ impl IGrammar for HexShard
         
         let  	mut mark_after_prefix = currentMark;
         if curr == U8( b'0') {
-            if let  	Some( nextMark) = parser.Next( currentMark) {
-                let  	curr2 = parser.Curr( nextMark);
+            if let  	Some( nextMark) = parser.Incr( currentMark) {
+                let  	curr2 = parser.GetAt( nextMark);
                 if curr2 == U8( b'x') || curr2 == U8( b'X') {
-                    if let  	Some( nextMark2) = parser.Next( nextMark) {
+                    if let  	Some( nextMark2) = parser.Incr( nextMark) {
                         mark_after_prefix = nextMark2;
                     }
                 }
@@ -177,10 +177,10 @@ impl IGrammar for HexShard
         
         let  	mut matched = false;
         loop {
-            let  	curr = parser.Curr( currentMark);
+            let  	curr = parser.GetAt( currentMark);
             if ( curr >= U8( b'0') && curr <= U8( b'9')) || ( curr >= U8( b'a') && curr <= U8( b'f')) || ( curr >= U8( b'A') && curr <= U8( b'F')) {
                 matched = true;
-                if let  	Some( nextMark) = parser.Next( currentMark) {
+                if let  	Some( nextMark) = parser.Incr( currentMark) {
                     currentMark = nextMark;
                 } else {
                     break;
@@ -218,9 +218,9 @@ impl IGrammar for RealShard
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
-        let  	curr = parser.Curr( currentMark);
+        let  	curr = parser.GetAt( currentMark);
         if curr == U8( b'+') || curr == U8( b'-') {
-            if let  	Some( nextMark) = parser.Next( currentMark) {
+            if let  	Some( nextMark) = parser.Incr( currentMark) {
                 currentMark = nextMark;
             } else {
                 forge.Deposit( None);
@@ -230,10 +230,10 @@ impl IGrammar for RealShard
 
         let  	mut has_integer_digits = false;
         loop {
-            let  	curr = parser.Curr( currentMark);
+            let  	curr = parser.GetAt( currentMark);
             if curr >= U8( b'0') && curr <= U8( b'9') {
                 has_integer_digits = true;
-                if let  	Some( nextMark) = parser.Next( currentMark) {
+                if let  	Some( nextMark) = parser.Incr( currentMark) {
                     currentMark = nextMark;
                 } else {
                     break;
@@ -244,15 +244,15 @@ impl IGrammar for RealShard
         }
 
         let  	mut has_fractional_digits = false;
-        let  	curr = parser.Curr( currentMark);
+        let  	curr = parser.GetAt( currentMark);
         if curr == U8( b'.') {
-            if let  	Some( nextMark) = parser.Next( currentMark) {
+            if let  	Some( nextMark) = parser.Incr( currentMark) {
                 currentMark = nextMark;
                 loop {
-                    let  	curr = parser.Curr( currentMark);
+                    let  	curr = parser.GetAt( currentMark);
                     if curr >= U8( b'0') && curr <= U8( b'9') {
                         has_fractional_digits = true;
-                        if let  	Some( nextMark) = parser.Next( currentMark) {
+                        if let  	Some( nextMark) = parser.Incr( currentMark) {
                             currentMark = nextMark;
                         } else {
                             break;
@@ -269,22 +269,22 @@ impl IGrammar for RealShard
             return;
         }
 
-        let  	curr = parser.Curr( currentMark);
+        let  	curr = parser.GetAt( currentMark);
         if curr == U8( b'e') || curr == U8( b'E') {
-            if let  	Some( nextMark) = parser.Next( currentMark) {
+            if let  	Some( nextMark) = parser.Incr( currentMark) {
                 let  	mut expMark = nextMark;
-                let  	curr_exp = parser.Curr( expMark);
+                let  	curr_exp = parser.GetAt( expMark);
                 if curr_exp == U8( b'+') || curr_exp == U8( b'-') {
-                    if let  	Some( n) = parser.Next( expMark) {
+                    if let  	Some( n) = parser.Incr( expMark) {
                         expMark = n;
                     }
                 }
                 let  	mut has_exp_digits = false;
                 loop {
-                    let  	curr = parser.Curr( expMark);
+                    let  	curr = parser.GetAt( expMark);
                     if curr >= U8( b'0') && curr <= U8( b'9') {
                         has_exp_digits = true;
-                        if let  	Some( n) = parser.Next( expMark) {
+                        if let  	Some( n) = parser.Incr( expMark) {
                             expMark = n;
                         } else {
                             break;
@@ -323,11 +323,11 @@ impl IGrammar for HexRealShard
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
-        let  	mut curr = parser.Curr( currentMark);
+        let  	mut curr = parser.GetAt( currentMark);
         if curr == U8( b'+') || curr == U8( b'-') {
-            if let  	Some( nextMark) = parser.Next( currentMark) {
+            if let  	Some( nextMark) = parser.Incr( currentMark) {
                 currentMark = nextMark;
-                curr = parser.Curr( currentMark);
+                curr = parser.GetAt( currentMark);
             } else {
                 forge.Deposit( None);
                 return;
@@ -335,10 +335,10 @@ impl IGrammar for HexRealShard
         }
 
         if curr == U8( b'0') {
-            if let  	Some( nextMark) = parser.Next( currentMark) {
-                let  	curr2 = parser.Curr( nextMark);
+            if let  	Some( nextMark) = parser.Incr( currentMark) {
+                let  	curr2 = parser.GetAt( nextMark);
                 if curr2 == U8( b'x') || curr2 == U8( b'X') {
-                    if let  	Some( nextMark2) = parser.Next( nextMark) {
+                    if let  	Some( nextMark2) = parser.Incr( nextMark) {
                         currentMark = nextMark2;
                     } else {
                         forge.Deposit( None);
@@ -359,10 +359,10 @@ impl IGrammar for HexRealShard
 
         let  	mut has_integer_digits = false;
         loop {
-            let  	curr = parser.Curr( currentMark);
+            let  	curr = parser.GetAt( currentMark);
             if ( curr >= U8( b'0') && curr <= U8( b'9')) || ( curr >= U8( b'a') && curr <= U8( b'f')) || ( curr >= U8( b'A') && curr <= U8( b'F')) {
                 has_integer_digits = true;
-                if let  	Some( nextMark) = parser.Next( currentMark) {
+                if let  	Some( nextMark) = parser.Incr( currentMark) {
                     currentMark = nextMark;
                 } else {
                     break;
@@ -373,15 +373,15 @@ impl IGrammar for HexRealShard
         }
 
         let  	mut has_fractional_digits = false;
-        let  	curr = parser.Curr( currentMark);
+        let  	curr = parser.GetAt( currentMark);
         if curr == U8( b'.') {
-            if let  	Some( nextMark) = parser.Next( currentMark) {
+            if let  	Some( nextMark) = parser.Incr( currentMark) {
                 currentMark = nextMark;
                 loop {
-                    let  	curr = parser.Curr( currentMark);
+                    let  	curr = parser.GetAt( currentMark);
                     if ( curr >= U8( b'0') && curr <= U8( b'9')) || ( curr >= U8( b'a') && curr <= U8( b'f')) || ( curr >= U8( b'A') && curr <= U8( b'F')) {
                         has_fractional_digits = true;
-                        if let  	Some( nextMark) = parser.Next( currentMark) {
+                        if let  	Some( nextMark) = parser.Incr( currentMark) {
                             currentMark = nextMark;
                         } else {
                             break;
@@ -398,22 +398,22 @@ impl IGrammar for HexRealShard
             return;
         }
 
-        let  	curr = parser.Curr( currentMark);
+        let  	curr = parser.GetAt( currentMark);
         if curr == U8( b'p') || curr == U8( b'P') {
-            if let  	Some( nextMark) = parser.Next( currentMark) {
+            if let  	Some( nextMark) = parser.Incr( currentMark) {
                 let  	mut expMark = nextMark;
-                let  	curr_exp = parser.Curr( expMark);
+                let  	curr_exp = parser.GetAt( expMark);
                 if curr_exp == U8( b'+') || curr_exp == U8( b'-') {
-                    if let  	Some( n) = parser.Next( expMark) {
+                    if let  	Some( n) = parser.Incr( expMark) {
                         expMark = n;
                     }
                 }
                 let  	mut has_exp_digits = false;
                 loop {
-                    let  	curr = parser.Curr( expMark);
+                    let  	curr = parser.GetAt( expMark);
                     if curr >= U8( b'0') && curr <= U8( b'9') {
                         has_exp_digits = true;
-                        if let  	Some( n) = parser.Next( expMark) {
+                        if let  	Some( n) = parser.Incr( expMark) {
                             expMark = n;
                         } else {
                             break;
