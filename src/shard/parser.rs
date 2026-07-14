@@ -16,16 +16,16 @@ pub trait IForge: Send + Sync + 'static
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct BaseForge
+pub struct Forge
 {
-    pub     prev: *const BaseForge,
+    pub     prev: *const Forge,
     pub     _CurrMark: U32,
     pub     _IsMatched: bool,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl BaseForge
+impl Forge
 {
     pub fn	Result( &self) -> Option< U32>
     {
@@ -39,7 +39,7 @@ impl BaseForge
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IForge for BaseForge
+impl IForge for Forge
 {
     fn	Mark( &self) -> U32
     {
@@ -59,8 +59,8 @@ impl IForge for BaseForge
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-unsafe impl Send for BaseForge {}
-unsafe impl Sync for BaseForge {}
+unsafe impl Send for Forge {}
+unsafe impl Sync for Forge {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -70,19 +70,19 @@ pub trait IGrammar: INode
 
     fn	Parse( &self, parser: &mut Parser, mark: U32) -> Option< U32>
     {
-        let  	node = BaseForge {
+        let  	node = Forge {
             prev: parser._TopForge,
             _CurrMark: mark,
             _IsMatched: false,
         };
         let  	prevTop = parser._TopForge;
-        parser._TopForge = &node as *const BaseForge;
+        parser._TopForge = &node as *const Forge;
         self.Match( parser);
         parser._TopForge = prevTop;
         let  	res = node.Result();
         if !prevTop.is_null() {
             unsafe {
-                ( *( prevTop as *mut BaseForge)).Deposit( res);
+                ( *( prevTop as *mut Forge)).Deposit( res);
             }
         }
         res
@@ -94,7 +94,7 @@ pub trait IGrammar: INode
 pub struct Parser<'p>
 {
     pub     _InStream: &'p mut dyn IStream,
-    pub     _TopForge: *const BaseForge,
+    pub     _TopForge: *const Forge,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -139,22 +139,22 @@ impl<'p> Parser<'p>
 
     pub fn	Parse< G: IGrammar + ?Sized>( &mut self, grammar: &'p G) -> bool
     {
-        let  	node = BaseForge {
+        let  	node = Forge {
             prev: std::ptr::null(),
             _CurrMark: U32( 0),
             _IsMatched: false,
         };
-        self._TopForge = &node as *const BaseForge;
+        self._TopForge = &node as *const Forge;
         grammar.Match( self);
         self._TopForge = std::ptr::null();
         let  	matched = node.Result().is_some();
         matched
     }
 
-    pub fn	Forge<'a>( &'a self) -> &'a mut BaseForge
+    pub fn	Forge<'a>( &'a self) -> &'a mut Forge
     {
         unsafe {
-            &mut *( self._TopForge as *mut BaseForge)
+            &mut *( self._TopForge as *mut Forge)
         }
     }
 
