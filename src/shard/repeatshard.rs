@@ -58,14 +58,7 @@ where
         let  	mut m = forge.Mark();
 
         while count < last {
-            let  	res = {
-                let  	mut childForge = <C as IGrammar>::Forge::New();
-                childForge.SetMark( m);
-                parser.PushForge( forge as *mut _ as *mut dyn IForge);
-                self._Child.Match( parser, &mut childForge);
-                parser.PopForge();
-                childForge.Result()
-            };
+            let  	res = self._Child.Parse( parser, forge, m);
             if let Some( newM) = res {
                 if newM == m {
                     count += U32( 1);

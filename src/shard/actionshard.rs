@@ -71,15 +71,8 @@ where
 
     fn	Match( &self, parser: &mut Parser, forge: &mut Self::Forge)
     {
-        let  	res = {
-            let  	mark = forge.Mark();
-            let  	mut actionForge = <C as IGrammar>::Forge::New();
-            actionForge.SetMark( mark);
-            parser.PushForge( forge as *mut _ as *mut dyn IForge);
-            self._Child.Match( parser, &mut actionForge);
-            parser.PopForge();
-            actionForge.Result()
-        };
+        let  	m = forge.Mark();
+        let  	res = self._Child.Parse( parser, forge, m);
         forge.Deposit( res);
         
         if res.is_some() {

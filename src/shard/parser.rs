@@ -79,6 +79,16 @@ pub trait IGrammar: INode
     type Forge: IForge;
 
     fn	Match( &self, parser: &mut Parser, forge: &mut Self::Forge);
+
+    fn	Parse( &self, parser: &mut Parser, parentForge: &mut dyn IForge, mark: U32) -> Option< U32>
+    {
+        let  	mut forge = Self::Forge::New();
+        forge.SetMark( mark);
+        parser.PushForge( parentForge as *mut _ as *mut dyn IForge);
+        self.Match( parser, &mut forge);
+        parser.PopForge();
+        forge.Result()
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

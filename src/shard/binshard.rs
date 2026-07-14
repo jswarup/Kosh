@@ -21,50 +21,22 @@ where
     {
         match self._Op {
             BinOp::Bor => {
-                let  	leftRes = {
-                    let  	mark = forge.Mark();
-                    let  	mut leftForge = <L as IGrammar>::Forge::New();
-                    leftForge.SetMark( mark);
-                    parser.PushForge( forge as *mut _ as *mut dyn IForge);
-                    self._Left.Match( parser, &mut leftForge);
-                    parser.PopForge();
-                    leftForge.Result()
-                };
+                let  	m1 = forge.Mark();
+                let  	leftRes = self._Left.Parse( parser, forge, m1);
                 if leftRes.is_some() {
                     forge.Deposit( leftRes);
                     return;
                 }
                 
-                let  	rightRes = {
-                    let  	mark = forge.Mark();
-                    let  	mut rightForge = <R as IGrammar>::Forge::New();
-                    rightForge.SetMark( mark);
-                    parser.PushForge( forge as *mut _ as *mut dyn IForge);
-                    self._Right.Match( parser, &mut rightForge);
-                    parser.PopForge();
-                    rightForge.Result()
-                };
+                let  	m2 = forge.Mark();
+                let  	rightRes = self._Right.Parse( parser, forge, m2);
                 forge.Deposit( rightRes);
             }
             BinOp::Less => {
-                let  	leftRes = {
-                    let  	mark = forge.Mark();
-                    let  	mut leftForge = <L as IGrammar>::Forge::New();
-                    leftForge.SetMark( mark);
-                    parser.PushForge( forge as *mut _ as *mut dyn IForge);
-                    self._Left.Match( parser, &mut leftForge);
-                    parser.PopForge();
-                    leftForge.Result()
-                };
+                let  	m1 = forge.Mark();
+                let  	leftRes = self._Left.Parse( parser, forge, m1);
                 if let Some( newM) = leftRes {
-                    let  	rightRes = {
-                        let  	mut rightForge = <R as IGrammar>::Forge::New();
-                        rightForge.SetMark( newM);
-                        parser.PushForge( forge as *mut _ as *mut dyn IForge);
-                        self._Right.Match( parser, &mut rightForge);
-                        parser.PopForge();
-                        rightForge.Result()
-                    };
+                    let  	rightRes = self._Right.Parse( parser, forge, newM);
                     forge.Deposit( rightRes);
                 } else {
                     forge.Deposit( None);

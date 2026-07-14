@@ -128,14 +128,8 @@ impl JsonShard
     fn	MatchValue< F: IForge>( parser: &mut crate::shard::Parser, forge: &mut F) -> Option< U32>
     {
         let  	mut m = forge.Mark();
-        {
-            let  	wspc = WSpc();
-            let  	mut wspcForge = crate::shard::parser::BaseForge::New();
-            wspcForge.SetMark( m);
-            wspc.Match( parser, &mut wspcForge);
-            if wspcForge.Result().is_some() {
-                m = wspcForge.Mark();
-            }
+        if let Some( newM) = WSpc().Parse( parser, forge, m) {
+            m = newM;
         }
         
         let  	curr = parser.Curr( m);
@@ -175,13 +169,7 @@ impl JsonShard
             }
             return None;
         } else if curr == U8( b'-') || ( curr >= U8( b'0') && curr <= U8( b'9')) {
-            forge.SetMark( m);
-            let  	real = Real;
-            let  	mut realForge = crate::shard::parser::BaseForge::New();
-            realForge.SetMark( m);
-            real.Match( parser, &mut realForge);
-            if realForge.Result().is_some() {
-                let  	nextM = realForge.Mark();
+            if let Some( nextM) = Real.Parse( parser, forge, m) {
                 return Some( nextM);
             }
             return None;
