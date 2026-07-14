@@ -49,7 +49,7 @@ fn	TestParserBasic()
         // Test char grammar
         let  	matched = {
             let  	g = &'h';
-            let  	mut subForge = g.Forge();
+            let  	mut subForge = crate::shard::parser::BaseForge::New();
             subForge.SetMark( m);
             g.Match( &mut parser, &mut subForge);
             if subForge.Result().is_some() {
@@ -61,7 +61,7 @@ fn	TestParserBasic()
         
         let  	matched = {
             let  	g = &'e';
-            let  	mut subForge = g.Forge();
+            let  	mut subForge = crate::shard::parser::BaseForge::New();
             subForge.SetMark( m);
             g.Match( &mut parser, &mut subForge);
             if subForge.Result().is_some() {
@@ -74,7 +74,7 @@ fn	TestParserBasic()
         // Test &str grammar
         let  	matched = {
             let  	g = &"llo ";
-            let  	mut subForge = g.Forge();
+            let  	mut subForge = crate::shard::parser::BaseForge::New();
             subForge.SetMark( m);
             g.Match( &mut parser, &mut subForge);
             if subForge.Result().is_some() {
@@ -86,7 +86,7 @@ fn	TestParserBasic()
 
         let  	matched = {
             let  	g = &cs;
-            let  	mut subForge = g.Forge();
+            let  	mut subForge = crate::shard::parser::BaseForge::New();
             subForge.SetMark( m);
             g.Match( &mut parser, &mut subForge);
             if subForge.Result().is_some() {
@@ -99,7 +99,7 @@ fn	TestParserBasic()
         // Test failing match (should rollback)
         let  	matched = {
             let  	g = &"fail";
-            let  	mut subForge = g.Forge();
+            let  	mut subForge = crate::shard::parser::BaseForge::New();
             subForge.SetMark( m);
             g.Match( &mut parser, &mut subForge);
             subForge.Result().is_some()
@@ -118,7 +118,7 @@ fn	TestPostBoxet()
     } ] );
     let  	mut stream = FixedStream::from( data);
     let  	mut parser = Parser::New( &mut stream);
-    let  	mut forge = tree.Forge();
+    let  	mut forge = crate::shard::parser::BaseForge::New();
     tree.Match( &mut parser, &mut forge);
     let  	matched = forge.Result().is_some();
     assert!( matched);
@@ -143,7 +143,7 @@ fn TestRgx2()
     // Test that the Repeat and Action correctly parse strings
     let  	mut stream1 = FixedStream::from( "aBcxYZ");
     let  	mut parser1 = Parser::New( &mut stream1);
-    let  	mut forge1 = identRgx.Forge();
+    let  	mut forge1 = crate::shard::parser::BaseForge::New();
     identRgx.Match( &mut parser1, &mut forge1);
     let  	matched1 = forge1.Result().is_some();
     let  	m1 = forge1.Mark(); // Should match greedy
@@ -153,7 +153,7 @@ fn TestRgx2()
     // Test with non-matching string
     let  	mut stream2 = FixedStream::from( "aBcxYZ123");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let  	mut forge2 = identRgx.Forge();
+    let  	mut forge2 = crate::shard::parser::BaseForge::New();
     identRgx.Match( &mut parser2, &mut forge2);
     let  	matched2 = forge2.Result().is_some();
     let  	m2 = forge2.Mark(); // Should succeed but match 6 chars 
@@ -172,7 +172,7 @@ fn TestUIntShard()
     // Test that the UInt shard correctly parses unsigned integer strings
     let  	mut stream1 = FixedStream::from( "12345");
     let  	mut parser1 = Parser::New( &mut stream1);
-    let  	mut forge1 = tree.Forge();
+    let  	mut forge1 = crate::shard::parser::BaseForge::New();
     tree.Match( &mut parser1, &mut forge1);
     let  	matched1 = forge1.Result().is_some();
     let  	m1 = forge1.Mark();
@@ -182,7 +182,7 @@ fn TestUIntShard()
     // Test with non-matching string
     let  	mut stream2 = FixedStream::from( "abc");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let  	mut forge2 = tree.Forge();
+    let  	mut forge2 = crate::shard::parser::BaseForge::New();
     tree.Match( &mut parser2, &mut forge2);
     let  	matched2 = forge2.Result().is_some();
     assert!( !matched2);
@@ -190,7 +190,7 @@ fn TestUIntShard()
     // Test with mixed string
     let  	mut stream3 = FixedStream::from( "42xyz");
     let  	mut parser3 = Parser::New( &mut stream3);
-    let  	mut forge3 = tree.Forge();
+    let  	mut forge3 = crate::shard::parser::BaseForge::New();
     tree.Match( &mut parser3, &mut forge3);
     let  	matched3 = forge3.Result().is_some();
     let  	m3 = forge3.Mark();
@@ -207,7 +207,7 @@ fn TestIntShard() {
     // Positive int
     let  	mut stream = FixedStream::from( "+12345");
     let  	mut parser = Parser::New( &mut stream);
-    let  	mut forge = tree.Forge();
+    let  	mut forge = crate::shard::parser::BaseForge::New();
     tree.Match( &mut parser, &mut forge);
     let  	matched = forge.Result().is_some();
     let  	m1 = forge.Mark();
@@ -217,7 +217,7 @@ fn TestIntShard() {
     // Negative int
     let  	mut stream2 = FixedStream::from( "-42");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let  	mut forge2 = tree.Forge();
+    let  	mut forge2 = crate::shard::parser::BaseForge::New();
     tree.Match( &mut parser2, &mut forge2);
     let  	matched2 = forge2.Result().is_some();
     let  	m2 = forge2.Mark();
@@ -232,7 +232,7 @@ fn TestHexShard() {
     // Standard hex
     let  	mut stream = FixedStream::from( "0x1a2B");
     let  	mut parser = Parser::New( &mut stream);
-    let  	mut forge = tree.Forge();
+    let  	mut forge = crate::shard::parser::BaseForge::New();
     tree.Match( &mut parser, &mut forge);
     let  	matched = forge.Result().is_some();
     let  	m1 = forge.Mark();
@@ -242,7 +242,7 @@ fn TestHexShard() {
     // Hex with sign
     let  	mut stream2 = FixedStream::from( "-0XF");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let  	mut forge2 = tree.Forge();
+    let  	mut forge2 = crate::shard::parser::BaseForge::New();
     tree.Match( &mut parser2, &mut forge2);
     let  	matched2 = forge2.Result().is_some();
     let  	m2 = forge2.Mark();
@@ -257,7 +257,7 @@ fn TestRealShard() {
     // Standard real
     let  	mut stream = FixedStream::from( "3.14159");
     let  	mut parser = Parser::New( &mut stream);
-    let  	mut forge = tree.Forge();
+    let  	mut forge = crate::shard::parser::BaseForge::New();
     tree.Match( &mut parser, &mut forge);
     let  	matched = forge.Result().is_some();
     let  	m1 = forge.Mark();
@@ -267,7 +267,7 @@ fn TestRealShard() {
     // Real with exponent
     let  	mut stream2 = FixedStream::from( "-1.5e+10");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let  	mut forge2 = tree.Forge();
+    let  	mut forge2 = crate::shard::parser::BaseForge::New();
     tree.Match( &mut parser2, &mut forge2);
     let  	matched2 = forge2.Result().is_some();
     let  	m2 = forge2.Mark();
@@ -282,7 +282,7 @@ fn TestHexRealShard() {
     // Hex real with fraction
     let  	mut stream = FixedStream::from( "0x1.f");
     let  	mut parser = Parser::New( &mut stream);
-    let  	mut forge = tree.Forge();
+    let  	mut forge = crate::shard::parser::BaseForge::New();
     tree.Match( &mut parser, &mut forge);
     let  	matched = forge.Result().is_some();
     let  	m1 = forge.Mark();
@@ -292,7 +292,7 @@ fn TestHexRealShard() {
     // Hex real with binary exponent
     let  	mut stream2 = FixedStream::from( "-0x1.abcP-4");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let  	mut forge2 = tree.Forge();
+    let  	mut forge2 = crate::shard::parser::BaseForge::New();
     tree.Match( &mut parser2, &mut forge2);
     let  	matched2 = forge2.Result().is_some();
     let  	m2 = forge2.Mark();
@@ -309,7 +309,7 @@ fn TestJsonShard() {
     // JSON String
     let  	mut stream1 = FixedStream::from( r#"  "hello world"  "#);
     let  	mut parser1 = Parser::New( &mut stream1);
-    let  	mut forge1 = tree.Forge();
+    let  	mut forge1 = crate::shard::parser::BaseForge::New();
     tree.Match( &mut parser1, &mut forge1);
     let  	matched1 = forge1.Result().is_some();
     let  	m1 = forge1.Mark();
@@ -328,7 +328,7 @@ fn TestJsonShard() {
     "#;
     let  	mut stream2 = FixedStream::from( json_text);
     let  	mut parser2 = Parser::New( &mut stream2);
-    let  	mut forge2 = tree.Forge();
+    let  	mut forge2 = crate::shard::parser::BaseForge::New();
     tree.Match( &mut parser2, &mut forge2);
     let  	matched2 = forge2.Result().is_some();
     let  	m2 = forge2.Mark();

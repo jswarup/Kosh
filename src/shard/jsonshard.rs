@@ -26,7 +26,9 @@ impl IXFluxSource for JsonShard
 
 impl IGrammar for JsonShard
 {
-    fn	Match< F: IForge>( &self, parser: &mut crate::shard::Parser, forge: &mut F)
+    type Forge = crate::shard::parser::BaseForge;
+
+    fn	Match( &self, parser: &mut crate::shard::Parser, forge: &mut Self::Forge)
     {
         let  	res = JsonShard::MatchValue( parser, forge);
         if let Some( newM) = res {
@@ -128,7 +130,7 @@ impl JsonShard
         let  	mut m = forge.Mark();
         {
             let  	wspc = WSpc();
-            let  	mut wspcForge = wspc.Forge();
+            let  	mut wspcForge = crate::shard::parser::BaseForge::New();
             wspcForge.SetMark( m);
             wspc.Match( parser, &mut wspcForge);
             if wspcForge.Result().is_some() {
@@ -175,7 +177,7 @@ impl JsonShard
         } else if curr == U8( b'-') || ( curr >= U8( b'0') && curr <= U8( b'9')) {
             forge.SetMark( m);
             let  	real = Real;
-            let  	mut realForge = real.Forge();
+            let  	mut realForge = crate::shard::parser::BaseForge::New();
             realForge.SetMark( m);
             real.Match( parser, &mut realForge);
             if realForge.Result().is_some() {

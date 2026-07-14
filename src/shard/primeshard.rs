@@ -11,7 +11,7 @@ pub struct PrimeShard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub fn	WSpc( ) -> impl IGrammar
+pub fn	WSpc( ) -> impl IGrammar<Forge = crate::shard::parser::BaseForge>
 {
     crate::ShardTree!( +[ " \t\n\r\x0B\x0C" ] )
 }

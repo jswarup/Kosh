@@ -2,7 +2,7 @@
 
 
 use	crate::flux::{ IXFluxSource, xflux::XField };
-use	crate::shard::{ IGrammar, IForge };
+use	crate::shard::IGrammar;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -25,7 +25,9 @@ impl< 'a> IXFluxSource for StrShard< 'a>
 
 impl< 'a> IGrammar for StrShard< 'a>
 {
-    fn	Match< F: IForge>( &self, parser: &mut crate::shard::Parser, forge: &mut F)
+    type Forge = crate::shard::parser::BaseForge;
+
+    fn	Match( &self, parser: &mut crate::shard::Parser, forge: &mut Self::Forge)
     {
         self._Val.Match( parser, forge);
     }

@@ -47,7 +47,9 @@ impl< C> IGrammar for UniNode< C, USeg>
 where
     C: IGrammar,
 {
-    fn	Match< F: IForge>( &self, parser: &mut crate::shard::Parser, forge: &mut F)
+    type Forge = crate::shard::parser::BaseForge;
+
+    fn	Match( &self, parser: &mut crate::shard::Parser, forge: &mut Self::Forge)
     {
         let  	mut count = U32( 0);
         let  	first = self._Op.First();
@@ -57,7 +59,7 @@ where
 
         while count < last {
             let  	res = {
-                let  	mut childForge = self._Child.Forge();
+                let  	mut childForge = <C as IGrammar>::Forge::New();
                 childForge.SetMark( m);
                 parser.PushForge( forge as *mut _ as *mut dyn IForge);
                 self._Child.Match( parser, &mut childForge);

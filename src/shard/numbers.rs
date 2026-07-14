@@ -24,7 +24,9 @@ impl IXFluxSource for UIntShard
 
 impl IGrammar for UIntShard
 {
-    fn	Match< F: IForge>( &self, parser: &mut crate::shard::Parser, forge: &mut F)
+    type Forge = crate::shard::parser::BaseForge;
+
+    fn	Match( &self, parser: &mut crate::shard::Parser, forge: &mut Self::Forge)
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
@@ -88,7 +90,9 @@ impl IXFluxSource for IntShard
 
 impl IGrammar for IntShard
 {
-    fn	Match< F: IForge>( &self, parser: &mut crate::shard::Parser, forge: &mut F)
+    type Forge = crate::shard::parser::BaseForge;
+
+    fn	Match( &self, parser: &mut crate::shard::Parser, forge: &mut Self::Forge)
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
@@ -141,7 +145,9 @@ impl IXFluxSource for HexShard
 }
 impl IGrammar for HexShard
 {
-    fn	Match< F: IForge>( &self, parser: &mut crate::shard::Parser, forge: &mut F)
+    type Forge = crate::shard::parser::BaseForge;
+
+    fn	Match( &self, parser: &mut crate::shard::Parser, forge: &mut Self::Forge)
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
@@ -206,7 +212,9 @@ impl IXFluxSource for RealShard
 }
 impl IGrammar for RealShard
 {
-    fn	Match< F: IForge>( &self, parser: &mut crate::shard::Parser, forge: &mut F)
+    type Forge = crate::shard::parser::BaseForge;
+
+    fn	Match( &self, parser: &mut crate::shard::Parser, forge: &mut Self::Forge)
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;
@@ -309,7 +317,9 @@ impl IXFluxSource for HexRealShard
 }
 impl IGrammar for HexRealShard
 {
-    fn	Match< F: IForge>( &self, parser: &mut crate::shard::Parser, forge: &mut F)
+    type Forge = crate::shard::parser::BaseForge;
+
+    fn	Match( &self, parser: &mut crate::shard::Parser, forge: &mut Self::Forge)
     {
         let  	origMark = forge.Mark();
         let  	mut currentMark = origMark;

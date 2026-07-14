@@ -67,11 +67,13 @@ where
     C: IGrammar,
     W: crate::stalks::work::IWork + 'static,
 {
-    fn	Match< F: IForge>( &self, parser: &mut Parser, forge: &mut F)
+    type Forge = crate::shard::parser::BaseForge;
+
+    fn	Match( &self, parser: &mut Parser, forge: &mut Self::Forge)
     {
         let  	res = {
             let  	mark = forge.Mark();
-            let  	mut actionForge = self._Child.Forge();
+            let  	mut actionForge = <C as IGrammar>::Forge::New();
             actionForge.SetMark( mark);
             parser.PushForge( forge as *mut _ as *mut dyn IForge);
             self._Child.Match( parser, &mut actionForge);

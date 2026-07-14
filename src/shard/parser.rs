@@ -10,6 +10,7 @@ use	crate::stalks::{ IWorker, WorkPtr, INode };
  
 pub trait IForge: Send + Sync + 'static
 {
+    fn  New() -> Self where Self: Sized;
     fn	Mark( &self) -> U32; 
     fn	SetMark( &mut self, mark: U32);
     fn	Deposit( &mut self, result: Option< U32>);
@@ -28,19 +29,20 @@ pub struct BaseForge
 
 impl BaseForge
 {
-    pub fn	New() -> Self
-    {
-        BaseForge {
-            _CurrMark: U32( 0),
-            _Result: None,
-        }
-    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl IForge for BaseForge
 {
+    fn  New() -> Self
+    {
+        BaseForge {
+            _CurrMark: U32( 0),
+            _Result: None,
+        }
+    }
+
     fn	Mark( &self) -> U32
     {
         self._CurrMark
@@ -74,12 +76,9 @@ unsafe impl Sync for BaseForge {}
 
 pub trait IGrammar: INode
 {
-    fn	Forge( &self) -> impl IForge
-    {
-        BaseForge::New()
-    }
+    type Forge: IForge;
 
-    fn	Match< F: IForge>( &self, parser: &mut Parser, forge: &mut F);
+    fn	Match( &self, parser: &mut Parser, forge: &mut Self::Forge);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -131,7 +130,7 @@ impl<'p> Parser<'p>
 
     pub fn	Parse< G: IGrammar + ?Sized>( &mut self, grammar: &'p G) -> bool
     {
-        let  	mut forge = grammar.Forge();
+        let  	mut forge = <G as IGrammar>::Forge::New();
         grammar.Match( self, &mut forge);
         let  	matched = forge.Result().is_some();
         matched
@@ -188,7 +187,9 @@ impl<'p> Parser<'p>
 
 impl IGrammar for Charset
 {
-    fn	Match< F: IForge>(&self, parser: &mut Parser, forge: &mut F)
+    type Forge = BaseForge;
+
+    fn	Match( &self, parser: &mut Parser, forge: &mut Self::Forge)
     {
         let  	mark = forge.Mark();
         let  	curr = parser.Curr( mark);
@@ -205,7 +206,9 @@ impl IGrammar for Charset
 
 impl IGrammar for char
 {
-    fn	Match< F: IForge>(&self, parser: &mut Parser, forge: &mut F)
+    type Forge = BaseForge;
+
+    fn	Match( &self, parser: &mut Parser, forge: &mut Self::Forge)
     {
         let  	mark = forge.Mark();
         let  	curr = parser.Curr( mark);
@@ -228,7 +231,9 @@ impl IXFluxSource for char
 
 impl IGrammar for str
 {
-    fn	Match< F: IForge>(&self, parser: &mut Parser, forge: &mut F)
+    type Forge = BaseForge;
+
+    fn	Match( &self, parser: &mut Parser, forge: &mut Self::Forge)
     {
         // Ensure that empty string matches without consuming
         if self.is_empty() {
@@ -258,7 +263,9 @@ impl IGrammar for str
 
 impl< 'a, 'r, T: IGrammar> IGrammar for &'r T
 {
-    fn	Match< F: IForge>(&self, parser: &mut Parser, forge: &mut F)
+    type Forge = T::Forge;
+
+    fn	Match( &self, parser: &mut Parser, forge: &mut Self::Forge)
     {
         (**self).Match( parser, forge);
     }
