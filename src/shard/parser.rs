@@ -87,7 +87,9 @@ pub trait IGrammar: INode
         parser.PushForge( parentForge as *mut _ as *mut dyn IForge);
         self.Match( parser, &mut forge);
         parser.PopForge();
-        forge.Result()
+        let  	res = forge.Result();
+        parentForge.Deposit( res);
+        res
     }
 }
 

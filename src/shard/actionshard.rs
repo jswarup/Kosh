@@ -73,7 +73,6 @@ where
     {
         let  	m = forge.Mark();
         let  	res = self._Child.Parse( parser, forge, m);
-        forge.Deposit( res);
         
         if res.is_some() {
             let  	actionPtr = &self._Op._Action as &DynIWork< 'static> as *const DynIWork< 'static>;

@@ -24,22 +24,17 @@ where
                 let  	m1 = forge.Mark();
                 let  	leftRes = self._Left.Parse( parser, forge, m1);
                 if leftRes.is_some() {
-                    forge.Deposit( leftRes);
                     return;
                 }
                 
                 let  	m2 = forge.Mark();
-                let  	rightRes = self._Right.Parse( parser, forge, m2);
-                forge.Deposit( rightRes);
+                self._Right.Parse( parser, forge, m2);
             }
             BinOp::Less => {
                 let  	m1 = forge.Mark();
                 let  	leftRes = self._Left.Parse( parser, forge, m1);
                 if let Some( newM) = leftRes {
-                    let  	rightRes = self._Right.Parse( parser, forge, newM);
-                    forge.Deposit( rightRes);
-                } else {
-                    forge.Deposit( None);
+                    self._Right.Parse( parser, forge, newM);
                 }
             }
             _ => panic!( "Unsupported operator in BinShard Match"),
