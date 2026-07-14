@@ -26,7 +26,7 @@ impl IXFluxSource for JsonShard
 
 impl IGrammar for JsonShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser)
+    fn	Match( &self, parser: &mut crate::shard::Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
     {
         let  	mark = parser.Forge().Mark();
         let  	res = JsonShard::MatchValue( parser, mark);
@@ -126,7 +126,7 @@ impl JsonShard
 
     fn	MatchValue( parser: &mut crate::shard::Parser, mut m: U32) -> Option< U32>
     {
-        if let Some( newM) = WSpc().Parse( parser, m) {
+        if let Some( newM) = WSpc().Parse( parser, m, None) {
             m = newM;
         }
         
@@ -153,7 +153,7 @@ impl JsonShard
             if matched { return Some( nextM); }
             return None;
         } else if curr == U8( b'-') || ( curr >= U8( b'0') && curr <= U8( b'9')) {
-            if let Some( nextM) = Real.Parse( parser, m) {
+            if let Some( nextM) = Real.Parse( parser, m, None) {
                 return Some( nextM);
             }
             return None;

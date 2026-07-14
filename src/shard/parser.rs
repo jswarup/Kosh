@@ -66,9 +66,9 @@ unsafe impl Sync for Forge {}
 
 pub trait IGrammar: INode
 {
-    fn	Match( &self, parser: &mut Parser);
+    fn	Match( &self, parser: &mut Parser, sink: Option<crate::flux::zflux::ZField< '_>>);
 
-    fn	Parse( &self, parser: &mut Parser, mark: U32) -> Option< U32>
+    fn	Parse( &self, parser: &mut Parser, mark: U32, sink: Option<crate::flux::zflux::ZField< '_>>) -> Option< U32>
     {
         let  	node = Forge {
             prev: parser._TopForge,
@@ -77,7 +77,7 @@ pub trait IGrammar: INode
         };
         let  	prevTop = parser._TopForge;
         parser._TopForge = &node as *const Forge;
-        self.Match( parser);
+        self.Match( parser, sink);
         parser._TopForge = prevTop;
         let  	res = node.Result();
         if !prevTop.is_null() {
@@ -145,7 +145,7 @@ impl<'p> Parser<'p>
             _IsMatched: false,
         };
         self._TopForge = &node as *const Forge;
-        grammar.Match( self);
+        grammar.Match( self, None);
         self._TopForge = std::ptr::null();
         let  	matched = node.Result().is_some();
         matched
@@ -183,7 +183,7 @@ impl<'p> Parser<'p>
 
 impl IGrammar for Charset
 {
-    fn	Match( &self, parser: &mut Parser)
+    fn	Match( &self, parser: &mut Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
     {
         let  	mark = parser.Forge().Mark();
         let  	curr = parser.GetAt( mark);
@@ -200,7 +200,7 @@ impl IGrammar for Charset
 
 impl IGrammar for char
 {
-    fn	Match( &self, parser: &mut Parser)
+    fn	Match( &self, parser: &mut Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
     {
         let  	mark = parser.Forge().Mark();
         let  	curr = parser.GetAt( mark);
@@ -223,7 +223,7 @@ impl IXFluxSource for char
 
 impl IGrammar for str
 {
-    fn	Match( &self, parser: &mut Parser)
+    fn	Match( &self, parser: &mut Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
     {
         let  	mark = parser.Forge().Mark();
         let  	key = self.as_bytes();
@@ -252,9 +252,9 @@ impl IGrammar for str
 
 impl< 'a, 'r, T: IGrammar> IGrammar for &'r T
 {
-    fn	Match( &self, parser: &mut Parser)
+    fn	Match( &self, parser: &mut Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
     {
-        (**self).Match( parser);
+        (**self).Match( parser, None);
     }
 }
 

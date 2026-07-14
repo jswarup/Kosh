@@ -24,7 +24,7 @@ impl IXFluxSource for UIntShard
 
 impl IGrammar for UIntShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser)
+    fn	Match( &self, parser: &mut crate::shard::Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut m = origMark;
@@ -86,7 +86,7 @@ impl IXFluxSource for IntShard
 
 impl IGrammar for IntShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser)
+    fn	Match( &self, parser: &mut crate::shard::Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut m = origMark;
@@ -140,7 +140,7 @@ impl IXFluxSource for HexShard
 }
 impl IGrammar for HexShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser)
+    fn	Match( &self, parser: &mut crate::shard::Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut currentMark = origMark;
@@ -204,7 +204,7 @@ impl IXFluxSource for RealShard
 }
 impl IGrammar for RealShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser)
+    fn	Match( &self, parser: &mut crate::shard::Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut m = origMark;
@@ -289,7 +289,7 @@ impl IXFluxSource for HexRealShard
 }
 impl IGrammar for HexRealShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser)
+    fn	Match( &self, parser: &mut crate::shard::Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut m = origMark;

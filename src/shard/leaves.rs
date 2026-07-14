@@ -26,8 +26,8 @@ impl< 'a> IXFluxSource for StrShard< 'a>
 impl< 'a> IGrammar for StrShard< 'a>
 {
 
-    fn	Match( &self, parser: &mut crate::shard::Parser)
+    fn	Match( &self, parser: &mut crate::shard::Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
     {
-        self._Val.Match( parser);
+        self._Val.Match( parser, None);
     }
 }

@@ -67,10 +67,10 @@ where
     C: IGrammar,
     W: crate::stalks::work::IWork + 'static,
 {
-    fn	Match( &self, parser: &mut Parser)
+    fn	Match( &self, parser: &mut Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
     {
         let  	m = parser.Forge().Mark();
-        let  	res = self._Child.Parse( parser, m);
+        let  	res = self._Child.Parse( parser, m, None);
         
         if res.is_some() {
             let  	actionPtr = &self._Op._Action as &DynIWork< 'static> as *const DynIWork< 'static>;

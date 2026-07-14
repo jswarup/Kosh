@@ -48,7 +48,7 @@ where
     C: IGrammar,
 {
 
-fn	Match( &self, parser: &mut crate::shard::Parser)
+fn	Match( &self, parser: &mut crate::shard::Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
     {
         let  	mut count = U32( 0);
         let  	first = self._Op.First();
@@ -57,7 +57,7 @@ fn	Match( &self, parser: &mut crate::shard::Parser)
         let  	mut m = parser.Forge().Mark();
 
         while count < last {
-            let  	res = self._Child.Parse( parser, m);
+            let  	res = self._Child.Parse( parser, m, None);
             if let Some( newM) = res {
                 if newM == m {
                     count += U32( 1);
