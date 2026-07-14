@@ -1,5 +1,5 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::flux::{ JsonOutStream, xflux::XField, IXFluxSink };
+use	crate::flux::{ JsonOutStream, fluxout::FieldOut, IFluxOutSink };
 use	std::fs;
 use	crate::{
     heist::
@@ -157,7 +157,7 @@ fn	TestChoreTree()
     let  	mut jsonStr = String::new();
     {
         let  	mut jsonOutStream = JsonOutStream::New( &mut jsonStr, true);
-        IXFluxSink::FromXField( &mut jsonOutStream, XField::FluxSource( &choreTree));
+        IFluxOutSink::FromFieldOut( &mut jsonOutStream, FieldOut::FluxSource( &choreTree));
     }
     fs::write( "a.json", jsonStr).unwrap();
 

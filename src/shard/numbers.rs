@@ -1,7 +1,7 @@
 //-- numbers.rs -----------------------------------------------------------------------------------------------------------------------
 
 use	std::fmt;
-use	crate::flux::{ IXFluxSource, xflux::XField };
+use	crate::flux::{ IFluxOutSource, fluxout::FieldOut };
 use	crate::shard::{ IGrammar, IForge };
 use	crate::silo::U8;
 
@@ -12,11 +12,11 @@ pub const UInt: &UIntShard = &UIntShard;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxSource for UIntShard
+impl IFluxOutSource for UIntShard
 {
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
     {
-        *field = XField::String( "UInt".to_string());
+        *field = FieldOut::String( "UInt".to_string());
     }
 }
 
@@ -24,7 +24,7 @@ impl IXFluxSource for UIntShard
 
 impl IGrammar for UIntShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
+    fn	Match( &self, parser: &mut crate::shard::Parser, sink: crate::flux::fluxin::FieldIn< '_>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut m = origMark;
@@ -77,16 +77,16 @@ impl fmt::Debug for UIntShard
 pub struct IntShard;
 pub const Int: &IntShard = &IntShard;
 
-impl IXFluxSource for IntShard
+impl IFluxOutSource for IntShard
 {
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>) { *field = XField::String( "Int".to_string()); }
+    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>) { *field = FieldOut::String( "Int".to_string()); }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl IGrammar for IntShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
+    fn	Match( &self, parser: &mut crate::shard::Parser, sink: crate::flux::fluxin::FieldIn< '_>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut m = origMark;
@@ -134,13 +134,13 @@ impl fmt::Debug for IntShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fm
 pub struct HexShard;
 pub const Hex: &HexShard = &HexShard;
 
-impl IXFluxSource for HexShard
+impl IFluxOutSource for HexShard
 {
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>) { *field = XField::String( "Hex".to_string()); }
+    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>) { *field = FieldOut::String( "Hex".to_string()); }
 }
 impl IGrammar for HexShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
+    fn	Match( &self, parser: &mut crate::shard::Parser, sink: crate::flux::fluxin::FieldIn< '_>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut currentMark = origMark;
@@ -198,13 +198,13 @@ impl fmt::Debug for HexShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fm
 pub struct RealShard;
 pub const Real: &RealShard = &RealShard;
 
-impl IXFluxSource for RealShard
+impl IFluxOutSource for RealShard
 {
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>) { *field = XField::String( "Real".to_string()); }
+    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>) { *field = FieldOut::String( "Real".to_string()); }
 }
 impl IGrammar for RealShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
+    fn	Match( &self, parser: &mut crate::shard::Parser, sink: crate::flux::fluxin::FieldIn< '_>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut m = origMark;
@@ -283,13 +283,13 @@ impl fmt::Debug for RealShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> f
 pub struct HexRealShard;
 pub const HexReal: &HexRealShard = &HexRealShard;
 
-impl IXFluxSource for HexRealShard
+impl IFluxOutSource for HexRealShard
 {
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>) { *field = XField::String( "HexReal".to_string()); }
+    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>) { *field = FieldOut::String( "HexReal".to_string()); }
 }
 impl IGrammar for HexRealShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
+    fn	Match( &self, parser: &mut crate::shard::Parser, sink: crate::flux::fluxin::FieldIn< '_>)
     {
         let  	origMark = parser.Forge().Mark();
         let  	mut m = origMark;

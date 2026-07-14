@@ -1,5 +1,5 @@
 //-- realexpr.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::flux::{ IXFluxSource, xflux::XField };
+use	crate::flux::{ IFluxOutSource, fluxout::FieldOut };
 use	crate::fresco::exprrepos::BaseExpr;
 use	core::any::Any;
 
@@ -44,21 +44,21 @@ impl BaseExpr for RealExpr
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxSource for RealExpr
+impl IFluxOutSource for RealExpr
 {
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
     {
         let  	mut step = 0u32;
         let  	expr = self;
-        *field = XField::Obj( Box::new( move |key, item| {
+        *field = FieldOut::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Type".to_string();
-                *item = XField::Str( "RealExpr");
+                *item = FieldOut::Str( "RealExpr");
                 step += 1;
                 true
             } else if step == 1 {
                 *key = "Value".to_string();
-                *item = XField::F64( expr._Value);
+                *item = FieldOut::F64( expr._Value);
                 step += 1;
                 true
             } else {

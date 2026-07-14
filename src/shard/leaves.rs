@@ -1,7 +1,7 @@
 //-- leaves.rs -------------------------------------------------------------------------------------------------------------------------
 
 
-use	crate::flux::{ IXFluxSource, xflux::XField };
+use	crate::flux::{ IFluxOutSource, fluxout::FieldOut };
 use	crate::shard::IGrammar;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -13,11 +13,11 @@ pub struct StrShard< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> IXFluxSource for StrShard< 'a>
+impl< 'a> IFluxOutSource for StrShard< 'a>
 {
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
     {
-        *field = XField::Str( self._Val);
+        *field = FieldOut::Str( self._Val);
     }
 }
 
@@ -26,8 +26,8 @@ impl< 'a> IXFluxSource for StrShard< 'a>
 impl< 'a> IGrammar for StrShard< 'a>
 {
 
-    fn	Match( &self, parser: &mut crate::shard::Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
+    fn	Match( &self, parser: &mut crate::shard::Parser, sink: crate::flux::fluxin::FieldIn< '_>)
     {
-        self._Val.Match( parser, None);
+        self._Val.Match( parser, crate::flux::fluxin::FieldIn::Null);
     }
 }

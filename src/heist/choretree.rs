@@ -1,6 +1,6 @@
 //-- choretree.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::{
-    flux::{ IXFluxSource, xflux::XField },
+    flux::{ IFluxOutSource, fluxout::FieldOut },
     stalks::{ IntoWorkPtr, BinNode, DynIWorker, IWork, INode, BinOp },
     silo::{ U16, Buff},
 };
@@ -27,15 +27,15 @@ impl Default for Chore
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxSource for Chore
+impl IFluxOutSource for Chore
 {
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
     {
         let  	mut step = 0u32;
-        *field = XField::Obj( Box::new( move |key, item| {
+        *field = FieldOut::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "DocStr".to_string();
-                *item = XField::Str( self._DocStr);
+                *item = FieldOut::Str( self._DocStr);
                 step += 1;
                 true
             } else {

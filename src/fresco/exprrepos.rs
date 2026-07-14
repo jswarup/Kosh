@@ -1,6 +1,6 @@
 //-- exprrepos.rs -------------------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ IAccess, IArr, Stash, U32, Arr, Buff };
-use	crate::flux::{ IXFluxSource, xflux::XField };
+use	crate::flux::{ IFluxOutSource, fluxout::FieldOut };
 use	crate::fresco::varexpr::{ VarAttrib, VarExpr };
 use	crate::fresco::realexpr::RealExpr;
 use	crate::fresco::sumexpr::SumExpr;
@@ -13,7 +13,7 @@ use	crate::stalks::BinOp;
 
 use	core::any::Any;
 
-pub trait BaseExpr: Any + IXFluxSource
+pub trait BaseExpr: Any + IFluxOutSource
 {
     fn	SizeChild( &self, _chart: &ExprRepos) -> U32
     {
@@ -52,13 +52,13 @@ impl Clone for ExprEntry
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxSource for ExprEntry
+impl IFluxOutSource for ExprEntry
 {
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
     {
         match self {
-            ExprEntry::Empty => *field = XField::Null,
-            ExprEntry::Expr( expr) => expr.ToXField( field),
+            ExprEntry::Empty => *field = FieldOut::Null,
+            ExprEntry::Expr( expr) => expr.ToFieldOut( field),
         }
     }
 }
@@ -301,20 +301,20 @@ impl ExprRepos
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxSource for ExprRepos
+impl IFluxOutSource for ExprRepos
 {
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
     {
         let  	mut step = 0u32;
         let  	repos = self;
-        *field = XField::Obj( Box::new( move |key, item| {
+        *field = FieldOut::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Exprs".to_string();
                 let  	mut iterStep = 0u32;
-                *item = XField::Arr( Box::new( move |elem| {
+                *item = FieldOut::Arr( Box::new( move |elem| {
                     if iterStep < repos._Exprs.Size().0 {
                         let  	expr = repos._Exprs.Stk().Arr().At( iterStep);
-                        expr.ToXField( elem);
+                        expr.ToFieldOut( elem);
                         iterStep += 1;
                         true
                     } else {
@@ -326,10 +326,10 @@ impl IXFluxSource for ExprRepos
             } else if step == 1 {
                 *key = "VarAttribs".to_string();
                 let  	mut iterStep = 0u32;
-                *item = XField::Arr( Box::new( move |elem| {
+                *item = FieldOut::Arr( Box::new( move |elem| {
                     if iterStep < repos._VarAttribs.Size().0 {
                         let  	attr = repos._VarAttribs.Stk().Arr().At( iterStep);
-                        attr.ToXField( elem);
+                        attr.ToFieldOut( elem);
                         iterStep += 1;
                         true
                     } else {

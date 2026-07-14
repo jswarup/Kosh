@@ -1,5 +1,5 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::{ flux::{ JsonOutStream, xflux::XField, FixedStream, BuffStream, IStream, IXFluxSource }, silo::{ U8, U32 } };
+use	crate::{ flux::{ JsonOutStream, fluxout::FieldOut, FixedStream, BuffStream, IStream, IFluxOutSource }, silo::{ U8, U32 } };
 use	std::fs;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -10,7 +10,7 @@ struct Point
     _Y :f64,
 }
 
-crate::ImplIXFluxSource!( Point, _X, _Y);
+crate::ImplIFluxOutSource!( Point, _X, _Y);
 
 #[test]
 fn	TestJsonOutStream()
@@ -24,8 +24,8 @@ fn	TestJsonOutStream()
     {
         let  	mut jsonStream = JsonOutStream::New( &mut output, true);
 
-        jsonStream.KeyField( "point", XField::FluxSource( &pt));
-        jsonStream.KeyField( "prices", XField::FluxSource( &arr));
+        jsonStream.KeyField( "point", FieldOut::FluxSource( &pt));
+        jsonStream.KeyField( "prices", FieldOut::FluxSource( &arr));
     }
 
     fs::write( "a.json", output).unwrap();
@@ -72,7 +72,7 @@ fn	TestInStreamFromFile()
 fn	TestFluxSourceDisplayDebug()
 {
     let  	pt = Point { _X: 10.0, _Y: 30.3 };
-    let  	source: &dyn IXFluxSource = &pt;
+    let  	source: &dyn IFluxOutSource = &pt;
 
     let  	disp = format!( "{}", source);
     let  	debug = format!( "{:?}", source);

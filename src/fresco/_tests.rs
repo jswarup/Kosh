@@ -3,7 +3,7 @@ use	crate::fresco::exprrepos::ExprRepos;
 use	crate::fresco::varexpr::{ VarKind, VarExpr };
 use	crate::fresco::termtree::ITermNode;
 use	crate::silo::U32;
-use	crate::flux::{ JsonOutStream, XField };
+use	crate::flux::{ JsonOutStream, FieldOut };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -27,7 +27,7 @@ fn	TestExprRepos()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-fn	TestTermTreeHelper( ) -> impl ITermNode + crate::flux::IXFluxSource
+fn	TestTermTreeHelper( ) -> impl ITermNode + crate::flux::IFluxOutSource
 {
     crate::TermTree!(  "a" +"b" +"x" +"d")
 }
@@ -47,7 +47,7 @@ fn	TestTermTree()
     let  	mut output = String::new();
     {
         let  	mut jsonStream = JsonOutStream::New( &mut output, true);
-        jsonStream.KeyField( "nodeTree", XField::FluxSource( &nodeTree));
+        jsonStream.KeyField( "nodeTree", FieldOut::FluxSource( &nodeTree));
     }
     println!( "{}", output);
 
@@ -57,7 +57,7 @@ fn	TestTermTree()
     let  	mut repoOutput = String::new();
     {
         let  	mut jsonStream = JsonOutStream::New( &mut repoOutput, true);
-        jsonStream.KeyField( "exprRepos", XField::FluxSource( &exprRepos));
+        jsonStream.KeyField( "exprRepos", FieldOut::FluxSource( &exprRepos));
     }
     println!( "{}", repoOutput);
 }

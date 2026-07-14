@@ -1,5 +1,5 @@
 //-- stalks/node.rs ---------------------------------------------------------------------------------------------------------------------
-use	crate::flux::{ IXFluxSource, xflux::XField };
+use	crate::flux::{ IFluxOutSource, fluxout::FieldOut };
 use crate::silo::U64;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -40,20 +40,20 @@ pub struct UniNode< C, Op>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait INode: IXFluxSource {}
+pub trait INode: IFluxOutSource {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T: IXFluxSource + ?Sized> INode for T {}
+impl< T: IFluxOutSource + ?Sized> INode for T {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< L, R> IXFluxSource for BinNode< L, R>
+impl< L, R> IFluxOutSource for BinNode< L, R>
 where
-    L: IXFluxSource,
-    R: IXFluxSource,
+    L: IFluxOutSource,
+    R: IFluxOutSource,
 {
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
     {
         let  	mut step = 0u32;
         let  	node = self;
@@ -67,22 +67,22 @@ where
             BinOp::Less => 6,
             BinOp::Bor => 7,
         };
-        *field = XField::Obj( Box::new( move |key, item| {
+        *field = FieldOut::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Op".to_string();
-                *item = XField::U64( U64::From(opVal));
+                *item = FieldOut::U64( U64::From(opVal));
                 step += 1;
                 return true;
             }
             if step == 1 {
                 *key = "Left".to_string();
-                node._Left.ToXField( item);
+                node._Left.ToFieldOut( item);
                 step += 1;
                 return true;
             }
             if step == 2 {
                 *key = "Right".to_string();
-                node._Right.ToXField( item);
+                node._Right.ToFieldOut( item);
                 step += 1;
                 return true;
             }

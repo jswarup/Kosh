@@ -1,7 +1,7 @@
 //-- jsonshard.rs -----------------------------------------------------------------------------------------------------------------
 
 use	std::fmt;
-use	crate::flux::{ IXFluxSource, xflux::XField };
+use	crate::flux::{ IFluxOutSource, fluxout::FieldOut };
 use	crate::shard::{ Charset, IGrammar, Parser, IForge };
 use	crate::silo::{U32, U8};
 use	crate::shard::numbers::Real;
@@ -14,11 +14,11 @@ pub const Json: &JsonShard = &JsonShard;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxSource for JsonShard
+impl IFluxOutSource for JsonShard
 {
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
 {
-        *field = XField::String( "Json".to_string());
+        *field = FieldOut::String( "Json".to_string());
     }
 }
 
@@ -26,7 +26,7 @@ impl IXFluxSource for JsonShard
 
 impl IGrammar for JsonShard
 {
-    fn	Match( &self, parser: &mut crate::shard::Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
+    fn	Match( &self, parser: &mut crate::shard::Parser, sink: crate::flux::fluxin::FieldIn< '_>)
     {
         let  	mark = parser.Forge().Mark();
         let  	res = JsonShard::MatchValue( parser, mark);
@@ -126,7 +126,7 @@ impl JsonShard
 
     fn	MatchValue( parser: &mut crate::shard::Parser, mut m: U32) -> Option< U32>
     {
-        if let Some( newM) = WSpc().Parse( parser, m, None) {
+        if let Some( newM) = WSpc().Parse( parser, m, crate::flux::fluxin::FieldIn::Null) {
             m = newM;
         }
         
@@ -153,7 +153,7 @@ impl JsonShard
             if matched { return Some( nextM); }
             return None;
         } else if curr == U8( b'-') || ( curr >= U8( b'0') && curr <= U8( b'9')) {
-            if let Some( nextM) = Real.Parse( parser, m, None) {
+            if let Some( nextM) = Real.Parse( parser, m, crate::flux::fluxin::FieldIn::Null) {
                 return Some( nextM);
             }
             return None;

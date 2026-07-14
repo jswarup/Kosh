@@ -3,7 +3,7 @@
 use	std::fmt;
 
 use	crate::{
-    flux::{ IXFluxSource, xflux::XField },
+    flux::{ IFluxOutSource, fluxout::FieldOut },
     shard::{ IGrammar, IForge, Parser },
     stalks::{ work::DynIWork, UniNode },
     silo::{ cast::IConstPtrMutRefExt },
@@ -31,24 +31,24 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< C, W> IXFluxSource for UniNode< C, ActionOp< W>>
+impl< C, W> IFluxOutSource for UniNode< C, ActionOp< W>>
 where
-    C: IXFluxSource,
+    C: IFluxOutSource,
     W: Send + Sync,
 {
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
     {
         let  	mut step = 0u32;
         let  	node = self;
-        *field = XField::Obj( Box::new( move |key, item| {
+        *field = FieldOut::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Child".to_string();
-                node._Child.ToXField( item);
+                node._Child.ToFieldOut( item);
                 step += 1;
                 true
             } else if step == 1 {
                 *key = "Action".to_string();
-                *item = XField::Str( "Action");
+                *item = FieldOut::Str( "Action");
                 step += 1;
                 true
             } else {
@@ -67,10 +67,10 @@ where
     C: IGrammar,
     W: crate::stalks::work::IWork + 'static,
 {
-    fn	Match( &self, parser: &mut Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
+    fn	Match( &self, parser: &mut Parser, sink: crate::flux::fluxin::FieldIn< '_>)
     {
         let  	m = parser.Forge().Mark();
-        let  	res = self._Child.Parse( parser, m, None);
+        let  	res = self._Child.Parse( parser, m, crate::flux::fluxin::FieldIn::Null);
         
         if res.is_some() {
             let  	actionPtr = &self._Op._Action as &DynIWork< 'static> as *const DynIWork< 'static>;

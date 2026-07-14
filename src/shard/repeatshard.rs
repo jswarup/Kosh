@@ -3,7 +3,7 @@
 use	std::fmt;
 
 use	crate::{
-    flux::{ IXFluxSource, xflux::XField },
+    flux::{ IFluxOutSource, fluxout::FieldOut },
     shard::{ IGrammar, IForge },
     silo::{ USeg, U32 },
     stalks::UniNode,
@@ -15,23 +15,23 @@ pub type RepeatShard< C> = UniNode< C, USeg>;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< C> IXFluxSource for UniNode< C, USeg>
+impl< C> IFluxOutSource for UniNode< C, USeg>
 where
-    C: IXFluxSource,
+    C: IFluxOutSource,
 {
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
     {
         let  	mut step = 0u32;
         let  	node = self;
-        *field = XField::Obj( Box::new( move |key, item| {
+        *field = FieldOut::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Child".to_string();
-                node._Child.ToXField( item);
+                node._Child.ToFieldOut( item);
                 step += 1;
                 true
             } else if step == 1 {
                 *key = "Repeat".to_string();
-                *item = XField::FluxSource( &node._Op);
+                *item = FieldOut::FluxSource( &node._Op);
                 step += 1;
                 true
             } else {
@@ -48,7 +48,7 @@ where
     C: IGrammar,
 {
 
-fn	Match( &self, parser: &mut crate::shard::Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
+fn	Match( &self, parser: &mut crate::shard::Parser, sink: crate::flux::fluxin::FieldIn< '_>)
     {
         let  	mut count = U32( 0);
         let  	first = self._Op.First();
@@ -57,7 +57,7 @@ fn	Match( &self, parser: &mut crate::shard::Parser, sink: Option<crate::flux::zf
         let  	mut m = parser.Forge().Mark();
 
         while count < last {
-            let  	res = self._Child.Parse( parser, m, None);
+            let  	res = self._Child.Parse( parser, m, crate::flux::fluxin::FieldIn::Null);
             if let Some( newM) = res {
                 if newM == m {
                     count += U32( 1);

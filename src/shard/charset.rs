@@ -3,7 +3,7 @@
 use	std::{ cmp, fmt, ops::{ BitAnd, BitAndAssign, BitOr, BitOrAssign, Not } };
 use	std::sync::LazyLock;
 use	crate::silo::{ Arr, Buff, U8, U32, U64 };
-use	crate::flux::{IXFluxSource, XField};
+use	crate::flux::{IFluxOutSource, FieldOut};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 /// A 256-bit filter for `U8` characters — one bit per byte value.
@@ -616,12 +616,12 @@ impl BitAndAssign for Charset
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxSource for Charset
+impl IFluxOutSource for Charset
 {
-    fn	ToXField< 'a>( &'a self, field: &mut XField< 'a>)
+    fn	ToFieldOut< 'a>( &'a self, field: &mut FieldOut< 'a>)
     {
         let  	s = self.ToString();
-        *field = XField::String( s);
+        *field = FieldOut::String( s);
     }
 }
 

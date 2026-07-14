@@ -1,10 +1,10 @@
-//-- xflux.rs -----------------------------------------------------------------------------------------------------------------------
+//-- fluxout.rs -----------------------------------------------------------------------------------------------------------------------
 use	std::fmt;
 
 use	super::JsonOutStream;
 use	crate::silo::{ Arr, IAccess, U16, U32, U64, U8, USeg };
 
-pub enum XField< 'a>
+pub enum FieldOut< 'a>
 {
     Null,
     Str( &'a str),
@@ -12,57 +12,57 @@ pub enum XField< 'a>
     U64( U64),
     F64( f64),
     Bool( bool),
-    Arr( Box< dyn FnMut( &mut XField< 'a>) -> bool + 'a>),
-    Obj( Box< dyn FnMut( &mut String, &mut XField< 'a>) -> bool + 'a>),
-    FluxSource( &'a dyn IXFluxSource),
+    Arr( Box< dyn FnMut( &mut FieldOut< 'a>) -> bool + 'a>),
+    Obj( Box< dyn FnMut( &mut String, &mut FieldOut< 'a>) -> bool + 'a>),
+    FluxSource( &'a dyn IFluxOutSource),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IXFluxSink
+pub trait IFluxOutSink
 {
-    fn	FromXField( &mut self, field: XField);
+    fn	FromFieldOut( &mut self, field: FieldOut);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IXFluxSource
+pub trait IFluxOutSource
 {
-    fn	ToXField< 'a>( &'a self, _field: &mut XField< 'a>)
+    fn	ToFieldOut< 'a>( &'a self, _field: &mut FieldOut< 'a>)
     {
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'r, T: IXFluxSource + ?Sized> IXFluxSource for &'r T
+impl< 'r, T: IFluxOutSource + ?Sized> IFluxOutSource for &'r T
 {
-    fn	ToXField< 'a>( &'a self, field: &mut XField< 'a>)
+    fn	ToFieldOut< 'a>( &'a self, field: &mut FieldOut< 'a>)
     {
-        ( **self).ToXField( field);
+        ( **self).ToFieldOut( field);
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[macro_export]
-macro_rules! ImplIXFluxSource
+macro_rules! ImplIFluxOutSource
 {
     ( $struct_name:ident $( , $field:ident )* ) =>
     {
-        impl $crate::flux::IXFluxSource for $struct_name
+        impl $crate::flux::IFluxOutSource for $struct_name
         {
-            fn	ToXField< 'a>( &'a self, field: &mut $crate::flux::xflux::XField< 'a>)
+            fn	ToFieldOut< 'a>( &'a self, field: &mut $crate::flux::fluxout::FieldOut< 'a>)
             {
                 let  	mut step = 0u32;
                 let  	obj = self;
-                *field = $crate::flux::xflux::XField::Obj( Box::new( move |key, item| {
+                *field = $crate::flux::fluxout::FieldOut::Obj( Box::new( move |key, item| {
                     #[allow( unused_variables, unused_assignments)]
                     let  	mut _curr_step = 0u32;
                     $(
                         if step == _curr_step {
                             *key = stringify!( $field).to_string();
-                            *item = $crate::flux::xflux::XField::FluxSource( &obj.$field);
+                            *item = $crate::flux::fluxout::FieldOut::FluxSource( &obj.$field);
                             step += 1;
                             return true;
                         }
@@ -77,71 +77,71 @@ macro_rules! ImplIXFluxSource
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-macro_rules! ImplIXFluxSourceUInt
+macro_rules! ImplIFluxOutSourceUInt
 {
     ( $( $T:ty ),+ ) =>
     {
         $(
-            impl IXFluxSource for $T
+            impl IFluxOutSource for $T
             {
-                fn	ToXField< 'a>( &'a self, field: &mut XField< 'a>)
+                fn	ToFieldOut< 'a>( &'a self, field: &mut FieldOut< 'a>)
                 {
-                    *field = XField::U64(  U64::From( self.0 as u64));
+                    *field = FieldOut::U64(  U64::From( self.0 as u64));
                 }
             }
         )+
     };
 }
 
-ImplIXFluxSourceUInt!( U8, U16, U32, U64);
+ImplIFluxOutSourceUInt!( U8, U16, U32, U64);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-macro_rules! ImplIXFluxSourceFloat
+macro_rules! ImplIFluxOutSourceFloat
 {
     ( $( $T:ty ),+ ) =>
     {
         $(
-            impl IXFluxSource for $T
+            impl IFluxOutSource for $T
             {
-                fn	ToXField< 'a>( &'a self, field: &mut XField< 'a>)
+                fn	ToFieldOut< 'a>( &'a self, field: &mut FieldOut< 'a>)
                 {
-                    *field = XField::F64( *self as f64);
+                    *field = FieldOut::F64( *self as f64);
                 }
             }
         )+
     };
 }
 
-ImplIXFluxSourceFloat!( f32, f64);
+ImplIFluxOutSourceFloat!( f32, f64);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxSource for String {
-    fn ToXField<'a>(&'a self, field: &mut XField<'a>) {
-        *field = XField::Str(self.as_str());
+impl IFluxOutSource for String {
+    fn ToFieldOut<'a>(&'a self, field: &mut FieldOut<'a>) {
+        *field = FieldOut::Str(self.as_str());
     }
 }
 
-impl IXFluxSource for str {
-    fn ToXField<'a>(&'a self, field: &mut XField<'a>) {
-        *field = XField::Str(self);
+impl IFluxOutSource for str {
+    fn ToFieldOut<'a>(&'a self, field: &mut FieldOut<'a>) {
+        *field = FieldOut::Str(self);
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl<'a, T> IXFluxSource for Arr<'a, T>
+impl<'a, T> IFluxOutSource for Arr<'a, T>
 where
-    T: IXFluxSource,
+    T: IFluxOutSource,
 {
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
     {
         let  	mut idx = 0u32;
         let  	arr = *self;
-        *field = XField::Arr( Box::new( move |item| {
+        *field = FieldOut::Arr( Box::new( move |item| {
             if idx < arr.Size().0 {
-                *item = XField::FluxSource( arr.At( idx));
+                *item = FieldOut::FluxSource( arr.At( idx));
                 idx += 1;
                 true
             } else {
@@ -153,22 +153,22 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxSource for USeg
+impl IFluxOutSource for USeg
 {
-    fn	ToXField< 'a>( &'a self, field: &mut XField< 'a>)
+    fn	ToFieldOut< 'a>( &'a self, field: &mut FieldOut< 'a>)
     {
         let  	mut step = 0u32;
         let  	uSeg = self;
-        *field = XField::Obj( Box::new( move |key, item| {
+        *field = FieldOut::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "First".to_string();
-                *item = XField::FluxSource( &uSeg._First);
+                *item = FieldOut::FluxSource( &uSeg._First);
                 step += 1;
                 return true;
             }
             if step == 1 {
                 *key = "Last".to_string();
-                *item = XField::FluxSource( &uSeg._Last);
+                *item = FieldOut::FluxSource( &uSeg._Last);
                 step += 1;
                 return true;
             }
@@ -179,14 +179,14 @@ impl IXFluxSource for USeg
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> fmt::Display for dyn IXFluxSource + 'a
+impl< 'a> fmt::Display for dyn IFluxOutSource + 'a
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         let  	mut output = String::new();
         {
             let  	mut jsonStream = JsonOutStream::New( &mut output, false);
-            jsonStream.FromXField( XField::FluxSource( self));
+            jsonStream.FromFieldOut( FieldOut::FluxSource( self));
         }
         return write!( f, "{}", output);
     }
@@ -194,14 +194,14 @@ impl< 'a> fmt::Display for dyn IXFluxSource + 'a
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> fmt::Debug for dyn IXFluxSource + 'a
+impl< 'a> fmt::Debug for dyn IFluxOutSource + 'a
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         let  	mut output = String::new();
         {
             let  	mut jsonStream = JsonOutStream::New( &mut output, true);
-            jsonStream.FromXField( XField::FluxSource( self));
+            jsonStream.FromFieldOut( FieldOut::FluxSource( self));
         }
         return write!( f, "{}", output);
     }

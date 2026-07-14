@@ -1,6 +1,6 @@
 //-- termtree.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::{
-    flux::{ IXFluxSource, xflux::XField },
+    flux::{ IFluxOutSource, fluxout::FieldOut },
     stalks::{ DynIWorker, IWork, BinNode, INode, BinOp },
 };
 use	std::fmt;
@@ -25,22 +25,22 @@ impl Default for Term
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxSource for Term
+impl IFluxOutSource for Term
 {
-    fn	ToXField< 'b>( &'b self, field: &mut XField< 'b>)
+    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
     {
         let  	mut step = 0u32;
         let  	term = self;
-        *field = XField::Obj( Box::new( move |key, item| {
+        *field = FieldOut::Obj( Box::new( move |key, item| {
             if step == 0 {
                 match term {
                     Term::String( s) => {
                         *key = "String".to_string();
-                        *item = XField::Str( s);
+                        *item = FieldOut::Str( s);
                     }
                     Term::Real( v) => {
                         *key = "Real".to_string();
-                        *item = XField::F64( *v);
+                        *item = FieldOut::F64( *v);
                     }
                 }
                 step += 1;

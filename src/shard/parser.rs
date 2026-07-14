@@ -1,7 +1,7 @@
 //-- parser.rs -------------------------------------------------------------------------------------------------------------------
 
 use	crate::flux::instream::IStream;
-use	crate::flux::IXFluxSource;
+use	crate::flux::IFluxOutSource;
 use crate::shard::Charset;
 use	crate::silo::{ U32, U8 };
 use	crate::stalks::{ IWorker, WorkPtr, INode };
@@ -66,9 +66,9 @@ unsafe impl Sync for Forge {}
 
 pub trait IGrammar: INode
 {
-    fn	Match( &self, parser: &mut Parser, sink: Option<crate::flux::zflux::ZField< '_>>);
+    fn	Match( &self, parser: &mut Parser, sink: crate::flux::fluxin::FieldIn< '_>);
 
-    fn	Parse( &self, parser: &mut Parser, mark: U32, sink: Option<crate::flux::zflux::ZField< '_>>) -> Option< U32>
+    fn	Parse( &self, parser: &mut Parser, mark: U32, sink: crate::flux::fluxin::FieldIn< '_>) -> Option< U32>
     {
         let  	node = Forge {
             prev: parser._TopForge,
@@ -145,7 +145,7 @@ impl<'p> Parser<'p>
             _IsMatched: false,
         };
         self._TopForge = &node as *const Forge;
-        grammar.Match( self, None);
+        grammar.Match( self, crate::flux::fluxin::FieldIn::Null);
         self._TopForge = std::ptr::null();
         let  	matched = node.Result().is_some();
         matched
@@ -183,7 +183,7 @@ impl<'p> Parser<'p>
 
 impl IGrammar for Charset
 {
-    fn	Match( &self, parser: &mut Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
+    fn	Match( &self, parser: &mut Parser, sink: crate::flux::fluxin::FieldIn< '_>)
     {
         let  	mark = parser.Forge().Mark();
         let  	curr = parser.GetAt( mark);
@@ -200,7 +200,7 @@ impl IGrammar for Charset
 
 impl IGrammar for char
 {
-    fn	Match( &self, parser: &mut Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
+    fn	Match( &self, parser: &mut Parser, sink: crate::flux::fluxin::FieldIn< '_>)
     {
         let  	mark = parser.Forge().Mark();
         let  	curr = parser.GetAt( mark);
@@ -215,7 +215,7 @@ impl IGrammar for char
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IXFluxSource for char
+impl IFluxOutSource for char
 {
 }
 
@@ -223,7 +223,7 @@ impl IXFluxSource for char
 
 impl IGrammar for str
 {
-    fn	Match( &self, parser: &mut Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
+    fn	Match( &self, parser: &mut Parser, sink: crate::flux::fluxin::FieldIn< '_>)
     {
         let  	mark = parser.Forge().Mark();
         let  	key = self.as_bytes();
@@ -252,9 +252,9 @@ impl IGrammar for str
 
 impl< 'a, 'r, T: IGrammar> IGrammar for &'r T
 {
-    fn	Match( &self, parser: &mut Parser, sink: Option<crate::flux::zflux::ZField< '_>>)
+    fn	Match( &self, parser: &mut Parser, sink: crate::flux::fluxin::FieldIn< '_>)
     {
-        (**self).Match( parser, None);
+        (**self).Match( parser, crate::flux::fluxin::FieldIn::Null);
     }
 }
 
