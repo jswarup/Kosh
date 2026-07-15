@@ -1,326 +1,275 @@
 //-- numbers.rs -----------------------------------------------------------------------------------------------------------------------
 
-use	std::fmt;
-use	crate::flux::{ IFluxImportSource };
-use	crate::shard::Parser;
-use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
-use	crate::flux::fluximport::FieldImp;
-use	crate::shard::{ IGrammar, IForge };
-use	crate::silo::{ U8, U32, U64 };
+use    std::fmt;
+use    crate::flux::{ IFluxImportSource };
+use    crate::shard::Parser;
+use    crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
+use    crate::flux::fluximport::FieldImp;
+use    crate::shard::{ IGrammar, IForge };
+use    crate::silo::{ U8, U32, U64 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct UIntShard;
-pub const UInt: &UIntShard = &UIntShard;
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IFluxExportSource for UIntShard
+macro_rules! ImplNumberShard
 {
-    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
+    ( $shard:ident, $cnst:ident, $label:literal ) =>
     {
-        *field = FieldExp::String( "UInt".to_string());
+        pub struct $shard;
+        pub const $cnst: &$shard = &$shard;
+
+        impl IFluxExportSource for $shard
+        {
+            fn    FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
+            {
+                *field = FieldExp::String( $label.to_string());
+            }
+        }
+
+        impl fmt::Display for $shard { fn    fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "{}", $label) } }
+        impl fmt::Debug for $shard { fn    fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "{}", $label) } }
+    };
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+fn    MatchSign( parser: &mut Parser, m: U32) -> Option< U32>
+{
+    let      curr = parser.GetAt( m);
+    if curr == U8( b'-') || curr == U8( b'+') {
+        parser.Incr( m)
+    } else {
+        Some( m)
     }
 }
+
+fn    MatchDecDigits( parser: &mut Parser, mut m: U32) -> ( U32, bool)
+{
+    let      mut matched = false;
+    loop {
+        let      curr = parser.GetAt( m);
+        if curr >= U8( b'0') && curr <= U8( b'9') {
+            matched = true;
+            if let      Some( nextM) = parser.Incr( m) { m = nextM; } else { break; }
+        } else { break; }
+    }
+    ( m, matched)
+}
+
+fn    MatchHexDigits( parser: &mut Parser, mut m: U32) -> ( U32, bool)
+{
+    let      mut matched = false;
+    loop {
+        let      curr = parser.GetAt( m);
+        if ( curr >= U8( b'0') && curr <= U8( b'9')) || ( curr >= U8( b'a') && curr <= U8( b'f')) || ( curr >= U8( b'A') && curr <= U8( b'F')) {
+            matched = true;
+            if let      Some( nextM) = parser.Incr( m) { m = nextM; } else { break; }
+        } else { break; }
+    }
+    ( m, matched)
+}
+
+fn    MatchHexPrefix( parser: &mut Parser, m: U32) -> Option< U32>
+{
+    if parser.GetAt( m) != U8( b'0') {
+        return None;
+    }
+    let      m = parser.Incr( m)?;
+    let      curr = parser.GetAt( m);
+    if curr != U8( b'x') && curr != U8( b'X') {
+        return None;
+    }
+    parser.Incr( m)
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+ImplNumberShard!( UIntShard, UInt, "UInt");
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl IGrammar for UIntShard
 {
-    fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
+    fn    Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
     {
-        let  	origMark = parser.CurrentMark();
-        let  	mut m = origMark;
-        let  	mut matched = false;
+        let      origMark = parser.CurrentMark();
+        let      ( m, matched) = MatchDecDigits( parser, origMark);
 
-        loop {
-            let  	curr = parser.GetAt( m);
-            if curr >= U8( b'0') && curr <= U8( b'9') {
-                matched = true;
-                if let  	Some( nextM) = parser.Incr( m) {
-                    m = nextM;
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            }
+        if !matched {
+            parser.Forge().Deposit( None);
+            return;
         }
-
-        if matched {
-            sink.Resolve();
-            if matches!( sink, FieldImp::U64( _) | FieldImp::FluxSink( _)) {
-                let  	bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
-                if let  	Ok( s) = std::str::from_utf8( bytes) {
-                    if let  	Ok( val) = s.parse::<u64>() {
-                        if let  	FieldImp::U64( dst) = sink {
-                            *dst = U64( val);
-                        } else if let  	FieldImp::FluxSink( flx) = sink {
-                            let  	mut temp = U64( val);
-                            flx.FromFieldImp( FieldImp::U64( &mut temp));
-                        }
+        sink.Resolve();
+        if matches!( sink, FieldImp::U64( _) | FieldImp::FluxSink( _)) {
+            let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
+            if let      Ok( s) = std::str::from_utf8( bytes) {
+                if let      Ok( val) = s.parse::<u64>() {
+                    if let      FieldImp::U64( dst) = sink {
+                        *dst = U64( val);
+                    } else if let      FieldImp::FluxSink( flx) = sink {
+                        let      mut temp = U64( val);
+                        flx.FromFieldImp( FieldImp::U64( &mut temp));
                     }
                 }
             }
-            parser.Forge().Deposit( Some( m));
-        } else {
-            parser.Forge().Deposit( None);
         }
+        parser.Forge().Deposit( Some( m));
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl fmt::Display for UIntShard
-{
-    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
-    {
-        return write!( f, "UInt");
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl fmt::Debug for UIntShard
-{
-    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
-    {
-        return write!( f, "UInt");
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-pub struct IntShard;
-pub const Int: &IntShard = &IntShard;
-
-impl IFluxExportSource for IntShard
-{
-    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>) { *field = FieldExp::String( "Int".to_string()); }
-}
+ImplNumberShard!( IntShard, Int, "Int");
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl IGrammar for IntShard
 {
-    fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
+    fn    Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
     {
-        let  	origMark = parser.CurrentMark();
-        let  	mut m = origMark;
-
-        let  	curr = parser.GetAt( m);
-        if curr == U8( b'-') || curr == U8( b'+') {
-            if let  	Some( nextM) = parser.Incr( m) {
-                m = nextM;
-            } else {
+        let      origMark = parser.CurrentMark();
+        let      m = match MatchSign( parser, origMark) {
+            Some( m) => m,
+            None => {
                 parser.Forge().Deposit( None);
                 return;
             }
-        }
+        };
+        let      ( m, matched) = MatchDecDigits( parser, m);
 
-        let  	mut matched = false;
-        loop {
-            let  	curr = parser.GetAt( m);
-            if curr >= U8( b'0') && curr <= U8( b'9') {
-                matched = true;
-                if let  	Some( nextM) = parser.Incr( m) {
-                    m = nextM;
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            }
+        if !matched {
+            parser.Forge().Deposit( None);
+            return;
         }
-
-        if matched {
-            sink.Resolve();
-            if matches!( sink, FieldImp::U64( _) | FieldImp::FluxSink( _)) {
-                let  	bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
-                if let  	Ok( s) = std::str::from_utf8( bytes) {
-                    let  	s_trim = s.trim_start_matches('+');
-                    let  	sign = if s_trim.starts_with('-') { -1 } else { 1 };
-                    let  	s_num = s_trim.trim_start_matches('-');
-                    if let  	Ok( val) = s_num.parse::<u64>() {
-                        let  	final_val = if sign == -1 { ( -( val as i64)) as u64 } else { val };
-                        if let  	FieldImp::U64( dst) = sink {
-                            *dst = U64( final_val);
-                        } else if let  	FieldImp::FluxSink( flx) = sink {
-                            let  	mut temp = U64( final_val);
-                            flx.FromFieldImp( FieldImp::U64( &mut temp));
-                        }
+        sink.Resolve();
+        if matches!( sink, FieldImp::U64( _) | FieldImp::FluxSink( _)) {
+            let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
+            if let      Ok( s) = std::str::from_utf8( bytes) {
+                let      sTrim = s.trim_start_matches( '+');
+                let      sign = if sTrim.starts_with( '-') { -1 } else { 1 };
+                let      sNum = sTrim.trim_start_matches( '-');
+                if let      Ok( val) = sNum.parse::<u64>() {
+                    let      finalVal = if sign == -1 { ( -( val as i64)) as u64 } else { val };
+                    if let      FieldImp::U64( dst) = sink {
+                        *dst = U64( finalVal);
+                    } else if let      FieldImp::FluxSink( flx) = sink {
+                        let      mut temp = U64( finalVal);
+                        flx.FromFieldImp( FieldImp::U64( &mut temp));
                     }
                 }
             }
-            parser.Forge().Deposit( Some( m));
-        } else {
-            parser.Forge().Deposit( None);
         }
+        parser.Forge().Deposit( Some( m));
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl fmt::Display for IntShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Int") } }
-impl fmt::Debug for IntShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Int") } }
+ImplNumberShard!( HexShard, Hex, "Hex");
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct HexShard;
-pub const Hex: &HexShard = &HexShard;
-
-impl IFluxExportSource for HexShard
-{
-    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>) { *field = FieldExp::String( "Hex".to_string()); }
-}
 impl IGrammar for HexShard
 {
-    fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
+    fn    Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
     {
-        let  	origMark = parser.CurrentMark();
-        let  	mut currentMark = origMark;
-        let  	mut curr = parser.GetAt( currentMark);
-        if curr == U8( b'+') || curr == U8( b'-') {
-            if let  	Some( nextMark) = parser.Incr( currentMark) {
-                currentMark = nextMark;
-                curr = parser.GetAt( currentMark);
-            } else {
+        let      origMark = parser.CurrentMark();
+        let      m = match MatchSign( parser, origMark) {
+            Some( m) => m,
+            None => {
                 parser.Forge().Deposit( None);
                 return;
             }
+        };
+
+        // Skip optional 0x prefix
+        let      mut mDigits = m;
+        if parser.GetAt( mDigits) == U8( b'0') {
+            if let      Some( next) = parser.Incr( mDigits) {
+                let      c = parser.GetAt( next);
+                if c == U8( b'x') || c == U8( b'X') {
+                    if let      Some( afterX) = parser.Incr( next) {
+                        mDigits = afterX;
+                    }
+                }
+            }
         }
 
-        let  	mut mark_after_prefix = currentMark;
-        if curr == U8( b'0') {
-            if let  	Some( nextMark) = parser.Incr( currentMark) {
-                let  	curr2 = parser.GetAt( nextMark);
-                if curr2 == U8( b'x') || curr2 == U8( b'X') {
-                    if let  	Some( nextMark2) = parser.Incr( nextMark) {
-                        mark_after_prefix = nextMark2;
-                    }
-                }
-            }
-        }
-        currentMark = mark_after_prefix;
-
-        let  	mut matched = false;
-        loop {
-            let  	curr = parser.GetAt( currentMark);
-            if ( curr >= U8( b'0') && curr <= U8( b'9')) || ( curr >= U8( b'a') && curr <= U8( b'f')) || ( curr >= U8( b'A') && curr <= U8( b'F')) {
-                matched = true;
-                if let  	Some( nextMark) = parser.Incr( currentMark) {
-                    currentMark = nextMark;
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            }
-        }
-        if matched {
-            sink.Resolve();
-            if matches!( sink, FieldImp::U64( _) | FieldImp::FluxSink( _)) {
-                let  	bytes = parser.InStream().BytesAt( origMark, U32( currentMark.0 - origMark.0));
-                if let  	Ok( s) = std::str::from_utf8( bytes) {
-                    let  	mut s_trim = s.trim_start_matches(|c| c == '+' || c == '-');
-                    let  	sign = if s.starts_with('-') { -1 } else { 1 };
-                    if s_trim.starts_with("0x") || s_trim.starts_with("0X") {
-                        s_trim = &s_trim[2..];
-                    }
-                    if let  	Ok( val) = u64::from_str_radix( s_trim, 16) {
-                        let  	final_val = if sign == -1 { ( -( val as i64)) as u64 } else { val };
-                        if let  	FieldImp::U64( dst) = sink {
-                            *dst = U64( final_val);
-                        } else if let  	FieldImp::FluxSink( flx) = sink {
-                            let  	mut temp = U64( final_val);
-                            flx.FromFieldImp( FieldImp::U64( &mut temp));
-                        }
-                    }
-                }
-            }
-            let  	res = Some( currentMark);
-            parser.Forge().Deposit( res);
-        } else {
+        let      ( m, matched) = MatchHexDigits( parser, mDigits);
+        if !matched {
             parser.Forge().Deposit( None);
+            return;
         }
+        sink.Resolve();
+        if matches!( sink, FieldImp::U64( _) | FieldImp::FluxSink( _)) {
+            let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
+            if let      Ok( s) = std::str::from_utf8( bytes) {
+                let      sign = if s.starts_with( '-') { -1 } else { 1 };
+                let      mut sTrim = s.trim_start_matches( |c| c == '+' || c == '-');
+                if sTrim.starts_with( "0x") || sTrim.starts_with( "0X") {
+                    sTrim = &sTrim[2..];
+                }
+                if let      Ok( val) = u64::from_str_radix( sTrim, 16) {
+                    let      finalVal = if sign == -1 { ( -( val as i64)) as u64 } else { val };
+                    if let      FieldImp::U64( dst) = sink {
+                        *dst = U64( finalVal);
+                    } else if let      FieldImp::FluxSink( flx) = sink {
+                        let      mut temp = U64( finalVal);
+                        flx.FromFieldImp( FieldImp::U64( &mut temp));
+                    }
+                }
+            }
+        }
+        parser.Forge().Deposit( Some( m));
     }
 }
-impl fmt::Display for HexShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Hex") } }
-impl fmt::Debug for HexShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Hex") } }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct RealShard;
-pub const Real: &RealShard = &RealShard;
+ImplNumberShard!( RealShard, Real, "Real");
 
-impl IFluxExportSource for RealShard
-{
-    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>) { *field = FieldExp::String( "Real".to_string()); }
-}
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl IGrammar for RealShard
 {
-    fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
+    fn    Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
     {
-        let  	origMark = parser.CurrentMark();
-        let  	mut m = origMark;
-
-        // Match optional sign
-        let  	curr = parser.GetAt( m);
-        if curr == U8( b'-') || curr == U8( b'+') {
-            if let  	Some( nextM) = parser.Incr( m) {
-                m = nextM;
-            } else {
+        let      origMark = parser.CurrentMark();
+        let      m = match MatchSign( parser, origMark) {
+            Some( m) => m,
+            None => {
                 parser.Forge().Deposit( None);
                 return;
             }
-        }
+        };
 
-        let  	mut matched_digits = false;
-        loop {
-            let  	curr = parser.GetAt( m);
-            if curr >= U8( b'0') && curr <= U8( b'9') {
-                matched_digits = true;
-                if let  	Some( nextM) = parser.Incr( m) { m = nextM; } else { break; }
-            } else { break; }
-        }
+        let      ( mut m, mut matchedDigits) = MatchDecDigits( parser, m);
 
         if parser.GetAt( m) == U8( b'.') {
-            if let  	Some( nextM) = parser.Incr( m) {
+            if let      Some( nextM) = parser.Incr( m) {
                 m = nextM;
-                matched_digits = false;
-                loop {
-                    let  	curr = parser.GetAt( m);
-                    if curr >= U8( b'0') && curr <= U8( b'9') {
-                        matched_digits = true;
-                        if let  	Some( nextM) = parser.Incr( m) { m = nextM; } else { break; }
-                    } else { break; }
-                }
+                let      result = MatchDecDigits( parser, m);
+                m = result.0;
+                matchedDigits = result.1;
             }
         }
 
-        if !matched_digits {
+        if !matchedDigits {
             parser.Forge().Deposit( None);
             return;
         }
 
-        let  	curr = parser.GetAt( m);
+        // Optional exponent
+        let      curr = parser.GetAt( m);
         if curr == U8( b'e') || curr == U8( b'E') {
-            if let  	Some( nextM) = parser.Incr( m) {
+            if let      Some( nextM) = parser.Incr( m) {
                 m = nextM;
-                let  	curr = parser.GetAt( m);
+                let      curr = parser.GetAt( m);
                 if curr == U8( b'-') || curr == U8( b'+') {
-                    if let  	Some( nextM) = parser.Incr( m) { m = nextM; }
+                    if let      Some( nextM) = parser.Incr( m) { m = nextM; }
                 }
-
-                let  	mut matched_exp = false;
-                loop {
-                    let  	curr = parser.GetAt( m);
-                    if curr >= U8( b'0') && curr <= U8( b'9') {
-                        matched_exp = true;
-                        if let  	Some( nextM) = parser.Incr( m) { m = nextM; } else { break; }
-                    } else { break; }
-                }
-                if !matched_exp {
+                let      ( newM, matchedExp) = MatchDecDigits( parser, m);
+                m = newM;
+                if !matchedExp {
                     parser.Forge().Deposit( None);
                     return;
                 }
@@ -329,130 +278,80 @@ impl IGrammar for RealShard
 
         sink.Resolve();
         if matches!( sink, FieldImp::F64( _) | FieldImp::U64( _) | FieldImp::FluxSink( _)) {
-            let  	bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
-            if let  	Ok( s) = std::str::from_utf8( bytes) {
-                if let  	Ok( val) = s.parse::<f64>() {
-                    if let  	FieldImp::F64( dst) = sink {
+            let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
+            if let      Ok( s) = std::str::from_utf8( bytes) {
+                if let      Ok( val) = s.parse::<f64>() {
+                    if let      FieldImp::F64( dst) = sink {
                         *dst = val;
-                    } else if let  	FieldImp::U64( dst) = sink {
+                    } else if let      FieldImp::U64( dst) = sink {
                         *dst = U64( val as u64);
-                    } else if let  	FieldImp::FluxSink( flx) = sink {
-                        let  	mut temp = val;
+                    } else if let      FieldImp::FluxSink( flx) = sink {
+                        let      mut temp = val;
                         flx.FromFieldImp( FieldImp::F64( &mut temp));
                     }
                 }
             }
         }
-
         parser.Forge().Deposit( Some( m));
     }
 }
-impl fmt::Display for RealShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Real") } }
-impl fmt::Debug for RealShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Real") } }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct HexRealShard;
-pub const HexReal: &HexRealShard = &HexRealShard;
+ImplNumberShard!( HexRealShard, HexReal, "HexReal");
 
-impl IFluxExportSource for HexRealShard
-{
-    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>) { *field = FieldExp::String( "HexReal".to_string()); }
-}
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl IGrammar for HexRealShard
 {
-    fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
+    fn    Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
     {
-        let  	origMark = parser.CurrentMark();
-        let  	mut m = origMark;
-
-        // Match optional sign
-        let  	curr = parser.GetAt( m);
-        if curr == U8( b'-') || curr == U8( b'+') {
-            if let  	Some( nextM) = parser.Incr( m) {
-                m = nextM;
-            } else {
+        let      origMark = parser.CurrentMark();
+        let      m = match MatchSign( parser, origMark) {
+            Some( m) => m,
+            None => {
                 parser.Forge().Deposit( None);
                 return;
             }
-        }
+        };
 
-        // Match 0x prefix
-        let  	curr = parser.GetAt( m);
-        if curr == U8( b'0') {
-            if let  	Some( nextM) = parser.Incr( m) {
-                m = nextM;
-                let  	curr = parser.GetAt( m);
-                if curr == U8( b'x') || curr == U8( b'X') {
-                    if let  	Some( nextM) = parser.Incr( m) {
-                        m = nextM;
-                    } else {
-                        parser.Forge().Deposit( None);
-                        return;
-                    }
-                } else {
-                    parser.Forge().Deposit( None);
-                    return;
-                }
-            } else {
+        // Required 0x prefix
+        let      m = match MatchHexPrefix( parser, m) {
+            Some( m) => m,
+            None => {
                 parser.Forge().Deposit( None);
                 return;
             }
-        } else {
-            parser.Forge().Deposit( None);
-            return;
-        }
+        };
 
-        let  	mut matched_digits = false;
-        loop {
-            let  	curr = parser.GetAt( m);
-            if ( curr >= U8( b'0') && curr <= U8( b'9')) ||
-               ( curr >= U8( b'a') && curr <= U8( b'f')) ||
-               ( curr >= U8( b'A') && curr <= U8( b'F')) {
-                matched_digits = true;
-                if let  	Some( nextM) = parser.Incr( m) { m = nextM; } else { break; }
-            } else { break; }
-        }
+        let      ( mut m, mut matchedDigits) = MatchHexDigits( parser, m);
 
         if parser.GetAt( m) == U8( b'.') {
-            if let  	Some( nextM) = parser.Incr( m) {
+            if let      Some( nextM) = parser.Incr( m) {
                 m = nextM;
-                matched_digits = false; // Reset to ensure we match digits after point
-                loop {
-                    let  	curr = parser.GetAt( m);
-                    if ( curr >= U8( b'0') && curr <= U8( b'9')) ||
-                       ( curr >= U8( b'a') && curr <= U8( b'f')) ||
-                       ( curr >= U8( b'A') && curr <= U8( b'F')) {
-                        matched_digits = true;
-                        if let  	Some( nextM) = parser.Incr( m) { m = nextM; } else { break; }
-                    } else { break; }
-                }
+                let      result = MatchHexDigits( parser, m);
+                m = result.0;
+                matchedDigits = result.1;
             }
         }
 
-        if !matched_digits {
+        if !matchedDigits {
             parser.Forge().Deposit( None);
             return;
         }
 
-        let  	curr = parser.GetAt( m);
+        // Optional binary exponent
+        let      curr = parser.GetAt( m);
         if curr == U8( b'p') || curr == U8( b'P') {
-            if let  	Some( nextM) = parser.Incr( m) {
+            if let      Some( nextM) = parser.Incr( m) {
                 m = nextM;
-                let  	curr = parser.GetAt( m);
+                let      curr = parser.GetAt( m);
                 if curr == U8( b'-') || curr == U8( b'+') {
-                    if let  	Some( nextM) = parser.Incr( m) { m = nextM; }
+                    if let      Some( nextM) = parser.Incr( m) { m = nextM; }
                 }
-
-                let  	mut matched_exp = false;
-                loop {
-                    let  	curr = parser.GetAt( m);
-                    if curr >= U8( b'0') && curr <= U8( b'9') {
-                        matched_exp = true;
-                        if let  	Some( nextM) = parser.Incr( m) { m = nextM; } else { break; }
-                    } else { break; }
-                }
-                if !matched_exp {
+                let      ( newM, matchedExp) = MatchDecDigits( parser, m);
+                m = newM;
+                if !matchedExp {
                     parser.Forge().Deposit( None);
                     return;
                 }
@@ -460,20 +359,15 @@ impl IGrammar for HexRealShard
         }
 
         sink.Resolve();
-        // Parsing HexReal string into f64 isn't natively supported by std::str::parse, so we just populate string for now if it's String.
-        // Actually, we will just parse it to F64 if possible, else skip.
         if matches!( sink, FieldImp::F64( _) | FieldImp::FluxSink( _)) {
-            let  	bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
-            if let  	Ok( _s) = std::str::from_utf8( bytes) {
+            let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
+            if let      Ok( _s) = std::str::from_utf8( bytes) {
                 // TODO: hex float parsing
             }
         }
-
         parser.Forge().Deposit( Some( m));
     }
 }
-impl fmt::Display for HexRealShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "HexReal") } }
-impl fmt::Debug for HexRealShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "HexReal") } }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -482,3 +376,5 @@ crate::ImplFluxImportSource!( IntShard);
 crate::ImplFluxImportSource!( HexShard);
 crate::ImplFluxImportSource!( RealShard);
 crate::ImplFluxImportSource!( HexRealShard);
+
+//---------------------------------------------------------------------------------------------------------------------------------
