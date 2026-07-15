@@ -83,6 +83,64 @@ fn    MatchHexPrefix( parser: &mut Parser, m: U32) -> Option< U32>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+pub struct SignShard;
+pub const Sign: &SignShard = &SignShard;
+
+impl IFluxExportSource for SignShard { fn FetchFieldExp<'b>(&'b self, _field: &mut FieldExp<'b>) {} }
+impl<'a> IFluxImportSource for SignShard { fn FetchFieldImp<'b>(&'b mut self, _field: &mut FieldImp<'b>) {} }
+
+impl IGrammar for SignShard {
+    fn Match(&self, parser: &mut Parser, _sink: FieldImp<'_>) {
+        let mark = parser.CurrentMark();
+        let res = MatchSign(parser, mark);
+        parser.Forge().Deposit(res);
+    }
+}
+
+pub struct DecDigitsShard;
+pub const DecDigits: &DecDigitsShard = &DecDigitsShard;
+
+impl IFluxExportSource for DecDigitsShard { fn FetchFieldExp<'b>(&'b self, _field: &mut FieldExp<'b>) {} }
+impl<'a> IFluxImportSource for DecDigitsShard { fn FetchFieldImp<'b>(&'b mut self, _field: &mut FieldImp<'b>) {} }
+
+impl IGrammar for DecDigitsShard {
+    fn Match(&self, parser: &mut Parser, _sink: FieldImp<'_>) {
+        let mark = parser.CurrentMark();
+        let (m, matched) = MatchDecDigits(parser, mark);
+        if matched { parser.Forge().Deposit(Some(m)); } else { parser.Forge().Deposit(None); }
+    }
+}
+
+pub struct HexDigitsShard;
+pub const HexDigits: &HexDigitsShard = &HexDigitsShard;
+
+impl IFluxExportSource for HexDigitsShard { fn FetchFieldExp<'b>(&'b self, _field: &mut FieldExp<'b>) {} }
+impl<'a> IFluxImportSource for HexDigitsShard { fn FetchFieldImp<'b>(&'b mut self, _field: &mut FieldImp<'b>) {} }
+
+impl IGrammar for HexDigitsShard {
+    fn Match(&self, parser: &mut Parser, _sink: FieldImp<'_>) {
+        let mark = parser.CurrentMark();
+        let (m, matched) = MatchHexDigits(parser, mark);
+        if matched { parser.Forge().Deposit(Some(m)); } else { parser.Forge().Deposit(None); }
+    }
+}
+
+pub struct HexPrefixShard;
+pub const HexPrefix: &HexPrefixShard = &HexPrefixShard;
+
+impl IFluxExportSource for HexPrefixShard { fn FetchFieldExp<'b>(&'b self, _field: &mut FieldExp<'b>) {} }
+impl<'a> IFluxImportSource for HexPrefixShard { fn FetchFieldImp<'b>(&'b mut self, _field: &mut FieldImp<'b>) {} }
+
+impl IGrammar for HexPrefixShard {
+    fn Match(&self, parser: &mut Parser, _sink: FieldImp<'_>) {
+        let mark = parser.CurrentMark();
+        let res = MatchHexPrefix(parser, mark);
+        parser.Forge().Deposit(res);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 ImplNumberShard!( UIntShard, UInt, "UInt");
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -92,12 +150,10 @@ impl IGrammar for UIntShard
     fn    Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
     {
         let      origMark = parser.CurrentMark();
-        let      ( m, matched) = MatchDecDigits( parser, origMark);
-
-        if !matched {
-            parser.Forge().Deposit( None);
-            return;
-        }
+        let      m = match parser.ParseGrammar( &DecDigits, origMark, FieldImp::Null) {
+            Some(m) => m,
+            None => { parser.Forge().Deposit( None); return; }
+        };
         sink.Resolve();
         if matches!( sink, FieldImp::U64( _) | FieldImp::FluxSink( _)) {
             let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
@@ -127,19 +183,14 @@ impl IGrammar for IntShard
     fn    Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
     {
         let      origMark = parser.CurrentMark();
-        let      m = match MatchSign( parser, origMark) {
-            Some( m) => m,
-            None => {
-                parser.Forge().Deposit( None);
-                return;
-            }
+        let      m = match parser.ParseGrammar( &Sign, origMark, FieldImp::Null) {
+            Some(m) => m,
+            None => { parser.Forge().Deposit( None); return; }
         };
-        let      ( m, matched) = MatchDecDigits( parser, m);
-
-        if !matched {
-            parser.Forge().Deposit( None);
-            return;
-        }
+        let      m = match parser.ParseGrammar( &DecDigits, m, FieldImp::Null) {
+            Some(m) => m,
+            None => { parser.Forge().Deposit( None); return; }
+        };
         sink.Resolve();
         if matches!( sink, FieldImp::U64( _) | FieldImp::FluxSink( _)) {
             let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
@@ -173,15 +224,12 @@ impl IGrammar for HexShard
     fn    Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
     {
         let      origMark = parser.CurrentMark();
-        let      m = match MatchSign( parser, origMark) {
-            Some( m) => m,
-            None => {
-                parser.Forge().Deposit( None);
-                return;
-            }
+        let      m = match parser.ParseGrammar( &Sign, origMark, FieldImp::Null) {
+            Some(m) => m,
+            None => { parser.Forge().Deposit( None); return; }
         };
 
-        // Skip optional 0x prefix
+        // Skip optional 0x prefix (keep original behaviour)
         let      mut mDigits = m;
         if parser.GetAt( mDigits) == U8( b'0') {
             if let      Some( next) = parser.Incr( mDigits) {
@@ -194,11 +242,10 @@ impl IGrammar for HexShard
             }
         }
 
-        let      ( m, matched) = MatchHexDigits( parser, mDigits);
-        if !matched {
-            parser.Forge().Deposit( None);
-            return;
-        }
+        let      m = match parser.ParseGrammar( &HexDigits, mDigits, FieldImp::Null) {
+            Some(m) => m,
+            None => { parser.Forge().Deposit( None); return; }
+        };
         sink.Resolve();
         if matches!( sink, FieldImp::U64( _) | FieldImp::FluxSink( _)) {
             let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
@@ -234,22 +281,24 @@ impl IGrammar for RealShard
     fn    Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
     {
         let      origMark = parser.CurrentMark();
-        let      m = match MatchSign( parser, origMark) {
-            Some( m) => m,
-            None => {
-                parser.Forge().Deposit( None);
-                return;
-            }
+        let      m = match parser.ParseGrammar( &Sign, origMark, FieldImp::Null) {
+            Some(m) => m,
+            None => { parser.Forge().Deposit( None); return; }
         };
 
-        let      ( mut m, mut matchedDigits) = MatchDecDigits( parser, m);
+        let      (mut m, mut matchedDigits) = (m, false);
+        if let Some(nextM) = parser.ParseGrammar( &DecDigits, m, FieldImp::Null) {
+            m = nextM;
+            matchedDigits = true;
+        }
 
         if parser.GetAt( m) == U8( b'.') {
             if let      Some( nextM) = parser.Incr( m) {
                 m = nextM;
-                let      result = MatchDecDigits( parser, m);
-                m = result.0;
-                matchedDigits = result.1;
+                if let Some(nextDigits) = parser.ParseGrammar( &DecDigits, m, FieldImp::Null) {
+                    m = nextDigits;
+                    matchedDigits = true;
+                }
             }
         }
 
@@ -267,12 +316,11 @@ impl IGrammar for RealShard
                 if curr == U8( b'-') || curr == U8( b'+') {
                     if let      Some( nextM) = parser.Incr( m) { m = nextM; }
                 }
-                let      ( newM, matchedExp) = MatchDecDigits( parser, m);
+                let      newM = match parser.ParseGrammar( &DecDigits, m, FieldImp::Null) {
+                    Some(nm) => nm,
+                    None => { parser.Forge().Deposit( None); return; }
+                };
                 m = newM;
-                if !matchedExp {
-                    parser.Forge().Deposit( None);
-                    return;
-                }
             }
         }
 
@@ -307,12 +355,9 @@ impl IGrammar for HexRealShard
     fn    Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
     {
         let      origMark = parser.CurrentMark();
-        let      m = match MatchSign( parser, origMark) {
-            Some( m) => m,
-            None => {
-                parser.Forge().Deposit( None);
-                return;
-            }
+        let      m = match parser.ParseGrammar( &Sign, origMark, FieldImp::Null) {
+            Some(m) => m,
+            None => { parser.Forge().Deposit( None); return; }
         };
 
         // Required 0x prefix
@@ -324,14 +369,19 @@ impl IGrammar for HexRealShard
             }
         };
 
-        let      ( mut m, mut matchedDigits) = MatchHexDigits( parser, m);
+        let      ( mut m, mut matchedDigits) = (m, false);
+        if let Some(nextM) = parser.ParseGrammar( &HexDigits, m, FieldImp::Null) {
+            m = nextM;
+            matchedDigits = true;
+        }
 
         if parser.GetAt( m) == U8( b'.') {
             if let      Some( nextM) = parser.Incr( m) {
                 m = nextM;
-                let      result = MatchHexDigits( parser, m);
-                m = result.0;
-                matchedDigits = result.1;
+                if let Some(nextDigits) = parser.ParseGrammar( &HexDigits, m, FieldImp::Null) {
+                    m = nextDigits;
+                    matchedDigits = true;
+                }
             }
         }
 
@@ -349,12 +399,11 @@ impl IGrammar for HexRealShard
                 if curr == U8( b'-') || curr == U8( b'+') {
                     if let      Some( nextM) = parser.Incr( m) { m = nextM; }
                 }
-                let      ( newM, matchedExp) = MatchDecDigits( parser, m);
+                let      newM = match parser.ParseGrammar( &DecDigits, m, FieldImp::Null) {
+                    Some(nm) => nm,
+                    None => { parser.Forge().Deposit( None); return; }
+                };
                 m = newM;
-                if !matchedExp {
-                    parser.Forge().Deposit( None);
-                    return;
-                }
             }
         }
 

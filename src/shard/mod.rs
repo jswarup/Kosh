@@ -16,6 +16,7 @@ pub use leaves::Str;
 pub mod jsonshard;
 pub use jsonshard::{ JsonShard, Json };
 pub use numbers::{ UIntShard, UInt, IntShard, Int, HexShard, Hex, RealShard, Real, HexRealShard, HexReal };
+pub use numbers::{ Sign, DecDigits, HexDigits, HexPrefix };
 pub mod primeshard;
 pub use primeshard::{ PrimeShard, WSpc };
 #[cfg( test)]
