@@ -1,8 +1,7 @@
 //-- parser.rs -------------------------------------------------------------------------------------------------------------------
 
-use	crate::flux::{ IFluxImportSource, IFluxExportSource, fluximport::FieldImp };
+use	crate::flux::fluximport::FieldImp;
 use	crate::flux::instream::IStream;
-use crate::shard::Charset;
 use	crate::silo::{ U32, U8 };
 use	crate::stalks::{ IWorker, WorkPtr, INode };
 
@@ -181,85 +180,3 @@ impl<'p> Parser<'p>
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
-impl IGrammar for Charset
-{
-    fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
-    {
-        let  	mark = parser.Forge().Mark();
-        let  	curr = parser.GetAt( mark);
-        if self.Get( curr.0) {
-            let  	res = Some( mark + U32( 1));
-            parser.Forge().Deposit( res);
-        } else {
-            parser.Forge().Deposit( None);
-        }
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IGrammar for char
-{
-    fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
-    {
-        let  	mark = parser.Forge().Mark();
-        let  	curr = parser.GetAt( mark);
-        if curr == U8( *self as u8) {
-            let  	res = Some( mark + U32( 1));
-            parser.Forge().Deposit( res);
-        } else {
-            parser.Forge().Deposit( None);
-        }
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IFluxExportSource for char
-{
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IGrammar for str
-{
-    fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
-    {
-        let  	mark = parser.Forge().Mark();
-        let  	key = self.as_bytes();
-        let  	mut currentMark = mark;
-
-        for &b in key {
-            let  	stream = parser.InStream();
-            let  	curr = stream.At( currentMark);
-            if curr.0 != b {
-                parser.Forge().Deposit( None);
-                return;
-            }
-            if let  	Some( next) = parser.Incr( currentMark) {
-                currentMark = next;
-            } else {
-                parser.Forge().Deposit( None);
-                return;
-            }
-        }
-
-        parser.Forge().Deposit( Some( currentMark));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< 'a, 'r, T: IGrammar + ?Sized> IGrammar for &'r T
-{
-    fn	Match( &self, parser: &mut Parser, sink: FieldImp< '_>)
-    {
-        (**self).Match( parser, sink);
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-
-crate::ImplFluxImportSource!( char);

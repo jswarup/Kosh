@@ -373,3 +373,68 @@ fn	TestJsonParsingStruct()
     assert_eq!( person.is_active, true);
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestIGrammarString()
+{
+	// ---- 1. Match a plain quoted string into a String sink ----------------------------
+
+	let  	src = r#""hello""#;
+	let  	mut stream = FixedStream::from( src);
+	let  	mut parser = Parser::New( &mut stream);
+	let  	mut captured = String::new();
+	let  	grammar: String = String::new();
+
+	let  	result = parser.ParseGrammar( &grammar, U32( 0), FieldImp::String( &mut captured));
+	assert!( result.is_some(), "plain string match failed");
+	assert_eq!( captured, "hello");
+	// Mark should be exactly past the closing quote (7 bytes: "hello")
+	assert_eq!( result.unwrap(), U32( 7));
+
+	// ---- 2. Match with escaped quote inside ------------------------------------------
+
+	let  	src2 = "\"say \\\"hi\\\"\"";
+	let  	mut stream2 = FixedStream::from( src2);
+	let  	mut parser2 = Parser::New( &mut stream2);
+	let  	mut captured2 = String::new();
+	let  	grammar2: String = String::new();
+
+	let  	result2 = parser2.ParseGrammar( &grammar2, U32( 0), FieldImp::String( &mut captured2));
+	assert!( result2.is_some(), "escaped-quote string match failed");
+			assert_eq!( captured2, "say \\\"hi\\\"");
+
+	// ---- 3. Null sink: match succeeds, no capture -----------------------------------
+
+	let  	src3 = r#""world""#;
+	let  	mut stream3 = FixedStream::from( src3);
+	let  	mut parser3 = Parser::New( &mut stream3);
+	let  	grammar3: String = String::new();
+
+	let  	result3 = parser3.ParseGrammar( &grammar3, U32( 0), FieldImp::Null);
+	assert!( result3.is_some(), "null-sink match failed");
+	assert_eq!( result3.unwrap(), U32( 7));
+
+	// ---- 4. No opening quote: match fails -------------------------------------------
+
+	let  	src4 = "not_quoted";
+	let  	mut stream4 = FixedStream::from( src4);
+	let  	mut parser4 = Parser::New( &mut stream4);
+	let  	grammar4: String = String::new();
+
+	let  	result4 = parser4.ParseGrammar( &grammar4, U32( 0), FieldImp::Null);
+	assert!( result4.is_none(), "non-quoted input should fail");
+
+	// ---- 5. Empty quoted string -----------------------------------------------------
+
+	let  	src5 = r#""""#;
+	let  	mut stream5 = FixedStream::from( src5);
+	let  	mut parser5 = Parser::New( &mut stream5);
+	let  	mut captured5 = String::new();
+	let  	grammar5: String = String::new();
+
+	let  	result5 = parser5.ParseGrammar( &grammar5, U32( 0), FieldImp::String( &mut captured5));
+	assert!( result5.is_some(), "empty string match failed");
+	assert_eq!( captured5, "");
+}
+

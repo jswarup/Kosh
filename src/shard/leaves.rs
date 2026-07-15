@@ -5,7 +5,8 @@ use	crate::shard::Parser;
 use	crate::flux::{ IFluxImportSource };
 use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
 use	crate::flux::fluximport::FieldImp;
-use	crate::shard::IGrammar;
+use	crate::shard::{ Charset, IGrammar, IForge };
+use	crate::silo::{ U32, U8 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -42,3 +43,152 @@ impl< 'a> IGrammar for StrShard< 'a>
         self._Val.Match( parser, FieldImp::Null);
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, 'r, T: IGrammar + ?Sized> IGrammar for &'r T
+{
+    fn	Match( &self, parser: &mut Parser, sink: FieldImp< '_>)
+    {
+        (**self).Match( parser, sink);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IGrammar for Charset
+{
+    fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
+    {
+        let  	mark = parser.Forge().Mark();
+        let  	curr = parser.GetAt( mark);
+        if self.Get( curr.0) {
+            let  	res = Some( mark + U32( 1));
+            parser.Forge().Deposit( res);
+        } else {
+            parser.Forge().Deposit( None);
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IFluxExportSource for char
+{
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IGrammar for char
+{
+    fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
+    {
+        let  	mark = parser.Forge().Mark();
+        let  	curr = parser.GetAt( mark);
+        if curr == U8( *self as u8) {
+            let  	res = Some( mark + U32( 1));
+            parser.Forge().Deposit( res);
+        } else {
+            parser.Forge().Deposit( None);
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IGrammar for str
+{
+    fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
+    {
+        let  	mark = parser.Forge().Mark();
+        let  	key = self.as_bytes();
+        let  	mut currentMark = mark;
+
+        for &b in key {
+            let  	stream = parser.InStream();
+            let  	curr = stream.At( currentMark);
+            if curr.0 != b {
+                parser.Forge().Deposit( None);
+                return;
+            }
+            if let  	Some( next) = parser.Incr( currentMark) {
+                currentMark = next;
+            } else {
+                parser.Forge().Deposit( None);
+                return;
+            }
+        }
+
+        parser.Forge().Deposit( Some( currentMark));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IGrammar for String
+{
+    fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
+    {
+        let  	mark = parser.Forge().Mark();
+        let  	mut m = mark;
+        let  	curr = parser.GetAt( m);
+        if curr != U8( b'"') {
+            parser.Forge().Deposit( None);
+            return;
+        }
+
+        if let  	Some( next) = parser.Incr( m) {
+            m = next;
+            let  	mut escape = false;
+            loop {
+                let  	c = parser.GetAt( m);
+                if c == U8( 0) && m >= parser.InStream().Size() {
+                    parser.Forge().Deposit( None);
+                    return;
+                }
+
+                if escape {
+                    escape = false;
+                } else if c == U8( b'\\') {
+                    escape = true;
+                } else if c == U8( b'"') {
+                    if let  	Some( nxt) = parser.Incr( m) {
+                        sink.Resolve();
+                        if matches!( sink, FieldImp::String( _) | FieldImp::Str( _) | FieldImp::FluxSink( _) | FieldImp::ExpectedType( _)) {
+                            let  	bytes = parser.InStream().BytesAt( mark + crate::silo::U32( 1), m - mark - crate::silo::U32( 1));
+                            if let  	Ok( s) = std::str::from_utf8( bytes) {
+                                if let  	FieldImp::String( dst) = sink {
+                                    *dst = s.to_string();
+                                } else if let  	FieldImp::FluxSink( flx) = sink {
+                                    let  	mut temp = s.to_string();
+                                    flx.FromFieldImp( FieldImp::String( &mut temp));
+                                } else if let  	FieldImp::ExpectedType( exp) = sink {
+                                    assert_eq!( s, exp, "Type mismatch during import. Expected '{}', got '{}'", exp, s);
+                                }
+                            }
+                        }
+                        parser.Forge().Deposit( Some( nxt));
+                        return;
+                    } else {
+                        parser.Forge().Deposit( None);
+                        return;
+                    }
+                }
+
+                if let  	Some( nxt) = parser.Incr( m) {
+                    m = nxt;
+                } else {
+                    parser.Forge().Deposit( None);
+                    return;
+                }
+            }
+        }
+        parser.Forge().Deposit( None);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+crate::ImplFluxImportSource!( char);
+
+//---------------------------------------------------------------------------------------------------------------------------------
