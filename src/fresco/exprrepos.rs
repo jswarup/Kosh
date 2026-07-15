@@ -1,6 +1,6 @@
 //-- exprrepos.rs -------------------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ IAccess, IArr, Stash, U32, Arr, Buff };
-use	crate::flux::{ IFluxOutSource, fluxout::FieldOut };
+use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
 use	crate::fresco::varexpr::{ VarAttrib, VarExpr };
 use	crate::fresco::realexpr::RealExpr;
 use	crate::fresco::sumexpr::SumExpr;
@@ -13,7 +13,7 @@ use	crate::stalks::BinOp;
 
 use	core::any::Any;
 
-pub trait BaseExpr: Any + IFluxOutSource
+pub trait BaseExpr: Any + IFluxExportSource
 {
     fn	SizeChild( &self, _chart: &ExprRepos) -> U32
     {
@@ -52,13 +52,13 @@ impl Clone for ExprEntry
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxOutSource for ExprEntry
+impl IFluxExportSource for ExprEntry
 {
-    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
+    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
     {
         match self {
-            ExprEntry::Empty => *field = FieldOut::Null,
-            ExprEntry::Expr( expr) => expr.ToFieldOut( field),
+            ExprEntry::Empty => *field = FieldExp::Null,
+            ExprEntry::Expr( expr) => expr.FetchFieldExp( field),
         }
     }
 }
@@ -304,20 +304,20 @@ impl ExprRepos
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxOutSource for ExprRepos
+impl IFluxExportSource for ExprRepos
 {
-    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
+    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
     {
         let  	mut step = 0u32;
         let  	repos = self;
-        *field = FieldOut::Obj( Box::new( move |key, item| {
+        *field = FieldExp::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Exprs".to_string();
                 let  	mut iterStep = 0u32;
-                *item = FieldOut::Arr( Box::new( move |elem| {
+                *item = FieldExp::Arr( Box::new( move |elem| {
                     if iterStep < repos._Exprs.Size().0 {
                         let  	expr = repos._Exprs.Stk().Arr().At( iterStep);
-                        expr.ToFieldOut( elem);
+                        expr.FetchFieldExp( elem);
                         iterStep += 1;
                         true
                     } else {
@@ -329,10 +329,10 @@ impl IFluxOutSource for ExprRepos
             } else if step == 1 {
                 *key = "VarAttribs".to_string();
                 let  	mut iterStep = 0u32;
-                *item = FieldOut::Arr( Box::new( move |elem| {
+                *item = FieldExp::Arr( Box::new( move |elem| {
                     if iterStep < repos._VarAttribs.Size().0 {
                         let  	attr = repos._VarAttribs.Stk().Arr().At( iterStep);
-                        attr.ToFieldOut( elem);
+                        attr.FetchFieldExp( elem);
                         iterStep += 1;
                         true
                     } else {

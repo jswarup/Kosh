@@ -2,9 +2,9 @@
 
 use	std::fmt;
 
-use	crate::flux::fluxin::FieldIn;
+use	crate::flux::fluximport::FieldImp;
 use	crate::{
-    flux::{ IFluxOutSource, fluxout::FieldOut },
+    flux::{ IFluxExportSource, fluxexport::FieldExp },
     shard::{ IGrammar, IForge, Parser },
     stalks::{ work::DynIWork, UniNode },
     silo::{ cast::IConstPtrMutRefExt },
@@ -32,24 +32,24 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< C, W> IFluxOutSource for UniNode< C, ActionOp< W>>
+impl< C, W> IFluxExportSource for UniNode< C, ActionOp< W>>
 where
-    C: IFluxOutSource,
+    C: IFluxExportSource,
     W: Send + Sync,
 {
-    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
+    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
     {
         let  	mut step = 0u32;
         let  	node = self;
-        *field = FieldOut::Obj( Box::new( move |key, item| {
+        *field = FieldExp::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Child".to_string();
-                node._Child.ToFieldOut( item);
+                node._Child.FetchFieldExp( item);
                 step += 1;
                 true
             } else if step == 1 {
                 *key = "Action".to_string();
-                *item = FieldOut::Str( "Action");
+                *item = FieldExp::Str( "Action");
                 step += 1;
                 true
             } else {
@@ -68,10 +68,10 @@ where
     C: IGrammar,
     W: crate::stalks::work::IWork + 'static,
 {
-    fn	Match( &self, parser: &mut Parser, _sink: FieldIn< '_>)
+    fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
     {
         let  	m = parser.Forge().Mark();
-        let  	res = self._Child.Parse( parser, m, crate::flux::fluxin::FieldIn::Null);
+        let  	res = self._Child.Parse( parser, m, crate::flux::fluximport::FieldImp::Null);
         
         if res.is_some() {
             let  	actionPtr = &self._Op._Action as &DynIWork< 'static> as *const DynIWork< 'static>;

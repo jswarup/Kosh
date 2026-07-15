@@ -3,7 +3,7 @@
 use	std::{ cmp, fmt, ops::{ BitAnd, BitAndAssign, BitOr, BitOrAssign, Not } };
 use	std::sync::LazyLock;
 use	crate::silo::{ Arr, Buff, U8, U32, U64 };
-use	crate::flux::{IFluxOutSource, FieldOut};
+use	crate::flux::{IFluxExportSource, FieldExp};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 /// A 256-bit filter for `U8` characters — one bit per byte value.
@@ -616,12 +616,12 @@ impl BitAndAssign for Charset
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxOutSource for Charset
+impl IFluxExportSource for Charset
 {
-    fn	ToFieldOut< 'a>( &'a self, field: &mut FieldOut< 'a>)
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
     {
         let  	s = self.ToString();
-        *field = FieldOut::String( s);
+        *field = FieldExp::String( s);
     }
 }
 

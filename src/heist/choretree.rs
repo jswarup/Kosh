@@ -1,6 +1,6 @@
 //-- choretree.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::{
-    flux::{ IFluxOutSource, fluxout::FieldOut },
+    flux::{ IFluxExportSource, fluxexport::FieldExp },
     stalks::{ IntoWorkPtr, BinNode, DynIWorker, IWork, INode, BinOp },
     silo::{ U16, Buff},
 };
@@ -27,15 +27,15 @@ impl Default for Chore
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxOutSource for Chore
+impl IFluxExportSource for Chore
 {
-    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
+    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
     {
         let  	mut step = 0u32;
-        *field = FieldOut::Obj( Box::new( move |key, item| {
+        *field = FieldExp::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "DocStr".to_string();
-                *item = FieldOut::Str( self._DocStr);
+                *item = FieldExp::Str( self._DocStr);
                 step += 1;
                 true
             } else {

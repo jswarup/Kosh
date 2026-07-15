@@ -2,10 +2,10 @@
 
 use	std::fmt;
 
-use	crate::flux::fluxin::FieldIn;
+use	crate::flux::fluximport::FieldImp;
 use	crate::shard::Parser;
 use	crate::{
-    flux::{ IFluxOutSource, fluxout::FieldOut },
+    flux::{ IFluxExportSource, fluxexport::FieldExp },
     shard::{ IGrammar, IForge },
     silo::{ USeg, U32 },
     stalks::UniNode,
@@ -17,23 +17,23 @@ pub type RepeatShard< C> = UniNode< C, USeg>;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< C> IFluxOutSource for UniNode< C, USeg>
+impl< C> IFluxExportSource for UniNode< C, USeg>
 where
-    C: IFluxOutSource,
+    C: IFluxExportSource,
 {
-    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
+    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
     {
         let  	mut step = 0u32;
         let  	node = self;
-        *field = FieldOut::Obj( Box::new( move |key, item| {
+        *field = FieldExp::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Child".to_string();
-                node._Child.ToFieldOut( item);
+                node._Child.FetchFieldExp( item);
                 step += 1;
                 true
             } else if step == 1 {
                 *key = "Repeat".to_string();
-                *item = FieldOut::FluxSource( &node._Op);
+                *item = FieldExp::FluxSource( &node._Op);
                 step += 1;
                 true
             } else {
@@ -50,7 +50,7 @@ where
     C: IGrammar,
 {
 
-fn	Match( &self, parser: &mut Parser, mut sink: FieldIn< '_>)
+fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
     {
         let  	mut count = U32( 0);
         let  	first = self._Op.First();
@@ -60,11 +60,11 @@ fn	Match( &self, parser: &mut Parser, mut sink: FieldIn< '_>)
 
         while count < last {
             sink.Resolve();
-            let  	mut temp_sink = crate::flux::fluxin::FieldIn::Null;
+            let  	mut temp_sink = crate::flux::fluximport::FieldImp::Null;
             std::mem::swap( &mut temp_sink, &mut sink);
             
-            let  	mut child_sink = crate::flux::fluxin::FieldIn::Null;
-            if let crate::flux::fluxin::FieldIn::Arr( ref mut closure) = temp_sink {
+            let  	mut child_sink = crate::flux::fluximport::FieldImp::Null;
+            if let crate::flux::fluximport::FieldImp::Arr( ref mut closure) = temp_sink {
                 closure( &mut child_sink);
             }
             std::mem::swap( &mut temp_sink, &mut sink);

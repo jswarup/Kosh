@@ -1,10 +1,10 @@
-//-- fluxout.rs -----------------------------------------------------------------------------------------------------------------------
+//-- fluxexport.rs -----------------------------------------------------------------------------------------------------------------------
 use	std::fmt;
 
 use	super::JsonOutStream;
 use	crate::silo::{ Arr, IAccess, U16, U32, U64, U8, USeg };
 
-pub enum FieldOut< 'a>
+pub enum FieldExp< 'a>
 {
     Null,
     Str( &'a str),
@@ -12,57 +12,57 @@ pub enum FieldOut< 'a>
     U64( U64),
     F64( f64),
     Bool( bool),
-    Arr( Box< dyn FnMut( &mut FieldOut< 'a>) -> bool + 'a>),
-    Obj( Box< dyn FnMut( &mut String, &mut FieldOut< 'a>) -> bool + 'a>),
-    FluxSource( &'a dyn IFluxOutSource),
+    Arr( Box< dyn FnMut( &mut FieldExp< 'a>) -> bool + 'a>),
+    Obj( Box< dyn FnMut( &mut String, &mut FieldExp< 'a>) -> bool + 'a>),
+    FluxSource( &'a dyn IFluxExportSource),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IFluxOutSink
+pub trait IFluxExportSink
 {
-    fn	FromFieldOut( &mut self, field: FieldOut);
+    fn	DispatchFieldExp( &mut self, field: FieldExp);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IFluxOutSource
+pub trait IFluxExportSource
 {
-    fn	ToFieldOut< 'a>( &'a self, _field: &mut FieldOut< 'a>)
+    fn	FetchFieldExp< 'a>( &'a self, _field: &mut FieldExp< 'a>)
     {
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'r, T: IFluxOutSource + ?Sized> IFluxOutSource for &'r T
+impl< 'r, T: IFluxExportSource + ?Sized> IFluxExportSource for &'r T
 {
-    fn	ToFieldOut< 'a>( &'a self, field: &mut FieldOut< 'a>)
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
     {
-        ( **self).ToFieldOut( field);
+        ( **self).FetchFieldExp( field);
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[macro_export]
-macro_rules! ImplIFluxOutSource
+macro_rules! ImplFluxExportSource
 {
     ( $struct_name:ident $( , $field:ident )* ) =>
     {
-        impl $crate::flux::IFluxOutSource for $struct_name
+        impl $crate::flux::IFluxExportSource for $struct_name
         {
-            fn	ToFieldOut< 'a>( &'a self, field: &mut $crate::flux::fluxout::FieldOut< 'a>)
+            fn	FetchFieldExp< 'a>( &'a self, field: &mut $crate::flux::fluxexport::FieldExp< 'a>)
             {
                 let  	mut step = 0u32;
                 let  	obj = self;
-                *field = $crate::flux::fluxout::FieldOut::Obj( Box::new( move |key, item| {
+                *field = $crate::flux::fluxexport::FieldExp::Obj( Box::new( move |key, item| {
                     #[allow( unused_variables, unused_assignments)]
                     let  	mut _curr_step = 0u32;
                     $(
                         if step == _curr_step {
                             *key = stringify!( $field).to_string();
-                            *item = $crate::flux::fluxout::FieldOut::FluxSource( &obj.$field);
+                            *item = $crate::flux::fluxexport::FieldExp::FluxSource( &obj.$field);
                             step += 1;
                             return true;
                         }
@@ -77,71 +77,71 @@ macro_rules! ImplIFluxOutSource
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-macro_rules! ImplIFluxOutSourceUInt
+macro_rules! ImplFluxExportSourceUInt
 {
     ( $( $T:ty ),+ ) =>
     {
         $(
-            impl IFluxOutSource for $T
+            impl IFluxExportSource for $T
             {
-                fn	ToFieldOut< 'a>( &'a self, field: &mut FieldOut< 'a>)
+                fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
                 {
-                    *field = FieldOut::U64(  U64::From( self.0 as u64));
+                    *field = FieldExp::U64(  U64::From( self.0 as u64));
                 }
             }
         )+
     };
 }
 
-ImplIFluxOutSourceUInt!( U8, U16, U32, U64);
+ImplFluxExportSourceUInt!( U8, U16, U32, U64);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-macro_rules! ImplIFluxOutSourceFloat
+macro_rules! ImplFluxExportSourceFloat
 {
     ( $( $T:ty ),+ ) =>
     {
         $(
-            impl IFluxOutSource for $T
+            impl IFluxExportSource for $T
             {
-                fn	ToFieldOut< 'a>( &'a self, field: &mut FieldOut< 'a>)
+                fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
                 {
-                    *field = FieldOut::F64( *self as f64);
+                    *field = FieldExp::F64( *self as f64);
                 }
             }
         )+
     };
 }
 
-ImplIFluxOutSourceFloat!( f32, f64);
+ImplFluxExportSourceFloat!( f32, f64);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxOutSource for String {
-    fn ToFieldOut<'a>(&'a self, field: &mut FieldOut<'a>) {
-        *field = FieldOut::Str(self.as_str());
+impl IFluxExportSource for String {
+    fn FetchFieldExp<'a>(&'a self, field: &mut FieldExp<'a>) {
+        *field = FieldExp::Str(self.as_str());
     }
 }
 
-impl IFluxOutSource for str {
-    fn ToFieldOut<'a>(&'a self, field: &mut FieldOut<'a>) {
-        *field = FieldOut::Str(self);
+impl IFluxExportSource for str {
+    fn FetchFieldExp<'a>(&'a self, field: &mut FieldExp<'a>) {
+        *field = FieldExp::Str(self);
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl<'a, T> IFluxOutSource for Arr<'a, T>
+impl<'a, T> IFluxExportSource for Arr<'a, T>
 where
-    T: IFluxOutSource,
+    T: IFluxExportSource,
 {
-    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
+    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
     {
         let  	mut idx = 0u32;
         let  	arr = *self;
-        *field = FieldOut::Arr( Box::new( move |item| {
+        *field = FieldExp::Arr( Box::new( move |item| {
             if idx < arr.Size().0 {
-                *item = FieldOut::FluxSource( arr.At( idx));
+                *item = FieldExp::FluxSource( arr.At( idx));
                 idx += 1;
                 true
             } else {
@@ -153,22 +153,22 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxOutSource for USeg
+impl IFluxExportSource for USeg
 {
-    fn	ToFieldOut< 'a>( &'a self, field: &mut FieldOut< 'a>)
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
     {
         let  	mut step = 0u32;
         let  	uSeg = self;
-        *field = FieldOut::Obj( Box::new( move |key, item| {
+        *field = FieldExp::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "First".to_string();
-                *item = FieldOut::FluxSource( &uSeg._First);
+                *item = FieldExp::FluxSource( &uSeg._First);
                 step += 1;
                 return true;
             }
             if step == 1 {
                 *key = "Last".to_string();
-                *item = FieldOut::FluxSource( &uSeg._Last);
+                *item = FieldExp::FluxSource( &uSeg._Last);
                 step += 1;
                 return true;
             }
@@ -179,14 +179,14 @@ impl IFluxOutSource for USeg
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> fmt::Display for dyn IFluxOutSource + 'a
+impl< 'a> fmt::Display for dyn IFluxExportSource + 'a
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         let  	mut output = String::new();
         {
             let  	mut jsonStream = JsonOutStream::New( &mut output, false);
-            jsonStream.FromFieldOut( FieldOut::FluxSource( self));
+            jsonStream.DispatchFieldExp( FieldExp::FluxSource( self));
         }
         return write!( f, "{}", output);
     }
@@ -194,14 +194,14 @@ impl< 'a> fmt::Display for dyn IFluxOutSource + 'a
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> fmt::Debug for dyn IFluxOutSource + 'a
+impl< 'a> fmt::Debug for dyn IFluxExportSource + 'a
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         let  	mut output = String::new();
         {
             let  	mut jsonStream = JsonOutStream::New( &mut output, true);
-            jsonStream.FromFieldOut( FieldOut::FluxSource( self));
+            jsonStream.DispatchFieldExp( FieldExp::FluxSource( self));
         }
         return write!( f, "{}", output);
     }

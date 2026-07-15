@@ -1,6 +1,6 @@
 //-- termtree.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::{
-    flux::{ IFluxOutSource, fluxout::FieldOut },
+    flux::{ IFluxExportSource, fluxexport::FieldExp },
     stalks::{ DynIWorker, IWork, BinNode, INode, BinOp },
 };
 use	std::fmt;
@@ -26,26 +26,26 @@ impl Default for Term
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxOutSource for Term
+impl IFluxExportSource for Term
 {
-    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
+    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
     {
         let  	mut step = 0u32;
         let  	term = self;
-        *field = FieldOut::Obj( Box::new( move |key, item| {
+        *field = FieldExp::Obj( Box::new( move |key, item| {
             if step == 0 {
                 match term {
                     Term::Null => {
                         *key = "Null".to_string();
-                        *item = FieldOut::Null;
+                        *item = FieldExp::Null;
                     }
                     Term::String( s) => {
                         *key = "String".to_string();
-                        *item = FieldOut::Str( s);
+                        *item = FieldExp::Str( s);
                     }
                     Term::Real( v) => {
                         *key = "Real".to_string();
-                        *item = FieldOut::F64( *v);
+                        *item = FieldExp::F64( *v);
                     }
                 }
                 step += 1;

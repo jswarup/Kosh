@@ -3,7 +3,7 @@
 pub mod instream;
 pub mod jsonoutstrm;
 pub mod outstream;
-pub mod fluxout;
+pub mod fluxexport;
 
 pub use	instream::{IStream, FixedStream, BuffStream};
 pub use	jsonoutstrm::JsonOutStream;
@@ -11,8 +11,8 @@ pub use	outstream::OutStream;
 
 #[cfg( test)]
 mod	_tests;
-pub use	fluxout::{ IFluxOutSink, FieldOut, IFluxOutSource };
+pub use	fluxexport::{ IFluxExportSink, FieldExp, IFluxExportSource };
 
 //---------------------------------------------------------------------------------------------------------------------------------
-pub mod fluxin;
+pub mod fluximport;
 

@@ -1,5 +1,5 @@
 //-- varexpr.rs ---------------------------------------------------------------------------------------------------------------------------
-use	crate::flux::{ IFluxOutSource, fluxout::FieldOut };
+use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
 
 use	core::any::Any;
 use	crate::silo::{ U32, U64};
@@ -100,31 +100,31 @@ impl BaseExpr for VarExpr
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxOutSource for VarAttrib
+impl IFluxExportSource for VarAttrib
 {
-    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
+    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
     {
         let  	mut step = 0u32;
         let  	attr = self;
-        *field = FieldOut::Obj( Box::new( move |key, item| {
+        *field = FieldExp::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Name".to_string();
-                *item = FieldOut::Str( &attr._Name);
+                *item = FieldExp::Str( &attr._Name);
                 step += 1;
                 true
             } else if step == 1 {
                 *key = "DepTok".to_string();
-                *item = FieldOut::U64( U64::From( attr._DepTok.0 as u64));
+                *item = FieldExp::U64( U64::From( attr._DepTok.0 as u64));
                 step += 1;
                 true
             } else if step == 2 {
                 *key = "AggrIndex".to_string();
-                *item = FieldOut::U64( U64::From( attr._AggrIndex.0 as u64));
+                *item = FieldExp::U64( U64::From( attr._AggrIndex.0 as u64));
                 step += 1;
                 true
             } else if step == 3 {
                 *key = "VarFlags".to_string();
-                *item = FieldOut::U64( U64::From( attr._VarFlags.0 as u64));
+                *item = FieldExp::U64( U64::From( attr._VarFlags.0 as u64));
                 step += 1;
                 true
             } else {
@@ -136,21 +136,21 @@ impl IFluxOutSource for VarAttrib
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxOutSource for VarExpr
+impl IFluxExportSource for VarExpr
 {
-    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
+    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
     {
         let  	mut step = 0u32;
         let  	expr = self;
-        *field = FieldOut::Obj( Box::new( move |key, item| {
+        *field = FieldExp::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Type".to_string();
-                *item = FieldOut::Str( "VarExpr");
+                *item = FieldExp::Str( "VarExpr");
                 step += 1;
                 true
             } else if step == 1 {
                 *key = "VarIndex".to_string();
-                *item = FieldOut::U64( U64::From( expr._VarIndex.0 as u64));
+                *item = FieldExp::U64( U64::From( expr._VarIndex.0 as u64));
                 step += 1;
                 true
             } else {

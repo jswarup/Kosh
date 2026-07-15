@@ -1,5 +1,5 @@
 //-- prodexpr.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::flux::{ IFluxOutSource, fluxout::FieldOut };
+use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
 use	crate::fresco::exprrepos::BaseExpr;
 use	crate::fresco::polyexpr::PolyExpr;
 use	core::any::Any;
@@ -35,21 +35,21 @@ impl BaseExpr for ProdExpr
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxOutSource for ProdExpr
+impl IFluxExportSource for ProdExpr
 {
-    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
+    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
     {
         let  	mut step = 0u32;
         let  	expr = self;
-        *field = FieldOut::Obj( Box::new( move |key, item| {
+        *field = FieldExp::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Type".to_string();
-                *item = FieldOut::Str( "ProdExpr");
+                *item = FieldExp::Str( "ProdExpr");
                 step += 1;
                 true
             } else if step == 1 {
                 *key = "Poly".to_string();
-                expr._Poly.ToFieldOut( item);
+                expr._Poly.FetchFieldExp( item);
                 step += 1;
                 true
             } else {

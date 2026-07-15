@@ -1,5 +1,5 @@
 //-- binshard.rs -----------------------------------------------------------------------------------------------------------------------
-use	crate::flux::fluxin::FieldIn;
+use	crate::flux::fluximport::FieldImp;
 use	crate::shard::Parser;
 use	crate::{
     shard::{ IGrammar, IForge },
@@ -18,24 +18,24 @@ where
     R: IGrammar,
 {
 
-fn	Match( &self, parser: &mut Parser, _sink: FieldIn< '_>)
+fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
     {
         match self._Op {
             BinOp::Bor => {
                 let  	m1 = parser.Forge().Mark();
-                let  	leftRes = self._Left.Parse( parser, m1, crate::flux::fluxin::FieldIn::Null);
+                let  	leftRes = self._Left.Parse( parser, m1, crate::flux::fluximport::FieldImp::Null);
                 if leftRes.is_some() {
                     return;
                 }
                 
                 let  	m2 = parser.Forge().Mark();
-                self._Right.Parse( parser, m2, crate::flux::fluxin::FieldIn::Null);
+                self._Right.Parse( parser, m2, crate::flux::fluximport::FieldImp::Null);
             }
             BinOp::Less => {
                 let  	m1 = parser.Forge().Mark();
-                let  	leftRes = self._Left.Parse( parser, m1, crate::flux::fluxin::FieldIn::Null);
+                let  	leftRes = self._Left.Parse( parser, m1, crate::flux::fluximport::FieldImp::Null);
                 if let Some( newM) = leftRes {
-                    self._Right.Parse( parser, newM, crate::flux::fluxin::FieldIn::Null);
+                    self._Right.Parse( parser, newM, crate::flux::fluximport::FieldImp::Null);
                 }
             }
             _ => panic!( "Unsupported operator in BinShard Match"),

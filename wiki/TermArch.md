@@ -51,7 +51,7 @@ pub trait ITermNode: INode {
 ```
 Implementations are provided for `Term`, `BinNode` (aliased as `TermBinNode`), and references `&T`.
 
-### 2. `IFluxOutSource`
+### 2. `IFluxExportSource`
 Enables serializing TermTree nodes into JSON or other stream formats (e.g., for logging or tracing expressions) with standard `"Op"`, `"Left"`, and `"Right"` keys.
 
 ---

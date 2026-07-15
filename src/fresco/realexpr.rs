@@ -1,5 +1,5 @@
 //-- realexpr.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::flux::{ IFluxOutSource, fluxout::FieldOut };
+use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
 use	crate::fresco::exprrepos::BaseExpr;
 use	core::any::Any;
 
@@ -44,21 +44,21 @@ impl BaseExpr for RealExpr
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxOutSource for RealExpr
+impl IFluxExportSource for RealExpr
 {
-    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
+    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
     {
         let  	mut step = 0u32;
         let  	expr = self;
-        *field = FieldOut::Obj( Box::new( move |key, item| {
+        *field = FieldExp::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Type".to_string();
-                *item = FieldOut::Str( "RealExpr");
+                *item = FieldExp::Str( "RealExpr");
                 step += 1;
                 true
             } else if step == 1 {
                 *key = "Value".to_string();
-                *item = FieldOut::F64( expr._Value);
+                *item = FieldExp::F64( expr._Value);
                 step += 1;
                 true
             } else {

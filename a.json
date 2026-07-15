@@ -1,6 +1,57 @@
-
-"point": {
-  "_X": 10,
-  "_Y": 30.3
-},
-"prices": [12.34000015258789, 56.779998779296875, 90.12000274658203, 34.560001373291016, 78.9000015258789]
+{
+  "Op": 6,
+  "Left": {
+    "Op": 7,
+    "Left": {
+      "Op": 6,
+      "Left": {
+        "Op": 7,
+        "Left": {
+          "Op": 6,
+          "Left": {
+            "DocStr": "A"
+          },
+          "Right": {
+            "DocStr": "B"
+          }
+        },
+        "Right": {
+          "Op": 6,
+          "Left": {
+            "DocStr": "C"
+          },
+          "Right": {
+            "DocStr": "D"
+          }
+        }
+      },
+      "Right": {
+        "DocStr": "E"
+      }
+    },
+    "Right": {
+      "Op": 7,
+      "Left": {
+        "Op": 6,
+        "Left": {
+          "Op": 7,
+          "Left": {
+            "DocStr": "F"
+          },
+          "Right": {
+            "DocStr": "G"
+          }
+        },
+        "Right": {
+          "DocStr": "H"
+        }
+      },
+      "Right": {
+        "DocStr": "i"
+      }
+    }
+  },
+  "Right": {
+    "DocStr": "J"
+  }
+}

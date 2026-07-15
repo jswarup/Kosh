@@ -1,5 +1,5 @@
 //-- stalks/node.rs ---------------------------------------------------------------------------------------------------------------------
-use	crate::flux::{ IFluxOutSource, fluxout::FieldOut };
+use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
 use crate::silo::U64;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -40,20 +40,20 @@ pub struct UniNode< C, Op>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait INode: IFluxOutSource {}
+pub trait INode: IFluxExportSource {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T: IFluxOutSource + ?Sized> INode for T {}
+impl< T: IFluxExportSource + ?Sized> INode for T {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< L, R> IFluxOutSource for BinNode< L, R>
+impl< L, R> IFluxExportSource for BinNode< L, R>
 where
-    L: IFluxOutSource,
-    R: IFluxOutSource,
+    L: IFluxExportSource,
+    R: IFluxExportSource,
 {
-    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
+    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
     {
         let  	mut step = 0u32;
         let  	node = self;
@@ -67,22 +67,22 @@ where
             BinOp::Less => 6,
             BinOp::Bor => 7,
         };
-        *field = FieldOut::Obj( Box::new( move |key, item| {
+        *field = FieldExp::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "Op".to_string();
-                *item = FieldOut::U64( U64::From(opVal));
+                *item = FieldExp::U64( U64::From(opVal));
                 step += 1;
                 return true;
             }
             if step == 1 {
                 *key = "Left".to_string();
-                node._Left.ToFieldOut( item);
+                node._Left.FetchFieldExp( item);
                 step += 1;
                 return true;
             }
             if step == 2 {
                 *key = "Right".to_string();
-                node._Right.ToFieldOut( item);
+                node._Right.FetchFieldExp( item);
                 step += 1;
                 return true;
             }

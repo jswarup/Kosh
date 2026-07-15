@@ -1,8 +1,9 @@
-//-- fluxin.rs -----------------------------------------------------------------------------------------------------------------------
+//-- fluximport.rs -----------------------------------------------------------------------------------------------------------------------
 
 use crate::silo::{ U64, U32, U16, U8 };
 
-pub enum FieldIn< 'a>
+
+pub enum FieldImp< 'a>
 {
     Null,
     Str( &'a mut &'a str),
@@ -10,29 +11,29 @@ pub enum FieldIn< 'a>
     U64( &'a mut U64),
     F64( &'a mut f64),
     Bool( &'a mut bool),
-    Arr( Box< dyn FnMut( &mut FieldIn< 'a>) -> bool + 'a>),
-    Obj( Box< dyn FnMut( &str, &mut FieldIn< 'a>) -> bool + 'a>),
-    FluxSink( &'a mut dyn IFluxInSink),
-    FluxSource( &'a mut dyn IFluxInSource),
+    Arr( Box< dyn FnMut( &mut FieldImp< 'a>) -> bool + 'a>),
+    Obj( Box< dyn FnMut( &str, &mut FieldImp< 'a>) -> bool + 'a>),
+    FluxSink( &'a mut dyn IFluxImportSink),
+    FluxSource( &'a mut dyn IFluxImportSource),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IFluxInSink
+pub trait IFluxImportSink
 {
-    fn	FromFieldIn( &mut self, field: FieldIn) -> bool;
+    fn	FromFieldImp( &mut self, field: FieldImp) -> bool;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> FieldIn< 'a>
+impl< 'a> FieldImp< 'a>
 {
     pub fn Resolve( &mut self)
     {
-        let  	mut temp = FieldIn::Null;
+        let  	mut temp = FieldImp::Null;
         std::mem::swap( self, &mut temp);
-        if let FieldIn::FluxSource( src) = temp {
-            src.ToFieldIn( self);
+        if let FieldImp::FluxSource( src) = temp {
+            src.FetchFieldImp( self);
         } else {
             *self = temp;
         }
@@ -41,40 +42,40 @@ impl< 'a> FieldIn< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IFluxInSource
+pub trait IFluxImportSource
 {
-    fn	ToFieldIn< 'a>( &'a mut self, _field: &mut FieldIn< 'a>)
+    fn	FetchFieldImp< 'a>( &'a mut self, _field: &mut FieldImp< 'a>)
     {
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'r, T: IFluxInSource + ?Sized> IFluxInSource for &'r mut T
+impl< 'r, T: IFluxImportSource + ?Sized> IFluxImportSource for &'r mut T
 {
-    fn	ToFieldIn< 'a>( &'a mut self, field: &mut FieldIn< 'a>)
+    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
     {
-        ( **self).ToFieldIn( field);
+        ( **self).FetchFieldImp( field);
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[macro_export]
-macro_rules! ImplIFluxInSource
+macro_rules! ImplFluxImportSource
 {
     ( $struct_name:ident $( , $field:ident )* ) =>
     {
-        impl $crate::flux::IFluxInSource for $struct_name
+        impl $crate::flux::IFluxImportSource for $struct_name
         {
-            fn	ToFieldIn< 'a>( &'a mut self, field: &mut $crate::flux::fluxin::FieldIn< 'a>)
+            fn	FetchFieldImp< 'a>( &'a mut self, field: &mut $crate::flux::fluximport::FieldImp< 'a>)
             {
                 let  	ptr = self as *mut Self;
-                *field = $crate::flux::fluxin::FieldIn::Obj( Box::new( move |key, item| {
+                *field = $crate::flux::fluximport::FieldImp::Obj( Box::new( move |key, item| {
                     let  	obj = unsafe { &mut *ptr };
                     $(
                         if key == stringify!( $field) {
-                            $crate::flux::IFluxInSource::ToFieldIn( &mut obj.$field, item);
+                            $crate::flux::IFluxImportSource::FetchFieldImp( &mut obj.$field, item);
                             return true;
                         }
                     )*
@@ -87,64 +88,64 @@ macro_rules! ImplIFluxInSource
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-macro_rules! ImplIFluxInSourceUInt
+macro_rules! ImplFluxImportSourceUInt
 {
     ( $( $T:ty ),+ ) =>
     {
         $(
-            impl IFluxInSource for $T
+            impl IFluxImportSource for $T
             {
-                fn	ToFieldIn< 'a>( &'a mut self, field: &mut FieldIn< 'a>)
+                fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
                 {
-                    *field = FieldIn::FluxSource( self);
+                    *field = FieldImp::FluxSource( self);
                 }
             }
         )+
     };
 }
 
-ImplIFluxInSourceUInt!( U8, U16, U32, U64);
+ImplFluxImportSourceUInt!( U8, U16, U32, U64);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-macro_rules! ImplIFluxInSourceFloat
+macro_rules! ImplFluxImportSourceFloat
 {
     ( $( $T:ty ),+ ) =>
     {
         $(
-            impl IFluxInSource for $T
+            impl IFluxImportSource for $T
             {
-                fn	ToFieldIn< 'a>( &'a mut self, field: &mut FieldIn< 'a>)
+                fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
                 {
-                    *field = FieldIn::FluxSource( self);
+                    *field = FieldImp::FluxSource( self);
                 }
             }
         )+
     };
 }
 
-ImplIFluxInSourceFloat!( f32, f64);
+ImplFluxImportSourceFloat!( f32, f64);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxInSource for String
+impl IFluxImportSource for String
 {
-    fn	ToFieldIn< 'a>( &'a mut self, field: &mut FieldIn< 'a>)
+    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
     {
-        *field = FieldIn::String( self);
+        *field = FieldImp::String( self);
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'b> IFluxInSource for &'b str
+impl< 'b> IFluxImportSource for &'b str
 {
-    fn	ToFieldIn< 'a>( &'a mut self, field: &mut FieldIn< 'a>)
+    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
     {
         // This relies on the fact that 'a and 'b are compatible in Kosh's memory arena usage.
         // We cast the mutable reference to &'a mut &'a str.
         let ptr = self as *mut &'b str as *mut &'a str;
-        *field = FieldIn::Str( unsafe { &mut *ptr } );
+        *field = FieldImp::Str( unsafe { &mut *ptr } );
     }
 }
 

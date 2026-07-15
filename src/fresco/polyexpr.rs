@@ -1,5 +1,5 @@
 //-- polyexpr.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::flux::{ IFluxOutSource, fluxout::FieldOut };
+use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
 use	crate::fresco::exprrepos::BaseExpr;
 use	crate::silo::{ U32, U64, Buff };
 use	core::any::Any;
@@ -71,24 +71,24 @@ impl BaseExpr for PolyExpr
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxOutSource for PolyExpr
+impl IFluxExportSource for PolyExpr
 {
-    fn	ToFieldOut< 'b>( &'b self, field: &mut FieldOut< 'b>)
+    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
     {
         let  	mut step = 0u32;
         let  	poly = self;
-        *field = FieldOut::Obj( Box::new( move |key, item| {
+        *field = FieldExp::Obj( Box::new( move |key, item| {
             if step == 0 {
                 *key = "CoSz".to_string();
-                *item = FieldOut::U64( U64::From( poly._CoSz.0 as u64));
+                *item = FieldExp::U64( U64::From( poly._CoSz.0 as u64));
                 step += 1;
                 true
             } else if step == 1 {
                 *key = "Childs".to_string();
                 let  	mut iterStep = 0usize;
-                *item = FieldOut::Arr( Box::new( move |elem| {
+                *item = FieldExp::Arr( Box::new( move |elem| {
                     if iterStep < poly._Childs.len() {
-                        *elem = FieldOut::U64( U64::From( poly._Childs[iterStep].0 as u64));
+                        *elem = FieldExp::U64( U64::From( poly._Childs[iterStep].0 as u64));
                         iterStep += 1;
                         true
                     } else {
