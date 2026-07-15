@@ -106,3 +106,5 @@ impl IFluxExportSource for PolyExpr
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+
+crate::ImplFluxImportSource!( PolyExpr, _CoSz, _Childs);

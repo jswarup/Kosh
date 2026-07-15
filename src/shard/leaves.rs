@@ -25,6 +25,14 @@ impl< 'a> IFluxExportSource for StrShard< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl<'a> crate::flux::IFluxImportSource for StrShard<'a> {
+    fn FetchFieldImp<'b>(&'b mut self, field: &mut crate::flux::fluximport::FieldImp<'b>) {
+        crate::flux::IFluxImportSource::FetchFieldImp(&mut self._Val, field);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl< 'a> IGrammar for StrShard< 'a>
 {
 

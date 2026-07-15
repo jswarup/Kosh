@@ -61,6 +61,31 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl< C, W> crate::flux::IFluxImportSource for UniNode< C, ActionOp< W>>
+where
+    C: crate::flux::IFluxImportSource,
+    W: Send + Sync,
+{
+    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut crate::flux::fluximport::FieldImp< 'a>)
+    {
+        let ptr = self as *mut Self;
+        *field = crate::flux::fluximport::FieldImp::Obj( Box::new( move |key, item| {
+            let obj = unsafe { &mut *ptr };
+            if key == "Child" {
+                crate::flux::IFluxImportSource::FetchFieldImp(&mut obj._Child, item);
+                return true;
+            }
+            if key == "Action" {
+                *item = crate::flux::fluximport::FieldImp::ExpectedType("Action");
+                return true;
+            }
+            false
+        }));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 
 
 impl< C, W> IGrammar for UniNode< C, ActionOp< W>>

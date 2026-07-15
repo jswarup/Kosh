@@ -13,7 +13,7 @@ use	crate::stalks::BinOp;
 
 use	core::any::Any;
 
-pub trait BaseExpr: Any + IFluxExportSource
+pub trait BaseExpr: Any + IFluxExportSource + crate::flux::IFluxImportSource
 {
     fn	SizeChild( &self, _chart: &ExprRepos) -> U32
     {
@@ -345,5 +345,23 @@ impl IFluxExportSource for ExprRepos
                 false
             }
         }));
+    }
+}
+
+impl crate::flux::IFluxImportSource for ExprEntry {
+    fn FetchFieldImp<'b>(&'b mut self, field: &mut crate::flux::fluximport::FieldImp<'b>) {
+        match self {
+            ExprEntry::Empty => *field = crate::flux::fluximport::FieldImp::Null,
+            ExprEntry::Expr(expr) => expr.FetchFieldImp(field),
+        }
+    }
+}
+
+// Stash doesn't export itself directly as IFluxImportSource yet, but we will use unimplemented! if required,
+// or just return false from FetchFieldImp for now.
+impl crate::flux::IFluxImportSource for ExprRepos {
+    fn FetchFieldImp<'b>(&'b mut self, _field: &mut crate::flux::fluximport::FieldImp<'b>) {
+        // Not fully supported yet for arrays
+        unimplemented!("ExprRepos IFluxImportSource is not fully implemented");
     }
 }

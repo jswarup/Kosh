@@ -61,9 +61,30 @@ where
         NonNull::slice_from_raw_parts( nonNullPtr, size)
     }
 }
-
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl<T> crate::flux::IFluxImportSource for Buff<T>
+where
+    T: crate::flux::IFluxImportSource + Default,
+{
+    fn	FetchFieldImp< 'b>( &'b mut self, field: &mut crate::flux::fluximport::FieldImp< 'b>)
+    {
+        let  	mut idx = 0usize;
+        let  	ptr = self as *mut Self;
+        *field = crate::flux::fluximport::FieldImp::Arr( Box::new( move |item| {
+            let  	buff = unsafe { &mut *ptr };
+            if idx >= buff._Ptr.len() {
+                buff.Push( T::default());
+            }
+            let  	elem = unsafe { &mut *buff._Ptr.as_ptr().cast::<T>().add( idx) };
+            *item = crate::flux::fluximport::FieldImp::FluxSource( elem);
+            idx += 1;
+            true
+        }));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
 pub struct Buff< T>
 {
     pub(crate) _Ptr: NonNull< [T]>,

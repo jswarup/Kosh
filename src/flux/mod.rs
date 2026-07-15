@@ -15,4 +15,4 @@ pub use	fluxexport::{ IFluxExportSink, FieldExp, IFluxExportSource };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 pub mod fluximport;
-
+pub use fluximport::{ IFluxImportSource, IFluxImportSink, FieldImp };

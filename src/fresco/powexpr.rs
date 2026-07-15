@@ -60,3 +60,5 @@ impl IFluxExportSource for PowExpr
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+crate::ImplFluxImportSourceTyped!( PowExpr, "PowExpr", _Poly);

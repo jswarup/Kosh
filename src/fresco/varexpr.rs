@@ -161,3 +161,6 @@ impl IFluxExportSource for VarExpr
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+crate::ImplFluxImportSource!( VarAttrib, _Name, _DepTok, _AggrIndex, _VarFlags);
+crate::ImplFluxImportSourceTyped!( VarExpr, "VarExpr", _VarIndex);

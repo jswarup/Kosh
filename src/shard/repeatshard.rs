@@ -45,6 +45,30 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl< C> crate::flux::IFluxImportSource for UniNode< C, USeg>
+where
+    C: crate::flux::IFluxImportSource,
+{
+    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut crate::flux::fluximport::FieldImp< 'a>)
+    {
+        let ptr = self as *mut Self;
+        *field = crate::flux::fluximport::FieldImp::Obj( Box::new( move |key, item| {
+            let obj = unsafe { &mut *ptr };
+            if key == "Child" {
+                crate::flux::IFluxImportSource::FetchFieldImp(&mut obj._Child, item);
+                return true;
+            }
+            if key == "Repeat" {
+                crate::flux::IFluxImportSource::FetchFieldImp(&mut obj._Op, item);
+                return true;
+            }
+            false
+        }));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl< C> IGrammar for UniNode< C, USeg>
 where
     C: IGrammar,

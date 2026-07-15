@@ -60,3 +60,5 @@ impl IFluxExportSource for SumExpr
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+crate::ImplFluxImportSourceTyped!( SumExpr, "SumExpr", _Poly);

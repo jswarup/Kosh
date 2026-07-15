@@ -60,3 +60,5 @@ impl IFluxExportSource for ProdExpr
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+crate::ImplFluxImportSourceTyped!( ProdExpr, "ProdExpr", _Poly);

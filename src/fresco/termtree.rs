@@ -312,3 +312,30 @@ macro_rules! TermTree {
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+impl crate::flux::IFluxImportSource for Term {
+    fn FetchFieldImp<'b>(&'b mut self, field: &mut crate::flux::fluximport::FieldImp<'b>) {
+        let ptr = self as *mut Self;
+        *field = crate::flux::fluximport::FieldImp::Obj(Box::new(move |key, item| {
+            let term = unsafe { &mut *ptr };
+            if key == "Null" {
+                *term = Term::Null;
+                *item = crate::flux::fluximport::FieldImp::Null;
+                return true;
+            } else if key == "String" {
+                *term = Term::String(String::new());
+                if let Term::String(s) = term {
+                    *item = crate::flux::fluximport::FieldImp::String(s);
+                }
+                return true;
+            } else if key == "Real" {
+                *term = Term::Real(0.0);
+                if let Term::Real(v) = term {
+                    *item = crate::flux::fluximport::FieldImp::F64(v);
+                }
+                return true;
+            }
+            false
+        }));
+    }
+}

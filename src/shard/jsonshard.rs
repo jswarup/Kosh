@@ -90,7 +90,7 @@ impl JsonShard
                 } else if c == U8( b'"') {
                     if let Some( nxt) = parser.Incr( m) {
                         sink.Resolve();
-                        if matches!( sink, crate::flux::fluximport::FieldImp::String( _) | crate::flux::fluximport::FieldImp::Str( _) | crate::flux::fluximport::FieldImp::FluxSink( _)) {
+                        if matches!( sink, crate::flux::fluximport::FieldImp::String( _) | crate::flux::fluximport::FieldImp::Str( _) | crate::flux::fluximport::FieldImp::FluxSink( _) | crate::flux::fluximport::FieldImp::ExpectedType( _)) {
                             let  	bytes = parser.InStream().BytesAt( marker + crate::silo::U32( 1), m - marker - crate::silo::U32( 1));
                             if let  	Ok( s) = std::str::from_utf8( bytes) {
                                 if let  	crate::flux::fluximport::FieldImp::String( dst) = sink {
@@ -98,6 +98,8 @@ impl JsonShard
                                 } else if let  	crate::flux::fluximport::FieldImp::FluxSink( flx) = sink {
                                     let  	mut temp = s.to_string();
                                     flx.FromFieldImp( crate::flux::fluximport::FieldImp::String( &mut temp));
+                                } else if let   crate::flux::fluximport::FieldImp::ExpectedType( exp) = sink {
+                                    assert_eq!( s, exp, "Type mismatch during import. Expected '{}', got '{}'", exp, s);
                                 }
                             }
                         }
@@ -313,3 +315,5 @@ impl fmt::Display for JsonShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) ->
 impl fmt::Debug for JsonShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Json") } }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+crate::ImplFluxImportSource!( JsonShard);

@@ -93,6 +93,36 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl< L, R> crate::flux::IFluxImportSource for BinNode< L, R>
+where
+    L: crate::flux::IFluxImportSource,
+    R: crate::flux::IFluxImportSource,
+{
+    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut crate::flux::fluximport::FieldImp< 'a>)
+    {
+        let ptr = self as *mut Self;
+        *field = crate::flux::fluximport::FieldImp::Obj( Box::new( move |key, item| {
+            let obj = unsafe { &mut *ptr };
+            if key == "Op" {
+                let op_ptr = &mut obj._Op as *mut BinOp as *mut crate::silo::U64;
+                *item = crate::flux::fluximport::FieldImp::U64( unsafe { &mut *op_ptr } );
+                return true;
+            }
+            if key == "Left" {
+                crate::flux::IFluxImportSource::FetchFieldImp(&mut obj._Left, item);
+                return true;
+            }
+            if key == "Right" {
+                crate::flux::IFluxImportSource::FetchFieldImp(&mut obj._Right, item);
+                return true;
+            }
+            false
+        }));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 #[macro_export]
 macro_rules! NodeTree {
     // Helper to construct binary nodes

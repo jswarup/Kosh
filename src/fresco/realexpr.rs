@@ -69,3 +69,5 @@ impl IFluxExportSource for RealExpr
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+crate::ImplFluxImportSourceTyped!( RealExpr, "RealExpr", _Value);

@@ -15,6 +15,7 @@ pub enum FieldImp< 'a>
     Obj( Box< dyn FnMut( &str, &mut FieldImp< 'a>) -> bool + 'a>),
     FluxSink( &'a mut dyn IFluxImportSink),
     FluxSource( &'a mut dyn IFluxImportSource),
+    ExpectedType( &'static str),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -73,6 +74,39 @@ macro_rules! ImplFluxImportSource
                 let  	ptr = self as *mut Self;
                 *field = $crate::flux::fluximport::FieldImp::Obj( Box::new( move |key, item| {
                     let  	obj = unsafe { &mut *ptr };
+                    let _ = &obj; let _ = &key; let _ = &item;
+                    $(
+                        if key == stringify!( $field) {
+                            $crate::flux::IFluxImportSource::FetchFieldImp( &mut obj.$field, item);
+                            return true;
+                        }
+                    )*
+                    false
+                }));
+            }
+        }
+    };
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[macro_export]
+macro_rules! ImplFluxImportSourceTyped
+{
+    ( $struct_name:ident, $type_name:literal $( , $field:ident )* ) =>
+    {
+        impl $crate::flux::IFluxImportSource for $struct_name
+        {
+            fn	FetchFieldImp< 'a>( &'a mut self, field: &mut $crate::flux::fluximport::FieldImp< 'a>)
+            {
+                let  	ptr = self as *mut Self;
+                *field = $crate::flux::fluximport::FieldImp::Obj( Box::new( move |key, item| {
+                    let  	obj = unsafe { &mut *ptr };
+                    let _ = &obj; let _ = &key; let _ = &item;
+                    if key == "Type" {
+                        *item = $crate::flux::fluximport::FieldImp::ExpectedType( $type_name);
+                        return true;
+                    }
                     $(
                         if key == stringify!( $field) {
                             $crate::flux::IFluxImportSource::FetchFieldImp( &mut obj.$field, item);
@@ -146,6 +180,53 @@ impl< 'b> IFluxImportSource for &'b str
         // We cast the mutable reference to &'a mut &'a str.
         let ptr = self as *mut &'b str as *mut &'a str;
         *field = FieldImp::Str( unsafe { &mut *ptr } );
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IFluxImportSource for crate::silo::USeg
+{
+    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
+    {
+        let  	ptr = self as *mut Self;
+        *field = FieldImp::Obj( Box::new( move |key, item| {
+            let  	obj = unsafe { &mut *ptr };
+            if key == "First" {
+                *item = FieldImp::FluxSource( &mut obj._First);
+                return true;
+            }
+            if key == "Last" {
+                *item = FieldImp::FluxSource( &mut obj._Last);
+                return true;
+            }
+            false
+        }));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl<'a, T> IFluxImportSource for crate::silo::Arr<'a, T>
+where
+    T: IFluxImportSource,
+{
+    fn	FetchFieldImp< 'b>( &'b mut self, field: &mut FieldImp< 'b>)
+    {
+        let  	mut idx = 0u32;
+        let  	ptr = self as *mut Self;
+        *field = FieldImp::Arr( Box::new( move |item| {
+            let  	arr = unsafe { &mut *ptr };
+            if idx < arr._Size.0 {
+                let  	elem = unsafe { &mut *arr._Ptr.as_ptr().add( idx as usize) };
+                *item = FieldImp::FluxSource( elem);
+                idx += 1;
+                true
+            } else {
+                assert!( idx < arr._Size.0, "Arr capacity exceeded during import. Use Buff instead.");
+                false
+            }
+        }));
     }
 }
 

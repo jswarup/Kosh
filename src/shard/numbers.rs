@@ -475,3 +475,9 @@ impl fmt::Display for HexRealShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>)
 impl fmt::Debug for HexRealShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "HexReal") } }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+crate::ImplFluxImportSource!( UIntShard);
+crate::ImplFluxImportSource!( IntShard);
+crate::ImplFluxImportSource!( HexShard);
+crate::ImplFluxImportSource!( RealShard);
+crate::ImplFluxImportSource!( HexRealShard);
