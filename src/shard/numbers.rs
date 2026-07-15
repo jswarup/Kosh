@@ -29,10 +29,10 @@ impl IGrammar for UIntShard
 {
     fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
     {
-        let  	origMark = parser.Forge().Mark();
+        let  	origMark = parser.CurrentMark();
         let  	mut m = origMark;
         let  	mut matched = false;
-        
+
         loop {
             let  	curr = parser.GetAt( m);
             if curr >= U8( b'0') && curr <= U8( b'9') {
@@ -46,7 +46,7 @@ impl IGrammar for UIntShard
                 break;
             }
         }
-        
+
         if matched {
             sink.Resolve();
             if matches!( sink, FieldImp::U64( _) | FieldImp::FluxSink( _)) {
@@ -105,9 +105,9 @@ impl IGrammar for IntShard
 {
     fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
     {
-        let  	origMark = parser.Forge().Mark();
+        let  	origMark = parser.CurrentMark();
         let  	mut m = origMark;
-        
+
         let  	curr = parser.GetAt( m);
         if curr == U8( b'-') || curr == U8( b'+') {
             if let  	Some( nextM) = parser.Incr( m) {
@@ -117,7 +117,7 @@ impl IGrammar for IntShard
                 return;
             }
         }
-        
+
         let  	mut matched = false;
         loop {
             let  	curr = parser.GetAt( m);
@@ -132,7 +132,7 @@ impl IGrammar for IntShard
                 break;
             }
         }
-        
+
         if matched {
             sink.Resolve();
             if matches!( sink, FieldImp::U64( _) | FieldImp::FluxSink( _)) {
@@ -177,7 +177,7 @@ impl IGrammar for HexShard
 {
     fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
     {
-        let  	origMark = parser.Forge().Mark();
+        let  	origMark = parser.CurrentMark();
         let  	mut currentMark = origMark;
         let  	mut curr = parser.GetAt( currentMark);
         if curr == U8( b'+') || curr == U8( b'-') {
@@ -189,7 +189,7 @@ impl IGrammar for HexShard
                 return;
             }
         }
-        
+
         let  	mut mark_after_prefix = currentMark;
         if curr == U8( b'0') {
             if let  	Some( nextMark) = parser.Incr( currentMark) {
@@ -202,7 +202,7 @@ impl IGrammar for HexShard
             }
         }
         currentMark = mark_after_prefix;
-        
+
         let  	mut matched = false;
         loop {
             let  	curr = parser.GetAt( currentMark);
@@ -261,9 +261,9 @@ impl IGrammar for RealShard
 {
     fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
     {
-        let  	origMark = parser.Forge().Mark();
+        let  	origMark = parser.CurrentMark();
         let  	mut m = origMark;
-        
+
         // Match optional sign
         let  	curr = parser.GetAt( m);
         if curr == U8( b'-') || curr == U8( b'+') {
@@ -274,7 +274,7 @@ impl IGrammar for RealShard
                 return;
             }
         }
-        
+
         let  	mut matched_digits = false;
         loop {
             let  	curr = parser.GetAt( m);
@@ -283,7 +283,7 @@ impl IGrammar for RealShard
                 if let  	Some( nextM) = parser.Incr( m) { m = nextM; } else { break; }
             } else { break; }
         }
-        
+
         if parser.GetAt( m) == U8( b'.') {
             if let  	Some( nextM) = parser.Incr( m) {
                 m = nextM;
@@ -297,12 +297,12 @@ impl IGrammar for RealShard
                 }
             }
         }
-        
+
         if !matched_digits {
             parser.Forge().Deposit( None);
             return;
         }
-        
+
         let  	curr = parser.GetAt( m);
         if curr == U8( b'e') || curr == U8( b'E') {
             if let  	Some( nextM) = parser.Incr( m) {
@@ -311,7 +311,7 @@ impl IGrammar for RealShard
                 if curr == U8( b'-') || curr == U8( b'+') {
                     if let  	Some( nextM) = parser.Incr( m) { m = nextM; }
                 }
-                
+
                 let  	mut matched_exp = false;
                 loop {
                     let  	curr = parser.GetAt( m);
@@ -326,7 +326,7 @@ impl IGrammar for RealShard
                 }
             }
         }
-        
+
         sink.Resolve();
         if matches!( sink, FieldImp::F64( _) | FieldImp::U64( _) | FieldImp::FluxSink( _)) {
             let  	bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
@@ -343,7 +343,7 @@ impl IGrammar for RealShard
                 }
             }
         }
-        
+
         parser.Forge().Deposit( Some( m));
     }
 }
@@ -363,9 +363,9 @@ impl IGrammar for HexRealShard
 {
     fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
     {
-        let  	origMark = parser.Forge().Mark();
+        let  	origMark = parser.CurrentMark();
         let  	mut m = origMark;
-        
+
         // Match optional sign
         let  	curr = parser.GetAt( m);
         if curr == U8( b'-') || curr == U8( b'+') {
@@ -376,7 +376,7 @@ impl IGrammar for HexRealShard
                 return;
             }
         }
-        
+
         // Match 0x prefix
         let  	curr = parser.GetAt( m);
         if curr == U8( b'0') {
@@ -402,7 +402,7 @@ impl IGrammar for HexRealShard
             parser.Forge().Deposit( None);
             return;
         }
-        
+
         let  	mut matched_digits = false;
         loop {
             let  	curr = parser.GetAt( m);
@@ -413,7 +413,7 @@ impl IGrammar for HexRealShard
                 if let  	Some( nextM) = parser.Incr( m) { m = nextM; } else { break; }
             } else { break; }
         }
-        
+
         if parser.GetAt( m) == U8( b'.') {
             if let  	Some( nextM) = parser.Incr( m) {
                 m = nextM;
@@ -429,12 +429,12 @@ impl IGrammar for HexRealShard
                 }
             }
         }
-        
+
         if !matched_digits {
             parser.Forge().Deposit( None);
             return;
         }
-        
+
         let  	curr = parser.GetAt( m);
         if curr == U8( b'p') || curr == U8( b'P') {
             if let  	Some( nextM) = parser.Incr( m) {
@@ -443,7 +443,7 @@ impl IGrammar for HexRealShard
                 if curr == U8( b'-') || curr == U8( b'+') {
                     if let  	Some( nextM) = parser.Incr( m) { m = nextM; }
                 }
-                
+
                 let  	mut matched_exp = false;
                 loop {
                     let  	curr = parser.GetAt( m);
@@ -458,7 +458,7 @@ impl IGrammar for HexRealShard
                 }
             }
         }
-        
+
         sink.Resolve();
         // Parsing HexReal string into f64 isn't natively supported by std::str::parse, so we just populate string for now if it's String.
         // Actually, we will just parse it to F64 if possible, else skip.
@@ -468,7 +468,7 @@ impl IGrammar for HexRealShard
                 // TODO: hex float parsing
             }
         }
-        
+
         parser.Forge().Deposit( Some( m));
     }
 }

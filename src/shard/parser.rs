@@ -7,10 +7,10 @@ use	crate::silo::{ U32, U8 };
 use	crate::stalks::{ IWorker, WorkPtr, INode };
 
 //---------------------------------------------------------------------------------------------------------------------------------
- 
+
 pub trait IForge: Send + Sync + 'static
 {
-    fn	Mark( &self) -> U32; 
+    fn	Mark( &self) -> U32;
     fn	Deposit( &mut self, result: Option< U32>);
 }
 
@@ -67,26 +67,6 @@ unsafe impl Sync for Forge {}
 pub trait IGrammar: INode
 {
     fn	Match( &self, parser: &mut Parser, sink: FieldImp< '_>);
-
-    fn	Parse( &self, parser: &mut Parser, mark: U32, sink: FieldImp< '_>) -> Option< U32>
-    {
-        let  	node = Forge {
-            prev: parser._TopForge,
-            _CurrMark: mark,
-            _IsMatched: false,
-        };
-        let  	prevTop = parser._TopForge;
-        parser._TopForge = &node as *const Forge;
-        self.Match( parser, sink);
-        parser._TopForge = prevTop;
-        let  	res = node.Result();
-        if !prevTop.is_null() {
-            unsafe {
-                ( *( prevTop as *mut Forge)).Deposit( res);
-            }
-        }
-        res
-    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -116,7 +96,7 @@ impl<'p> IWorker for Parser<'p>
             ( job.func)( job.data, self);
         }
     }
-    
+
     fn	AsRawWorker( &self) -> *const ()
     {
         self as *const _ as *const ()
@@ -136,20 +116,41 @@ impl<'p> Parser<'p>
     }
     //-----------------------------------------------------------------------------------------------------------------------------
 
-
-    pub fn	Parse< G: IGrammar + ?Sized>( &mut self, grammar: &'p G) -> bool
+    pub fn	ParseGrammar( &mut self, grammar: &( impl IGrammar + ?Sized), mark: U32, sink: FieldImp< '_>) -> Option< U32>
     {
         let  	node = Forge {
-            prev: std::ptr::null(),
-            _CurrMark: U32( 0),
+            prev: self._TopForge,
+            _CurrMark: mark,
             _IsMatched: false,
         };
+        let  	prevTop = self._TopForge;
         self._TopForge = &node as *const Forge;
-        grammar.Match( self, FieldImp::Null);
-        self._TopForge = std::ptr::null();
-        let  	matched = node.Result().is_some();
-        matched
+        grammar.Match( self, sink);
+        self._TopForge = prevTop;
+        let  	res = node.Result();
+        if !prevTop.is_null() {
+            unsafe {
+                ( *( prevTop as *mut Forge)).Deposit( res);
+            }
+        }
+        res
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    /// Compactly deposit a result to the current forge.
+    pub fn	Deposit( &mut self, result: Option< U32>)
+    {
+        self.Forge().Deposit( result);
+    }
+
+    /// Compactly get the current mark from the top forge.
+    pub fn	CurrentMark( &self) -> U32
+    {
+        self.Forge().Mark()
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	Forge<'a>( &'a self) -> &'a mut Forge
     {
@@ -178,7 +179,7 @@ impl<'p> Parser<'p>
         }
     }
 }
- 
+
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl IGrammar for Charset
@@ -228,7 +229,7 @@ impl IGrammar for str
         let  	mark = parser.Forge().Mark();
         let  	key = self.as_bytes();
         let  	mut currentMark = mark;
-        
+
         for &b in key {
             let  	stream = parser.InStream();
             let  	curr = stream.At( currentMark);
@@ -243,18 +244,18 @@ impl IGrammar for str
                 return;
             }
         }
-        
+
         parser.Forge().Deposit( Some( currentMark));
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, 'r, T: IGrammar> IGrammar for &'r T
+impl< 'a, 'r, T: IGrammar + ?Sized> IGrammar for &'r T
 {
-    fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
+    fn	Match( &self, parser: &mut Parser, sink: FieldImp< '_>)
     {
-        (**self).Match( parser, FieldImp::Null);
+        (**self).Match( parser, sink);
     }
 }
 

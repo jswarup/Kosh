@@ -91,7 +91,7 @@ fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
             }
             std::mem::swap( &mut temp_sink, &mut sink);
 
-            let  	res = self._Child.Parse( parser, m, child_sink);
+            let  	res = parser.ParseGrammar( &self._Child, m, child_sink);
             if let Some( newM) = res {
                 if newM == m {
                     count += U32( 1);

@@ -23,19 +23,19 @@ fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
         match self._Op {
             BinOp::Bor => {
                 let  	m1 = parser.Forge().Mark();
-                let  	leftRes = self._Left.Parse( parser, m1, FieldImp::Null);
+                let  	leftRes = parser.ParseGrammar( &self._Left, m1, FieldImp::Null);
                 if leftRes.is_some() {
                     return;
                 }
                 
                 let  	m2 = parser.Forge().Mark();
-                self._Right.Parse( parser, m2, FieldImp::Null);
+                parser.ParseGrammar( &self._Right, m2, FieldImp::Null);
             }
             BinOp::Less => {
                 let  	m1 = parser.Forge().Mark();
-                let  	leftRes = self._Left.Parse( parser, m1, FieldImp::Null);
+                let  	leftRes = parser.ParseGrammar( &self._Left, m1, FieldImp::Null);
                 if let Some( newM) = leftRes {
-                    self._Right.Parse( parser, newM, FieldImp::Null);
+                    parser.ParseGrammar( &self._Right, newM, FieldImp::Null);
                 }
             }
             _ => panic!( "Unsupported operator in BinShard Match"),

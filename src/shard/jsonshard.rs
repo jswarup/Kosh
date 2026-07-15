@@ -157,7 +157,7 @@ impl JsonShard
 
     fn	MatchValue<'a>( parser: &mut Parser, mut m: U32, sink: FieldImp< 'a>) -> Option< U32>
     {
-        if let Some( newM) = WSpc().Parse( parser, m, FieldImp::Null) {
+        if let Some( newM) = parser.ParseGrammar( &WSpc(), m, FieldImp::Null) {
             m = newM;
         }
         
@@ -184,7 +184,7 @@ impl JsonShard
             if matched { return Some( nextM); }
             return None;
         } else if curr == U8( b'-') || ( curr >= U8( b'0') && curr <= U8( b'9')) {
-            if let Some( nextM) = Real.Parse( parser, m, sink) {
+            if let Some( nextM) = parser.ParseGrammar( &Real, m, sink) {
                 return Some( nextM);
             }
             return None;

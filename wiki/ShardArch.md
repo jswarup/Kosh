@@ -34,7 +34,7 @@ The `IGrammar` and `IForge` traits form the core matching and detached processin
 ```rust
 pub trait IGrammar: INode {
     fn  Match( &self, parser: &mut Parser, sink: FieldImp< '_>);
-    fn  Parse( &self, parser: &mut Parser, mark: U32, sink: FieldImp< '_>) -> Option< U32>;
+    fn  ParseGrammar( &mut self, grammar: &(impl IGrammar + ?Sized), mark: U32, sink: FieldImp< '_>) -> Option< U32>;
 }
 ```
 * **Detached Match & Processing**: The match phase (`IGrammar::Match`) is decoupled from processing semantics. When a shard's grammar matches, it deposits its results (such as matching offsets or markers) onto the local `IForge` instance created for that grammar.
