@@ -1,9 +1,7 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 
 use	crate::{
-    flux::{ FixedStream, fluximport::FieldImp, fluxexport::FieldExp },
-    shard::{ Charset, Parser, UInt, Int, Hex, Real, HexReal, Json },
-    silo::U32,
+    ShardTree, flux::{ FixedStream, fluxexport::FieldExp, fluximport::FieldImp }, shard::{ Charset, Hex, HexReal, Int, Json, Parser, Real, UInt }, silo::U32,
 };
 
 
@@ -56,7 +54,7 @@ fn	TestParserBasic()
             res.is_some()
         };
         assert!( matched);
-        
+
         let  	matched = {
             let  	g = &'e';
             let res = parser.ParseGrammar( &g, m, FieldImp::Null);
@@ -100,7 +98,7 @@ fn	TestParserBasic()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 #[test]
-fn	TestPostBoxet() 
+fn	TestPostBoxet()
 {
     let     data = "ab";
     let     tree = crate::ShardTree!( "ab" [ |_worker| {
@@ -116,13 +114,13 @@ fn	TestPostBoxet()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 #[test]
-fn TestRgx2() 
+fn TestRgx2()
 {
 
     let     alpha = crate::ShardTree!(  [ "a-zA-Z"]);
     let     identRgx = crate::ShardTree!(  [ "a-z"] < ["A-Z"] < +alpha[ |_worker| {
         // marker tracking removed
-    } ] ); 
+    } ] );
     let  	mut output = String::new();
     {
         let  	mut jsonStream = crate::flux::JsonOutStream::New( &mut output, true);
@@ -144,7 +142,7 @@ fn TestRgx2()
     let  	mut parser2 = Parser::New( &mut stream2);
     let res2 = parser2.ParseGrammar( &identRgx, U32(0), FieldImp::Null);
     let matched2 = res2.is_some();
-    let m2 = res2.unwrap_or(U32(0)); // Should succeed but match 6 chars 
+    let m2 = res2.unwrap_or(U32(0)); // Should succeed but match 6 chars
     assert!( matched2);
     assert_eq!( m2.AsUsize(), 6); // Rolled back / consumed 6
 }
@@ -155,7 +153,7 @@ fn TestRgx2()
 fn TestUIntShard()
 {
     let  	tree = crate::ShardTree!( UInt );
-    
+
 
     // Test that the UInt shard correctly parses unsigned integer strings
     let  	mut stream1 = FixedStream::from( "12345");
@@ -165,7 +163,7 @@ fn TestUIntShard()
     let m1 = res1.unwrap_or(U32(0));
     assert!( matched1);
     assert_eq!( m1.AsUsize(), 5);
-    
+
     // Test with non-matching string
     let  	mut stream2 = FixedStream::from( "abc");
     let  	mut parser2 = Parser::New( &mut stream2);
@@ -173,7 +171,7 @@ fn TestUIntShard()
     let matched2 = res2.is_some();
     let  	_m2 = res2.unwrap_or(U32(0));
     assert!( !matched2);
-    
+
     // Test with mixed string
     let  	mut stream3 = FixedStream::from( "42xyz");
     let  	mut parser3 = Parser::New( &mut stream3);
@@ -189,17 +187,17 @@ fn TestUIntShard()
 #[test]
 fn TestIntShard() {
     let tree = crate::ShardTree!( Int );
-    
+
     // Positive int
     let  	mut stream = FixedStream::from( "+12345");
     let  	mut parser = Parser::New( &mut stream);
     let res = parser.ParseGrammar( &tree, U32(0), FieldImp::Null);
     let matched = res.is_some();
     let m = res.unwrap_or(U32(0));
-    
+
     assert!( matched);
     assert_eq!( m.AsUsize(), 6);
-    
+
     // Negative int
     let  	mut stream2 = FixedStream::from( "-42");
     let  	mut parser2 = Parser::New( &mut stream2);
@@ -213,17 +211,17 @@ fn TestIntShard() {
 #[test]
 fn TestHexShard() {
     let tree = crate::ShardTree!( Hex );
-    
+
     // Standard hex
     let  	mut stream = FixedStream::from( "0x1a2B");
     let  	mut parser = Parser::New( &mut stream);
     let res = parser.ParseGrammar( &tree, U32(0), FieldImp::Null);
     let matched = res.is_some();
     let m = res.unwrap_or(U32(0));
-    
+
     assert!( matched);
     assert_eq!( m.AsUsize(), 6);
-    
+
     // Hex with sign
     let  	mut stream2 = FixedStream::from( "-0XF");
     let  	mut parser2 = Parser::New( &mut stream2);
@@ -237,17 +235,17 @@ fn TestHexShard() {
 #[test]
 fn TestRealShard() {
     let tree = crate::ShardTree!( Real );
-    
+
     // Standard real
     let  	mut stream = FixedStream::from( "3.14159");
     let  	mut parser = Parser::New( &mut stream);
     let res = parser.ParseGrammar( &tree, U32(0), FieldImp::Null);
     let matched = res.is_some();
     let m = res.unwrap_or(U32(0));
-    
+
     assert!( matched);
     assert_eq!( m.AsUsize(), 7);
-    
+
     // Real with exponent
     let  	mut stream2 = FixedStream::from( "-1.5e+10");
     let  	mut parser2 = Parser::New( &mut stream2);
@@ -261,17 +259,17 @@ fn TestRealShard() {
 #[test]
 fn TestHexRealShard() {
     let tree = crate::ShardTree!( HexReal );
-    
+
     // Hex real with fraction
     let  	mut stream = FixedStream::from( "0x1.f");
     let  	mut parser = Parser::New( &mut stream);
     let res = parser.ParseGrammar( &tree, U32(0), FieldImp::Null);
     let matched = res.is_some();
     let m = res.unwrap_or(U32(0));
-    
+
     assert!( matched);
     assert_eq!( m.AsUsize(), 5);
-    
+
     // Hex real with binary exponent
     let  	mut stream2 = FixedStream::from( "-0x1.abcP-4");
     let  	mut parser2 = Parser::New( &mut stream2);
@@ -287,7 +285,7 @@ fn TestHexRealShard() {
 #[test]
 fn TestJsonShard() {
     let tree = crate::ShardTree!( Json );
-    
+
     // JSON String
     let  	mut stream1 = FixedStream::from( r#"  "hello world"  "#);
     let  	mut parser1 = Parser::New( &mut stream1);
@@ -296,7 +294,7 @@ fn TestJsonShard() {
     let m1 = res1.unwrap_or(U32(0));
     assert!( matched1);
     assert_eq!( m1.AsUsize(), 17);
-    
+
     // JSON Object with various types
     let     json_text = r#"
     {
@@ -358,15 +356,15 @@ fn	TestJsonParsingStruct()
     let  	str = r#"{ "name": "Alice", "age": 30, "is_active": true }"#;
     let  	mut stream = crate::flux::FixedStream::from( str);
     let  	mut parser = Parser::New( &mut stream);
-    
+
     let  	mut person = Person::default();
     let  	m = U32(0);
-    
-    let  	sink = FieldImp::FluxSource( &mut person);       
-    
+
+    let  	sink = FieldImp::FluxSource( &mut person);
+
     // We expect Json.Parse to update `person` via the sink closure!
     let  	matched = parser.ParseGrammar( &Json, m, sink);
-    
+
     assert!( matched.is_some());
     assert_eq!( person.name, "Alice");
     assert_eq!( person.age, U64( 30));
@@ -376,7 +374,7 @@ fn	TestJsonParsingStruct()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestIGrammarString()
+fn	TestStrGrammar()
 {
 	// ---- 1. Match a plain quoted string into a String sink ----------------------------
 
@@ -384,7 +382,7 @@ fn	TestIGrammarString()
 	let  	mut stream = FixedStream::from( src);
 	let  	mut parser = Parser::New( &mut stream);
 	let  	mut captured = String::new();
-	let  	grammar: String = String::new();
+	let   	grammar =  ShardTree!( Str  );
 
 	let  	result = parser.ParseGrammar( &grammar, U32( 0), FieldImp::String( &mut captured));
 	assert!( result.is_some(), "plain string match failed");
@@ -398,9 +396,8 @@ fn	TestIGrammarString()
 	let  	mut stream2 = FixedStream::from( src2);
 	let  	mut parser2 = Parser::New( &mut stream2);
 	let  	mut captured2 = String::new();
-	let  	grammar2: String = String::new();
 
-	let  	result2 = parser2.ParseGrammar( &grammar2, U32( 0), FieldImp::String( &mut captured2));
+	let  	result2 = parser2.ParseGrammar( &grammar, U32( 0), FieldImp::String( &mut captured2));
 	assert!( result2.is_some(), "escaped-quote string match failed");
 			assert_eq!( captured2, "say \\\"hi\\\"");
 
@@ -409,9 +406,8 @@ fn	TestIGrammarString()
 	let  	src3 = r#""world""#;
 	let  	mut stream3 = FixedStream::from( src3);
 	let  	mut parser3 = Parser::New( &mut stream3);
-	let  	grammar3: String = String::new();
 
-	let  	result3 = parser3.ParseGrammar( &grammar3, U32( 0), FieldImp::Null);
+	let  	result3 = parser3.ParseGrammar( &grammar, U32( 0), FieldImp::Null);
 	assert!( result3.is_some(), "null-sink match failed");
 	assert_eq!( result3.unwrap(), U32( 7));
 
@@ -420,9 +416,8 @@ fn	TestIGrammarString()
 	let  	src4 = "not_quoted";
 	let  	mut stream4 = FixedStream::from( src4);
 	let  	mut parser4 = Parser::New( &mut stream4);
-	let  	grammar4: String = String::new();
 
-	let  	result4 = parser4.ParseGrammar( &grammar4, U32( 0), FieldImp::Null);
+	let  	result4 = parser4.ParseGrammar( &grammar, U32( 0), FieldImp::Null);
 	assert!( result4.is_none(), "non-quoted input should fail");
 
 	// ---- 5. Empty quoted string -----------------------------------------------------
@@ -431,9 +426,8 @@ fn	TestIGrammarString()
 	let  	mut stream5 = FixedStream::from( src5);
 	let  	mut parser5 = Parser::New( &mut stream5);
 	let  	mut captured5 = String::new();
-	let  	grammar5: String = String::new();
 
-	let  	result5 = parser5.ParseGrammar( &grammar5, U32( 0), FieldImp::String( &mut captured5));
+	let  	result5 = parser5.ParseGrammar( &grammar, U32( 0), FieldImp::String( &mut captured5));
 	assert!( result5.is_some(), "empty string match failed");
 	assert_eq!( captured5, "");
 }

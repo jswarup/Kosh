@@ -14,6 +14,9 @@ macro_rules! ShardTree {
     ( @leaf ( $( $inner:tt )+ ) ) => {
         $crate::ShardTree!( $( $inner )+ )
     };
+    ( @leaf Str ) => {
+        $crate::shard::Str
+    };
     ( @leaf $l:ident ) => {
         $l
     };
