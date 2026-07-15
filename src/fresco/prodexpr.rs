@@ -1,5 +1,6 @@
 //-- prodexpr.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
+use	crate::flux::{ IFluxImportSource, fluximport::FieldImp };
 use	crate::fresco::exprrepos::BaseExpr;
 use	crate::fresco::polyexpr::PolyExpr;
 use	core::any::Any;

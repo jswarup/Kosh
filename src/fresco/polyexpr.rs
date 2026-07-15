@@ -1,5 +1,6 @@
 //-- polyexpr.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
+use	crate::flux::{ IFluxImportSource, fluximport::FieldImp };
 use	crate::fresco::exprrepos::BaseExpr;
 use	crate::silo::{ U32, U64, Buff };
 use	core::any::Any;

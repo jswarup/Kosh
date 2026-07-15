@@ -1,5 +1,6 @@
 //-- exprrepos.rs -------------------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ IAccess, IArr, Stash, U32, Arr, Buff };
+use	crate::flux::{ IFluxImportSource, fluximport::FieldImp };
 use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
 use	crate::fresco::varexpr::{ VarAttrib, VarExpr };
 use	crate::fresco::realexpr::RealExpr;
@@ -13,7 +14,7 @@ use	crate::stalks::BinOp;
 
 use	core::any::Any;
 
-pub trait BaseExpr: Any + IFluxExportSource + crate::flux::IFluxImportSource
+pub trait BaseExpr: Any + IFluxExportSource + IFluxImportSource
 {
     fn	SizeChild( &self, _chart: &ExprRepos) -> U32
     {
@@ -348,10 +349,10 @@ impl IFluxExportSource for ExprRepos
     }
 }
 
-impl crate::flux::IFluxImportSource for ExprEntry {
-    fn FetchFieldImp<'b>(&'b mut self, field: &mut crate::flux::fluximport::FieldImp<'b>) {
+impl IFluxImportSource for ExprEntry {
+    fn FetchFieldImp<'b>(&'b mut self, field: &mut FieldImp<'b>) {
         match self {
-            ExprEntry::Empty => *field = crate::flux::fluximport::FieldImp::Null,
+            ExprEntry::Empty => *field = FieldImp::Null,
             ExprEntry::Expr(expr) => expr.FetchFieldImp(field),
         }
     }
@@ -359,8 +360,8 @@ impl crate::flux::IFluxImportSource for ExprEntry {
 
 // Stash doesn't export itself directly as IFluxImportSource yet, but we will use unimplemented! if required,
 // or just return false from FetchFieldImp for now.
-impl crate::flux::IFluxImportSource for ExprRepos {
-    fn FetchFieldImp<'b>(&'b mut self, _field: &mut crate::flux::fluximport::FieldImp<'b>) {
+impl IFluxImportSource for ExprRepos {
+    fn FetchFieldImp<'b>(&'b mut self, _field: &mut FieldImp<'b>) {
         // Not fully supported yet for arrays
         unimplemented!("ExprRepos IFluxImportSource is not fully implemented");
     }

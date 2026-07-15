@@ -1,5 +1,6 @@
 //-- buff.rs ----------------------------------------------------------------------------------------------------------------------
 use	std::{ alloc::realloc, marker::PhantomData, mem::{ forget, size_of, swap }, ptr::{ copy_nonoverlapping, drop_in_place, read, slice_from_raw_parts_mut, write } };
+use	crate::flux::{ IFluxImportSource, fluximport::FieldImp };
 use	crate::silo::{ Arr, IAccess, IArr, U32 };
 use	std::alloc::{ Layout, alloc, dealloc, handle_alloc_error };
 
@@ -63,21 +64,21 @@ where
 }
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl<T> crate::flux::IFluxImportSource for Buff<T>
+impl<T> IFluxImportSource for Buff<T>
 where
-    T: crate::flux::IFluxImportSource + Default,
+    T: IFluxImportSource + Default,
 {
-    fn	FetchFieldImp< 'b>( &'b mut self, field: &mut crate::flux::fluximport::FieldImp< 'b>)
+    fn	FetchFieldImp< 'b>( &'b mut self, field: &mut FieldImp< 'b>)
     {
         let  	mut idx = 0usize;
         let  	ptr = self as *mut Self;
-        *field = crate::flux::fluximport::FieldImp::Arr( Box::new( move |item| {
+        *field = FieldImp::Arr( Box::new( move |item| {
             let  	buff = unsafe { &mut *ptr };
             if idx >= buff._Ptr.len() {
                 buff.Push( T::default());
             }
             let  	elem = unsafe { &mut *buff._Ptr.as_ptr().cast::<T>().add( idx) };
-            *item = crate::flux::fluximport::FieldImp::FluxSource( elem);
+            *item = FieldImp::FluxSource( elem);
             idx += 1;
             true
         }));

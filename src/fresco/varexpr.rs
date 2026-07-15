@@ -1,5 +1,6 @@
 //-- varexpr.rs ---------------------------------------------------------------------------------------------------------------------------
 use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
+use	crate::flux::{ IFluxImportSource, fluximport::FieldImp };
 
 use	core::any::Any;
 use	crate::silo::{ U32, U64};

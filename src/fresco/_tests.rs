@@ -1,5 +1,6 @@
 //-- _tests.rs ------------------------------------------------------------------------------------------------------------------------
 use	crate::fresco::exprrepos::ExprRepos;
+use	crate::flux::{ IFluxExportSource };
 use	crate::fresco::varexpr::{ VarKind, VarExpr };
 use	crate::fresco::termtree::ITermNode;
 use	crate::silo::U32;
@@ -27,7 +28,7 @@ fn	TestExprRepos()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-fn	TestTermTreeHelper( ) -> impl ITermNode + crate::flux::IFluxExportSource
+fn	TestTermTreeHelper( ) -> impl ITermNode + IFluxExportSource
 {
     crate::TermTree!(  "a" +"b" +"x" +"d")
 }

@@ -2,9 +2,8 @@
 
 use	std::fmt;
 
-use	crate::flux::fluximport::FieldImp;
 use	crate::{
-    flux::{ IFluxExportSource, fluxexport::FieldExp },
+    flux::{ IFluxImportSource, IFluxExportSource, fluximport::FieldImp, fluxexport::FieldExp },
     shard::{ IGrammar, IForge, Parser },
     stalks::{ work::DynIWork, UniNode },
     silo::{ cast::IConstPtrMutRefExt },
@@ -61,22 +60,22 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< C, W> crate::flux::IFluxImportSource for UniNode< C, ActionOp< W>>
+impl< C, W> IFluxImportSource for UniNode< C, ActionOp< W>>
 where
-    C: crate::flux::IFluxImportSource,
+    C: IFluxImportSource,
     W: Send + Sync,
 {
-    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut crate::flux::fluximport::FieldImp< 'a>)
+    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
     {
         let ptr = self as *mut Self;
-        *field = crate::flux::fluximport::FieldImp::Obj( Box::new( move |key, item| {
+        *field = FieldImp::Obj( Box::new( move |key, item| {
             let obj = unsafe { &mut *ptr };
             if key == "Child" {
-                crate::flux::IFluxImportSource::FetchFieldImp(&mut obj._Child, item);
+                IFluxImportSource::FetchFieldImp(&mut obj._Child, item);
                 return true;
             }
             if key == "Action" {
-                *item = crate::flux::fluximport::FieldImp::ExpectedType("Action");
+                *item = FieldImp::ExpectedType("Action");
                 return true;
             }
             false
@@ -96,7 +95,7 @@ where
     fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
     {
         let  	m = parser.Forge().Mark();
-        let  	res = self._Child.Parse( parser, m, crate::flux::fluximport::FieldImp::Null);
+        let  	res = self._Child.Parse( parser, m, FieldImp::Null);
         
         if res.is_some() {
             let  	actionPtr = &self._Op._Action as &DynIWork< 'static> as *const DynIWork< 'static>;

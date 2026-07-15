@@ -67,17 +67,17 @@ macro_rules! ImplFluxImportSource
 {
     ( $struct_name:ident $( , $field:ident )* ) =>
     {
-        impl $crate::flux::IFluxImportSource for $struct_name
+        impl IFluxImportSource for $struct_name
         {
-            fn	FetchFieldImp< 'a>( &'a mut self, field: &mut $crate::flux::fluximport::FieldImp< 'a>)
+            fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
             {
                 let  	ptr = self as *mut Self;
-                *field = $crate::flux::fluximport::FieldImp::Obj( Box::new( move |key, item| {
+                *field = FieldImp::Obj( Box::new( move |key, item| {
                     let  	obj = unsafe { &mut *ptr };
                     let _ = &obj; let _ = &key; let _ = &item;
                     $(
                         if key == stringify!( $field) {
-                            $crate::flux::IFluxImportSource::FetchFieldImp( &mut obj.$field, item);
+                            IFluxImportSource::FetchFieldImp( &mut obj.$field, item);
                             return true;
                         }
                     )*
@@ -95,21 +95,21 @@ macro_rules! ImplFluxImportSourceTyped
 {
     ( $struct_name:ident, $type_name:literal $( , $field:ident )* ) =>
     {
-        impl $crate::flux::IFluxImportSource for $struct_name
+        impl IFluxImportSource for $struct_name
         {
-            fn	FetchFieldImp< 'a>( &'a mut self, field: &mut $crate::flux::fluximport::FieldImp< 'a>)
+            fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
             {
                 let  	ptr = self as *mut Self;
-                *field = $crate::flux::fluximport::FieldImp::Obj( Box::new( move |key, item| {
+                *field = FieldImp::Obj( Box::new( move |key, item| {
                     let  	obj = unsafe { &mut *ptr };
                     let _ = &obj; let _ = &key; let _ = &item;
                     if key == "Type" {
-                        *item = $crate::flux::fluximport::FieldImp::ExpectedType( $type_name);
+                        *item = FieldImp::ExpectedType( $type_name);
                         return true;
                     }
                     $(
                         if key == stringify!( $field) {
-                            $crate::flux::IFluxImportSource::FetchFieldImp( &mut obj.$field, item);
+                            IFluxImportSource::FetchFieldImp( &mut obj.$field, item);
                             return true;
                         }
                     )*

@@ -1,7 +1,7 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 
 use	crate::{
-    flux::FixedStream,
+    flux::{ FixedStream, fluximport::FieldImp, fluxexport::FieldExp },
     shard::{ Charset, Parser, IGrammar, UInt, Int, Hex, Real, HexReal, Json },
     silo::U32,
 };
@@ -49,7 +49,7 @@ fn	TestParserBasic()
         // Test char grammar
         let  	matched = {
             let  	g = &'h';
-            let res = g.Parse( &mut parser, m, crate::flux::fluximport::FieldImp::Null);
+            let res = g.Parse( &mut parser, m, FieldImp::Null);
             if let Some( nextM) = res {
                 m = nextM;
             }
@@ -59,7 +59,7 @@ fn	TestParserBasic()
         
         let  	matched = {
             let  	g = &'e';
-            let res = g.Parse( &mut parser, m, crate::flux::fluximport::FieldImp::Null);
+            let res = g.Parse( &mut parser, m, FieldImp::Null);
             if let Some( nextM) = res {
                 m = nextM;
             }
@@ -70,7 +70,7 @@ fn	TestParserBasic()
         // Test &str grammar
         let  	matched = {
             let  	g = &"llo ";
-            let res = g.Parse( &mut parser, m, crate::flux::fluximport::FieldImp::Null);
+            let res = g.Parse( &mut parser, m, FieldImp::Null);
             if let Some( nextM) = res {
                 m = nextM;
             }
@@ -80,7 +80,7 @@ fn	TestParserBasic()
 
         let  	matched = {
             let  	g = &cs;
-            let res = g.Parse( &mut parser, m, crate::flux::fluximport::FieldImp::Null);
+            let res = g.Parse( &mut parser, m, FieldImp::Null);
             if let Some( nextM) = res {
                 m = nextM;
             }
@@ -91,7 +91,7 @@ fn	TestParserBasic()
         // Test failing match (should rollback)
         let  	matched = {
             let  	g = &"fail";
-            let res = g.Parse( &mut parser, m, crate::flux::fluximport::FieldImp::Null);
+            let res = g.Parse( &mut parser, m, FieldImp::Null);
             res.is_some()
         };
         assert!( !matched);
@@ -108,7 +108,7 @@ fn	TestPostBoxet()
     } ] );
     let  	mut stream = FixedStream::from( data);
     let  	mut parser = Parser::New( &mut stream);
-    let res = tree.Parse( &mut parser, U32(0), crate::flux::fluximport::FieldImp::Null);
+    let res = tree.Parse( &mut parser, U32(0), FieldImp::Null);
     let matched = res.is_some();
     let  	_m = res.unwrap_or(U32(0));
     assert!( matched);
@@ -126,14 +126,14 @@ fn TestRgx2()
     let  	mut output = String::new();
     {
         let  	mut jsonStream = crate::flux::JsonOutStream::New( &mut output, true);
-        jsonStream.KeyField( "identRgx", crate::flux::fluxexport::FieldExp::FluxSource( &identRgx));
+        jsonStream.KeyField( "identRgx", FieldExp::FluxSource( &identRgx));
     }
     println!( "{}", output);
 
     // Test that the Repeat and Action correctly parse strings
     let  	mut stream1 = FixedStream::from( "aBcxYZ");
     let  	mut parser1 = Parser::New( &mut stream1);
-    let res1 = identRgx.Parse( &mut parser1, U32(0), crate::flux::fluximport::FieldImp::Null);
+    let res1 = identRgx.Parse( &mut parser1, U32(0), FieldImp::Null);
     let matched1 = res1.is_some();
     let m1 = res1.unwrap_or(U32(0)); // Should match greedy
     assert!( matched1);
@@ -142,7 +142,7 @@ fn TestRgx2()
     // Test with non-matching string
     let  	mut stream2 = FixedStream::from( "aBcxYZ123");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let res2 = identRgx.Parse( &mut parser2, U32(0), crate::flux::fluximport::FieldImp::Null);
+    let res2 = identRgx.Parse( &mut parser2, U32(0), FieldImp::Null);
     let matched2 = res2.is_some();
     let m2 = res2.unwrap_or(U32(0)); // Should succeed but match 6 chars 
     assert!( matched2);
@@ -160,7 +160,7 @@ fn TestUIntShard()
     // Test that the UInt shard correctly parses unsigned integer strings
     let  	mut stream1 = FixedStream::from( "12345");
     let  	mut parser1 = Parser::New( &mut stream1);
-    let res1 = tree.Parse( &mut parser1, U32(0), crate::flux::fluximport::FieldImp::Null);
+    let res1 = tree.Parse( &mut parser1, U32(0), FieldImp::Null);
     let matched1 = res1.is_some();
     let m1 = res1.unwrap_or(U32(0));
     assert!( matched1);
@@ -169,7 +169,7 @@ fn TestUIntShard()
     // Test with non-matching string
     let  	mut stream2 = FixedStream::from( "abc");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let res2 = tree.Parse( &mut parser2, U32(0), crate::flux::fluximport::FieldImp::Null);
+    let res2 = tree.Parse( &mut parser2, U32(0), FieldImp::Null);
     let matched2 = res2.is_some();
     let  	_m2 = res2.unwrap_or(U32(0));
     assert!( !matched2);
@@ -177,7 +177,7 @@ fn TestUIntShard()
     // Test with mixed string
     let  	mut stream3 = FixedStream::from( "42xyz");
     let  	mut parser3 = Parser::New( &mut stream3);
-    let res3 = tree.Parse( &mut parser3, U32(0), crate::flux::fluximport::FieldImp::Null);
+    let res3 = tree.Parse( &mut parser3, U32(0), FieldImp::Null);
     let matched3 = res3.is_some();
     let m3 = res3.unwrap_or(U32(0));
     assert!( matched3);
@@ -193,7 +193,7 @@ fn TestIntShard() {
     // Positive int
     let  	mut stream = FixedStream::from( "+12345");
     let  	mut parser = Parser::New( &mut stream);
-    let res = tree.Parse( &mut parser, U32(0), crate::flux::fluximport::FieldImp::Null);
+    let res = tree.Parse( &mut parser, U32(0), FieldImp::Null);
     let matched = res.is_some();
     let m = res.unwrap_or(U32(0));
     
@@ -203,7 +203,7 @@ fn TestIntShard() {
     // Negative int
     let  	mut stream2 = FixedStream::from( "-42");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let res2 = tree.Parse( &mut parser2, U32(0), crate::flux::fluximport::FieldImp::Null);
+    let res2 = tree.Parse( &mut parser2, U32(0), FieldImp::Null);
     let matched2 = res2.is_some();
     let m2 = res2.unwrap_or(U32(0));
     assert!( matched2);
@@ -217,7 +217,7 @@ fn TestHexShard() {
     // Standard hex
     let  	mut stream = FixedStream::from( "0x1a2B");
     let  	mut parser = Parser::New( &mut stream);
-    let res = tree.Parse( &mut parser, U32(0), crate::flux::fluximport::FieldImp::Null);
+    let res = tree.Parse( &mut parser, U32(0), FieldImp::Null);
     let matched = res.is_some();
     let m = res.unwrap_or(U32(0));
     
@@ -227,7 +227,7 @@ fn TestHexShard() {
     // Hex with sign
     let  	mut stream2 = FixedStream::from( "-0XF");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let res2 = tree.Parse( &mut parser2, U32(0), crate::flux::fluximport::FieldImp::Null);
+    let res2 = tree.Parse( &mut parser2, U32(0), FieldImp::Null);
     let matched2 = res2.is_some();
     let m2 = res2.unwrap_or(U32(0));
     assert!( matched2);
@@ -241,7 +241,7 @@ fn TestRealShard() {
     // Standard real
     let  	mut stream = FixedStream::from( "3.14159");
     let  	mut parser = Parser::New( &mut stream);
-    let res = tree.Parse( &mut parser, U32(0), crate::flux::fluximport::FieldImp::Null);
+    let res = tree.Parse( &mut parser, U32(0), FieldImp::Null);
     let matched = res.is_some();
     let m = res.unwrap_or(U32(0));
     
@@ -251,7 +251,7 @@ fn TestRealShard() {
     // Real with exponent
     let  	mut stream2 = FixedStream::from( "-1.5e+10");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let res2 = tree.Parse( &mut parser2, U32(0), crate::flux::fluximport::FieldImp::Null);
+    let res2 = tree.Parse( &mut parser2, U32(0), FieldImp::Null);
     let matched2 = res2.is_some();
     let m2 = res2.unwrap_or(U32(0));
     assert!( matched2);
@@ -265,7 +265,7 @@ fn TestHexRealShard() {
     // Hex real with fraction
     let  	mut stream = FixedStream::from( "0x1.f");
     let  	mut parser = Parser::New( &mut stream);
-    let res = tree.Parse( &mut parser, U32(0), crate::flux::fluximport::FieldImp::Null);
+    let res = tree.Parse( &mut parser, U32(0), FieldImp::Null);
     let matched = res.is_some();
     let m = res.unwrap_or(U32(0));
     
@@ -275,7 +275,7 @@ fn TestHexRealShard() {
     // Hex real with binary exponent
     let  	mut stream2 = FixedStream::from( "-0x1.abcP-4");
     let  	mut parser2 = Parser::New( &mut stream2);
-    let res2 = tree.Parse( &mut parser2, U32(0), crate::flux::fluximport::FieldImp::Null);
+    let res2 = tree.Parse( &mut parser2, U32(0), FieldImp::Null);
     let matched2 = res2.is_some();
     let m2 = res2.unwrap_or(U32(0));
     assert!( matched2);
@@ -291,7 +291,7 @@ fn TestJsonShard() {
     // JSON String
     let  	mut stream1 = FixedStream::from( r#"  "hello world"  "#);
     let  	mut parser1 = Parser::New( &mut stream1);
-    let res1 = tree.Parse( &mut parser1, U32(0), crate::flux::fluximport::FieldImp::Null);
+    let res1 = tree.Parse( &mut parser1, U32(0), FieldImp::Null);
     let matched1 = res1.is_some();
     let m1 = res1.unwrap_or(U32(0));
     assert!( matched1);
@@ -309,7 +309,7 @@ fn TestJsonShard() {
     "#;
     let  	mut stream2 = FixedStream::from( json_text);
     let  	mut parser2 = Parser::New( &mut stream2);
-    let res2 = tree.Parse( &mut parser2, U32(0), crate::flux::fluximport::FieldImp::Null);
+    let res2 = tree.Parse( &mut parser2, U32(0), FieldImp::Null);
     let matched2 = res2.is_some();
     let m2 = res2.unwrap_or(U32(0));
     assert!( matched2);

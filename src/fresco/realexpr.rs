@@ -1,5 +1,6 @@
 //-- realexpr.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
+use	crate::flux::{ IFluxImportSource, fluximport::FieldImp };
 use	crate::fresco::exprrepos::BaseExpr;
 use	core::any::Any;
 

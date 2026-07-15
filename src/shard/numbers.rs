@@ -1,6 +1,7 @@
 //-- numbers.rs -----------------------------------------------------------------------------------------------------------------------
 
 use	std::fmt;
+use	crate::flux::{ IFluxImportSource };
 use	crate::shard::Parser;
 use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
 use	crate::flux::fluximport::FieldImp;

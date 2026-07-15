@@ -1,6 +1,6 @@
 //-- choretree.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::{
-    flux::{ IFluxExportSource, fluxexport::FieldExp },
+    flux::{ IFluxImportSource, IFluxExportSource, fluximport::FieldImp, fluxexport::FieldExp },
     stalks::{ IntoWorkPtr, BinNode, DynIWorker, IWork, INode, BinOp },
     silo::{ U16, Buff},
 };

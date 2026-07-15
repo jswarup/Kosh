@@ -2,6 +2,7 @@
 
 
 use	crate::shard::Parser;
+use	crate::flux::{ IFluxImportSource };
 use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
 use	crate::flux::fluximport::FieldImp;
 use	crate::shard::IGrammar;
@@ -25,9 +26,9 @@ impl< 'a> IFluxExportSource for StrShard< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl<'a> crate::flux::IFluxImportSource for StrShard<'a> {
-    fn FetchFieldImp<'b>(&'b mut self, field: &mut crate::flux::fluximport::FieldImp<'b>) {
-        crate::flux::IFluxImportSource::FetchFieldImp(&mut self._Val, field);
+impl<'a> IFluxImportSource for StrShard<'a> {
+    fn FetchFieldImp<'b>(&'b mut self, field: &mut FieldImp<'b>) {
+        IFluxImportSource::FetchFieldImp(&mut self._Val, field);
     }
 }
 
@@ -38,6 +39,6 @@ impl< 'a> IGrammar for StrShard< 'a>
 
     fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
     {
-        self._Val.Match( parser, crate::flux::fluximport::FieldImp::Null);
+        self._Val.Match( parser, FieldImp::Null);
     }
 }

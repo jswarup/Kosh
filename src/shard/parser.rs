@@ -1,8 +1,7 @@
 //-- parser.rs -------------------------------------------------------------------------------------------------------------------
 
-use	crate::flux::fluximport::FieldImp;
+use	crate::flux::{ IFluxImportSource, IFluxExportSource, fluximport::FieldImp };
 use	crate::flux::instream::IStream;
-use	crate::flux::IFluxExportSource;
 use crate::shard::Charset;
 use	crate::silo::{ U32, U8 };
 use	crate::stalks::{ IWorker, WorkPtr, INode };
@@ -146,7 +145,7 @@ impl<'p> Parser<'p>
             _IsMatched: false,
         };
         self._TopForge = &node as *const Forge;
-        grammar.Match( self, crate::flux::fluximport::FieldImp::Null);
+        grammar.Match( self, FieldImp::Null);
         self._TopForge = std::ptr::null();
         let  	matched = node.Result().is_some();
         matched
@@ -255,7 +254,7 @@ impl< 'a, 'r, T: IGrammar> IGrammar for &'r T
 {
     fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
     {
-        (**self).Match( parser, crate::flux::fluximport::FieldImp::Null);
+        (**self).Match( parser, FieldImp::Null);
     }
 }
 

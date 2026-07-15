@@ -50,19 +50,19 @@ macro_rules! ImplFluxExportSource
 {
     ( $struct_name:ident $( , $field:ident )* ) =>
     {
-        impl $crate::flux::IFluxExportSource for $struct_name
+        impl IFluxExportSource for $struct_name
         {
-            fn	FetchFieldExp< 'a>( &'a self, field: &mut $crate::flux::fluxexport::FieldExp< 'a>)
+            fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
             {
                 let  	mut step = 0u32;
                 let  	obj = self;
-                *field = $crate::flux::fluxexport::FieldExp::Obj( Box::new( move |key, item| {
+                *field = FieldExp::Obj( Box::new( move |key, item| {
                     #[allow( unused_variables, unused_assignments)]
                     let  	mut _curr_step = 0u32;
                     $(
                         if step == _curr_step {
                             *key = stringify!( $field).to_string();
-                            *item = $crate::flux::fluxexport::FieldExp::FluxSource( &obj.$field);
+                            *item = FieldExp::FluxSource( &obj.$field);
                             step += 1;
                             return true;
                         }

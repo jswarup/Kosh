@@ -1,11 +1,9 @@
 //-- repeatshard.rs -----------------------------------------------------------------------------------------------------------------
 
 use	std::fmt;
-
-use	crate::flux::fluximport::FieldImp;
 use	crate::shard::Parser;
 use	crate::{
-    flux::{ IFluxExportSource, fluxexport::FieldExp },
+    flux::{ IFluxImportSource, IFluxExportSource, fluximport::FieldImp, fluxexport::FieldExp },
     shard::{ IGrammar, IForge },
     silo::{ USeg, U32 },
     stalks::UniNode,
@@ -45,21 +43,21 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< C> crate::flux::IFluxImportSource for UniNode< C, USeg>
+impl< C> IFluxImportSource for UniNode< C, USeg>
 where
-    C: crate::flux::IFluxImportSource,
+    C: IFluxImportSource,
 {
-    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut crate::flux::fluximport::FieldImp< 'a>)
+    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
     {
         let ptr = self as *mut Self;
-        *field = crate::flux::fluximport::FieldImp::Obj( Box::new( move |key, item| {
+        *field = FieldImp::Obj( Box::new( move |key, item| {
             let obj = unsafe { &mut *ptr };
             if key == "Child" {
-                crate::flux::IFluxImportSource::FetchFieldImp(&mut obj._Child, item);
+                IFluxImportSource::FetchFieldImp(&mut obj._Child, item);
                 return true;
             }
             if key == "Repeat" {
-                crate::flux::IFluxImportSource::FetchFieldImp(&mut obj._Op, item);
+                IFluxImportSource::FetchFieldImp(&mut obj._Op, item);
                 return true;
             }
             false
@@ -84,11 +82,11 @@ fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
 
         while count < last {
             sink.Resolve();
-            let  	mut temp_sink = crate::flux::fluximport::FieldImp::Null;
+            let  	mut temp_sink = FieldImp::Null;
             std::mem::swap( &mut temp_sink, &mut sink);
             
-            let  	mut child_sink = crate::flux::fluximport::FieldImp::Null;
-            if let crate::flux::fluximport::FieldImp::Arr( ref mut closure) = temp_sink {
+            let  	mut child_sink = FieldImp::Null;
+            if let FieldImp::Arr( ref mut closure) = temp_sink {
                 closure( &mut child_sink);
             }
             std::mem::swap( &mut temp_sink, &mut sink);
