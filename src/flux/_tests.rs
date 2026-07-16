@@ -1,5 +1,8 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::{ flux::{ JsonOutStream, fluxexport::FieldExp, FixedStream, BuffStream, IStream, IFluxExportSource }, silo::{ U8, U32 } };
+use	crate::{ 
+    flux::{ JsonOutStream, fluxexport::FieldExp, FixedStream, BuffStream, IStream, IFluxExportSource, IFluxImportSource}, 
+    silo::{ U8, U32 } 
+};
 use	std::fs;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -10,7 +13,7 @@ struct Point
     _Y :f64,
 }
 
-crate::ImplFluxExportSource!( Point, _X, _Y);
+crate::ImplFluxSource!( Point, _X, _Y);
 
 #[test]
 fn	TestJsonOutStream()
@@ -71,15 +74,37 @@ fn	TestInStreamFromFile()
 #[test]
 fn	TestFluxSourceDisplayDebug()
 {
-    let  	pt = Point { _X: 10.0, _Y: 30.3 };
-    let  	source: &dyn IFluxExportSource = &pt;
+    let  	pt1 = Point { _X: 10.0, _Y: 30.3 };
+    let  	expSource: &dyn IFluxExportSource = &pt1;
 
-    let  	disp = format!( "{}", source);
-    let  	debug = format!( "{:?}", source);
+    let  	disp = format!( "{}", expSource);
+    let  	debug = format!( "{:?}", expSource);
 
     assert!( disp.contains( "\"_X\": 10"));
     assert!( disp.contains( "\"_Y\": 30.3"));
     assert!( debug.contains( "\n"));
+
+    let  	mut pt2 = Point { _X: 0., _Y: 0. };
+    {
+        use crate::flux::fluximport::FieldImp;
+        let  	mut field = FieldImp::Null;
+        pt2.FetchFieldImp( &mut field);
+        if let FieldImp::Obj( ref mut cb) = field {
+            let  	mut xField = FieldImp::Null;
+            assert!( cb( "_X", &mut xField));
+            xField.PostF64( 10.0);
+
+            let  	mut yField = FieldImp::Null;
+            assert!( cb( "_Y", &mut yField));
+            yField.PostF64( 30.3);
+
+            assert!( !cb( "_Z", &mut FieldImp::Null));
+        } else {
+            panic!( "Expected FieldImp::Obj");
+        }
+    }
+    assert_eq!( pt2._X, 10.0);
+    assert_eq!( pt2._Y, 30.3);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
