@@ -4,6 +4,7 @@ pub mod instream;
 pub mod jsonoutstrm;
 pub mod outstream;
 pub mod fluxexport;
+pub mod fluxbasics;
 
 pub use	instream::{IStream, FixedStream, BuffStream};
 pub use	jsonoutstrm::JsonOutStream;

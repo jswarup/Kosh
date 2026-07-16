@@ -1,7 +1,6 @@
 //-- charset.rs -------------------------------------------------------------------------------------------------------------------
 
 use	std::{ cmp, fmt, ops::{ BitAnd, BitAndAssign, BitOr, BitOrAssign, Not } };
-use	crate::flux::{ IFluxImportSource, fluximport::FieldImp };
 use	std::sync::LazyLock;
 use	crate::silo::{ Arr, Buff, U8, U32, U64 };
 use	crate::flux::{IFluxExportSource, FieldExp};

@@ -1,6 +1,4 @@
 //-- realexpr.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
-use	crate::flux::{ IFluxImportSource, fluximport::FieldImp };
 use	crate::fresco::exprrepos::BaseExpr;
 use	core::any::Any;
 
@@ -45,30 +43,4 @@ impl BaseExpr for RealExpr
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxExportSource for RealExpr
-{
-    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
-    {
-        let  	mut step = 0u32;
-        let  	expr = self;
-        *field = FieldExp::Obj( Box::new( move |key, item| {
-            if step == 0 {
-                *key = "Type".to_string();
-                *item = FieldExp::Str( "RealExpr");
-                step += 1;
-                true
-            } else if step == 1 {
-                *key = "Value".to_string();
-                *item = FieldExp::F64( expr._Value);
-                step += 1;
-                true
-            } else {
-                false
-            }
-        }));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-crate::ImplFluxImportSourceTyped!( RealExpr, "RealExpr", _Value);
+crate::ImplFluxSourceTyped!( RealExpr, "RealExpr", _Value);

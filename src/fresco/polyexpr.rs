@@ -1,8 +1,6 @@
 //-- polyexpr.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
-use	crate::flux::{ IFluxImportSource, fluximport::FieldImp };
 use	crate::fresco::exprrepos::BaseExpr;
-use	crate::silo::{ U32, U64, Buff };
+use	crate::silo::{ U32, Buff };
 use	core::any::Any;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -72,40 +70,4 @@ impl BaseExpr for PolyExpr
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxExportSource for PolyExpr
-{
-    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
-    {
-        let  	mut step = 0u32;
-        let  	poly = self;
-        *field = FieldExp::Obj( Box::new( move |key, item| {
-            if step == 0 {
-                *key = "CoSz".to_string();
-                *item = FieldExp::U64( U64::From( poly._CoSz.0 as u64));
-                step += 1;
-                true
-            } else if step == 1 {
-                *key = "Childs".to_string();
-                let  	mut iterStep = 0usize;
-                *item = FieldExp::Arr( Box::new( move |elem| {
-                    if iterStep < poly._Childs.len() {
-                        *elem = FieldExp::U64( U64::From( poly._Childs[iterStep].0 as u64));
-                        iterStep += 1;
-                        true
-                    } else {
-                        false
-                    }
-                }));
-                step += 1;
-                true
-            } else {
-                false
-            }
-        }));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-
-crate::ImplFluxImportSource!( PolyExpr, _CoSz, _Childs);
+crate::ImplFluxSource!( PolyExpr, _CoSz, _Childs);

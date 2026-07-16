@@ -39,12 +39,13 @@ fn	TestTermTreeHelper( ) -> impl ITermNode + IFluxExportSource
 fn	TestTermTree()
 {
     let  	q = TestTermTreeHelper();
-    
+
     let  	x = 'x';
     let  	y = 'y';
     let  	z = "z";
     let  	nodeTree = crate::TermTree!( q + x + y *( z + "a" +"b" +"x" +"d"));
 
+    let  	nodeTree = crate::TermTree!( q + x + y *( z + "a" +"b" +"x" +"d"));
     let  	mut output = String::new();
     {
         let  	mut jsonStream = JsonOutStream::New( &mut output, true);
