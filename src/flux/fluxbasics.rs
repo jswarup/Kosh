@@ -1,10 +1,11 @@
 //-- fluxbasics.rs -----------------------------------------------------------------------------------------------------------------------
 
 use crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
-use crate::flux::{ IFluxImportSource, fluximport::FieldImp };
+use crate::flux::{ IFluxImportSource, IFluxImportSink, fluximport::FieldImp };
 use crate::silo::{ U64, U32, U16, U8, USeg, Arr, Buff };
 
 //---------------------------------------------------------------------------------------------------------------------------------
+// Struct macros: generate IFluxExportSource and/or IFluxImportSource for named-field structs.
 
 #[macro_export]
 macro_rules! ImplFluxExportSource
@@ -73,6 +74,7 @@ macro_rules! ImplFluxSource
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+// Typed variant: adds a "Type" discriminator field for tagged structs.
 
 #[macro_export]
 macro_rules! ImplFluxSourceTyped
@@ -134,69 +136,117 @@ macro_rules! ImplFluxSourceTyped
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+// Primitive leaf types.
+// Types with a matching FieldExp/FieldImp variant (U64, f64) expose it directly by mutable ref.
+// Narrower types (U8/U16/U32, f32) widen on export and route import through FluxSink with a cast.
 
-#[macro_export]
-macro_rules! ImplFluxSourceUInt
+macro_rules! ImplFluxPrimitive
 {
-    ( $( $T:ty ),+ ) =>
+    // Direct U64: self.0 is u64, FieldImp::U64 holds &mut U64
+    ( $T:ty => U64 ) =>
     {
-        $(
-            impl $crate::flux::IFluxExportSource for $T
+        impl $crate::flux::IFluxExportSource for $T
+        {
+            fn	FetchFieldExp< 'a>( &'a self, field: &mut $crate::flux::FieldExp< 'a>)
             {
-                fn	FetchFieldExp< 'a>( &'a self, field: &mut $crate::flux::FieldExp< 'a>)
-                {
-                    *field = $crate::flux::FieldExp::U64( $crate::silo::U64::From( self.0 as u64));
-                }
+                *field = $crate::flux::FieldExp::U64( $crate::silo::U64::From( self.0 as u64));
             }
-
-            impl $crate::flux::IFluxImportSource for $T
+        }
+        impl $crate::flux::IFluxImportSource for $T
+        {
+            fn	FetchFieldImp< 'a>( &'a mut self, field: &mut $crate::flux::FieldImp< 'a>)
             {
-                fn	FetchFieldImp< 'a>( &'a mut self, field: &mut $crate::flux::FieldImp< 'a>)
-                {
-                    *field = $crate::flux::FieldImp::FluxSource( self);
-                }
+                *field = $crate::flux::FieldImp::U64( self);
             }
-        )+
+        }
+    };
+    // Narrow uint: widens to U64 for export, receives via IFluxImportSink on import
+    ( $T:ty => U64 via SINK ) =>
+    {
+        impl $crate::flux::IFluxExportSource for $T
+        {
+            fn	FetchFieldExp< 'a>( &'a self, field: &mut $crate::flux::FieldExp< 'a>)
+            {
+                *field = $crate::flux::FieldExp::U64( $crate::silo::U64::From( self.0 as u64));
+            }
+        }
+        impl $crate::flux::IFluxImportSink for $T
+        {
+            fn	FromFieldImp( &mut self, field: $crate::flux::FieldImp) -> bool
+            {
+                if let $crate::flux::FieldImp::U64( val) = field { self.0 = val.0 as _; return true; }
+                false
+            }
+        }
+        impl $crate::flux::IFluxImportSource for $T
+        {
+            fn	FetchFieldImp< 'a>( &'a mut self, field: &mut $crate::flux::FieldImp< 'a>)
+            {
+                *field = $crate::flux::FieldImp::FluxSink( self);
+            }
+        }
+    };
+    // Direct f64: self is f64, FieldImp::F64 holds &mut f64
+    ( $T:ty => F64 ) =>
+    {
+        impl $crate::flux::IFluxExportSource for $T
+        {
+            fn	FetchFieldExp< 'a>( &'a self, field: &mut $crate::flux::FieldExp< 'a>)
+            {
+                *field = $crate::flux::FieldExp::F64( *self as f64);
+            }
+        }
+        impl $crate::flux::IFluxImportSource for $T
+        {
+            fn	FetchFieldImp< 'a>( &'a mut self, field: &mut $crate::flux::FieldImp< 'a>)
+            {
+                *field = $crate::flux::FieldImp::F64( self);
+            }
+        }
+    };
+    // Narrow float: widens to f64 for export, receives via IFluxImportSink on import
+    ( $T:ty => F64 via SINK ) =>
+    {
+        impl $crate::flux::IFluxExportSource for $T
+        {
+            fn	FetchFieldExp< 'a>( &'a self, field: &mut $crate::flux::FieldExp< 'a>)
+            {
+                *field = $crate::flux::FieldExp::F64( *self as f64);
+            }
+        }
+        impl $crate::flux::IFluxImportSink for $T
+        {
+            fn	FromFieldImp( &mut self, field: $crate::flux::FieldImp) -> bool
+            {
+                if let $crate::flux::FieldImp::F64( val) = field { *self = *val as _; return true; }
+                false
+            }
+        }
+        impl $crate::flux::IFluxImportSource for $T
+        {
+            fn	FetchFieldImp< 'a>( &'a mut self, field: &mut $crate::flux::FieldImp< 'a>)
+            {
+                *field = $crate::flux::FieldImp::FluxSink( self);
+            }
+        }
     };
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
+ImplFluxPrimitive!( U64 => U64);
+ImplFluxPrimitive!( U32 => U64 via SINK);
+ImplFluxPrimitive!( U16 => U64 via SINK);
+ImplFluxPrimitive!( U8  => U64 via SINK);
+ImplFluxPrimitive!( f64 => F64);
+ImplFluxPrimitive!( f32 => F64 via SINK);
 
-#[macro_export]
-macro_rules! ImplFluxSourceFloat
+//---------------------------------------------------------------------------------------------------------------------------------
+// str / String
+
+impl IFluxExportSource for String
 {
-    ( $( $T:ty ),+ ) =>
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
     {
-        $(
-            impl $crate::flux::IFluxExportSource for $T
-            {
-                fn	FetchFieldExp< 'a>( &'a self, field: &mut $crate::flux::FieldExp< 'a>)
-                {
-                    *field = $crate::flux::FieldExp::F64( *self as f64);
-                }
-            }
-
-            impl $crate::flux::IFluxImportSource for $T
-            {
-                fn	FetchFieldImp< 'a>( &'a mut self, field: &mut $crate::flux::FieldImp< 'a>)
-                {
-                    *field = $crate::flux::FieldImp::FluxSource( self);
-                }
-            }
-        )+
-    };
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-ImplFluxSourceUInt!( U8, U16, U32, U64);
-ImplFluxSourceFloat!( f32, f64);
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IFluxExportSource for String {
-    fn FetchFieldExp<'a>(&'a self, field: &mut FieldExp<'a>) {
-        *field = FieldExp::Str(self.as_str());
+        *field = FieldExp::Str( self.as_str());
     }
 }
 
@@ -210,9 +260,11 @@ impl IFluxImportSource for String
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxExportSource for str {
-    fn FetchFieldExp<'a>(&'a self, field: &mut FieldExp<'a>) {
-        *field = FieldExp::Str(self);
+impl IFluxExportSource for str
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        *field = FieldExp::Str( self);
     }
 }
 
@@ -226,54 +278,14 @@ impl< 'b> IFluxImportSource for &'b str
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+// USeg: two-field struct, uses macro (keys: "_First", "_Last")
 
-impl IFluxExportSource for USeg
-{
-    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
-    {
-        let  	mut step = 0u32;
-        let  	uSeg = self;
-        *field = FieldExp::Obj( Box::new( move |key, item| {
-            if step == 0 {
-                *key = "First".to_string();
-                *item = FieldExp::FluxSource( &uSeg._First);
-                step += 1;
-                return true;
-            }
-            if step == 1 {
-                *key = "Last".to_string();
-                *item = FieldExp::FluxSource( &uSeg._Last);
-                step += 1;
-                return true;
-            }
-            false
-        }));
-    }
-}
-
-impl IFluxImportSource for USeg
-{
-    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
-    {
-        let  	ptr = self as *mut Self;
-        *field = FieldImp::Obj( Box::new( move |key, item| {
-            let  	obj = unsafe { &mut *ptr };
-            if key == "First" {
-                *item = FieldImp::FluxSource( &mut obj._First);
-                return true;
-            }
-            if key == "Last" {
-                *item = FieldImp::FluxSource( &mut obj._Last);
-                return true;
-            }
-            false
-        }));
-    }
-}
+crate::ImplFluxSource!( USeg, _First, _Last);
 
 //---------------------------------------------------------------------------------------------------------------------------------
+// Arr: fixed-size read-only slice wrapper
 
-impl<'a, T> IFluxExportSource for Arr<'a, T>
+impl< 'a, T> IFluxExportSource for Arr< 'a, T>
 where
     T: IFluxExportSource,
 {
@@ -294,7 +306,7 @@ where
     }
 }
 
-impl<'a, T> IFluxImportSource for Arr<'a, T>
+impl< 'a, T> IFluxImportSource for Arr< 'a, T>
 where
     T: IFluxImportSource,
 {
@@ -318,8 +330,9 @@ where
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+// Buff: growable heap array
 
-impl<T> IFluxExportSource for Buff<T>
+impl< T> IFluxExportSource for Buff< T>
 where
     T: IFluxExportSource,
 {
@@ -330,7 +343,7 @@ where
         *field = FieldExp::Arr( Box::new( move |item| {
             let  	buff = unsafe { &*ptr };
             if idx < buff._Ptr.len() {
-                let  	elem = unsafe { &*buff._Ptr.as_ptr().cast::<T>().add( idx) };
+                let  	elem = unsafe { &*buff._Ptr.as_ptr().cast::< T>().add( idx) };
                 *item = FieldExp::FluxSource( elem);
                 idx += 1;
                 true
@@ -341,7 +354,7 @@ where
     }
 }
 
-impl<T> IFluxImportSource for Buff<T>
+impl< T> IFluxImportSource for Buff< T>
 where
     T: IFluxImportSource + Default,
 {
@@ -354,7 +367,7 @@ where
             if idx >= buff._Ptr.len() {
                 buff.Push( T::default());
             }
-            let  	elem = unsafe { &mut *buff._Ptr.as_ptr().cast::<T>().add( idx) };
+            let  	elem = unsafe { &mut *buff._Ptr.as_ptr().cast::< T>().add( idx) };
             *item = FieldImp::FluxSource( elem);
             idx += 1;
             true
