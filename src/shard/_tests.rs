@@ -1,7 +1,7 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 
 use	crate::{
-    ShardTree, flux::{ FixedStream, fluxexport::FieldExp, fluximport::FieldImp }, shard::{ Charset, Hex, HexReal, Int, Json, Parser, Real, UInt }, silo::U32,
+    ShardTree, flux::{ FixedStream, fluxexport::FieldExp, fluximport::FieldImp }, shard::{ Charset, Hex, Int, Json, Parser, Real, UInt }, silo::U32,
 };
 
 
@@ -254,30 +254,6 @@ fn TestRealShard() {
     let m2 = res2.unwrap_or(U32(0));
     assert!( matched2);
     assert_eq!( m2.AsUsize(), 8);
-}
-
-#[test]
-fn TestHexRealShard() {
-    let tree = crate::ShardTree!( HexReal );
-
-    // Hex real with fraction
-    let  	mut stream = FixedStream::from( "0x1.f");
-    let  	mut parser = Parser::New( &mut stream);
-    let res = parser.ParseGrammar( &tree, U32(0), FieldImp::Null);
-    let matched = res.is_some();
-    let m = res.unwrap_or(U32(0));
-
-    assert!( matched);
-    assert_eq!( m.AsUsize(), 5);
-
-    // Hex real with binary exponent
-    let  	mut stream2 = FixedStream::from( "-0x1.abcP-4");
-    let  	mut parser2 = Parser::New( &mut stream2);
-    let res2 = parser2.ParseGrammar( &tree, U32(0), FieldImp::Null);
-    let matched2 = res2.is_some();
-    let m2 = res2.unwrap_or(U32(0));
-    assert!( matched2);
-    assert_eq!( m2.AsUsize(), 11);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

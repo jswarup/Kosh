@@ -29,7 +29,7 @@ pub trait IFluxImportSink
 
 impl< 'a> FieldImp< 'a>
 {
-    pub fn Resolve( &mut self)
+    pub fn	Resolve( &mut self)
     {
         let  	mut temp = FieldImp::Null;
         std::mem::swap( self, &mut temp);
@@ -37,6 +37,30 @@ impl< 'a> FieldImp< 'a>
             src.FetchFieldImp( self);
         } else {
             *self = temp;
+        }
+    }
+
+    pub fn	PostU64( mut self, val: U64)
+    {
+        self.Resolve();
+        if let      FieldImp::U64( dst) = self {
+            *dst = val;
+        } else if let      FieldImp::FluxSink( flx) = self {
+            let      mut temp = val;
+            flx.FromFieldImp( FieldImp::U64( &mut temp));
+        }
+    }
+
+    pub fn	PostF64( mut self, val: f64)
+    {
+        self.Resolve();
+        if let      FieldImp::F64( dst) = self {
+            *dst = val;
+        } else if let      FieldImp::U64( dst) = self {
+            *dst = U64( val as u64);
+        } else if let      FieldImp::FluxSink( flx) = self {
+            let      mut temp = val;
+            flx.FromFieldImp( FieldImp::F64( &mut temp));
         }
     }
 }
