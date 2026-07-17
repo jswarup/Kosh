@@ -24,6 +24,15 @@ macro_rules! ShardTree {
         $leaf
     };
 
+    ( @action_expr $child:expr, $work:expr ) => {
+        $crate::stalks::UniNode {
+            _Child: $child,
+            _Op: $crate::shard::actionshard::ActionOp {
+                _Action: $work,
+            },
+        }
+    };
+
     ( @action $child:expr, $p:ident, $( $body:tt )+ ) => {
         $crate::stalks::UniNode {
             _Child: $child,

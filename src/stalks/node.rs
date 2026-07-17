@@ -163,6 +163,20 @@ macro_rules! NodeTree {
         $crate::NodeTree!( @bin Bor,  $crate::$macro!( @action $crate::$macro!( @repeat $crate::$macro!( @leaf $l ), 1 ), $p, $( $body )+ ), $macro, $( $rest )+ )
     };
 
+    // Generic expression fallbacks for section 2
+    ( @parse $macro:ident, * $l:tt [ $work:expr ] < $( $rest:tt )+ ) => {
+        $crate::NodeTree!( @bin Less, $crate::$macro!( @action_expr $crate::$macro!( @repeat $crate::$macro!( @leaf $l ), 0 ), $work ), $macro, $( $rest )+ )
+    };
+    ( @parse $macro:ident, * $l:tt [ $work:expr ] | $( $rest:tt )+ ) => {
+        $crate::NodeTree!( @bin Bor,  $crate::$macro!( @action_expr $crate::$macro!( @repeat $crate::$macro!( @leaf $l ), 0 ), $work ), $macro, $( $rest )+ )
+    };
+    ( @parse $macro:ident, + $l:tt [ $work:expr ] < $( $rest:tt )+ ) => {
+        $crate::NodeTree!( @bin Less, $crate::$macro!( @action_expr $crate::$macro!( @repeat $crate::$macro!( @leaf $l ), 1 ), $work ), $macro, $( $rest )+ )
+    };
+    ( @parse $macro:ident, + $l:tt [ $work:expr ] | $( $rest:tt )+ ) => {
+        $crate::NodeTree!( @bin Bor,  $crate::$macro!( @action_expr $crate::$macro!( @repeat $crate::$macro!( @leaf $l ), 1 ), $work ), $macro, $( $rest )+ )
+    };
+
     // 3. Repeat with action (no operators)
     ( @parse $macro:ident, * $l:tt [ | $p:ident | $( $body:tt )+ ] ) => {
         $crate::$macro!( @action $crate::$macro!( @repeat $crate::$macro!( @leaf $l ), 0 ), $p, $( $body )+ )
@@ -171,17 +185,12 @@ macro_rules! NodeTree {
         $crate::$macro!( @action $crate::$macro!( @repeat $crate::$macro!( @leaf $l ), 1 ), $p, $( $body )+ )
     };
 
-    // 4. Action with operators
-    ( @parse $macro:ident, $l:tt [ | $p:ident | $( $body:tt )+ ] < $( $rest:tt )+ ) => {
-        $crate::NodeTree!( @bin Less, $crate::$macro!( @action $crate::$macro!( @leaf $l ), $p, $( $body )+ ), $macro, $( $rest )+ )
+    // Generic expression fallbacks for section 3
+    ( @parse $macro:ident, * $l:tt [ $work:expr ] ) => {
+        $crate::$macro!( @action_expr $crate::$macro!( @repeat $crate::$macro!( @leaf $l ), 0 ), $work )
     };
-    ( @parse $macro:ident, $l:tt [ | $p:ident | $( $body:tt )+ ] | $( $rest:tt )+ ) => {
-        $crate::NodeTree!( @bin Bor,  $crate::$macro!( @action $crate::$macro!( @leaf $l ), $p, $( $body )+ ), $macro, $( $rest )+ )
-    };
-
-    // 5. Action base case
-    ( @parse $macro:ident, $l:tt [ | $p:ident | $( $body:tt )+ ] ) => {
-        $crate::$macro!( @action $crate::$macro!( @leaf $l ), $p, $( $body )+ )
+    ( @parse $macro:ident, + $l:tt [ $work:expr ] ) => {
+        $crate::$macro!( @action_expr $crate::$macro!( @repeat $crate::$macro!( @leaf $l ), 1 ), $work )
     };
 
     // 6. Repeat with operators
@@ -204,6 +213,32 @@ macro_rules! NodeTree {
     };
     ( @parse $macro:ident, + $l:tt ) => {
         $crate::$macro!( @repeat $crate::$macro!( @leaf $l ), 1 )
+    };
+
+    // 4. Action with operators
+    ( @parse $macro:ident, $l:tt [ | $p:ident | $( $body:tt )+ ] < $( $rest:tt )+ ) => {
+        $crate::NodeTree!( @bin Less, $crate::$macro!( @action $crate::$macro!( @leaf $l ), $p, $( $body )+ ), $macro, $( $rest )+ )
+    };
+    ( @parse $macro:ident, $l:tt [ | $p:ident | $( $body:tt )+ ] | $( $rest:tt )+ ) => {
+        $crate::NodeTree!( @bin Bor,  $crate::$macro!( @action $crate::$macro!( @leaf $l ), $p, $( $body )+ ), $macro, $( $rest )+ )
+    };
+
+    // Generic expression fallbacks for section 4
+    ( @parse $macro:ident, $l:tt [ $work:expr ] < $( $rest:tt )+ ) => {
+        $crate::NodeTree!( @bin Less, $crate::$macro!( @action_expr $crate::$macro!( @leaf $l ), $work ), $macro, $( $rest )+ )
+    };
+    ( @parse $macro:ident, $l:tt [ $work:expr ] | $( $rest:tt )+ ) => {
+        $crate::NodeTree!( @bin Bor,  $crate::$macro!( @action_expr $crate::$macro!( @leaf $l ), $work ), $macro, $( $rest )+ )
+    };
+
+    // 5. Action base case
+    ( @parse $macro:ident, $l:tt [ | $p:ident | $( $body:tt )+ ] ) => {
+        $crate::$macro!( @action $crate::$macro!( @leaf $l ), $p, $( $body )+ )
+    };
+
+    // Generic expression fallback for section 5
+    ( @parse $macro:ident, $l:tt [ $work:expr ] ) => {
+        $crate::$macro!( @action_expr $crate::$macro!( @leaf $l ), $work )
     };
 
     // 8. Infix operators with remainder
