@@ -89,14 +89,14 @@ impl IGrammar for UIntShard
 {
     fn    Match( &self, parser: &mut Parser, sink: FieldImp< '_>)
     {
-        let      origMark = parser.CurrentMark();
+        let      origMark = parser.CurrMark();
         let      ( m, matched) = MatchDecDigits( parser, origMark);
-        if !matched { parser.Forge().Deposit( None); return; }
+        if !matched { parser.Deposit( None); return; }
         let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
         if let      Ok( s) = std::str::from_utf8( bytes) {
             if let      Ok( val) = s.parse::<u64>() { sink.PostU64( U64( val)); }
         }
-        parser.Forge().Deposit( Some( m));
+        parser.Deposit( Some( m));
     }
 }
 
@@ -110,10 +110,10 @@ impl IGrammar for IntShard
 {
     fn    Match( &self, parser: &mut Parser, sink: FieldImp< '_>)
     {
-        let      origMark = parser.CurrentMark();
+        let      origMark = parser.CurrMark();
         let      mSign = MatchSign( parser, origMark);
         let      ( m, matched) = MatchDecDigits( parser, mSign);
-        if !matched { parser.Forge().Deposit( None); return; }
+        if !matched { parser.Deposit( None); return; }
         let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
         if let      Ok( s) = std::str::from_utf8( bytes) {
             let      sTrim = s.trim_start_matches( '+');
@@ -123,7 +123,7 @@ impl IGrammar for IntShard
                 sink.PostU64( U64( if sign == -1 { ( -( val as i64)) as u64 } else { val }));
             }
         }
-        parser.Forge().Deposit( Some( m));
+        parser.Deposit( Some( m));
     }
 }
 
@@ -137,12 +137,12 @@ impl IGrammar for HexShard
 {
     fn    Match( &self, parser: &mut Parser, sink: FieldImp< '_>)
     {
-        let      origMark = parser.CurrentMark();
+        let      origMark = parser.CurrMark();
         let      m = MatchSign( parser, origMark);
         // Advance past optional 0x/0X prefix
         let      mDigits = MatchHexPrefix( parser, m).unwrap_or( m);
         let      ( m, matched) = MatchHexDigits( parser, mDigits);
-        if !matched { parser.Forge().Deposit( None); return; }
+        if !matched { parser.Deposit( None); return; }
         let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
         if let      Ok( s) = std::str::from_utf8( bytes) {
             let      sign = if s.starts_with( '-') { -1i64 } else { 1i64 };
@@ -152,7 +152,7 @@ impl IGrammar for HexShard
                 sink.PostU64( U64( if sign == -1 { ( -( val as i64)) as u64 } else { val }));
             }
         }
-        parser.Forge().Deposit( Some( m));
+        parser.Deposit( Some( m));
     }
 }
 
@@ -166,7 +166,7 @@ impl IGrammar for RealShard
 {
     fn    Match( &self, parser: &mut Parser, sink: FieldImp< '_>)
     {
-        let      origMark = parser.CurrentMark();
+        let      origMark = parser.CurrMark();
         let      mut m = MatchSign( parser, origMark);
         let      mut matchedDigits = false;
         let      ( nextM, d) = MatchDecDigits( parser, m);
@@ -178,7 +178,7 @@ impl IGrammar for RealShard
                 if d { m = nextM; matchedDigits = true; }
             }
         }
-        if !matchedDigits { parser.Forge().Deposit( None); return; }
+        if !matchedDigits { parser.Deposit( None); return; }
         // Optional exponent
         let      curr = parser.GetAt( m);
         if curr == U8( b'e') || curr == U8( b'E') {
@@ -189,7 +189,7 @@ impl IGrammar for RealShard
                     if let      Some( nextM) = parser.Incr( m) { m = nextM; }
                 }
                 let      ( nextM, matched) = MatchDecDigits( parser, m);
-                if !matched { parser.Forge().Deposit( None); return; }
+                if !matched { parser.Deposit( None); return; }
                 m = nextM;
             }
         }
@@ -197,7 +197,7 @@ impl IGrammar for RealShard
         if let      Ok( s) = std::str::from_utf8( bytes) {
             if let      Ok( val) = s.parse::<f64>() { sink.PostF64( val); }
         }
-        parser.Forge().Deposit( Some( m));
+        parser.Deposit( Some( m));
     }
 }
 

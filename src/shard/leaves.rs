@@ -60,13 +60,13 @@ impl IGrammar for Charset
 {
     fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
     {
-        let  	mark = parser.Forge().Mark();
+        let  	mark = parser.CurrMark();
         let  	curr = parser.GetAt( mark);
         if self.Get( curr.0) {
             let  	res = Some( mark + U32( 1));
-            parser.Forge().Deposit( res);
+            parser.Deposit( res);
         } else {
-            parser.Forge().Deposit( None);
+            parser.Deposit( None);
         }
     }
 }
@@ -83,13 +83,13 @@ impl IGrammar for char
 {
     fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
     {
-        let  	mark = parser.Forge().Mark();
+        let  	mark = parser.CurrMark();
         let  	curr = parser.GetAt( mark);
         if curr == U8( *self as u8) {
             let  	res = Some( mark + U32( 1));
-            parser.Forge().Deposit( res);
+            parser.Deposit( res);
         } else {
-            parser.Forge().Deposit( None);
+            parser.Deposit( None);
         }
     }
 }
@@ -100,7 +100,7 @@ impl IGrammar for str
 {
     fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
     {
-        let  	mark = parser.Forge().Mark();
+        let  	mark = parser.CurrMark();
         let  	key = self.as_bytes();
         let  	mut currentMark = mark;
 
@@ -108,18 +108,18 @@ impl IGrammar for str
             let  	stream = parser.InStream();
             let  	curr = stream.At( currentMark);
             if curr.0 != b {
-                parser.Forge().Deposit( None);
+                parser.Deposit( None);
                 return;
             }
             if let  	Some( next) = parser.Incr( currentMark) {
                 currentMark = next;
             } else {
-                parser.Forge().Deposit( None);
+                parser.Deposit( None);
                 return;
             }
         }
 
-        parser.Forge().Deposit( Some( currentMark));
+        parser.Deposit( Some( currentMark));
     }
 }
 
@@ -153,11 +153,11 @@ impl IGrammar for Str
 {
     fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
     {
-        let  	mark = parser.Forge().Mark();
+        let  	mark = parser.CurrMark();
         let  	mut m = mark;
         let  	curr = parser.GetAt( m);
         if curr != U8( b'"') {
-            parser.Forge().Deposit( None);
+            parser.Deposit( None);
             return;
         }
 
@@ -167,7 +167,7 @@ impl IGrammar for Str
             loop {
                 let  	c = parser.GetAt( m);
                 if c == U8( 0) && m >= parser.InStream().Size() {
-                    parser.Forge().Deposit( None);
+                    parser.Deposit( None);
                     return;
                 }
 
@@ -191,10 +191,10 @@ impl IGrammar for Str
                                 }
                             }
                         }
-                        parser.Forge().Deposit( Some( nxt));
+                        parser.Deposit( Some( nxt));
                         return;
                     } else {
-                        parser.Forge().Deposit( None);
+                        parser.Deposit( None);
                         return;
                     }
                 }
@@ -202,12 +202,12 @@ impl IGrammar for Str
                 if let  	Some( nxt) = parser.Incr( m) {
                     m = nxt;
                 } else {
-                    parser.Forge().Deposit( None);
+                    parser.Deposit( None);
                     return;
                 }
             }
         }
-        parser.Forge().Deposit( None);
+        parser.Deposit( None);
     }
 }
 

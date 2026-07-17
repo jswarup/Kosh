@@ -22,17 +22,17 @@ fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
     {
         match self._Op {
             BinOp::Bor => {
-                let  	m1 = parser.Forge().Mark();
+                let  	m1 = parser.CurrMark();
                 let  	leftRes = parser.ParseGrammar( &self._Left, m1, FieldImp::Null);
                 if leftRes.is_some() {
                     return;
                 }
-                
-                let  	m2 = parser.Forge().Mark();
+
+                let  	m2 = parser.CurrMark();
                 parser.ParseGrammar( &self._Right, m2, FieldImp::Null);
             }
             BinOp::Less => {
-                let  	m1 = parser.Forge().Mark();
+                let  	m1 = parser.CurrMark();
                 let  	leftRes = parser.ParseGrammar( &self._Left, m1, FieldImp::Null);
                 if let Some( newM) = leftRes {
                     parser.ParseGrammar( &self._Right, newM, FieldImp::Null);

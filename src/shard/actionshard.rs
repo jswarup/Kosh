@@ -94,9 +94,9 @@ where
 {
     fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
     {
-        let  	m = parser.Forge().Mark();
+        let  	m = parser.CurrMark();
         let  	res = parser.ParseGrammar( &self._Child, m, FieldImp::Null);
-        
+
         if res.is_some() {
             let  	actionPtr = &self._Op._Action as &DynIWork< 'static> as *const DynIWork< 'static>;
             let  	actionMut = actionPtr.MutRef();

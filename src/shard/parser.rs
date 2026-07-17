@@ -144,7 +144,7 @@ impl<'p> Parser<'p>
     }
 
     /// Compactly get the current mark from the top forge.
-    pub fn	CurrentMark( &self) -> U32
+    pub fn	CurrMark( &self) -> U32
     {
         self.Forge().Mark()
     }

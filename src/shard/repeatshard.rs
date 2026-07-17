@@ -77,14 +77,14 @@ fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
         let  	mut count = U32( 0);
         let  	first = self._Op.First();
         let  	last = if self._Op.IsEmpty() { U32::_X } else { self._Op.Last() };
-        
-        let  	mut m = parser.Forge().Mark();
+
+        let  	mut m = parser.CurrMark();
 
         while count < last {
             sink.Resolve();
             let  	mut temp_sink = FieldImp::Null;
             std::mem::swap( &mut temp_sink, &mut sink);
-            
+
             let  	mut child_sink = FieldImp::Null;
             if let FieldImp::Arr( ref mut closure) = temp_sink {
                 closure( &mut child_sink);
@@ -103,12 +103,12 @@ fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
                 break;
             }
         }
-        
+
         if count >= first {
             let  	res = Some( m);
-            parser.Forge().Deposit( res);
+            parser.Deposit( res);
         } else {
-            parser.Forge().Deposit( None);
+            parser.Deposit( None);
         }
     }
 }

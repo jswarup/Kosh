@@ -29,13 +29,13 @@ impl IGrammar for JsonShard
 {
     fn	Match( &self, parser: &mut Parser, sink: FieldImp< '_>)
     {
-        let  	mark = parser.Forge().Mark();
+        let  	mark = parser.CurrMark();
         let  	res = JsonShard::MatchValue( parser, mark, sink);
         if let Some( newM) = res {
             let  	nextM = JsonShard::SkipWhitespace( parser, newM);
-            parser.Forge().Deposit( Some( nextM));
+            parser.Deposit( Some( nextM));
         } else {
-            parser.Forge().Deposit( None);
+            parser.Deposit( None);
         }
     }
 }
@@ -73,7 +73,7 @@ impl JsonShard
         if curr != U8( b'"') {
             return ( false, marker);
         }
-        
+
         if let  	Some( next) = parser.Incr( m) {
             m = next;
             let  	mut escape = false;
@@ -108,7 +108,7 @@ impl JsonShard
                         return ( false, marker);
                     }
                 }
-                
+
                 if let  	Some( nxt) = parser.Incr( m) {
                     m = nxt;
                 } else {
@@ -159,9 +159,9 @@ impl JsonShard
         if let Some( newM) = parser.ParseGrammar( &WSpc(), m, FieldImp::Null) {
             m = newM;
         }
-        
+
         let  	curr = parser.GetAt( m);
-        
+
         if curr == U8( b'{') {
             return Self::MatchObject( parser, m, sink);
         } else if curr == U8( b'[') {
@@ -188,7 +188,7 @@ impl JsonShard
             }
             return None;
         }
-        
+
         None
     }
 
@@ -202,18 +202,18 @@ impl JsonShard
         m = if let  	Some( nxt) = parser.Incr( m) { nxt } else {
             return None;
         };
-        
+
         m = Self::SkipWhitespace( parser, m);
         if parser.GetAt( m) == U8( b']') {
             return parser.Incr( m);
         }
-        
+
         loop {
-            
+
             sink.Resolve();
             let  	mut temp_sink = FieldImp::Null;
             std::mem::swap( &mut temp_sink, &mut sink);
-            
+
             let  	mut child_sink = FieldImp::Null;
             if let FieldImp::Arr( ref mut closure) = temp_sink {
                 closure( &mut child_sink);
@@ -225,7 +225,7 @@ impl JsonShard
             } else {
                 return None;
             }
-            
+
             m = Self::SkipWhitespace( parser, m);
             let  	curr = parser.GetAt( m);
             if curr == U8( b',') {
@@ -250,12 +250,12 @@ impl JsonShard
         m = if let  	Some( nxt) = parser.Incr( m) { nxt } else {
             return None;
         };
-        
+
         m = Self::SkipWhitespace( parser, m);
         if parser.GetAt( m) == U8( b'}') {
             return parser.Incr( m);
         }
-        
+
         loop {
             m = Self::SkipWhitespace( parser, m);
             let  	key_start = m + crate::silo::U32( 1);
@@ -266,19 +266,19 @@ impl JsonShard
             let  	key_end = nextM - crate::silo::U32( 1);
             m = nextM;
             m = Self::SkipWhitespace( parser, m);
-            
+
             if parser.GetAt( m) != U8( b':') {
                 return None;
             }
             m = if let  	Some( nxt) = parser.Incr( m) { nxt } else {
                 return None;
             };
-            
-            
+
+
             sink.Resolve();
             let  	mut temp_sink = FieldImp::Null;
             std::mem::swap( &mut temp_sink, &mut sink);
-            
+
             let  	mut child_sink = FieldImp::Null;
             if let FieldImp::Obj( ref mut closure) = temp_sink {
                 let  	bytes = parser.InStream().BytesAt( key_start, key_end - key_start);
@@ -294,7 +294,7 @@ impl JsonShard
                 return None;
             }
             m = Self::SkipWhitespace( parser, m);
-            
+
             let  	curr = parser.GetAt( m);
             if curr == U8( b',') {
                 m = if let  	Some( nxt) = parser.Incr( m) { nxt } else {

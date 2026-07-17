@@ -1,7 +1,7 @@
 //-- fluxbasics.rs -----------------------------------------------------------------------------------------------------------------------
 
 use crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
-use crate::flux::{ IFluxImportSource, IFluxImportSink, fluximport::FieldImp };
+use crate::flux::{ IFluxImportSource, fluximport::FieldImp };
 use crate::silo::{ U64, U32, U16, U8, USeg, Arr, Buff };
 
 //---------------------------------------------------------------------------------------------------------------------------------

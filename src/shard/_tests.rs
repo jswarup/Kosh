@@ -1,7 +1,10 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 
 use	crate::{
-    ShardTree, flux::{ FixedStream, fluxexport::FieldExp, fluximport::FieldImp }, shard::{ Charset, Hex, Int, Json, Parser, Real, UInt }, silo::U32,
+    ShardTree, 
+    flux::{ FixedStream, IFluxImportSource, fluxexport::FieldExp, fluximport::FieldImp }, 
+    shard::{ Charset, Hex, Int, Json, Parser, Real, UInt, WSpc }, 
+    silo::{ U32, U64},
 };
 
 
@@ -293,13 +296,10 @@ fn TestJsonShard() {
 //---------------------------------------------------------------------------------------------------------------------------------
 
 
-//---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
 fn	TestJsonParsingStruct()
 {
-    use crate::flux::fluximport::{ FieldImp, IFluxImportSource };
-    use crate::silo::U64;
 
     #[derive( Default, Debug, PartialEq)]
     struct Person {
@@ -408,3 +408,4 @@ fn	TestStrGrammar()
 	assert_eq!( captured5, "");
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
