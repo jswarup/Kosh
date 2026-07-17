@@ -87,15 +87,12 @@ ImplNumberShard!( UIntShard, UInt, "UInt");
 
 impl IGrammar for UIntShard
 {
-    fn    Match( &self, parser: &mut Parser, sink: FieldImp< '_>)
+    fn    Match( &self, parser: &mut Parser)
     {
         let      origMark = parser.CurrMark();
         let      ( m, matched) = MatchDecDigits( parser, origMark);
         if !matched { parser.Deposit( None); return; }
-        let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
-        if let      Ok( s) = std::str::from_utf8( bytes) {
-            if let      Ok( val) = s.parse::<u64>() { sink.PostU64( U64( val)); }
-        }
+        let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0)); 
         parser.Deposit( Some( m));
     }
 }
@@ -108,21 +105,15 @@ ImplNumberShard!( IntShard, Int, "Int");
 
 impl IGrammar for IntShard
 {
-    fn    Match( &self, parser: &mut Parser, sink: FieldImp< '_>)
+    fn    Match( &self, parser: &mut Parser)
     {
         let      origMark = parser.CurrMark();
         let      mSign = MatchSign( parser, origMark);
         let      ( m, matched) = MatchDecDigits( parser, mSign);
-        if !matched { parser.Deposit( None); return; }
-        let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
-        if let      Ok( s) = std::str::from_utf8( bytes) {
-            let      sTrim = s.trim_start_matches( '+');
-            let      sign = if sTrim.starts_with( '-') { -1i64 } else { 1i64 };
-            let      sNum = sTrim.trim_start_matches( '-');
-            if let      Ok( val) = sNum.parse::<u64>() {
-                sink.PostU64( U64( if sign == -1 { ( -( val as i64)) as u64 } else { val }));
-            }
-        }
+        if !matched { 
+            parser.Deposit( None); 
+            return; 
+        } 
         parser.Deposit( Some( m));
     }
 }
@@ -135,23 +126,17 @@ ImplNumberShard!( HexShard, Hex, "Hex");
 
 impl IGrammar for HexShard
 {
-    fn    Match( &self, parser: &mut Parser, sink: FieldImp< '_>)
+    fn    Match( &self, parser: &mut Parser)
     {
         let      origMark = parser.CurrMark();
         let      m = MatchSign( parser, origMark);
         // Advance past optional 0x/0X prefix
         let      mDigits = MatchHexPrefix( parser, m).unwrap_or( m);
         let      ( m, matched) = MatchHexDigits( parser, mDigits);
-        if !matched { parser.Deposit( None); return; }
-        let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
-        if let      Ok( s) = std::str::from_utf8( bytes) {
-            let      sign = if s.starts_with( '-') { -1i64 } else { 1i64 };
-            let      mut sTrim = s.trim_start_matches( |c| c == '+' || c == '-');
-            if sTrim.starts_with( "0x") || sTrim.starts_with( "0X") { sTrim = &sTrim[2..]; }
-            if let      Ok( val) = u64::from_str_radix( sTrim, 16) {
-                sink.PostU64( U64( if sign == -1 { ( -( val as i64)) as u64 } else { val }));
-            }
-        }
+        if !matched { 
+            parser.Deposit( None); 
+            return; 
+        } 
         parser.Deposit( Some( m));
     }
 }
@@ -164,7 +149,7 @@ ImplNumberShard!( RealShard, Real, "Real");
 
 impl IGrammar for RealShard
 {
-    fn    Match( &self, parser: &mut Parser, sink: FieldImp< '_>)
+    fn    Match( &self, parser: &mut Parser)
     {
         let      origMark = parser.CurrMark();
         let      mut m = MatchSign( parser, origMark);
@@ -192,11 +177,7 @@ impl IGrammar for RealShard
                 if !matched { parser.Deposit( None); return; }
                 m = nextM;
             }
-        }
-        let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0));
-        if let      Ok( s) = std::str::from_utf8( bytes) {
-            if let      Ok( val) = s.parse::<f64>() { sink.PostF64( val); }
-        }
+        } 
         parser.Deposit( Some( m));
     }
 }

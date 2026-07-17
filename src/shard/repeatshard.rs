@@ -72,7 +72,7 @@ where
     C: IGrammar,
 {
 
-fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
+fn	Match( &self, parser: &mut Parser)
     {
         let  	mut count = U32( 0);
         let  	first = self._Op.First();
@@ -80,18 +80,9 @@ fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
 
         let  	mut m = parser.CurrMark();
 
-        while count < last {
-            sink.Resolve();
-            let  	mut temp_sink = FieldImp::Null;
-            std::mem::swap( &mut temp_sink, &mut sink);
+        while count < last { 
 
-            let  	mut child_sink = FieldImp::Null;
-            if let FieldImp::Arr( ref mut closure) = temp_sink {
-                closure( &mut child_sink);
-            }
-            std::mem::swap( &mut temp_sink, &mut sink);
-
-            let  	res = parser.ParseGrammar( &self._Child, m, child_sink);
+            let  	res = parser.ParseGrammar( &self._Child, m);
             if let Some( newM) = res {
                 if newM == m {
                     count += U32( 1);

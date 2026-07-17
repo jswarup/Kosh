@@ -65,7 +65,7 @@ unsafe impl Sync for Forge {}
 
 pub trait IGrammar: INode
 {
-    fn	Match( &self, parser: &mut Parser, sink: FieldImp< '_>);
+    fn	Match( &self, parser: &mut Parser);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -115,7 +115,7 @@ impl<'p> Parser<'p>
     }
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ParseGrammar( &mut self, grammar: &( impl IGrammar + ?Sized), mark: U32, sink: FieldImp< '_>) -> Option< U32>
+    pub fn	ParseGrammar( &mut self, grammar: &( impl IGrammar + ?Sized), mark: U32) -> Option< U32>
     {
         let  	node = Forge {
             prev: self._TopForge,
@@ -124,7 +124,7 @@ impl<'p> Parser<'p>
         };
         let  	prevTop = self._TopForge;
         self._TopForge = &node as *const Forge;
-        grammar.Match( self, sink);
+        grammar.Match( self);
         self._TopForge = prevTop;
         let  	res = node.Result();
         if !prevTop.is_null() {

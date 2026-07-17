@@ -92,10 +92,10 @@ where
     C: IGrammar,
     W: crate::stalks::work::IWork + 'static,
 {
-    fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
+    fn	Match( &self, parser: &mut Parser)
     {
         let  	m = parser.CurrMark();
-        let  	res = parser.ParseGrammar( &self._Child, m, FieldImp::Null);
+        let  	res = parser.ParseGrammar( &self._Child, m);
 
         if res.is_some() {
             let  	actionPtr = &self._Op._Action as &DynIWork< 'static> as *const DynIWork< 'static>;

@@ -38,9 +38,9 @@ impl<'a> IFluxImportSource for StrShard<'a> {
 impl< 'a> IGrammar for StrShard< 'a>
 {
 
-    fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
+    fn	Match( &self, parser: &mut Parser)
     {
-        self._Val.Match( parser, FieldImp::Null);
+        self._Val.Match( parser);
     }
 }
 
@@ -48,9 +48,9 @@ impl< 'a> IGrammar for StrShard< 'a>
 
 impl< 'a, 'r, T: IGrammar + ?Sized> IGrammar for &'r T
 {
-    fn	Match( &self, parser: &mut Parser, sink: FieldImp< '_>)
+    fn	Match( &self, parser: &mut Parser)
     {
-        (**self).Match( parser, sink);
+        (**self).Match( parser);
     }
 }
 
@@ -58,7 +58,7 @@ impl< 'a, 'r, T: IGrammar + ?Sized> IGrammar for &'r T
 
 impl IGrammar for Charset
 {
-    fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
+    fn	Match( &self, parser: &mut Parser)
     {
         let  	mark = parser.CurrMark();
         let  	curr = parser.GetAt( mark);
@@ -81,7 +81,7 @@ impl IFluxExportSource for char
 
 impl IGrammar for char
 {
-    fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
+    fn	Match( &self, parser: &mut Parser)
     {
         let  	mark = parser.CurrMark();
         let  	curr = parser.GetAt( mark);
@@ -98,7 +98,7 @@ impl IGrammar for char
 
 impl IGrammar for str
 {
-    fn	Match( &self, parser: &mut Parser, _sink: FieldImp< '_>)
+    fn	Match( &self, parser: &mut Parser)
     {
         let  	mark = parser.CurrMark();
         let  	key = self.as_bytes();
@@ -151,7 +151,7 @@ impl IFluxImportSource for Str {
 
 impl IGrammar for Str
 {
-    fn	Match( &self, parser: &mut Parser, mut sink: FieldImp< '_>)
+    fn	Match( &self, parser: &mut Parser)
     {
         let  	mark = parser.CurrMark();
         let  	mut m = mark;
@@ -176,21 +176,7 @@ impl IGrammar for Str
                 } else if c == U8( b'\\') {
                     escape = true;
                 } else if c == U8( b'"') {
-                    if let  	Some( nxt) = parser.Incr( m) {
-                        sink.Resolve();
-                        if matches!( sink, FieldImp::String( _) | FieldImp::Str( _) | FieldImp::FluxSink( _) | FieldImp::ExpectedType( _)) {
-                            let  	bytes = parser.InStream().BytesAt( mark + crate::silo::U32( 1), m - mark - crate::silo::U32( 1));
-                            if let  	Ok( s) = std::str::from_utf8( bytes) {
-                                if let  	FieldImp::String( dst) = sink {
-                                    *dst = s.to_string();
-                                } else if let  	FieldImp::FluxSink( flx) = sink {
-                                    let  	mut temp = s.to_string();
-                                    flx.FromFieldImp( FieldImp::String( &mut temp));
-                                } else if let  	FieldImp::ExpectedType( exp) = sink {
-                                    assert_eq!( s, exp, "Type mismatch during import. Expected '{}', got '{}'", exp, s);
-                                }
-                            }
-                        }
+                    if let  	Some( nxt) = parser.Incr( m) { 
                         parser.Deposit( Some( nxt));
                         return;
                     } else {
