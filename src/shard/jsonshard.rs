@@ -30,8 +30,7 @@ impl IGrammar for JsonShard
 {
     fn	Match( &self, parser: &mut Parser)
     {
-        let  	mark = parser.CurrMark();
-        let  	res = JsonShard::MatchValue( parser, mark);
+        let  	res = JsonShard::MatchValue( parser);
         if let Some( newM) = res {
             let  	nextM = JsonShard::SkipWhitespace( parser, newM);
             parser.Deposit( Some( nextM));
@@ -126,18 +125,20 @@ impl JsonShard
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchValue<'a>( parser: &mut Parser, mut m: U32) -> Option< U32>
+    fn	MatchValue<'a>( parser: &mut Parser) -> Option< U32>
     {
+        let mut m = parser.CurrMark();
         if let Some( newM) = parser.ParseGrammar( &WSpc(), m) {
             m = newM;
+            parser.Deposit(Some(m));
         }
 
         let  	curr = parser.GetAt( m);
 
         if curr == U8( b'{') {
-            return Self::MatchObject( parser, m);
+            return Self::MatchObject( parser);
         } else if curr == U8( b'[') {
-            return Self::MatchArray( parser, m);
+            return Self::MatchArray( parser);
         } else if curr == U8( b'"') {
             let ( matched, nextM) = Self::MatchString( parser, m);
             if matched { return Some( nextM); }
@@ -166,8 +167,9 @@ impl JsonShard
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchArray<'a>( parser: &mut Parser, mut m: U32) -> Option< U32>
+    fn	MatchArray<'a>( parser: &mut Parser) -> Option< U32>
     {
+        let mut m = parser.CurrMark();
         if parser.GetAt( m) != U8( b'[') {
             return None;
         }
@@ -181,7 +183,8 @@ impl JsonShard
         }
 
         loop { 
-            if let Some( nxt) = Self::MatchValue( parser, m) {
+            parser.Deposit(Some(m));
+            if let Some( nxt) = Self::MatchValue( parser) {
                 m = nxt;
             } else {
                 return None;
@@ -203,8 +206,9 @@ impl JsonShard
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    fn	MatchObject<'a>( parser: &mut Parser, mut m: U32) -> Option< U32>
+    fn	MatchObject<'a>( parser: &mut Parser) -> Option< U32>
     {
+        let mut m = parser.CurrMark();
         if parser.GetAt( m) != U8( b'{') {
             return None;
         }
@@ -235,7 +239,8 @@ impl JsonShard
                 return None;
             };
  
-            if let Some( nxt) = Self::MatchValue( parser, m) {
+            parser.Deposit(Some(m));
+            if let Some( nxt) = Self::MatchValue( parser) {
                 m = nxt;
             } else {
                 return None;
