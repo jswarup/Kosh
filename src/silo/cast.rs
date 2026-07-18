@@ -70,6 +70,60 @@ impl< T: ?Sized> IConstPtrMutRefExt< T> for *const T
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+/// Converts a mutable raw pointer into a mutable reference.
+pub trait IPtrRefExt< T: ?Sized>
+{
+    fn	MutRef< 'a>( self) -> &'a mut T;
+}
+
+impl< T: ?Sized> IPtrRefExt< T> for *mut T
+{
+    #[inline( always)]
+    fn	MutRef< 'a>( self) -> &'a mut T
+    {
+        unsafe { &mut *self }
+    }
+}
+
+/// Converts a raw const pointer into a shared reference.
+pub trait IConstPtrRefExt< T: ?Sized>
+{
+    fn	Ref< 'a>( self) -> &'a T;
+}
+
+impl< T: ?Sized> IConstPtrRefExt< T> for *const T
+{
+    #[inline( always)]
+    fn	Ref< 'a>( self) -> &'a T
+    {
+        unsafe { &*self }
+    }
+}
+
+/// Accesses elements through a mutable raw pointer.
+pub trait IPtrAtExt< T>
+{
+    fn	RefAt< 'a>( self, index: usize) -> &'a T;
+    fn	MutRefAt< 'a>( self, index: usize) -> &'a mut T;
+}
+
+impl< T> IPtrAtExt< T> for *mut T
+{
+    #[inline( always)]
+    fn	RefAt< 'a>( self, index: usize) -> &'a T
+    {
+        unsafe { &*self.add( index) }
+    }
+
+    #[inline( always)]
+    fn	MutRefAt< 'a>( self, index: usize) -> &'a mut T
+    {
+        unsafe { &mut *self.add( index) }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub trait IAllocRawExt
 {
     // Allocates a value on the heap and returns a raw pointer to it.

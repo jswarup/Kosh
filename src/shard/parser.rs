@@ -1,6 +1,6 @@
 //-- parser.rs -------------------------------------------------------------------------------------------------------------------
 
-use	crate::flux::fluximport::FieldImp;
+use	std::ptr::NonNull;
 use	crate::flux::instream::IStream;
 use	crate::silo::{ U32, U8 };
 use	crate::stalks::{ IWorker, WorkPtr, INode };
@@ -17,10 +17,15 @@ pub trait IForge: Send + Sync + 'static
 
 pub struct Forge
 {
-    pub     prev: *const Forge,
+    pub     _Prev: Option< NonNull< Forge>>,
     pub     _CurrMark: U32,
     pub     _IsMatched: bool,
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+unsafe impl Send for Forge {}
+unsafe impl Sync for Forge {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -58,11 +63,6 @@ impl IForge for Forge
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-unsafe impl Send for Forge {}
-unsafe impl Sync for Forge {}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
 pub trait IGrammar: INode
 {
     fn	Match( &self, parser: &mut Parser);
@@ -73,7 +73,7 @@ pub trait IGrammar: INode
 pub struct Parser<'p>
 {
     pub     _InStream: &'p mut dyn IStream,
-    pub     _TopForge: *const Forge,
+    _TopForge: Option< NonNull< Forge>>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -110,27 +110,24 @@ impl<'p> Parser<'p>
     {
         Self {
             _InStream: stream,
-            _TopForge: std::ptr::null(),
+            _TopForge: None,
         }
     }
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	ParseGrammar( &mut self, grammar: &( impl IGrammar + ?Sized), mark: U32) -> Option< U32>
     {
-        let  	node = Forge {
-            prev: self._TopForge,
+        let  	mut node = Forge {
+            _Prev: self._TopForge,
             _CurrMark: mark,
             _IsMatched: false,
         };
-        let  	prevTop = self._TopForge;
-        self._TopForge = &node as *const Forge;
+        let  	prevTop = self._TopForge.replace( NonNull::from( &mut node));
         grammar.Match( self);
         self._TopForge = prevTop;
         let  	res = node.Result();
-        if !prevTop.is_null() {
-            unsafe {
-                ( *( prevTop as *mut Forge)).Deposit( res);
-            }
+        if let Some( mut prevTop) = prevTop {
+            unsafe { prevTop.as_mut().Deposit( res); }
         }
         res
     }
@@ -140,7 +137,7 @@ impl<'p> Parser<'p>
     /// Compactly deposit a result to the current forge.
     pub fn	Deposit( &mut self, result: Option< U32>)
     {
-        self.Forge().Deposit( result);
+        self.ForgeMut().Deposit( result);
     }
 
     /// Compactly get the current mark from the top forge.
@@ -151,11 +148,16 @@ impl<'p> Parser<'p>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Forge<'a>( &'a self) -> &'a mut Forge
+    /// Returns the active forge. It is present while a grammar is being matched.
+    pub fn	Forge( &self) -> &Forge
     {
-        unsafe {
-            &mut *( self._TopForge as *mut Forge)
-        }
+        unsafe { self._TopForge.expect( "no active forge").as_ref() }
+    }
+
+    /// Returns the active forge mutably.
+    fn	ForgeMut( &mut self) -> &mut Forge
+    {
+        unsafe { self._TopForge.expect( "no active forge").as_mut() }
     }
 
     pub fn InStream( &mut self) -> &mut dyn IStream

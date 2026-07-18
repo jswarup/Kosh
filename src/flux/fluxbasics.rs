@@ -2,7 +2,7 @@
 
 use crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
 use crate::flux::{ IFluxImportSource, fluximport::FieldImp };
-use crate::silo::{ U64, U32, U16, U8, USeg, Arr, Buff };
+use crate::silo::{ U64, U32, U16, U8, USeg, Arr, Buff, IPtrRefExt, IConstPtrRefExt, IPtrAtExt };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 // Struct macros: generate IFluxExportSource and/or IFluxImportSource for named-field structs.
@@ -48,7 +48,7 @@ macro_rules! ImplFluxImportSource
             {
                 let  	ptr = self as *mut Self;
                 *field = $crate::flux::FieldImp::Obj( Box::new( move |key, item| {
-                    let  	obj = unsafe { &mut *ptr };
+                    let  	obj = $crate::silo::IPtrRefExt::MutRef( ptr);
                     let _ = &obj; let _ = &key; let _ = &item;
                     $(
                         if key == stringify!( $field) {
@@ -116,7 +116,7 @@ macro_rules! ImplFluxSourceTyped
             {
                 let  	ptr = self as *mut Self;
                 *field = $crate::flux::FieldImp::Obj( Box::new( move |key, item| {
-                    let  	obj = unsafe { &mut *ptr };
+                    let  	obj = $crate::silo::IPtrRefExt::MutRef( ptr);
                     let _ = &obj; let _ = &key; let _ = &item;
                     if key == "Type" {
                         *item = $crate::flux::FieldImp::ExpectedType( $type_name);
@@ -273,7 +273,7 @@ impl< 'b> IFluxImportSource for &'b str
     fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
     {
         let ptr = self as *mut &'b str as *mut &'a str;
-        *field = FieldImp::Str( unsafe { &mut *ptr } );
+        *field = FieldImp::Str( ptr.MutRef() );
     }
 }
 
@@ -295,7 +295,7 @@ where
         let  	arr = *self;
         *field = FieldExp::Arr( Box::new( move |item| {
             if idx < arr._Size.0 {
-                let  	elem = unsafe { &*arr._Ptr.as_ptr().add( idx as usize) };
+                let  	elem = arr._Ptr.as_ptr().RefAt( idx as usize);
                 *item = FieldExp::FluxSource( elem);
                 idx += 1;
                 true
@@ -315,9 +315,9 @@ where
         let  	mut idx = 0u32;
         let  	ptr = self as *mut Self;
         *field = FieldImp::Arr( Box::new( move |item| {
-            let  	arr = unsafe { &mut *ptr };
+            let  	arr = ptr.MutRef();
             if idx < arr._Size.0 {
-                let  	elem = unsafe { &mut *arr._Ptr.as_ptr().add( idx as usize) };
+            let  	elem = arr._Ptr.as_ptr().MutRefAt( idx as usize);
                 *item = FieldImp::FluxSource( elem);
                 idx += 1;
                 true
@@ -341,9 +341,9 @@ where
         let  	mut idx = 0usize;
         let  	ptr = self as *const Self;
         *field = FieldExp::Arr( Box::new( move |item| {
-            let  	buff = unsafe { &*ptr };
+            let  	buff = ptr.Ref();
             if idx < buff._Ptr.len() {
-                let  	elem = unsafe { &*buff._Ptr.as_ptr().cast::< T>().add( idx) };
+                let  	elem = buff._Ptr.as_ptr().cast::< T>().RefAt( idx);
                 *item = FieldExp::FluxSource( elem);
                 idx += 1;
                 true
@@ -363,11 +363,11 @@ where
         let  	mut idx = 0usize;
         let  	ptr = self as *mut Self;
         *field = FieldImp::Arr( Box::new( move |item| {
-            let  	buff = unsafe { &mut *ptr };
+            let  	buff = ptr.MutRef();
             if idx >= buff._Ptr.len() {
                 buff.Push( T::default());
             }
-            let  	elem = unsafe { &mut *buff._Ptr.as_ptr().cast::< T>().add( idx) };
+            let  	elem = buff._Ptr.as_ptr().cast::< T>().MutRefAt( idx);
             *item = FieldImp::FluxSource( elem);
             idx += 1;
             true
