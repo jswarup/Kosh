@@ -32,7 +32,7 @@ impl IGrammar for JsonShard
     {
         let  	res = JsonShard::MatchValue( parser);
         if let Some( newM) = res {
-            let  	nextM = JsonShard::SkipWhitespace( parser, newM);
+            let  	nextM = if let Some( m2) = parser.ParseGrammar( &WSpc(), newM) { m2 } else { newM };
             parser.SetCurrMark( nextM);
             true
         } else {
@@ -46,26 +46,6 @@ impl IGrammar for JsonShard
 impl JsonShard
 {
 
-    fn	SkipWhitespace< 'p>( parser: &mut Parser< 'p>, marker: U32) -> U32
-    {
-        let  	whiteSpace = Charset::Space();
-        let  	mut m = marker;
-        loop {
-            let  	curr = parser.GetAt( m);
-            if whiteSpace.Get( curr) {
-                if let  	Some( nextMark) = parser.Incr( m) {
-                    m = nextMark;
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            }
-        }
-        m
-    }
-
-    //---------------------------------------------------------------------------------------------------------------------------------
 
     fn	MatchString<'a>( parser: &mut Parser, marker: U32) -> (bool, U32)
     {
@@ -95,7 +75,6 @@ impl JsonShard
                         return ( false, marker);
                     }
                 }
-
                 if let  	Some( nxt) = parser.Incr( m) {
                     m = nxt;
                 } else {
@@ -178,7 +157,7 @@ impl JsonShard
             return None;
         };
 
-        m = Self::SkipWhitespace( parser, m);
+        m = if let Some( newM) = parser.ParseGrammar( &WSpc(), m) { newM } else { m };
         if parser.GetAt( m) == U8( b']') {
             return parser.Incr( m);
         }
@@ -191,7 +170,7 @@ impl JsonShard
                 return None;
             }
 
-            m = Self::SkipWhitespace( parser, m);
+            m = if let Some( newM) = parser.ParseGrammar( &WSpc(), m) { newM } else { m };
             let  	curr = parser.GetAt( m);
             if curr == U8( b',') {
                 m = if let  	Some( nxt) = parser.Incr( m) { nxt } else {
@@ -217,13 +196,13 @@ impl JsonShard
             return None;
         };
 
-        m = Self::SkipWhitespace( parser, m);
+        m = if let Some( newM) = parser.ParseGrammar( &WSpc(), m) { newM } else { m };
         if parser.GetAt( m) == U8( b'}') {
             return parser.Incr( m);
         }
 
         loop {
-            m = Self::SkipWhitespace( parser, m);
+            m = if let Some( newM) = parser.ParseGrammar( &WSpc(), m) { newM } else { m };
             let  	key_start = m + crate::silo::U32( 1);
             let ( matched, nextM) = Self::MatchString( parser, m);
             if !matched {
@@ -231,7 +210,7 @@ impl JsonShard
             }
             let  	key_end = nextM - crate::silo::U32( 1);
             m = nextM;
-            m = Self::SkipWhitespace( parser, m);
+            m = if let Some( newM) = parser.ParseGrammar( &WSpc(), m) { newM } else { m };
 
             if parser.GetAt( m) != U8( b':') {
                 return None;
@@ -246,7 +225,7 @@ impl JsonShard
             } else {
                 return None;
             }
-            m = Self::SkipWhitespace( parser, m);
+            m = if let Some( newM) = parser.ParseGrammar( &WSpc(), m) { newM } else { m };
 
             let  	curr = parser.GetAt( m);
             if curr == U8( b',') {

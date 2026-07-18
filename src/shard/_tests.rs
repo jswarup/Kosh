@@ -1,5 +1,6 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 
+use	std::ptr::NonNull;
 use	crate::{
     ShardTree, 
     flux::{ FixedStream, IFluxImportSource, fluxexport::FieldExp, fluximport::FieldImp }, 
@@ -411,9 +412,25 @@ fn	TestPointGrammar()
                                             Str < WSpc < ":"  < WSpc < U64 < WSpc < "," < WSpc <
                                             Str < WSpc < ":"  < WSpc < U64 < WSpc < "," < WSpc <
                                     "}" < WSpc); 
-
+ 
     let  	src = "{ \"_X\": 10, \"_Y\": 30 }"; 
     let  	mut pt2 = Point { _X: U64( 0), _Y: U64( 0) }; 
+    
+    struct Forge< 'a>
+    {
+        pub     _Prev: Option< NonNull< Forge<'a>>>,
+        _Field : FieldImp< 'a>,
+    }
+    
+    {
+        let  	mut field = FieldImp::Null;
+        pt2.FetchFieldImp( &mut field);
+        
+        let  	mut _forge = Forge {
+            _Prev: None,
+            _Field: field,
+        };
+    }
     {
         let  	mut field = FieldImp::Null;
         pt2.FetchFieldImp( &mut field);
