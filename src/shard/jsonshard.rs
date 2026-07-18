@@ -4,7 +4,7 @@ use	std::fmt;
 use	crate::{
     ShardTree,
     flux::{ IFluxExportSource, IFluxImportSource, fluxexport::FieldExp, fluximport::FieldImp },
-    shard::{ Charset, IGrammar, Parser, WSpc },
+    shard::{ Charset, IGrammar, Parser, WSpc, Str },
     silo::{ U32, U64, U8},
 };
 use	crate::shard::numbers::Real;
@@ -47,64 +47,6 @@ impl JsonShard
 {
 
 
-    fn	MatchString<'a>( parser: &mut Parser, marker: U32) -> (bool, U32)
-    {
-        let  	mut m = marker;
-        let  	curr = parser.GetAt( m);
-        if curr != U8( b'"') {
-            return ( false, marker);
-        }
-
-        if let  	Some( next) = parser.Incr( m) {
-            m = next;
-            let  	mut escape = false;
-            loop {
-                let  	c = parser.GetAt( m);
-                if c == U8( 0) && m >= parser.InStream().Size() {
-                    return ( false, marker);
-                }
-
-                if escape {
-                    escape = false;
-                } else if c == U8( b'\\') {
-                    escape = true;
-                } else if c == U8( b'"') {
-                    if let Some( nxt) = parser.Incr( m) { 
-                        return ( true, nxt);
-                    } else {
-                        return ( false, marker);
-                    }
-                }
-                if let  	Some( nxt) = parser.Incr( m) {
-                    m = nxt;
-                } else {
-                    return ( false, marker);
-                }
-            }
-        }
-        ( false, marker)
-    }
-
-    //---------------------------------------------------------------------------------------------------------------------------------
-
-    fn	MatchKeyword<'a>( parser: &mut Parser, marker: U32, keyword: &[u8]) -> (bool, U32)
-    {
-        let  	mut m = marker;
-        for &b in keyword {
-            if parser.GetAt( m) != U8( b) {
-                return ( false, marker);
-            }
-            if let  	Some( nxt) = parser.Incr( m) {
-                m = nxt;
-            } else {
-                return ( false, marker);
-            }
-        } 
-        ( true, m)
-    }
-
-    //---------------------------------------------------------------------------------------------------------------------------------
-
     fn	MatchValue<'a>( parser: &mut Parser) -> Option< U32>
     {
         let mut m = parser.CurrMark();
@@ -114,28 +56,17 @@ impl JsonShard
         }
 
         let  	curr = parser.GetAt( m);
-
         if curr == U8( b'{') {
             return Self::MatchObject( parser);
-        } else if curr == U8( b'[') {
+        } 
+        if curr == U8( b'[') {
             return Self::MatchArray( parser);
-        } else if curr == U8( b'"') {
-            let ( matched, nextM) = Self::MatchString( parser, m);
-            if matched { return Some( nextM); }
-            return None;
-        } else if curr == U8( b't') {
-            let ( matched, nextM) = Self::MatchKeyword( parser, m, b"true");
-            if matched { return Some( nextM); }
-            return None;
-        } else if curr == U8( b'f') {
-            let ( matched, nextM) = Self::MatchKeyword( parser, m, b"false");
-            if matched { return Some( nextM); }
-            return None;
-        } else if curr == U8( b'n') {
-            let ( matched, nextM) = Self::MatchKeyword( parser, m, b"null");
-            if matched { return Some( nextM); }
-            return None;
-        } else if curr == U8( b'-') || ( curr >= U8( b'0') && curr <= U8( b'9')) {
+        }
+        let     shardTree = ShardTree!( Str | "true" | "false" | "null");
+        if let Some( newM) = parser.ParseGrammar( &shardTree, m) {
+            return Some( newM);
+        } 
+        if curr == U8( b'-') || ( curr >= U8( b'0') && curr <= U8( b'9')) {
             if let Some( nextM) = parser.ParseGrammar( &Real, m) {
                 return Some( nextM);
             }
@@ -204,10 +135,7 @@ impl JsonShard
         loop {
             m = if let Some( newM) = parser.ParseGrammar( &WSpc(), m) { newM } else { m };
             let  	key_start = m + crate::silo::U32( 1);
-            let ( matched, nextM) = Self::MatchString( parser, m);
-            if !matched {
-                return None;
-            }
+            let nextM = parser.ParseGrammar( &Str, m)?;
             let  	key_end = nextM - crate::silo::U32( 1);
             m = nextM;
             m = if let Some( newM) = parser.ParseGrammar( &WSpc(), m) { newM } else { m };
