@@ -5,8 +5,8 @@ use	std::fmt;
 use	crate::{
     flux::{ IFluxImportSource, IFluxExportSource, fluximport::FieldImp, fluxexport::FieldExp },
     shard::{ IGrammar, Parser },
-    stalks::{ work::DynIWork, UniNode },
-    silo::{ cast::IConstPtrMutRefExt },
+    stalks::{ UniNode },
+    silo::{ cast::{ IConstPtrMutRefExt, ICastExt }, Arr, U8 },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -22,9 +22,26 @@ pub type ActionShard< C, W> = UniNode< C, ActionOp< W>>;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+pub trait INotify: Send + Sync
+{
+    fn	DoNotify( &mut self, matched: Arr< '_, U8>);
+}
+
+impl< F> INotify for F
+where
+    F: for< 'a> FnMut( Arr< 'a, U8>) + Send + Sync,
+{
+    fn	DoNotify( &mut self, matched: Arr< '_, U8>)
+    {
+        self( matched);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub fn	Coerce< F>( f: F) -> F
 where
-    F: crate::stalks::work::IWork + 'static
+    F: INotify + 'static
 {
     f
 }
@@ -90,17 +107,18 @@ where
 impl< C, W> IGrammar for UniNode< C, ActionOp< W>>
 where
     C: IGrammar,
-    W: crate::stalks::work::IWork + 'static,
+    W: INotify + 'static,
 {
     fn	Match( &self, parser: &mut Parser) -> bool
     {
         let  	m = parser.CurrMark();
         let  	res = parser.ParseGrammar( &self._Child, m);
 
-        if res.is_some() {
-            let  	actionPtr = &self._Op._Action as &DynIWork< 'static> as *const DynIWork< 'static>;
+        if let Some( completedMark) = res {
+            let  	actionPtr = &self._Op._Action as *const W;
             let  	actionMut = actionPtr.MutRef();
-            actionMut.DoWork( parser);
+            let  	arr = parser.InStream().BytesAt( m, completedMark - m);
+            actionMut.DoNotify( arr);
             true
         } else {
             false

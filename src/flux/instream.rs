@@ -1,6 +1,6 @@
 //-- instream.rs -----------------------------------------------------------------------------------------------------------------------
 use	std::{ cmp, fs, io, path::Path };
-use	crate::silo::{ Arr, Buff, IAccess, U8, U32, cast::ICastExt };
+use	crate::silo::{ Arr, Buff, IAccess, IArr, U8, U32, cast::ICastExt };
 use std::io::Read;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -8,7 +8,7 @@ use std::io::Read;
 pub trait IStream {
     fn Size(&self) -> U32;
     fn At(&mut self, offset: U32) -> U8;
-    fn BytesAt(&mut self, offset: U32, count: U32) -> &[u8];
+    fn BytesAt(&mut self, offset: U32, count: U32) -> Arr<'_, U8>;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -44,15 +44,15 @@ impl<'a> IStream for FixedStream<'a> {
         }
     }
 
-    fn BytesAt(&mut self, offset: U32, count: U32) -> &[u8] {
+    fn BytesAt(&mut self, offset: U32, count: U32) -> Arr<'_, U8> {
         let  	sz = self.Size();
-        let  	slice = (&*self._Arr).Cast::<&[u8]>();
         let  	start = offset.AsUsize();
         if offset < sz {
             let  	end = cmp::min( start + count.AsUsize(), sz.AsUsize());
-            &slice[start..end]
+            self._Arr.Subset( offset, U32((end - start) as u32))
         } else {
-            &[]
+            let  	empty: &[U8] = &[];
+            Arr::from( empty)
         }
     }
 }
@@ -148,16 +148,16 @@ impl<R: Read> IStream for BuffStream<R> {
         }
     }
 
-    fn BytesAt(&mut self, offset: U32, count: U32) -> &[u8] {
+    fn BytesAt(&mut self, offset: U32, count: U32) -> Arr<'_, U8> {
         let _ = self.EnsureCached( offset.AsUsize() + count.AsUsize());
         let  	sz = self.Size();
-        let  	slice = (&*self._Buff).Cast::<&[u8]>();
         let  	start = offset.AsUsize();
         if offset < sz {
             let  	end = cmp::min( start + count.AsUsize(), sz.AsUsize());
-            &slice[start..end]
+            self._Buff.Arr().Subset( offset, U32((end - start) as u32))
         } else {
-            &[]
+            let  	empty: &[U8] = &[];
+            Arr::from( empty)
         }
     }
 }

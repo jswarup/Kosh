@@ -49,10 +49,10 @@ fn	TestInStream()
     assert_eq!( stream.At( U32( 5)), U8::_0);
 
     // Test stateless BytesAt()
-    assert_eq!( stream.BytesAt( U32( 1), U32( 2)), b"bc");
-    assert_eq!( stream.BytesAt( U32( 1), U32( 10)), b"bc");
-    assert_eq!( stream.BytesAt( U32( 5), U32( 1)), b"");
-    assert_eq!( stream.BytesAt( U32( 5), U32( 10)), b"");
+    assert_eq!( <&str>::from( stream.BytesAt( U32( 1), U32( 2))), "bc");
+    assert_eq!( <&str>::from( stream.BytesAt( U32( 1), U32( 10))), "bc");
+    assert_eq!( <&str>::from( stream.BytesAt( U32( 5), U32( 1))), "");
+    assert_eq!( <&str>::from( stream.BytesAt( U32( 5), U32( 10))), "");
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -65,7 +65,7 @@ fn	TestInStreamFromFile()
     let  	mut stream = BuffStream::FromFile( path).unwrap();
     assert_eq!( stream.At( U32( 0)), b'h');
     assert_eq!( stream.At( U32( 1)), b'e');
-    assert_eq!( stream.BytesAt( U32( 1), U32( 4)), b"ello");
+    assert_eq!( <&str>::from( stream.BytesAt( U32( 1), U32( 4))), "ello");
     fs::remove_file( path).unwrap();
 }
 

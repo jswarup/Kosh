@@ -92,7 +92,7 @@ impl IGrammar for UIntShard
         let      origMark = parser.CurrMark();
         let      ( m, matched) = MatchDecDigits( parser, origMark);
         if !matched { return false; }
-        let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0)); 
+        let      _bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0)); 
         parser.SetCurrMark( m);
         true
     }
