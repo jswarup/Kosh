@@ -9,7 +9,7 @@ macro_rules! ShardTree {
         <$crate::shard::Charset>::from( $s.as_bytes() )
     };
     ( @leaf $l:literal ) => {
-        $crate::shard::leaves::StrShard { _Val: $l }
+        $l
     };
     ( @leaf ( $( $inner:tt )+ ) ) => {
         $crate::ShardTree!( $( $inner )+ )
