@@ -5,7 +5,7 @@ use	crate::shard::Parser;
 use	crate::flux::{ IFluxImportSource };
 use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
 use	crate::flux::fluximport::FieldImp;
-use	crate::shard::{ Charset, IGrammar, IForge };
+use	crate::shard::{ Charset, IGrammar };
 use	crate::silo::{ U32, U8 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -38,9 +38,9 @@ impl<'a> IFluxImportSource for StrShard<'a> {
 impl< 'a> IGrammar for StrShard< 'a>
 {
 
-    fn	Match( &self, parser: &mut Parser)
+    fn	Match( &self, parser: &mut Parser) -> bool
     {
-        self._Val.Match( parser);
+        self._Val.Match( parser)
     }
 }
 
@@ -48,9 +48,9 @@ impl< 'a> IGrammar for StrShard< 'a>
 
 impl< 'a, 'r, T: IGrammar + ?Sized> IGrammar for &'r T
 {
-    fn	Match( &self, parser: &mut Parser)
+    fn	Match( &self, parser: &mut Parser) -> bool
     {
-        (**self).Match( parser);
+        (**self).Match( parser)
     }
 }
 
@@ -58,15 +58,15 @@ impl< 'a, 'r, T: IGrammar + ?Sized> IGrammar for &'r T
 
 impl IGrammar for Charset
 {
-    fn	Match( &self, parser: &mut Parser)
+    fn	Match( &self, parser: &mut Parser) -> bool
     {
         let  	mark = parser.CurrMark();
         let  	curr = parser.GetAt( mark);
         if self.Get( curr.0) {
-            let  	res = Some( mark + U32( 1));
-            parser.Deposit( res);
+            parser.SetCurrMark( mark + U32( 1));
+            true
         } else {
-            parser.Deposit( None);
+            false
         }
     }
 }
@@ -81,15 +81,15 @@ impl IFluxExportSource for char
 
 impl IGrammar for char
 {
-    fn	Match( &self, parser: &mut Parser)
+    fn	Match( &self, parser: &mut Parser) -> bool
     {
         let  	mark = parser.CurrMark();
         let  	curr = parser.GetAt( mark);
         if curr == U8( *self as u8) {
-            let  	res = Some( mark + U32( 1));
-            parser.Deposit( res);
+            parser.SetCurrMark( mark + U32( 1));
+            true
         } else {
-            parser.Deposit( None);
+            false
         }
     }
 }
@@ -98,7 +98,7 @@ impl IGrammar for char
 
 impl IGrammar for str
 {
-    fn	Match( &self, parser: &mut Parser)
+    fn	Match( &self, parser: &mut Parser) -> bool
     {
         let  	mark = parser.CurrMark();
         let  	key = self.as_bytes();
@@ -108,18 +108,17 @@ impl IGrammar for str
             let  	stream = parser.InStream();
             let  	curr = stream.At( currentMark);
             if curr.0 != b {
-                parser.Deposit( None);
-                return;
+                return false;
             }
             if let  	Some( next) = parser.Incr( currentMark) {
                 currentMark = next;
             } else {
-                parser.Deposit( None);
-                return;
+                return false;
             }
         }
 
-        parser.Deposit( Some( currentMark));
+        parser.SetCurrMark( currentMark);
+        true
     }
 }
 
@@ -151,14 +150,13 @@ impl IFluxImportSource for Str {
 
 impl IGrammar for Str
 {
-    fn	Match( &self, parser: &mut Parser)
+    fn	Match( &self, parser: &mut Parser) -> bool
     {
         let  	mark = parser.CurrMark();
         let  	mut m = mark;
         let  	curr = parser.GetAt( m);
         if curr != U8( b'"') {
-            parser.Deposit( None);
-            return;
+            return false;
         }
 
         if let  	Some( next) = parser.Incr( m) {
@@ -167,8 +165,7 @@ impl IGrammar for Str
             loop {
                 let  	c = parser.GetAt( m);
                 if c == U8( 0) && m >= parser.InStream().Size() {
-                    parser.Deposit( None);
-                    return;
+                    return false;
                 }
 
                 if escape {
@@ -177,23 +174,21 @@ impl IGrammar for Str
                     escape = true;
                 } else if c == U8( b'"') {
                     if let  	Some( nxt) = parser.Incr( m) { 
-                        parser.Deposit( Some( nxt));
-                        return;
+                        parser.SetCurrMark( nxt);
+                        return true;
                     } else {
-                        parser.Deposit( None);
-                        return;
+                        return false;
                     }
                 }
 
                 if let  	Some( nxt) = parser.Incr( m) {
                     m = nxt;
                 } else {
-                    parser.Deposit( None);
-                    return;
+                    return false;
                 }
             }
         }
-        parser.Deposit( None);
+        false
     }
 }
 

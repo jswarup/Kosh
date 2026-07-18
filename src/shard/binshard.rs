@@ -2,7 +2,7 @@
 use	crate::flux::fluximport::FieldImp;
 use	crate::shard::Parser;
 use	crate::{
-    shard::{ IGrammar, IForge },
+    shard::IGrammar,
     stalks::{ BinNode, BinOp },
 };
 
@@ -18,28 +18,29 @@ where
     R: IGrammar,
 {
 
-fn	Match( &self, parser: &mut Parser)
+fn	Match( &self, parser: &mut Parser) -> bool
     {
         match self._Op {
             BinOp::Bor => {
                 let  	m1 = parser.CurrMark();
                 let  	leftRes = parser.ParseGrammar( &self._Left, m1);
                 if leftRes.is_some() {
-                    return;
+                    return true;
                 }
 
                 let  	m2 = parser.CurrMark();
-                parser.ParseGrammar( &self._Right, m2);
+                parser.ParseGrammar( &self._Right, m2).is_some()
             }
             BinOp::Less => {
                 let  	m1 = parser.CurrMark();
                 let  	leftRes = parser.ParseGrammar( &self._Left, m1);
                 if let Some( newM) = leftRes {
-                    parser.ParseGrammar( &self._Right, newM);
+                    parser.ParseGrammar( &self._Right, newM).is_some()
+                } else {
+                    false
                 }
             }
             _ => panic!( "Unsupported operator in BinShard Match"),
         }
     }
 }
-

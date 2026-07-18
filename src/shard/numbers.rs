@@ -3,7 +3,7 @@
 use	std::fmt;
 use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
 use	crate::flux::fluximport::FieldImp;
-use	crate::shard::{ Parser, IGrammar, IForge };
+use	crate::shard::{ Parser, IGrammar };
 use	crate::silo::{ U8, U32, U64 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -87,13 +87,14 @@ ImplNumberShard!( UIntShard, UInt, "UInt");
 
 impl IGrammar for UIntShard
 {
-    fn    Match( &self, parser: &mut Parser)
+    fn    Match( &self, parser: &mut Parser) -> bool
     {
         let      origMark = parser.CurrMark();
         let      ( m, matched) = MatchDecDigits( parser, origMark);
-        if !matched { parser.Deposit( None); return; }
+        if !matched { return false; }
         let      bytes = parser.InStream().BytesAt( origMark, U32( m.0 - origMark.0)); 
-        parser.Deposit( Some( m));
+        parser.SetCurrMark( m);
+        true
     }
 }
 
@@ -105,16 +106,16 @@ ImplNumberShard!( IntShard, Int, "Int");
 
 impl IGrammar for IntShard
 {
-    fn    Match( &self, parser: &mut Parser)
+    fn    Match( &self, parser: &mut Parser) -> bool
     {
         let      origMark = parser.CurrMark();
         let      mSign = MatchSign( parser, origMark);
         let      ( m, matched) = MatchDecDigits( parser, mSign);
         if !matched { 
-            parser.Deposit( None); 
-            return; 
+            return false;
         } 
-        parser.Deposit( Some( m));
+        parser.SetCurrMark( m);
+        true
     }
 }
 
@@ -126,7 +127,7 @@ ImplNumberShard!( HexShard, Hex, "Hex");
 
 impl IGrammar for HexShard
 {
-    fn    Match( &self, parser: &mut Parser)
+    fn    Match( &self, parser: &mut Parser) -> bool
     {
         let      origMark = parser.CurrMark();
         let      m = MatchSign( parser, origMark);
@@ -134,10 +135,10 @@ impl IGrammar for HexShard
         let      mDigits = MatchHexPrefix( parser, m).unwrap_or( m);
         let      ( m, matched) = MatchHexDigits( parser, mDigits);
         if !matched { 
-            parser.Deposit( None); 
-            return; 
+            return false;
         } 
-        parser.Deposit( Some( m));
+        parser.SetCurrMark( m);
+        true
     }
 }
 
@@ -149,7 +150,7 @@ ImplNumberShard!( RealShard, Real, "Real");
 
 impl IGrammar for RealShard
 {
-    fn    Match( &self, parser: &mut Parser)
+    fn    Match( &self, parser: &mut Parser) -> bool
     {
         let      origMark = parser.CurrMark();
         let      mut m = MatchSign( parser, origMark);
@@ -163,7 +164,7 @@ impl IGrammar for RealShard
                 if d { m = nextM; matchedDigits = true; }
             }
         }
-        if !matchedDigits { parser.Deposit( None); return; }
+        if !matchedDigits { return false; }
         // Optional exponent
         let      curr = parser.GetAt( m);
         if curr == U8( b'e') || curr == U8( b'E') {
@@ -174,13 +175,13 @@ impl IGrammar for RealShard
                     if let      Some( nextM) = parser.Incr( m) { m = nextM; }
                 }
                 let      ( nextM, matched) = MatchDecDigits( parser, m);
-                if !matched { parser.Deposit( None); return; }
+                if !matched { return false; }
                 m = nextM;
             }
         } 
-        parser.Deposit( Some( m));
+        parser.SetCurrMark( m);
+        true
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-

@@ -4,7 +4,7 @@ use	std::fmt;
 use	crate::shard::Parser;
 use	crate::{
     flux::{ IFluxImportSource, IFluxExportSource, fluximport::FieldImp, fluxexport::FieldExp },
-    shard::{ IGrammar, IForge },
+    shard::IGrammar,
     silo::{ USeg, U32 },
     stalks::UniNode,
 };
@@ -72,7 +72,7 @@ where
     C: IGrammar,
 {
 
-fn	Match( &self, parser: &mut Parser)
+fn	Match( &self, parser: &mut Parser) -> bool
     {
         let  	mut count = U32( 0);
         let  	first = self._Op.First();
@@ -96,10 +96,10 @@ fn	Match( &self, parser: &mut Parser)
         }
 
         if count >= first {
-            let  	res = Some( m);
-            parser.Deposit( res);
+            parser.SetCurrMark( m);
+            true
         } else {
-            parser.Deposit( None);
+            false
         }
     }
 }

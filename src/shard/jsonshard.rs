@@ -4,7 +4,7 @@ use	std::fmt;
 use	crate::{
     ShardTree,
     flux::{ IFluxExportSource, IFluxImportSource, fluxexport::FieldExp, fluximport::FieldImp },
-    shard::{ Charset, IGrammar, Parser, IForge, WSpc },
+    shard::{ Charset, IGrammar, Parser, WSpc },
     silo::{ U32, U64, U8},
 };
 use	crate::shard::numbers::Real;
@@ -28,14 +28,15 @@ impl IFluxExportSource for JsonShard
 
 impl IGrammar for JsonShard
 {
-    fn	Match( &self, parser: &mut Parser)
+    fn	Match( &self, parser: &mut Parser) -> bool
     {
         let  	res = JsonShard::MatchValue( parser);
         if let Some( newM) = res {
             let  	nextM = JsonShard::SkipWhitespace( parser, newM);
-            parser.Deposit( Some( nextM));
+            parser.SetCurrMark( nextM);
+            true
         } else {
-            parser.Deposit( None);
+            false
         }
     }
 }
@@ -130,7 +131,7 @@ impl JsonShard
         let mut m = parser.CurrMark();
         if let Some( newM) = parser.ParseGrammar( &WSpc(), m) {
             m = newM;
-            parser.Deposit(Some(m));
+            parser.SetCurrMark( m);
         }
 
         let  	curr = parser.GetAt( m);
@@ -183,7 +184,7 @@ impl JsonShard
         }
 
         loop { 
-            parser.Deposit(Some(m));
+            parser.SetCurrMark( m);
             if let Some( nxt) = Self::MatchValue( parser) {
                 m = nxt;
             } else {
@@ -239,7 +240,7 @@ impl JsonShard
                 return None;
             };
  
-            parser.Deposit(Some(m));
+            parser.SetCurrMark( m);
             if let Some( nxt) = Self::MatchValue( parser) {
                 m = nxt;
             } else {

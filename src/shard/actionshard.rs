@@ -4,7 +4,7 @@ use	std::fmt;
 
 use	crate::{
     flux::{ IFluxImportSource, IFluxExportSource, fluximport::FieldImp, fluxexport::FieldExp },
-    shard::{ IGrammar, IForge, Parser },
+    shard::{ IGrammar, Parser },
     stalks::{ work::DynIWork, UniNode },
     silo::{ cast::IConstPtrMutRefExt },
 };
@@ -92,7 +92,7 @@ where
     C: IGrammar,
     W: crate::stalks::work::IWork + 'static,
 {
-    fn	Match( &self, parser: &mut Parser)
+    fn	Match( &self, parser: &mut Parser) -> bool
     {
         let  	m = parser.CurrMark();
         let  	res = parser.ParseGrammar( &self._Child, m);
@@ -101,6 +101,9 @@ where
             let  	actionPtr = &self._Op._Action as &DynIWork< 'static> as *const DynIWork< 'static>;
             let  	actionMut = actionPtr.MutRef();
             actionMut.DoWork( parser);
+            true
+        } else {
+            false
         }
     }
 }
