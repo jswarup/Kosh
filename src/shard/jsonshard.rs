@@ -2,9 +2,9 @@
 
 use	std::fmt;
 use	crate::{
-    ShardTree,
-
+    ShardTree, 
     shard::{ IGrammar, Parser, WSpc },
+    silo::{  Arr, U8 },
 };
 use	crate::shard::numbers::Real;
 
@@ -15,19 +15,56 @@ pub const Json: JsonShard = JsonShard;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl JsonShard
+{
+    fn	MatchObject( parser: &mut Parser) -> bool
+    {
+        
+        let mut _str = String::from( "");
+        let     objectName = move | arr: Arr< U8>| {
+            _str = <&str>::from( arr).to_string();
+            true
+        };
+        let     objectValue = | _arr: Arr< U8>| {
+            true
+        };
+        let     objShard = ShardTree!( Str[ objectName] < ?WSpc < ':' < ?WSpc < ( JsonShard::MatchValue)[ objectValue]);
+        
+        if let Some( newM) = parser.ParseGrammar( &objShard, parser.CurrMark()) { 
+            parser.SetCurrMark( newM);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn	MatchValue( parser: &mut Parser) -> bool
+    { 
+        let  	objShard = ShardTree!( '{' < *(?WSpc < ( JsonShard::MatchObject) < ? ( ',' < ?WSpc)) < ?WSpc < '}');
+        let  	arrShard = ShardTree!( '[' < *(?WSpc < ( JsonShard::MatchValue) < ? ( ',' < ?WSpc)) < ?WSpc < ']');
+        let  	keyShard = ShardTree!( Str | "true" | "false" | "null" | Real );
+        let  	valShard = ShardTree!( ?WSpc < ( keyShard | arrShard | objShard) < ?WSpc);
+        
+        if let Some( newM) = parser.ParseGrammar( &valShard, parser.CurrMark()) { 
+            parser.SetCurrMark( newM);
+            true
+        } else {
+            false
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl IGrammar for JsonShard
 {
+    
     fn	Match( &self, parser: &mut Parser) -> bool
     {
-        let  	m = parser.CurrMark(); 
-        let  	objShard = ShardTree!( '{' < *(*WSpc < Str < *WSpc < ':' < *WSpc < ( |p: &mut Parser| p.ParseGrammar( &Json, p.CurrMark()).is_some()) < ? ( ',' < *WSpc)) < *WSpc < '}');
-        let  	arrShard = ShardTree!( '[' < *(*WSpc < ( |p: &mut Parser| p.ParseGrammar( &Json, p.CurrMark()).is_some()) < ? ( ',' < *WSpc)) < *WSpc < ']');
-        let  	keyShard = ShardTree!( Str | "true" | "false" | "null" | Real );
-        let  	valShard = ShardTree!( *WSpc < ( keyShard | arrShard | objShard) );
-        
-        if let Some( newM) = parser.ParseGrammar( &valShard, m) {
-            let  	nextM = if let Some( m2) = parser.ParseGrammar( &WSpc, newM) { m2 } else { newM };
-            parser.SetCurrMark( nextM);
+        let  	m = parser.CurrMark();   
+        let  	jsonhard = ShardTree!( ?WSpc < ( JsonShard::MatchValue) < ?WSpc); 
+        if let Some( newM) = parser.ParseGrammar( &jsonhard, m) { 
+            parser.SetCurrMark( newM);
             true
         } else {
             false

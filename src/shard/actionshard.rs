@@ -24,16 +24,16 @@ pub type ActionShard< C, W> = UniNode< C, ActionOp< W>>;
 
 pub trait INotify: Send + Sync
 {
-    fn	DoNotify( &mut self, matched: Arr< '_, U8>);
+    fn	DoNotify( &mut self, matched: Arr< '_, U8>) -> bool;
 }
 
 impl< F> INotify for F
 where
-    F: for< 'a> FnMut( Arr< 'a, U8>) + Send + Sync,
+    F: for< 'a> FnMut( Arr< 'a, U8>) -> bool + Send + Sync,
 {
-    fn	DoNotify( &mut self, matched: Arr< '_, U8>)
+    fn	DoNotify( &mut self, matched: Arr< '_, U8>) -> bool
     {
-        self( matched);
+        self( matched)
     }
 }
 
@@ -62,8 +62,7 @@ where
             let  	actionPtr = &self._Op._Action as *const W;
             let  	actionMut = actionPtr.MutRef();
             let  	arr = parser.InStream().BytesAt( m, completedMark - m);
-            actionMut.DoNotify( arr);
-            true
+            actionMut.DoNotify( arr)
         } else {
             false
         }

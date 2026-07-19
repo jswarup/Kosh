@@ -110,6 +110,7 @@ fn	TestPostBoxet()
     };
     let     tree = crate::ShardTree!( mt < "ab" [ |_worker| {
         println!("Matched");
+        true
     } ] );
     let  	mut stream = FixedStream::from( data);
     let  	mut parser = Parser::New( &mut stream);
@@ -127,6 +128,7 @@ fn TestRgx2()
     let     alpha = crate::ShardTree!(  [ "a-zA-Z"]);
     let     identRgx = crate::ShardTree!(  [ "a-z"] < ["A-Z"] < +alpha[ |_worker| {
         // marker tracking removed
+        true
     } ] );
 
 
