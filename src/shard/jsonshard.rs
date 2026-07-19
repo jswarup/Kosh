@@ -10,8 +10,12 @@ use	crate::shard::numbers::Real;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct JsonShard;
-pub const Json: JsonShard = JsonShard;
+pub struct JsonShard
+{
+
+}
+
+pub const Json: JsonShard = JsonShard{};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -20,9 +24,9 @@ impl JsonShard
     fn	MatchObject( parser: &mut Parser) -> bool
     {
         
-        let mut _str = String::from( "");
+        let mut     strBuf = String::from( "");
         let     objectName = move | arr: Arr< U8>| {
-            _str = <&str>::from( arr).to_string();
+            strBuf.push_str( <&str>::from( arr));
             true
         };
         let     objectValue = | _arr: Arr< U8>| {
