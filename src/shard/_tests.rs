@@ -150,6 +150,36 @@ fn TestRgx2()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+#[test]
+fn TestOptionalGrammar()
+{
+    // ? operator matches 0 or 1 times
+    let     optGrammar = crate::ShardTree!( ? "a" < "b" );
+    
+    // Test with "ab" (1 occurrence of "a")
+    let  	mut stream1 = FixedStream::from( "ab");
+    let  	mut parser1 = Parser::New( &mut stream1);
+    let res1 = parser1.ParseGrammar( &optGrammar, U32(0));
+    assert!( res1.is_some());
+    assert_eq!( res1.unwrap().AsUsize(), 2);
+
+    // Test with "b" (0 occurrence of "a")
+    let  	mut stream2 = FixedStream::from( "b");
+    let  	mut parser2 = Parser::New( &mut stream2);
+    let res2 = parser2.ParseGrammar( &optGrammar, U32(0));
+    assert!( res2.is_some());
+    assert_eq!( res2.unwrap().AsUsize(), 1);
+
+    // Test with "aab" - it will match one 'a', then 'b' fails!
+    // But ? is greedy? Repeat parses up to max (1). So it consumes "a". 
+    // Then it expects "b". Next is "a". So it fails.
+    let  	mut stream3 = FixedStream::from( "aab");
+    let  	mut parser3 = Parser::New( &mut stream3);
+    let res3 = parser3.ParseGrammar( &optGrammar, U32(0));
+    assert!( res3.is_none());
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
 fn TestUIntShard()

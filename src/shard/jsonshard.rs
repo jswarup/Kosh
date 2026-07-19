@@ -65,6 +65,9 @@ impl JsonShard
 
     fn	MatchArray<'a>( parser: &mut Parser) -> Option< U32>
     {
+        
+        let     _shardTree = ShardTree!( '[' < *(WSpc < (Self::MatchValue) < ? (',' < WSpc)) < ']');
+
         let mut m = parser.CurrMark();
         if parser.GetAt( m) != U8( b'[') {
             return None;

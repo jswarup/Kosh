@@ -49,6 +49,13 @@ macro_rules! ShardTree {
         }
     };
 
+    ( @optional $child:expr ) => {
+        $crate::stalks::UniNode {
+            _Child: $child,
+            _Op: $crate::silo::USeg::New( 0, 2 ),
+        }
+    };
+
     // Delegate recursive parsing to NodeTree
     ( $( $tt:tt )+ ) => {
         $crate::NodeTree!( @parse ShardTree, $( $tt )+ )
