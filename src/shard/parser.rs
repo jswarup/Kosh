@@ -2,7 +2,7 @@
 
 use	crate::flux::instream::IStream;
 use	crate::silo::{ IAccess, IArr, Stash, U32, U8 };
-use	crate::stalks::{ IWorker, WorkPtr, INode };
+use	crate::stalks::INode;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -26,22 +26,6 @@ unsafe impl<'p> Sync for Parser<'p> {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl<'p> IWorker for Parser<'p>
-{
-    fn	PostJob( &self, job: WorkPtr< '_>)
-    {
-        if !job.IsNull() {
-            ( job.func)( job.data, self);
-        }
-    }
-
-    fn	AsRawWorker( &self) -> *const ()
-    {
-        self as *const _ as *const ()
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
 
 impl<'p> Parser<'p>
 {
