@@ -54,17 +54,10 @@ impl JsonShard
         if curr == U8( b'[') {
             return Self::MatchArray( parser);
         }
-        let     shardTree = ShardTree!( Str | "true" | "false" | "null");
+        let     shardTree = ShardTree!( Str | "true" | "false" | "null" | Real );
         if let Some( newM) = parser.ParseGrammar( &shardTree, m) {
             return Some( newM);
-        } 
-        if curr == U8( b'-') || ( curr >= U8( b'0') && curr <= U8( b'9')) {
-            if let Some( nextM) = parser.ParseGrammar( &Real, m) {
-                return Some( nextM);
-            }
-            return None;
-        }
-
+        }  
         None
     }
 
