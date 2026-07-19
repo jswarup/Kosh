@@ -17,7 +17,7 @@ where
     R: IGrammar,
 {
 
-fn	Match( &self, parser: &mut Parser) -> bool
+    fn	Match( &self, parser: &mut Parser) -> bool
     {
         match self._Op {
             BinOp::Bor => {
