@@ -1,7 +1,5 @@
 //-- stalks/node.rs ---------------------------------------------------------------------------------------------------------------------
-use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
-use	crate::flux::{ IFluxImportSource, fluximport::FieldImp };
-use crate::silo::U64;
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -41,88 +39,12 @@ pub struct UniNode< C, Op>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait INode: IFluxExportSource {}
+pub trait INode {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T: IFluxExportSource + ?Sized> INode for T {}
+impl< T: ?Sized> INode for T {}
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< L, R> IFluxExportSource for BinNode< L, R>
-where
-    L: IFluxExportSource,
-    R: IFluxExportSource,
-{
-    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
-    {
-        let  	mut step = 0u32;
-        let  	node = self;
-        let  	opVal = match node._Op {
-            BinOp::Sum => 0,
-            BinOp::Prod => 1,
-            BinOp::Sub => 2,
-            BinOp::Div => 3,
-            BinOp::Pow => 4,
-            BinOp::None => 5,
-            BinOp::Less => 6,
-            BinOp::Bor => 7,
-        };
-        *field = FieldExp::Obj( Box::new( move |key, item| {
-            if step == 0 {
-                *key = "Op".to_string();
-                *item = FieldExp::U64( U64::From(opVal));
-                step += 1;
-                return true;
-            }
-            if step == 1 {
-                *key = "Left".to_string();
-                node._Left.FetchFieldExp( item);
-                step += 1;
-                return true;
-            }
-            if step == 2 {
-                *key = "Right".to_string();
-                node._Right.FetchFieldExp( item);
-                step += 1;
-                return true;
-            }
-            false
-        }));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< L, R> IFluxImportSource for BinNode< L, R>
-where
-    L: IFluxImportSource,
-    R: IFluxImportSource,
-{
-    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
-    {
-        let ptr = self as *mut Self;
-        *field = FieldImp::Obj( Box::new( move |key, item| {
-            let obj = unsafe { &mut *ptr };
-            if key == "Op" {
-                let op_ptr = &mut obj._Op as *mut BinOp as *mut crate::silo::U64;
-                *item = FieldImp::U64( unsafe { &mut *op_ptr } );
-                return true;
-            }
-            if key == "Left" {
-                IFluxImportSource::FetchFieldImp(&mut obj._Left, item);
-                return true;
-            }
-            if key == "Right" {
-                IFluxImportSource::FetchFieldImp(&mut obj._Right, item);
-                return true;
-            }
-            false
-        }));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
 
 #[macro_export]
 macro_rules! NodeTree {

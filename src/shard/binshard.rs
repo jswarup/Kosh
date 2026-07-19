@@ -1,5 +1,4 @@
 //-- binshard.rs -----------------------------------------------------------------------------------------------------------------------
-use	crate::flux::fluximport::FieldImp;
 use	crate::shard::Parser;
 use	crate::{
     shard::IGrammar,

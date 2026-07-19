@@ -3,7 +3,7 @@
 use	std::ptr::NonNull;
 use	crate::{
     ShardTree, 
-    flux::{ FixedStream, IFluxImportSource, fluxexport::FieldExp, fluximport::FieldImp }, 
+    flux::{ FixedStream, IFluxImportSource, fluximport::FieldImp }, 
     shard::{ Charset, Hex, Int, Json, Parser, Real, UInt, WSpc }, 
     silo::{ U32, U64},
 };
@@ -51,7 +51,7 @@ fn	TestParserBasic()
         // Test char grammar
         let  	matched = {
             let  	g = &'h';
-            let res = parser.ParseGrammar( &g, m);
+            let res = parser.ParseGrammar( g, m);
             if let Some( nextM) = res {
                 m = nextM;
             }
@@ -61,7 +61,7 @@ fn	TestParserBasic()
 
         let  	matched = {
             let  	g = &'e';
-            let res = parser.ParseGrammar( &g, m);
+            let res = parser.ParseGrammar( g, m);
             if let Some( nextM) = res {
                 m = nextM;
             }
@@ -72,7 +72,7 @@ fn	TestParserBasic()
         // Test &str grammar
         let  	matched = {
             let  	g = &"llo ";
-            let res = parser.ParseGrammar( &g, m);
+            let res = parser.ParseGrammar( g, m);
             if let Some( nextM) = res {
                 m = nextM;
             }
@@ -82,7 +82,7 @@ fn	TestParserBasic()
 
         let  	matched = {
             let  	g = &cs;
-            let res = parser.ParseGrammar( &g, m);
+            let res = parser.ParseGrammar( g, m);
             if let Some( nextM) = res {
                 m = nextM;
             }
@@ -93,7 +93,7 @@ fn	TestParserBasic()
         // Test failing match (should rollback)
         let  	matched = {
             let  	g = &"fail";
-            let res = parser.ParseGrammar( &g, m);
+            let res = parser.ParseGrammar( g, m);
             res.is_some()
         };
         assert!( !matched);
@@ -105,7 +105,10 @@ fn	TestParserBasic()
 fn	TestPostBoxet()
 {
     let     data = "ab";
-    let     tree = crate::ShardTree!( "ab" [ |_worker| {
+    let     mt = |  _parser: &mut Parser| { 
+        true 
+    };
+    let     tree = crate::ShardTree!( mt < "ab" [ |_worker| {
         println!("Matched");
     } ] );
     let  	mut stream = FixedStream::from( data);
@@ -125,12 +128,7 @@ fn TestRgx2()
     let     identRgx = crate::ShardTree!(  [ "a-z"] < ["A-Z"] < +alpha[ |_worker| {
         // marker tracking removed
     } ] );
-    let  	mut output = String::new();
-    {
-        let  	mut jsonStream = crate::flux::JsonOutStream::New( &mut output, true);
-        jsonStream.KeyField( "identRgx", FieldExp::FluxSource( &identRgx));
-    }
-    println!( "{}", output);
+
 
     // Test that the Repeat and Action correctly parse strings
     let  	mut stream1 = FixedStream::from( "aBcxYZ");
@@ -333,7 +331,7 @@ fn	TestJsonParsingStruct()
     let  	str = r#"{ "name": "Alice", "age": 30, "is_active": true }"#;
     let  	mut stream = FixedStream::from( str);
     let  	mut parser = Parser::New( &mut stream);
-    let  	mut person = Person::default();
+    let  	_person = Person::default();
     // Phase 1: validate structure
     let  	matched = parser.ParseGrammar( &Json, U32( 0));
     assert!( matched.is_some()); 
@@ -349,7 +347,7 @@ fn	TestStrGrammar()
 	let  	src = r#""hello""#;
 	let  	mut stream = FixedStream::from( src);
 	let  	mut parser = Parser::New( &mut stream);
-	let  	mut captured = String::new();
+	let  	captured = String::new();
 	let   	grammar =  ShardTree!( Str  );
 
 	let  	result = parser.ParseGrammar( &grammar, U32( 0));
@@ -407,13 +405,15 @@ fn	TestPointGrammar()
         _Y : U64,
     }
 
+    let     mt = |  _parser: &mut Parser| { true };
     crate::ImplFluxSource!( Point, _X, _Y);
-    let   	grammar =  ShardTree!( "{" < WSpc < 
+    
+    let   	_grammar =  ShardTree!( "{" < WSpc < 
                                             Str < WSpc < ":"  < WSpc < U64 < WSpc < "," < WSpc <
-                                            Str < WSpc < ":"  < WSpc < U64 < WSpc < "," < WSpc <
+                                            Str < WSpc < ":"  < mt < WSpc < U64 < WSpc < "," < WSpc <
                                     "}" < WSpc); 
  
-    let  	src = "{ \"_X\": 10, \"_Y\": 30 }"; 
+    let  	_src = "{ \"_X\": 10, \"_Y\": 30 }"; 
     let  	mut pt2 = Point { _X: U64( 0), _Y: U64( 0) }; 
     
     struct Forge< 'a>

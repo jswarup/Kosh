@@ -1,6 +1,5 @@
 //-- termtree.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::{
-    flux::{ IFluxImportSource, IFluxExportSource, fluximport::FieldImp, fluxexport::FieldExp },
     stalks::{ DynIWorker, IWork, BinNode, INode, BinOp },
 };
 use	std::fmt;
@@ -23,40 +22,6 @@ impl Default for Term
         Self::Null
     }
 }
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IFluxExportSource for Term
-{
-    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
-    {
-        let  	mut step = 0u32;
-        let  	term = self;
-        *field = FieldExp::Obj( Box::new( move |key, item| {
-            if step == 0 {
-                match term {
-                    Term::Null => {
-                        *key = "Null".to_string();
-                        *item = FieldExp::Null;
-                    }
-                    Term::String( s) => {
-                        *key = "String".to_string();
-                        *item = FieldExp::Str( s);
-                    }
-                    Term::Real( v) => {
-                        *key = "Real".to_string();
-                        *item = FieldExp::F64( *v);
-                    }
-                }
-                step += 1;
-                true
-            } else {
-                false
-            }
-        }));
-    }
-}
-
 
 
 impl IWork for Term
@@ -311,31 +276,3 @@ macro_rules! TermTree {
     };
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IFluxImportSource for Term {
-    fn FetchFieldImp<'b>(&'b mut self, field: &mut FieldImp<'b>) {
-        let ptr = self as *mut Self;
-        *field = FieldImp::Obj(Box::new(move |key, item| {
-            let term = unsafe { &mut *ptr };
-            if key == "Null" {
-                *term = Term::Null;
-                *item = FieldImp::Null;
-                return true;
-            } else if key == "String" {
-                *term = Term::String(String::new());
-                if let Term::String(s) = term {
-                    *item = FieldImp::String(s);
-                }
-                return true;
-            } else if key == "Real" {
-                *term = Term::Real(0.0);
-                if let Term::Real(v) = term {
-                    *item = FieldImp::F64(v);
-                }
-                return true;
-            }
-            false
-        }));
-    }
-}

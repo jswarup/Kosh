@@ -3,10 +3,10 @@
 use	std::fmt;
 
 use	crate::{
-    flux::{ IFluxImportSource, IFluxExportSource, fluximport::FieldImp, fluxexport::FieldExp },
+
     shard::{ IGrammar, Parser },
     stalks::{ UniNode },
-    silo::{ cast::{ IConstPtrMutRefExt, ICastExt }, Arr, U8 },
+    silo::{ cast::IConstPtrMutRefExt, Arr, U8 },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -48,59 +48,7 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< C, W> IFluxExportSource for UniNode< C, ActionOp< W>>
-where
-    C: IFluxExportSource,
-    W: Send + Sync,
-{
-    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
-    {
-        let  	mut step = 0u32;
-        let  	node = self;
-        *field = FieldExp::Obj( Box::new( move |key, item| {
-            if step == 0 {
-                *key = "Child".to_string();
-                node._Child.FetchFieldExp( item);
-                step += 1;
-                true
-            } else if step == 1 {
-                *key = "Action".to_string();
-                *item = FieldExp::Str( "Action");
-                step += 1;
-                true
-            } else {
-                false
-            }
-        }));
-    }
-}
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< C, W> IFluxImportSource for UniNode< C, ActionOp< W>>
-where
-    C: IFluxImportSource,
-    W: Send + Sync,
-{
-    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
-    {
-        let ptr = self as *mut Self;
-        *field = FieldImp::Obj( Box::new( move |key, item| {
-            let obj = unsafe { &mut *ptr };
-            if key == "Child" {
-                IFluxImportSource::FetchFieldImp(&mut obj._Child, item);
-                return true;
-            }
-            if key == "Action" {
-                *item = FieldImp::ExpectedType("Action");
-                return true;
-            }
-            false
-        }));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
 
 
 

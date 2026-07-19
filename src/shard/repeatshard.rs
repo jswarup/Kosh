@@ -3,7 +3,7 @@
 use	std::fmt;
 use	crate::shard::Parser;
 use	crate::{
-    flux::{ IFluxImportSource, IFluxExportSource, fluximport::FieldImp, fluxexport::FieldExp },
+
     shard::IGrammar,
     silo::{ USeg, U32 },
     stalks::UniNode,
@@ -15,57 +15,6 @@ pub type RepeatShard< C> = UniNode< C, USeg>;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< C> IFluxExportSource for UniNode< C, USeg>
-where
-    C: IFluxExportSource,
-{
-    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
-    {
-        let  	mut step = 0u32;
-        let  	node = self;
-        *field = FieldExp::Obj( Box::new( move |key, item| {
-            if step == 0 {
-                *key = "Child".to_string();
-                node._Child.FetchFieldExp( item);
-                step += 1;
-                true
-            } else if step == 1 {
-                *key = "Repeat".to_string();
-                *item = FieldExp::FluxSource( &node._Op);
-                step += 1;
-                true
-            } else {
-                false
-            }
-        }));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< C> IFluxImportSource for UniNode< C, USeg>
-where
-    C: IFluxImportSource,
-{
-    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
-    {
-        let ptr = self as *mut Self;
-        *field = FieldImp::Obj( Box::new( move |key, item| {
-            let obj = unsafe { &mut *ptr };
-            if key == "Child" {
-                IFluxImportSource::FetchFieldImp(&mut obj._Child, item);
-                return true;
-            }
-            if key == "Repeat" {
-                IFluxImportSource::FetchFieldImp(&mut obj._Op, item);
-                return true;
-            }
-            false
-        }));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
 
 impl< C> IGrammar for UniNode< C, USeg>
 where

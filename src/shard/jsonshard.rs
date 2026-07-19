@@ -3,28 +3,20 @@
 use	std::fmt;
 use	crate::{
     ShardTree,
-    flux::{ IFluxExportSource, IFluxImportSource, fluxexport::FieldExp, fluximport::FieldImp },
-    shard::{ Charset, IGrammar, Parser, WSpc, Str },
-    silo::{ U32, U64, U8},
+
+    shard::{ IGrammar, Parser, WSpc },
+    silo::{ U32, U8},
 };
 use	crate::shard::numbers::Real;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub struct JsonShard;
-pub const Json: &JsonShard = &JsonShard;
+pub const Json: JsonShard = JsonShard;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxExportSource for JsonShard
-{
-    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
-{
-        *field = FieldExp::String( "Json".to_string());
-    }
-}
 
-//---------------------------------------------------------------------------------------------------------------------------------
 
 impl IGrammar for JsonShard
 {
@@ -32,7 +24,7 @@ impl IGrammar for JsonShard
     {
         let  	res = JsonShard::MatchValue( parser);
         if let Some( newM) = res {
-            let  	nextM = if let Some( m2) = parser.ParseGrammar( &WSpc(), newM) { m2 } else { newM };
+            let  	nextM = if let Some( m2) = parser.ParseGrammar( &WSpc, newM) { m2 } else { newM };
             parser.SetCurrMark( nextM);
             true
         } else {
@@ -50,7 +42,7 @@ impl JsonShard
     fn	MatchValue<'a>( parser: &mut Parser) -> Option< U32>
     {
         let mut m = parser.CurrMark();
-        if let Some( newM) = parser.ParseGrammar( &WSpc(), m) {
+        if let Some( newM) = parser.ParseGrammar( &WSpc, m) {
             m = newM;
             parser.SetCurrMark( m);
         }
@@ -88,7 +80,7 @@ impl JsonShard
             return None;
         };
 
-        m = if let Some( newM) = parser.ParseGrammar( &WSpc(), m) { newM } else { m };
+        m = if let Some( newM) = parser.ParseGrammar( &WSpc, m) { newM } else { m };
         if parser.GetAt( m) == U8( b']') {
             return parser.Incr( m);
         }
@@ -101,7 +93,7 @@ impl JsonShard
                 return None;
             }
 
-            m = if let Some( newM) = parser.ParseGrammar( &WSpc(), m) { newM } else { m };
+            m = if let Some( newM) = parser.ParseGrammar( &WSpc, m) { newM } else { m };
             let  	curr = parser.GetAt( m);
             if curr == U8( b',') {
                 m = if let  	Some( nxt) = parser.Incr( m) { nxt } else {
@@ -127,25 +119,18 @@ impl JsonShard
             return None;
         };
 
-        m = if let Some( newM) = parser.ParseGrammar( &WSpc(), m) { newM } else { m };
+        m = if let Some( newM) = parser.ParseGrammar( &WSpc, m) { newM } else { m };
         if parser.GetAt( m) == U8( b'}') {
             return parser.Incr( m);
         }
 
         loop {
-            m = if let Some( newM) = parser.ParseGrammar( &WSpc(), m) { newM } else { m };
-            let  	key_start = m + crate::silo::U32( 1);
-            let nextM = parser.ParseGrammar( &Str, m)?;
-            let  	key_end = nextM - crate::silo::U32( 1);
-            m = nextM;
-            m = if let Some( newM) = parser.ParseGrammar( &WSpc(), m) { newM } else { m };
-
-            if parser.GetAt( m) != U8( b':') {
+            let     keyShard = ShardTree!( *WSpc < Str < *WSpc < ":");
+            let     rslt = parser.ParseGrammar( &keyShard, m);
+            if !rslt.is_some() {
                 return None;
             }
-            m = if let  	Some( nxt) = parser.Incr( m) { nxt } else {
-                return None;
-            };
+            m = rslt?; 
  
             parser.SetCurrMark( m);
             if let Some( nxt) = Self::MatchValue( parser) {
@@ -153,7 +138,7 @@ impl JsonShard
             } else {
                 return None;
             }
-            m = if let Some( newM) = parser.ParseGrammar( &WSpc(), m) { newM } else { m };
+            m = if let Some( newM) = parser.ParseGrammar( &WSpc, m) { newM } else { m };
 
             let  	curr = parser.GetAt( m);
             if curr == U8( b',') {
@@ -176,4 +161,3 @@ impl fmt::Debug for JsonShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> f
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-crate::ImplFluxImportSource!( JsonShard);

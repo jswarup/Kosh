@@ -10,10 +10,14 @@ pub struct PrimeShard
 
 
 //---------------------------------------------------------------------------------------------------------------------------------
+ 
+pub struct WSpc;
 
-pub fn	WSpc( ) -> impl IGrammar
-{
-    crate::ShardTree!( +[ " \t\n\r\x0B\x0C" ] )
+
+impl IGrammar for WSpc {
+    fn Match(&self, parser: &mut crate::shard::Parser) -> bool {
+        crate::ShardTree!( +[ " \t\n\r\x0B\x0C" ] ).Match(parser)
+    }
 }
  
 //---------------------------------------------------------------------------------------------------------------------------------

@@ -1,10 +1,9 @@
 //-- numbers.rs -----------------------------------------------------------------------------------------------------------------------
 
 use	std::fmt;
-use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
-use	crate::flux::fluximport::FieldImp;
+
 use	crate::shard::{ Parser, IGrammar };
-use	crate::silo::{ U8, U32, U64 };
+use	crate::silo::{ U8, U32 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -13,20 +12,14 @@ macro_rules! ImplNumberShard
     ( $shard:ident, $cnst:ident, $label:literal ) =>
     {
         pub struct $shard;
-        pub const $cnst: &$shard = &$shard;
+        pub const $cnst: $shard = $shard;
 
-        impl IFluxExportSource for $shard
-        {
-            fn    FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
-            {
-                *field = FieldExp::String( $label.to_string());
-            }
-        }
+
 
         impl fmt::Display for $shard { fn    fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "{}", $label) } }
         impl fmt::Debug for $shard { fn    fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "{}", $label) } }
 
-        crate::ImplFluxImportSource!( $shard);
+
     };
 }
 

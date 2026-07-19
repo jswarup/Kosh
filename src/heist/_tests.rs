@@ -1,6 +1,4 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::flux::{ JsonOutStream, fluxexport::FieldExp, IFluxExportSink };
-use	std::fs;
 use	crate::{
     heist::
     { Atelier, Maestro, choretree::IChoreNode },
@@ -154,12 +152,7 @@ fn	TestChoreTree()
     let  	choreTree= crate::ChoreTree!( ((( ( a < b ) | ( c <  d)) < e) | ( ( f | g) < h)  | i) < j);
     //let  	choreTree= crate::ChoreTree!( ((( ( aChore | bChore ) < gChore))));
 
-    let  	mut jsonStr = String::new();
-    {
-        let  	mut jsonOutStream = JsonOutStream::New( &mut jsonStr, true);
-        IFluxExportSink::DispatchFieldExp( &mut jsonOutStream, FieldExp::FluxSource( &choreTree));
-    }
-    fs::write( "a.json", jsonStr).unwrap();
+
 
 
     let  	atelier = Atelier::New( U32( 4));

@@ -2,9 +2,7 @@
 
 
 use	crate::shard::Parser;
-use	crate::flux::{ IFluxImportSource };
-use	crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
-use	crate::flux::fluximport::FieldImp;
+
 use	crate::shard::{ Charset, IGrammar };
 use	crate::silo::{ U32, U8 };
 
@@ -13,11 +11,41 @@ use	crate::silo::{ U32, U8 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, 'r, T: IGrammar + ?Sized> IGrammar for &'r T
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl<'a> IGrammar for &'a str
 {
     fn	Match( &self, parser: &mut Parser) -> bool
     {
         (**self).Match( parser)
+    }
+}
+
+impl<'a> IGrammar for &'a char
+{
+    fn	Match( &self, parser: &mut Parser) -> bool
+    {
+        (**self).Match( parser)
+    }
+}
+
+impl<'a> IGrammar for &'a Charset
+{
+    fn	Match( &self, parser: &mut Parser) -> bool
+    {
+        (**self).Match( parser)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl<F> IGrammar for F
+where
+    F: Fn(&mut Parser) -> bool
+{
+    fn	Match( &self, parser: &mut Parser) -> bool
+    {
+        self( parser)
     }
 }
 
@@ -38,13 +66,7 @@ impl IGrammar for Charset
     }
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxExportSource for char
-{
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
 
 impl IGrammar for char
 {
@@ -95,25 +117,9 @@ pub struct Str
 {
 }
 
-pub const Str: Str = Str {};
+pub const   Str: Str = Str {};
 
-//---------------------------------------------------------------------------------------------------------------------------------
 
-impl IFluxExportSource for Str
-{
-    fn	FetchFieldExp ( &self, _field: &mut FieldExp )
-    {
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IFluxImportSource for Str {
-    fn FetchFieldImp(&mut self, _field: &mut FieldImp) {
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
 
 impl IGrammar for Str
 {
@@ -159,8 +165,3 @@ impl IGrammar for Str
     }
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-crate::ImplFluxImportSource!( char);
-
-//---------------------------------------------------------------------------------------------------------------------------------
