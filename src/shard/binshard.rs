@@ -31,13 +31,15 @@ fn	Match( &self, parser: &mut Parser) -> bool
                 parser.ParseGrammar( &self._Right, m2).is_some()
             }
             BinOp::Less => {
-                let  	m1 = parser.CurrMark();
-                let  	leftRes = parser.ParseGrammar( &self._Left, m1);
+                let     m1 = parser.CurrMark();
+                let     leftRes = parser.ParseGrammar( &self._Left, m1);
                 if let Some( newM) = leftRes {
-                    parser.ParseGrammar( &self._Right, newM).is_some()
-                } else {
-                    false
+                    if parser.ParseGrammar( &self._Right, newM).is_some() {
+                        return true;
+                    }
+                    parser.SetCurrMark( m1);
                 }
+                false
             }
             _ => panic!( "Unsupported operator in BinShard Match"),
         }

@@ -41,7 +41,7 @@ impl JsonShard
 
     fn	MatchValue<'a>( parser: &mut Parser) -> Option< U32>
     {
-        let mut m = parser.CurrMark();
+        let  	mut m = parser.CurrMark();
         if let Some( newM) = parser.ParseGrammar( &WSpc, m) {
             m = newM;
             parser.SetCurrMark( m);
@@ -54,7 +54,7 @@ impl JsonShard
         if curr == U8( b'[') {
             return Self::MatchArray( parser);
         }
-        let     shardTree = ShardTree!( Str | "true" | "false" | "null" | Real );
+        let  	shardTree = ShardTree!( Str | "true" | "false" | "null" | Real );
         if let Some( newM) = parser.ParseGrammar( &shardTree, m) {
             return Some( newM);
         }  
@@ -65,88 +65,24 @@ impl JsonShard
 
     fn	MatchArray<'a>( parser: &mut Parser) -> Option< U32>
     {
-        
-        let     _shardTree = ShardTree!( '[' < *(WSpc < (Self::MatchValue) < ? (',' < WSpc)) < ']');
-
-        let mut m = parser.CurrMark();
-        if parser.GetAt( m) != U8( b'[') {
-            return None;
-        }
-        m = if let  	Some( nxt) = parser.Incr( m) { nxt } else {
-            return None;
-        };
-
-        m = if let Some( newM) = parser.ParseGrammar( &WSpc, m) { newM } else { m };
-        if parser.GetAt( m) == U8( b']') {
-            return parser.Incr( m);
-        }
-
-        loop { 
-            parser.SetCurrMark( m);
-            if let Some( nxt) = Self::MatchValue( parser) {
-                m = nxt;
-            } else {
-                return None;
-            }
-
-            m = if let Some( newM) = parser.ParseGrammar( &WSpc, m) { newM } else { m };
-            let  	curr = parser.GetAt( m);
-            if curr == U8( b',') {
-                m = if let  	Some( nxt) = parser.Incr( m) { nxt } else {
-                    return None;
-                };
-            } else if curr == U8( b']') {
-                return parser.Incr( m);
-            } else {
-                return None;
-            }
-        }
+        let  	m = parser.CurrMark();
+        let  	shardTree = ShardTree!( '[' < *(*WSpc < ( |p: &mut Parser| Self::MatchValue( p).is_some()) < ? ( ',' < *WSpc)) < *WSpc < ']');
+        if let Some( newM) = parser.ParseGrammar( &shardTree, m) {
+            return Some( newM);
+        }  
+        None 
     }
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
     fn	MatchObject<'a>( parser: &mut Parser) -> Option< U32>
     {
-        let mut m = parser.CurrMark();
-        if parser.GetAt( m) != U8( b'{') {
-            return None;
-        }
-        m = if let  	Some( nxt) = parser.Incr( m) { nxt } else {
-            return None;
-        };
-
-        m = if let Some( newM) = parser.ParseGrammar( &WSpc, m) { newM } else { m };
-        if parser.GetAt( m) == U8( b'}') {
-            return parser.Incr( m);
-        }
-
-        loop {
-            let     keyShard = ShardTree!( *WSpc < Str < *WSpc < ":");
-            let     rslt = parser.ParseGrammar( &keyShard, m);
-            if !rslt.is_some() {
-                return None;
-            }
-            m = rslt?; 
- 
-            parser.SetCurrMark( m);
-            if let Some( nxt) = Self::MatchValue( parser) {
-                m = nxt;
-            } else {
-                return None;
-            }
-            m = if let Some( newM) = parser.ParseGrammar( &WSpc, m) { newM } else { m };
-
-            let  	curr = parser.GetAt( m);
-            if curr == U8( b',') {
-                m = if let  	Some( nxt) = parser.Incr( m) { nxt } else {
-                    return None;
-                };
-            } else if curr == U8( b'}') {
-                return parser.Incr( m);
-            } else {
-                return None;
-            }
-        }
+        let  	m = parser.CurrMark();
+        let  	shardTree = ShardTree!( '{' < *(*WSpc < Str < *WSpc < ':' < *WSpc < ( |p: &mut Parser| Self::MatchValue( p).is_some()) < ? ( ',' < *WSpc)) < *WSpc < '}');
+        if let Some( newM) = parser.ParseGrammar( &shardTree, m) {
+            return Some( newM);
+        }  
+        None 
     }
 }
 
