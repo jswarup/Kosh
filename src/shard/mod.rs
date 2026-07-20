@@ -14,7 +14,7 @@ pub mod numbers;
 
 pub use leaves::Str;
 pub mod jsonshard;
-pub use jsonshard::{ JsonShard, Json };
+pub use jsonshard::JsonShard;
 pub use	numbers::{ UIntShard, UInt, IntShard, Int, HexShard, Hex, RealShard, Real };
 
 pub mod primeshard;

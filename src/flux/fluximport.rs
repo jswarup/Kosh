@@ -3,8 +3,10 @@
 use crate::silo::U64;
 
 
+#[derive( Default)]
 pub enum FieldImp< 'a>
 {
+    #[default]
     Null,
     Str( &'a mut &'a str),
     String( &'a mut String),

@@ -4,7 +4,7 @@ use	std::ptr::NonNull;
 use	crate::{
     ShardTree, 
     flux::{ FixedStream, IFluxImportSource, fluximport::FieldImp }, 
-    shard::{ Charset, Hex, Int, Json, Parser, Real, UInt, WSpc }, 
+    shard::{ Charset, Hex, Int, JsonShard, Parser, Real, UInt, WSpc }, 
     silo::{ U32, U64},
 };
 
@@ -293,8 +293,10 @@ fn TestRealShard() {
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn TestJsonShard() {
-    let tree = crate::ShardTree!( Json );
+fn TestJsonShard() 
+{
+    let     json = JsonShard::New( FieldImp::Null);
+    let tree = crate::ShardTree!( json );
 
     // JSON String
     let  	mut stream1 = FixedStream::from( r#"  "hello world"  "#);
@@ -327,8 +329,7 @@ fn TestJsonShard() {
 //---------------------------------------------------------------------------------------------------------------------------------
 
 
-
-//#[test]
+#[test]
 fn	TestJsonParsingStruct()
 {
 
@@ -363,9 +364,13 @@ fn	TestJsonParsingStruct()
     let  	str = r#"{ "name": "Alice", "age": 30, "is_active": true }"#;
     let  	mut stream = FixedStream::from( str);
     let  	mut parser = Parser::New( &mut stream);
-    let  	_person = Person::default();
+    let  	mut person = Person::default();
+    let  	mut fImp = FieldImp::Null;
+    person.FetchFieldImp( &mut fImp);
+    let     json = JsonShard::New( fImp);
+    let     tree = crate::ShardTree!( json );
     // Phase 1: validate structure
-    let  	matched = parser.ParseGrammar( &Json, U32( 0));
+    let  	matched = parser.ParseGrammar( &tree, U32( 0));
     assert!( matched.is_some()); 
 }
 

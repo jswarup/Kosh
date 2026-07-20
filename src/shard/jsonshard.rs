@@ -2,25 +2,31 @@
 
 use	std::fmt;
 use	crate::{
-    ShardTree, 
-    shard::{ IGrammar, Parser, WSpc },
-    silo::{  Arr, U8 },
+    ShardTree, flux::FieldImp, shard::{ IGrammar, Parser, WSpc }, silo::{  Arr, Stash, U8 },
 };
 use	crate::shard::numbers::Real;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct JsonShard
+pub struct JsonShard< 'a>
 {
-
+    pub _ImpStash: Stash< FieldImp< 'a>>,
 }
-
-pub const Json: JsonShard = JsonShard{};
+ 
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl JsonShard
+impl< 'a> JsonShard< 'a>
 {
+    pub fn  New( mut fImp: FieldImp< 'a>) -> Self
+    {
+        let  	mut json  = Self {
+            _ImpStash:  Stash::NewEmpty(),
+
+        };
+        json._ImpStash.PushX( &mut fImp);
+        json
+    }
     fn	MatchObject( parser: &mut Parser) -> bool
     {
         
@@ -60,7 +66,7 @@ impl JsonShard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IGrammar for JsonShard
+impl< 'a> IGrammar for JsonShard< 'a>
 {
     
     fn	Match( &self, parser: &mut Parser) -> bool
@@ -78,8 +84,8 @@ impl IGrammar for JsonShard
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl fmt::Display for JsonShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Json") } }
-impl fmt::Debug for JsonShard { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Json") } }
+impl< 'a> fmt::Display for JsonShard< 'a> { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Json") } }
+impl< 'a> fmt::Debug for JsonShard< 'a> { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Json") } }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
