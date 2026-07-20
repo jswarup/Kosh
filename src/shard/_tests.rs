@@ -4,7 +4,7 @@ use	std::ptr::NonNull;
 use	crate::{
     ShardTree, 
     flux::{ FixedStream, IFluxImportSource, fluximport::FieldImp }, 
-    shard::{ Charset, Hex, Int, JsonShard, Parser, Real, UInt, WSpc }, 
+    shard::{ Charset, Hex, Int, JSon, Parser, Real, UInt, WSpc }, 
     silo::{ U32, U64},
 };
 
@@ -295,7 +295,7 @@ fn TestRealShard() {
 #[test]
 fn TestJsonShard() 
 {
-    let     json = JsonShard::New( FieldImp::Null);
+    let     json = JSon::New( FieldImp::Null);
     let tree = crate::ShardTree!( json );
 
     // JSON String
@@ -367,7 +367,7 @@ fn	TestJsonParsingStruct()
     let  	mut person = Person::default();
     let  	mut fImp = FieldImp::Null;
     person.FetchFieldImp( &mut fImp);
-    let     json = JsonShard::New( fImp);
+    let     json = JSon::New( fImp);
     let     tree = crate::ShardTree!( json );
     // Phase 1: validate structure
     let  	matched = parser.ParseGrammar( &tree, U32( 0));

@@ -8,7 +8,7 @@ use	crate::shard::numbers::Real;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct JsonShard< 'a>
+pub struct JSon< 'a>
 {
     pub _ImpStash: Stash< FieldImp< 'a>>,
 }
@@ -16,76 +16,73 @@ pub struct JsonShard< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> JsonShard< 'a>
+impl< 'a> JSon< 'a>
 {
-    pub fn  New( mut fImp: FieldImp< 'a>) -> Self
+    pub fn  New( mut docImp: FieldImp< 'a>) -> Self
     {
         let  	mut json  = Self {
             _ImpStash:  Stash::NewEmpty(),
 
         };
-        json._ImpStash.PushX( &mut fImp);
+        json._ImpStash.PushX( &mut docImp);
         json
     }
-    fn	MatchObject( parser: &mut Parser) -> bool
+
+    fn	MatchObject( &self, parser: &mut Parser) -> bool
     {
         
         let mut     strBuf = String::from( "");
         let     objectName = move | arr: Arr< U8>| {
             strBuf.push_str( <&str>::from( arr));
             true
-        };
+        }; 
         let     objectValue = | _arr: Arr< U8>| {
             true
         };
-        let     objShard = ShardTree!( Str[ objectName] < ?WSpc < ':' < ?WSpc < ( JsonShard::MatchValue)[ objectValue]);
+        let     objShard = ShardTree!( Str[ objectName] < ?WSpc < ':' < ?WSpc < ( |p: &mut Parser| self.MatchValue(p) )[ objectValue]);
         
-        if let Some( newM) = parser.ParseGrammar( &objShard, parser.CurrMark()) { 
-            parser.SetCurrMark( newM);
-            true
-        } else {
-            false
-        }
+        let Some( newM) = parser.ParseGrammar( &objShard, parser.CurrMark()) else { 
+            return false;
+        };
+        parser.SetCurrMark( newM);
+        true
     }
 
-    fn	MatchValue( parser: &mut Parser) -> bool
+    fn	MatchValue( &self, parser: &mut Parser) -> bool
     { 
-        let  	objShard = ShardTree!( '{' < *(?WSpc < ( JsonShard::MatchObject) < ? ( ',' < ?WSpc)) < ?WSpc < '}');
-        let  	arrShard = ShardTree!( '[' < *(?WSpc < ( JsonShard::MatchValue) < ? ( ',' < ?WSpc)) < ?WSpc < ']');
+        let  	objShard = ShardTree!( '{' < *(?WSpc < ( |p: &mut Parser| self.MatchObject(p) ) < ? ( ',' < ?WSpc)) < ?WSpc < '}');
+        let  	arrShard = ShardTree!( '[' < *(?WSpc < ( |p: &mut Parser| self.MatchValue(p) ) < ? ( ',' < ?WSpc)) < ?WSpc < ']');
         let  	keyShard = ShardTree!( Str | "true" | "false" | "null" | Real );
         let  	valShard = ShardTree!( ?WSpc < ( keyShard | arrShard | objShard) < ?WSpc);
         
-        if let Some( newM) = parser.ParseGrammar( &valShard, parser.CurrMark()) { 
-            parser.SetCurrMark( newM);
-            true
-        } else {
-            false
-        }
+        let Some( newM) = parser.ParseGrammar( &valShard, parser.CurrMark()) else { 
+            return false;
+        };
+        parser.SetCurrMark( newM);
+        true
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> IGrammar for JsonShard< 'a>
+impl< 'a> IGrammar for JSon< 'a>
 {
     
     fn	Match( &self, parser: &mut Parser) -> bool
     {
         let  	m = parser.CurrMark();   
-        let  	jsonhard = ShardTree!( ?WSpc < ( JsonShard::MatchValue) < ?WSpc); 
-        if let Some( newM) = parser.ParseGrammar( &jsonhard, m) { 
-            parser.SetCurrMark( newM);
-            true
-        } else {
-            false
-        }
+        let  	jsonhard = ShardTree!( ?WSpc < ( |p: &mut Parser| self.MatchValue(p) ) < ?WSpc); 
+        let Some( newM) = parser.ParseGrammar( &jsonhard, m) else { 
+            return false;
+        };
+        parser.SetCurrMark( newM);
+        true
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a> fmt::Display for JsonShard< 'a> { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Json") } }
-impl< 'a> fmt::Debug for JsonShard< 'a> { fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Json") } }
+impl< 'a> fmt::Display for JSon< 'a> { fn fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Json") } }
+impl< 'a> fmt::Debug for JSon< 'a> { fn   fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result { write!( f, "Json") } }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
