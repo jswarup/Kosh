@@ -163,6 +163,24 @@ impl< 'a, T> Arr< 'a, T>
         }
     }
 
+    pub fn	NewEmpty() -> Self
+    {
+        Arr {
+            _Ptr: NonNull::dangling(),
+            _Size: U32( 0),
+            _Marker: PhantomData,
+        }
+    }
+
+    pub fn	CoerceLifetime< 'b>( self) -> Arr< 'b, T>
+    {
+        Arr {
+            _Ptr: self._Ptr,
+            _Size: self._Size,
+            _Marker: PhantomData,
+        }
+    }
+
 }
 
 impl< 'a, T> IAccess< 'a, T> for Arr< 'a, T>

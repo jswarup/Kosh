@@ -29,14 +29,15 @@ impl< 'a> JSon< 'a>
     }
 
     fn	MatchObject( &self, parser: &mut Parser) -> bool
-    {
-        
-        let mut     strBuf = String::from( "");
-        let     objectName = move | arr: Arr< U8>| {
-            strBuf.push_str( <&str>::from( arr));
+    { 
+        let mut objArr = Arr::< U8>::NewEmpty();
+        let objectName = | arr: Arr< U8>| {
+            objArr = arr.CoerceLifetime();
             true
         }; 
-        let     objectValue = | _arr: Arr< U8>| {
+        let mut valArr = Arr::< U8>::NewEmpty();
+        let objectValue = | _arr: Arr< U8>| {
+            valArr = _arr.CoerceLifetime(); 
             true
         };
         let     objShard = ShardTree!( Str[ objectName] < ?WSpc < ':' < ?WSpc < ( |p: &mut Parser| self.MatchValue(p) )[ objectValue]);

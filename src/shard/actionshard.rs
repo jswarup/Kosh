@@ -22,14 +22,14 @@ pub type ActionShard< C, W> = UniNode< C, ActionOp< W>>;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait INotify: Send + Sync
+pub trait INotify
 {
     fn	DoNotify( &mut self, matched: Arr< '_, U8>) -> bool;
 }
 
 impl< F> INotify for F
 where
-    F: for< 'a> FnMut( Arr< 'a, U8>) -> bool + Send + Sync,
+    F: for< 'a> FnMut( Arr< 'a, U8>) -> bool,
 {
     fn	DoNotify( &mut self, matched: Arr< '_, U8>) -> bool
     {
@@ -41,7 +41,7 @@ where
 
 pub fn	Coerce< F>( f: F) -> F
 where
-    F: INotify + 'static
+    F: INotify
 {
     f
 }
@@ -51,7 +51,7 @@ where
 impl< C, W> IGrammar for UniNode< C, ActionOp< W>>
 where
     C: IGrammar,
-    W: INotify + 'static,
+    W: INotify,
 {
     fn	Match( &self, parser: &mut Parser) -> bool
     {
