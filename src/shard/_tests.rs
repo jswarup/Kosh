@@ -490,3 +490,87 @@ fn	TestPointGrammar()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[derive( Clone)]
+struct MemberGroup
+{
+    _Name: String,
+}
+impl Default for MemberGroup
+{
+    fn	default() -> Self
+    {
+        MemberGroup { _Name: String::new() }
+    }
+}
+crate::ImplFluxSource!( MemberGroup, _Name);
+
+#[derive( Clone)]
+struct Person
+{
+    _Name: String,
+    _Age: U64,
+    _Weight: f64,
+    _Groups: crate::silo::Buff< MemberGroup>,
+}
+impl Default for Person
+{
+    fn	default() -> Self
+    {
+        Person {
+            _Name: String::new(),
+            _Age: U64( 0),
+            _Weight: 0.0,
+            _Groups: crate::silo::Buff::NewEmpty(),
+        }
+    }
+}
+crate::ImplFluxSource!( Person, _Name, _Age, _Weight, _Groups);
+
+#[test]
+fn	TestPersonSerialization()
+{
+    let  	mut groups = crate::silo::Buff::< MemberGroup>::NewEmpty();
+    groups.Push( MemberGroup { _Name: "Group A".to_string() });
+    groups.Push( MemberGroup { _Name: "Group B".to_string() });
+
+    let  	p1 = Person {
+        _Name: "Alice".to_string(),
+        _Age: U64( 30),
+        _Weight: 65.5,
+        _Groups: groups,
+    };
+
+    // Serialize to JSON
+    use crate::flux::{ JsonOutStream, fluxexport::FieldExp, IFluxExportSink };
+    let  	mut output = String::new();
+    {
+        let  	mut jsonStream = JsonOutStream::New( &mut output, false);
+        jsonStream.DispatchFieldExp( FieldExp::FluxSource( &p1));
+    }
+    println!( "DEBUG JSON: [{}]", output);
+
+    // Deserialize into another Person instance
+    let  	mut p2 = Person::default();
+    let  	mut stream = FixedStream::from( output.as_str());
+    let  	mut parser = Parser::New( &mut stream);
+    
+    let  	mut field = FieldImp::Null;
+    p2.FetchFieldImp( &mut field);
+    let  	json_parser = JSon::New( field);
+    
+    assert!( parser.ParseGrammar( &json_parser, U32( 0)).is_some());
+
+    drop( json_parser);
+
+    assert_eq!( p1._Name, p2._Name);
+    assert_eq!( p1._Age, p2._Age);
+    assert_eq!( p1._Weight, p2._Weight);
+    assert_eq!( p1._Groups.Size(), p2._Groups.Size());
+    
+    use crate::silo::IAccess;
+    assert_eq!( p1._Groups.Arr().At( U32( 0))._Name, p2._Groups.Arr().At( U32( 0))._Name);
+    assert_eq!( p1._Groups.Arr().At( U32( 1))._Name, p2._Groups.Arr().At( U32( 1))._Name);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------

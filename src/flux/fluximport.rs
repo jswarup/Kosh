@@ -65,6 +65,44 @@ impl< 'a> FieldImp< 'a>
             flx.FromFieldImp( FieldImp::F64( &mut temp));
         }
     }
+
+    pub fn	PostStr( mut self, val: &'a str)
+    {
+        self.Resolve();
+        if let      FieldImp::Str( dst) = self {
+            *dst = val;
+        } else if let      FieldImp::String( dst) = self {
+            *dst = val.to_string();
+        } else if let      FieldImp::FluxSink( flx) = self {
+            let      mut temp = val;
+            flx.FromFieldImp( FieldImp::Str( &mut temp));
+        }
+    }
+
+    pub fn	PostBool( mut self, val: bool)
+    {
+        self.Resolve();
+        if let      FieldImp::Bool( dst) = self {
+            *dst = val;
+        } else if let      FieldImp::FluxSink( flx) = self {
+            let      mut temp = val;
+            flx.FromFieldImp( FieldImp::Bool( &mut temp));
+        }
+    }
+
+    pub fn	PostParsed( mut self, s: &'a str)
+    {
+        self.Resolve();
+        if let Ok( v) = s.parse::< u64>() {
+            self.PostU64( U64( v));
+        } else if let Ok( v) = s.parse::< f64>() {
+            self.PostF64( v);
+        } else if let Ok( v) = s.parse::< bool>() {
+            self.PostBool( v);
+        } else {
+            self.PostStr( s);
+        }
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
