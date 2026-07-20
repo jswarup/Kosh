@@ -172,7 +172,7 @@ impl< 'a, T> Arr< 'a, T>
         }
     }
 
-    pub fn	CoerceLifetime< 'b>( self) -> Arr< 'b, T>
+    pub fn	LifeFix< 'b>( self) -> Arr< 'b, T>
     {
         Arr {
             _Ptr: self._Ptr,

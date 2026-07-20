@@ -32,12 +32,12 @@ impl< 'a> JSon< 'a>
     { 
         let mut objArr = Arr::< U8>::NewEmpty();
         let objectName = | arr: Arr< U8>| {
-            objArr = arr.CoerceLifetime();
+            objArr = arr.LifeFix();
             true
         }; 
         let mut valArr = Arr::< U8>::NewEmpty();
-        let objectValue = | _arr: Arr< U8>| {
-            valArr = _arr.CoerceLifetime(); 
+        let objectValue = | arr: Arr< U8>| {
+            valArr = arr.LifeFix(); 
             true
         };
         let     objShard = ShardTree!( Str[ objectName] < ?WSpc < ':' < ?WSpc < ( |p: &mut Parser| self.MatchValue(p) )[ objectValue]);
