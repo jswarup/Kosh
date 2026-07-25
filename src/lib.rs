@@ -5,5 +5,6 @@ pub mod flux;
 pub mod shard;
 pub mod silo;pub mod stalks;
 pub mod fresco;
+pub mod swarm;
 
 //---------------------------------------------------------------------------------------------------------------------------------
