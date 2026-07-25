@@ -40,7 +40,6 @@ impl< T> Stash< T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-
     pub fn	Create< Sz: Into< U32>, SzStk: Into< U32>, Dispenser>(
         sz: Sz,
         szStk: SzStk,
@@ -168,7 +167,6 @@ impl< T: Copy> Stash< T>
         }
         self._Sz.Set( startSz + n);
     }
-
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -192,6 +190,7 @@ impl< T: Default> Stash< T>
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
+    
     pub fn	PopToSize( &self, targetSz: U32)
     {
         let  	mut temp = T::default();
@@ -208,17 +207,18 @@ where
     T: From< usize> + Clone,
 {
     //-----------------------------------------------------------------------------------------------------------------------------
+    
     pub fn	DoIndexSetup( &self)
     {
         let  	arr = self._Buff.Arr();
         arr.DoIndexSetup();
         self._Sz.Store( arr.Size(), Ordering::Release);
     }
+
     //-----------------------------------------------------------------------------------------------------------------------------
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
 
 impl Stash< U8>
 {
@@ -237,4 +237,46 @@ impl Stash< U8>
         }
     }
 }
+
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[macro_export]
+macro_rules! Stash {
+    (@__ $acc:ident, $exp:expr; for $item:pat in $iter:expr; if $cond:expr) => (
+        for $item in $iter {
+            if $cond {
+                $acc.Push($exp);
+            }
+        }
+    );
+
+    (@__ $acc:ident, $exp:expr; for $item:pat in $iter:expr) => (
+        for $item in $iter {
+            $acc.Push($exp);
+        }
+    );
+
+    (@__ $acc:ident, $exp:expr; for $item:pat in $iter:expr; if $cond:expr; $($tail:tt)+) => (
+        for $item in $iter {
+            if $cond {
+                $crate::Stash![@__ $acc, $exp; $($tail)+];
+            }
+        }
+    );
+
+    (@__ $acc:ident, $exp:expr; for $item:pat in $iter:expr; $($tail:tt)+) => (
+        for $item in $iter {
+            $crate::Stash![@__ $acc, $exp; $($tail)+];
+        }
+    );
+
+    ($exp:expr; $($tail:tt)+) => ({
+        let  	mut ret = $crate::silo::Stash::NewEmpty();
+        $crate::Stash![@__ ret, $exp; $($tail)+];
+        ret
+    });
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
 

@@ -3,6 +3,8 @@ use	crate::fresco::exprrepos::ExprRepos;
 use	crate::fresco::varexpr::{ VarKind, VarExpr };
 use	crate::fresco::termtree::ITermNode;
 use	crate::silo::U32;
+use	crate::flux::IFluxExportSource;
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -44,11 +46,11 @@ fn	TestTermTree()
 
     let  	nodeTree = crate::TermTree!( q + x + y *( z + "a" +"b" +"x" +"d"));
 
-
-    let         mut exprRepos = ExprRepos::NewEmpty();
+    let mut exprRepos = ExprRepos::NewEmpty();
+    
     exprRepos.PostTermTree( &nodeTree);
 
-
+    println!( "{}", &exprRepos as &dyn IFluxExportSource);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
