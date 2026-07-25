@@ -165,3 +165,44 @@ impl IVoidPtrExt for *mut ()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait ISliceExt
+{
+    fn	CastSlice( &self) -> &[u8];
+    fn	CastSliceFrom< U: Copy>( &self) -> &[U];
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T: Copy> ISliceExt for [T]
+{
+    #[inline( always)]
+    fn	CastSlice( &self) -> &[u8]
+    {
+        unsafe {
+            std::slice::from_raw_parts(
+                self.as_ptr() as *const u8,
+                self.len() * std::mem::size_of::< T>(),
+            )
+        }
+    }
+
+    #[inline( always)]
+    fn	CastSliceFrom< U: Copy>( &self) -> &[U]
+    {
+        let  	szT = std::mem::size_of::< T>();
+        let  	szU = std::mem::size_of::< U>();
+        assert!( szU > 0, "Cannot cast to ZST");
+        assert_eq!( ( self.len() * szT) % szU, 0, "Slice size in bytes not aligned to target type");
+        unsafe {
+            std::slice::from_raw_parts(
+                self.as_ptr() as *const U,
+                ( self.len() * szT) / szU,
+            )
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------------------------------------------------------------

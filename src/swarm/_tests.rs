@@ -1,5 +1,5 @@
 //-- swarm/_tests.rs -----------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Buff, U32 };
+use	crate::silo::{ Buff, U32, ISliceExt };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -93,7 +93,7 @@ fn	GpuInit() -> Option< ( wgpu::Device, wgpu::Queue)>
                 return None;
             }
         };
-        let  	(device, queue) = adapter
+        let  	( device, queue) = adapter
             .request_device( &wgpu::DeviceDescriptor {
                 label: Some( "KoshGpuTest"),
                 ..Default::default()
@@ -140,7 +140,7 @@ fn	GpuReadBuffer( device: &wgpu::Device, queue: &wgpu::Queue, buf: &wgpu::Buffer
     queue.submit( std::iter::once( encoder.finish()));
 
     let  	slice = staging.slice( ..);
-    let  	(tx, rx) = std::sync::mpsc::channel();
+    let  	( tx, rx) = std::sync::mpsc::channel();
     slice.map_async( wgpu::MapMode::Read, move |result| {
         tx.send( result).unwrap();
     });
@@ -159,7 +159,7 @@ fn	GpuReadBuffer( device: &wgpu::Device, queue: &wgpu::Queue, buf: &wgpu::Buffer
 #[test]
 fn	TestGpuDoubleValues()
 {
-    let  	(device, queue) = match GpuInit() {
+    let  	( device, queue) = match GpuInit() {
         Some( dq) => dq,
         None => {
             println!( "No GPU adapter found — skipping TestGpuDoubleValues");
@@ -170,13 +170,13 @@ fn	TestGpuDoubleValues()
     // Prepare input data using project Buff
     let  	szData = U32( 256);
     let  	input = Buff::Create( szData, |i| ( i.AsU32() + 1) as f32);
-    let  	byteLen = (szData.AsUsize()) * std::mem::size_of::< f32>();
+    let  	byteLen = szData.AsUsize() * std::mem::size_of::< f32>();
 
     // Upload to GPU
     let  	gpuBuf = GpuBufferInit(
         &device,
         "double_data",
-        bytemuck_cast_slice::< f32>( &input),
+        input.CastSlice(),
         wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
     );
 
@@ -238,9 +238,9 @@ fn	TestGpuDoubleValues()
 
     // Read back and verify
     let  	raw = GpuReadBuffer( &device, &queue, &gpuBuf, byteLen as u64);
-    let  	result: &[f32] = bytemuck_cast_slice_from::< f32>( &raw);
+    let  	result: &[f32] = raw.CastSliceFrom();
     for i in 0..szData.AsUsize() {
-        let  	expected = (( i as u32) + 1) as f32 * 2.0;
+        let  	expected = ( i as f32 + 1.0) * 2.0;
         assert!(
             ( result[i] - expected).abs() < 1e-6,
             "Mismatch at {}: got {}, expected {}",
@@ -255,7 +255,7 @@ fn	TestGpuDoubleValues()
 #[test]
 fn	TestGpuVectorAdd()
 {
-    let  	(device, queue) = match GpuInit() {
+    let  	( device, queue) = match GpuInit() {
         Some( dq) => dq,
         None => {
             println!( "No GPU adapter found — skipping TestGpuVectorAdd");
@@ -271,17 +271,17 @@ fn	TestGpuVectorAdd()
 
     let  	gpuA = GpuBufferInit(
         &device, "vecadd_a",
-        bytemuck_cast_slice::< f32>( &buffA),
+        buffA.CastSlice(),
         wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
     );
     let  	gpuB = GpuBufferInit(
         &device, "vecadd_b",
-        bytemuck_cast_slice::< f32>( &buffB),
+        buffB.CastSlice(),
         wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
     );
     let  	gpuOut = GpuBufferInit(
         &device, "vecadd_out",
-        bytemuck_cast_slice::< f32>( &buffOut),
+        buffOut.CastSlice(),
         wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
     );
 
@@ -372,7 +372,7 @@ fn	TestGpuVectorAdd()
     queue.submit( std::iter::once( encoder.finish()));
 
     let  	raw = GpuReadBuffer( &device, &queue, &gpuOut, byteLen as u64);
-    let  	result: &[f32] = bytemuck_cast_slice_from::< f32>( &raw);
+    let  	result: &[f32] = raw.CastSliceFrom();
     for i in 0..szData.AsUsize() {
         let  	expected = ( i as f32) + ( i as f32 * 10.0);
         assert!(
@@ -389,7 +389,7 @@ fn	TestGpuVectorAdd()
 #[test]
 fn	TestGpuCollatz()
 {
-    let  	(device, queue) = match GpuInit() {
+    let  	( device, queue) = match GpuInit() {
         Some( dq) => dq,
         None => {
             println!( "No GPU adapter found — skipping TestGpuCollatz");
@@ -404,12 +404,12 @@ fn	TestGpuCollatz()
 
     let  	gpuIn = GpuBufferInit(
         &device, "collatz_in",
-        bytemuck_cast_slice::< u32>( &inputBuff),
+        inputBuff.CastSlice(),
         wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
     );
     let  	gpuOut = GpuBufferInit(
         &device, "collatz_out",
-        bytemuck_cast_slice::< u32>( &outputBuff),
+        outputBuff.CastSlice(),
         wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
     );
 
@@ -486,7 +486,7 @@ fn	TestGpuCollatz()
     queue.submit( std::iter::once( encoder.finish()));
 
     let  	raw = GpuReadBuffer( &device, &queue, &gpuOut, byteLen as u64);
-    let  	result: &[u32] = bytemuck_cast_slice_from::< u32>( &raw);
+    let  	result: &[u32] = raw.CastSliceFrom();
 
     // CPU reference: compute Collatz steps for each value
     for i in 0..szData.AsUsize() {
@@ -507,36 +507,6 @@ fn	TestGpuCollatz()
         );
     }
     println!( "TestGpuCollatz: {} Collatz sequences computed on GPU ✓", szData);
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-/// Safe cast from a typed slice to a byte slice (like bytemuck::cast_slice).
-/// Only valid for `Copy` types with no padding concerns for f32/u32.
-fn	bytemuck_cast_slice< T: Copy>( data: &[T]) -> &[u8]
-{
-    unsafe {
-        std::slice::from_raw_parts(
-            data.as_ptr() as *const u8,
-            data.len() * std::mem::size_of::< T>(),
-        )
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-/// Safe cast from a byte slice back to a typed slice.
-fn	bytemuck_cast_slice_from< T: Copy>( data: &[u8]) -> &[T]
-{
-    let  	szT = std::mem::size_of::< T>();
-    assert!( szT > 0, "Cannot cast to ZST");
-    assert_eq!( data.len() % szT, 0, "Byte slice length not aligned to target type");
-    unsafe {
-        std::slice::from_raw_parts(
-            data.as_ptr() as *const T,
-            data.len() / szT,
-        )
-    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
