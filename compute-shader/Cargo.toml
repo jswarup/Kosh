@@ -1,0 +1,11 @@
+[package]
+name = "compute-shader"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+spirv-std = { git = "https://github.com/Rust-GPU/rust-gpu.git", features = ["glam_0_33"] }

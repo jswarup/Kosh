@@ -430,43 +430,6 @@ fn	TestGpuCollatz()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-const SHADER_COLLATZ_RECORDS: &str = r#"
-@group(0) @binding(0)
-var<storage, read> input: array<u32>;
-
-@group(0) @binding(1)
-var<storage, read_write> output: array<u32>;
-
-fn collatz_steps( n_in: u32) -> u32
-{
-    var  	n: u32 = n_in;
-    var  	steps: u32 = 0u;
-    if n == 0u {
-        return 0xffffffffu;
-    }
-    while n != 1u {
-        if (n % 2u) == 0u {
-            n = n / 2u;
-        } else {
-            if n >= 0x55555555u {
-                return 0xffffffffu;
-            }
-            n = 3u * n + 1u;
-        }
-        steps = steps + 1u;
-    }
-    return steps;
-}
-
-@compute @workgroup_size( 64)
-fn main( @builtin( global_invocation_id) gid: vec3<u32>)
-{
-    let  	idx = gid.x;
-    if idx < arrayLength( &output) {
-        output[idx] = collatz_steps( input[idx]);
-    }
-}
-"#;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -497,9 +460,19 @@ fn	TestRustGpuComputeExample()
         wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
     );
 
+    let  	compileResult = spirv_builder::SpirvBuilder::new( "compute-shader", "spirv-unknown-vulkan1.1")
+        .build()
+        .unwrap();
+    let  	modulePath = match compileResult.module {
+        spirv_builder::ModuleResult::SingleModule( p) => p,
+        spirv_builder::ModuleResult::MultiModule( m) => m.into_iter().next().unwrap().1,
+    };
+    let  	spirvData = std::fs::read( modulePath).unwrap();
+    let  	spirv = std::borrow::Cow::Owned( wgpu::util::make_spirv_raw( &spirvData).into_owned());
+
     let  	shader = device.create_shader_module( wgpu::ShaderModuleDescriptor {
         label: Some( "collatz_rec_shader"),
-        source: wgpu::ShaderSource::Wgsl( SHADER_COLLATZ_RECORDS.into()),
+        source: wgpu::ShaderSource::SpirV( spirv),
     });
     let  	bindGroupLayout = device.create_bind_group_layout( &wgpu::BindGroupLayoutDescriptor {
         label: Some( "collatz_rec_bgl"),
@@ -535,7 +508,7 @@ fn	TestRustGpuComputeExample()
         label: Some( "collatz_rec_pipeline"),
         layout: Some( &pipelineLayout),
         module: &shader,
-        entry_point: Some( "main"),
+        entry_point: Some( "main_cs"),
         compilation_options: Default::default(),
         cache: None,
     });
