@@ -1,0 +1,3 @@
+[submodule "thirdpty/rust-gpu"]
+	path = thirdpty/rust-gpu
+	url = https://github.com/Rust-GPU/rust-gpu.git
