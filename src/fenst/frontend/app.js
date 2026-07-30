@@ -169,7 +169,10 @@ async function toggleDirectory(entry, treeItem, depth) {
 
         const children = treeItem.nextElementSibling;
         if (children && children.classList.contains('tree-children')) {
-            children.classList.add('collapsed');
+            children.style.maxHeight = children.scrollHeight + 'px';
+            children.offsetHeight; // force reflow
+            children.style.maxHeight = '0';
+            children.style.opacity = '0';
             // Remove after animation
             setTimeout(() => children.remove(), 300);
         }
@@ -196,6 +199,14 @@ async function toggleDirectory(entry, treeItem, depth) {
         requestAnimationFrame(() => {
             container.style.maxHeight = container.scrollHeight + 'px';
             container.style.opacity = '1';
+        });
+
+        // Clear max-height after transition to allow nested children to expand without clipping
+        container.addEventListener('transitionend', function handler(e) {
+            if (e.propertyName === 'max-height') {
+                container.style.maxHeight = 'none';
+                container.removeEventListener('transitionend', handler);
+            }
         });
     }
 
@@ -235,9 +246,6 @@ async function selectFile(entry, treeItem) {
         // Render file content
         dom.fileText.textContent = result.content;
 
-        // Sync scroll between line numbers and content
-        dom.fileContent.addEventListener('scroll', syncScroll);
-
         // Update status bar
         updateStatusBar(result);
 
@@ -246,10 +254,6 @@ async function selectFile(entry, treeItem) {
         dom.fileText.textContent = `Error: ${err}`;
         dom.lineNumbers.textContent = '1';
     }
-}
-
-function syncScroll() {
-    dom.lineNumbers.style.transform = `translateY(-${dom.fileContent.scrollTop}px)`;
 }
 
 function updateStatusBar(fileContents) {
@@ -363,30 +367,34 @@ function customPrompt(message, defaultValue) {
 }
 
 async function openFolder() {
-    const path = await customPrompt('Enter folder path to open:', state.rootPath || '/');
-    if (!path) return;
+    try {
+        const path = await invoke('select_directory');
+        if (!path) return;
 
-    state.rootPath = path;
-    state.expandedDirs.clear();
-    state.selectedTreeItem = null;
+        state.rootPath = path;
+        state.expandedDirs.clear();
+        state.selectedTreeItem = null;
 
-    // Clear tree
-    dom.explorerTree.innerHTML = '';
+        // Clear tree
+        dom.explorerTree.innerHTML = '';
 
-    // Load root directory
-    const entries = await loadDirectory(path);
+        // Load root directory
+        const entries = await loadDirectory(path);
 
-    if (entries.length === 0) {
-        dom.explorerTree.innerHTML = `
-            <div class="explorer-empty">
-                <p>Empty directory</p>
-            </div>
-        `;
-        return;
-    }
+        if (entries.length === 0) {
+            dom.explorerTree.innerHTML = `
+                <div class="explorer-empty">
+                    <p>Empty directory</p>
+                </div>
+            `;
+            return;
+        }
 
-    for (const entry of entries) {
-        dom.explorerTree.appendChild(createTreeItem(entry, 0));
+        for (const entry of entries) {
+            dom.explorerTree.appendChild(createTreeItem(entry, 0));
+        }
+    } catch (err) {
+        console.error('Failed to select directory:', err);
     }
 }
 

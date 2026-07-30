@@ -521,6 +521,10 @@ kbd {
     min-width: 52px;
     font-variant-numeric: tabular-nums;
     border-right: 1px solid var(--border-subtle);
+    white-space: pre;
+    position: sticky;
+    left: 0;
+    z-index: 10;
 }
 
 .file-text {

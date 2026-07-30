@@ -89,6 +89,7 @@ pub fn	run()
             commands::read_directory,
             commands::read_file_contents,
             commands::get_file_info,
+            commands::select_directory,
         ])
         .run( tauri::generate_context!())
         .expect( "error while running Fenst application");

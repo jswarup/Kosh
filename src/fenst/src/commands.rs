@@ -194,3 +194,17 @@ pub fn	get_file_info( path: String) -> Result< FileInfo, String>
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Shows a native dialog to pick a folder.
+#[tauri::command]
+pub fn	select_directory() -> Result< Option< String>, String>
+{
+    let  	fileDialog = rfd::FileDialog::new()
+        .set_title( "Select Folder to Open");
+
+    let  	folderPath = fileDialog.pick_folder();
+
+    Ok( folderPath.map( |p| p.to_string_lossy().into_owned()))
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
