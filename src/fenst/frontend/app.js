@@ -12,6 +12,8 @@ const state = {
     currentFile: null,
     explorerVisible: true,
     toolbarVisible: true,
+    wordWrap: false,
+    theme: 'dark',
     expandedDirs: new Set(),
     selectedTreeItem: null,
 };
@@ -25,8 +27,6 @@ const dom = {
     contentWelcome:     document.getElementById('content-welcome'),
     contentViewer:      document.getElementById('content-viewer'),
     fileContent:        document.getElementById('file-content'),
-    lineNumbers:        document.getElementById('line-numbers'),
-    fileText:           document.getElementById('file-text'),
     tabFilename:        document.getElementById('tab-filename'),
     tabClose:           document.getElementById('tab-close'),
     statusFilePath:     document.getElementById('status-file-path'),
@@ -37,6 +37,8 @@ const dom = {
     btnOpenFolderEmpty: document.getElementById('btn-open-folder-empty'),
     btnRefresh:         document.getElementById('btn-refresh'),
     btnToggleExplorer:  document.getElementById('btn-toggle-explorer'),
+    btnToggleWordWrap:  document.getElementById('btn-toggle-word-wrap'),
+    btnToggleTheme:     document.getElementById('btn-toggle-theme'),
 };
 
 // ---- File Icons (SVG) ----
@@ -224,6 +226,29 @@ function selectTreeItem(item) {
 
 // ---- File Viewer ----
 
+function renderFileContent(content) {
+    dom.fileContent.innerHTML = '';
+    const lines = content.split('\n');
+    const fragment = document.createDocumentFragment();
+    lines.forEach((line, i) => {
+        const lineRow = document.createElement('div');
+        lineRow.className = 'code-line';
+
+        const lineNum = document.createElement('span');
+        lineNum.className = 'line-number';
+        lineNum.textContent = i + 1;
+
+        const lineText = document.createElement('pre');
+        lineText.className = 'line-text';
+        lineText.textContent = line || ' ';
+
+        lineRow.appendChild(lineNum);
+        lineRow.appendChild(lineText);
+        fragment.appendChild(lineRow);
+    });
+    dom.fileContent.appendChild(fragment);
+}
+
 async function selectFile(entry, treeItem) {
     selectTreeItem(treeItem);
 
@@ -239,20 +264,15 @@ async function selectFile(entry, treeItem) {
         // Update tab
         dom.tabFilename.textContent = entry.name;
 
-        // Render line numbers
-        const lines = result.content.split('\n');
-        dom.lineNumbers.textContent = lines.map((_, i) => i + 1).join('\n');
-
-        // Render file content
-        dom.fileText.textContent = result.content;
+        // Render file content row-by-row
+        renderFileContent(result.content);
 
         // Update status bar
         updateStatusBar(result);
 
     } catch (err) {
         console.error('Failed to read file:', err);
-        dom.fileText.textContent = `Error: ${err}`;
-        dom.lineNumbers.textContent = '1';
+        dom.fileContent.innerHTML = `<div class="code-line"><span class="line-number">1</span><pre class="line-text">Error: ${err}</pre></div>`;
     }
 }
 
@@ -272,9 +292,37 @@ function closeFile() {
     state.currentFile = null;
     dom.contentViewer.style.display = 'none';
     dom.contentWelcome.style.display = 'flex';
-    dom.fileText.textContent = '';
-    dom.lineNumbers.textContent = '';
+    dom.fileContent.innerHTML = '';
     updateStatusBar(null);
+}
+
+function toggleWordWrap() {
+    state.wordWrap = !state.wordWrap;
+    dom.fileContent.classList.toggle('word-wrap', state.wordWrap);
+    dom.btnToggleWordWrap.classList.toggle('active', state.wordWrap);
+}
+
+const sunIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="5"/>
+    <line x1="12" y1="1" x2="12" y2="3"/>
+    <line x1="12" y1="21" x2="12" y2="23"/>
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+    <line x1="1" y1="12" x2="3" y2="12"/>
+    <line x1="21" y1="12" x2="23" y2="12"/>
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+</svg>`;
+
+const moonIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+</svg>`;
+
+function toggleTheme() {
+    state.theme = state.theme === 'dark' ? 'light' : 'dark';
+    const isLight = state.theme === 'light';
+    document.body.classList.toggle('light-theme', isLight);
+    dom.btnToggleTheme.innerHTML = isLight ? moonIcon : sunIcon;
 }
 
 // ---- Open Folder ----
@@ -480,6 +528,12 @@ async function initMenuEvents() {
                 case 'toggle_toolbar':
                     toggleToolbar();
                     break;
+                case 'toggle_word_wrap':
+                    toggleWordWrap();
+                    break;
+                case 'toggle_theme':
+                    toggleTheme();
+                    break;
                 case 'about':
                     alert('Fenst v0.1.0\nLightweight File Explorer & Viewer\nBuilt with Tauri');
                     break;
@@ -502,6 +556,12 @@ function initKeyboardShortcuts() {
         } else if (ctrl && e.key === 'b') {
             e.preventDefault();
             toggleExplorer();
+        } else if (ctrl && e.key === 't') {
+            e.preventDefault();
+            toggleTheme();
+        } else if (e.altKey && e.key.toLowerCase() === 'z') {
+            e.preventDefault();
+            toggleWordWrap();
         }
     });
 }
@@ -528,6 +588,8 @@ function init() {
         }
     });
     dom.btnToggleExplorer.addEventListener('click', toggleExplorer);
+    dom.btnToggleWordWrap.addEventListener('click', toggleWordWrap);
+    dom.btnToggleTheme.addEventListener('click', toggleTheme);
     dom.tabClose.addEventListener('click', closeFile);
 
     // Initialize subsystems

@@ -38,10 +38,14 @@ fn	build_menu( app: &tauri::App) -> Result< Menu< tauri::Wry>, tauri::Error>
     // View menu
     let  	toggleExplorer = MenuItem::with_id( app, "toggle_explorer", "Toggle Explorer", true, Some( "CmdOrCtrl+B"))?;
     let  	toggleToolbar = MenuItem::with_id( app, "toggle_toolbar", "Toggle Toolbar", true, None::< &str>)?;
+    let  	toggleWordWrap = MenuItem::with_id( app, "toggle_word_wrap", "Toggle Word Wrap", true, Some( "Alt+Z"))?;
+    let  	toggleTheme = MenuItem::with_id( app, "toggle_theme", "Toggle Theme", true, Some( "CmdOrCtrl+T"))?;
 
     let  	viewMenu = Submenu::with_items( app, "View", true, &[
         &toggleExplorer,
         &toggleToolbar,
+        &toggleWordWrap,
+        &toggleTheme,
     ])?;
 
     // Help menu
@@ -79,7 +83,7 @@ pub fn	run()
                 "quit" => {
                     app.exit( 0);
                 }
-                "open_folder" | "close_folder" | "toggle_explorer" | "toggle_toolbar" | "about" => {
+                "open_folder" | "close_folder" | "toggle_explorer" | "toggle_toolbar" | "about" | "toggle_word_wrap" | "toggle_theme" => {
                     let  	_ = app.emit( "menu-event", menuId);
                 }
                 _ => {}

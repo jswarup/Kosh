@@ -29,6 +29,25 @@
                 </button>
             </div>
             <div class="toolbar-group toolbar-right">
+                <button id="btn-toggle-theme" class="toolbar-btn" title="Toggle Theme (Ctrl+T)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"/>
+                        <line x1="12" y1="1" x2="12" y2="3"/>
+                        <line x1="12" y1="21" x2="12" y2="23"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                        <line x1="1" y1="12" x2="3" y2="12"/>
+                        <line x1="21" y1="12" x2="23" y2="12"/>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                </button>
+                <button id="btn-toggle-word-wrap" class="toolbar-btn" title="Toggle Word Wrap (Alt+Z)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 6h18M3 12h15a3 3 0 0 1 0 6h-4"/>
+                        <polyline points="17 16 14 18 17 20"/>
+                    </svg>
+                </button>
                 <button id="btn-toggle-explorer" class="toolbar-btn active" title="Toggle Explorer (Ctrl+B)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="3" width="7" height="7"/>
@@ -89,10 +108,7 @@
                             <button id="tab-close" class="tab-close" title="Close">&times;</button>
                         </div>
                     </div>
-                    <div id="file-content" class="file-content">
-                        <div id="line-numbers" class="line-numbers"></div>
-                        <pre id="file-text" class="file-text"></pre>
-                    </div>
+                    <div id="file-content" class="file-content"></div>
                 </div>
             </main>
         </div>
