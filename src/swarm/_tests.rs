@@ -460,7 +460,7 @@ fn	TestRustGpuComputeExample()
         wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
     );
 
-    let  	compileResult = spirv_builder::SpirvBuilder::new( "compute-shader", "spirv-unknown-vulkan1.1")
+    let  	compileResult = spirv_builder::SpirvBuilder::new( "src/gcomp", "spirv-unknown-vulkan1.1")
         .build()
         .unwrap();
     let  	modulePath = match compileResult.module {

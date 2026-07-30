@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace]
-members = ["compute-shader"]
+members = ["src/gcomp"]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }

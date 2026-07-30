@@ -1,6 +1,6 @@
 # Rust-GPU Shader Architecture Reference
 
-This developer reference details the internals of the **Rust-GPU** compiler, runtime, and hardware execution model in `Kosh`. It serves as a guide for developers working on the GPU-side shader crate ([compute-shader](file:///c:/Work/Taregna/Kosh/compute-shader/)) or modifying host pipeline execution in [src/swarm/_tests.rs](file:///c:/Work/Taregna/Kosh/src/swarm/_tests.rs).
+This developer reference details the internals of the **Rust-GPU** compiler, runtime, and hardware execution model in `Kosh`. It serves as a guide for developers working on the GPU-side shader crate ([gcomp](file:///c:/Work/Taregna/Kosh/src/gcomp/)) or modifying host pipeline execution in [src/swarm/_tests.rs](file:///c:/Work/Taregna/Kosh/src/swarm/_tests.rs).
 
 ---
 
