@@ -54,65 +54,25 @@ const MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;                       // 10 MB guar
 /// Reads a directory and returns sorted entries (directories first, then files).
 pub fn	read_directory( path: String) -> Result< Vec< FileEntry>, String>
 {
-    let  	dirPath = PathBuf::from( &path);
-    if !dirPath.exists() {
-        return Err( format!( "Path does not exist: {}", path));
-    }
-    if !dirPath.is_dir() {
-        return Err( format!( "Path is not a directory: {}", path));
-    }
+    let  	branch = FsBranch::New( path);
+    let  	children = branch.Children()?;
+    let  	mut entries: Vec< FileEntry> = Vec::new();
 
-    let  	readDir = fs::read_dir( &dirPath)
-        .map_err( |e| format!( "Failed to read directory: {}", e))?;
+    for child in children {
+        let  	isDir = !child.IsLeaf();
+        let  	size = child.AsLeaf().map( |l| l.Size()).unwrap_or( 0);
+        let  	extension = child.AsLeaf().map( |l| l.Extension().to_string()).unwrap_or_default();
 
-    let  	mut dirs: Vec< FileEntry> = Vec::new();
-    let  	mut files: Vec< FileEntry> = Vec::new();
-
-    for entry in readDir {
-        let  	entry = match entry {
-            Ok( e) => e,
-            Err( _) => continue,
-        };
-        let  	filePath = entry.path();
-        let  	metadata = match entry.metadata() {
-            Ok( m) => m,
-            Err( _) => continue,
-        };
-        let  	fileName = entry.file_name().to_string_lossy().into_owned();
-
-        // Skip hidden files (dotfiles)
-        if fileName.starts_with( '.') {
-            continue;
-        }
-
-        let  	isDir = metadata.is_dir();
-        let  	size = if isDir { 0 } else { metadata.len() };
-        let  	extension = filePath.extension()
-            .map( |e| e.to_string_lossy().into_owned())
-            .unwrap_or_default();
-
-        let  	fileEntry = FileEntry {
-            name:       fileName,
-            path:       filePath.to_string_lossy().into_owned(),
+        entries.push( FileEntry {
+            name:       child.Name().to_string(),
+            path:       child.Path().to_string(),
             is_dir:     isDir,
             size,
             extension,
-        };
-
-        if isDir {
-            dirs.push( fileEntry);
-        } else {
-            files.push( fileEntry);
-        }
+        });
     }
 
-    // Sort each group alphabetically (case-insensitive)
-    dirs.sort_by( |a, b| a.name.to_lowercase().cmp( &b.name.to_lowercase()));
-    files.sort_by( |a, b| a.name.to_lowercase().cmp( &b.name.to_lowercase()));
-
-    // Directories first, then files
-    dirs.append( &mut files);
-    Ok( dirs)
+    Ok( entries)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -189,6 +149,14 @@ pub fn	get_file_info( path: String) -> Result< FileInfo, String>
         readonly,
     })
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+pub mod xplr;
+pub mod fsxplr;
+
+pub use	xplr::{ Xplr, LeafXplr, BranchXplr };
+pub use	fsxplr::{ FsLeaf, FsBranch };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 

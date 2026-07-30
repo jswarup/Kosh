@@ -87,3 +87,61 @@ fn	TestGetFileInfoDirectory()
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestFsLeaf()
+{
+    use	crate::fenst::{ Xplr, FsLeaf };
+
+    let  	leaf = FsLeaf::New( "Cargo.toml".to_string());
+    assert_eq!( leaf.Name(), "Cargo.toml");
+    assert_eq!( leaf.Path(), "Cargo.toml");
+    assert!( leaf.IsLeaf());
+
+    let  	asLeaf = leaf.AsLeaf();
+    assert!( asLeaf.is_some());
+    assert!( leaf.AsBranch().is_none());
+
+    let  	leafRef = asLeaf.unwrap();
+    assert!( leafRef.Size() > 0);
+    assert_eq!( leafRef.Extension(), "toml");
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestFsBranch()
+{
+    use	crate::fenst::{ Xplr, FsBranch };
+
+    let  	branch = FsBranch::New( "src".to_string());
+    assert_eq!( branch.Name(), "src");
+    assert_eq!( branch.Path(), "src");
+    assert!( !branch.IsLeaf());
+
+    let  	asBranch = branch.AsBranch();
+    assert!( asBranch.is_some());
+    assert!( branch.AsLeaf().is_none());
+
+    let  	branchRef = asBranch.unwrap();
+    let  	childCount = branchRef.ChildCount();
+    assert!( childCount.is_ok());
+    assert!( childCount.unwrap().0 > 0);
+
+    let  	children = branchRef.Children();
+    assert!( children.is_ok());
+    let  	entries = children.unwrap();
+    assert!( !entries.is_empty());
+
+    let  	mut seenFile = false;
+    for entry in &entries {
+        if !entry.IsLeaf() && seenFile {
+            panic!( "Directory '{}' appeared after a file in Xplr listing", entry.Name());
+        }
+        if entry.IsLeaf() {
+            seenFile = true;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
