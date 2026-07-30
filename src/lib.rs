@@ -4,6 +4,7 @@ pub mod heist;
 pub mod flux;
 pub mod shard;
 pub mod silo;pub mod stalks;
+pub mod fenst;
 pub mod fresco;
 pub mod swarm;
 

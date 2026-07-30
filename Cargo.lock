@@ -1313,9 +1313,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "fenst"
+name = "fenst-app"
 version = "0.1.0"
 dependencies = [
+ "kosh",
  "rfd",
  "serde",
  "serde_json",
@@ -2411,6 +2412,7 @@ dependencies = [
  "paste",
  "pollster",
  "rand 0.10.2",
+ "serde",
  "spirv-builder",
  "tracing",
  "tracing-subscriber",

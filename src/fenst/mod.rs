@@ -1,4 +1,4 @@
-//-- commands.rs ------------------------------------------------------------------------------------------------------------------
+//-- fenst/mod.rs -----------------------------------------------------------------------------------------------------------------
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
 use	std::fs;
 use	std::path::PathBuf;
@@ -52,7 +52,6 @@ const MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;                       // 10 MB guar
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Reads a directory and returns sorted entries (directories first, then files).
-#[tauri::command]
 pub fn	read_directory( path: String) -> Result< Vec< FileEntry>, String>
 {
     let  	dirPath = PathBuf::from( &path);
@@ -119,7 +118,6 @@ pub fn	read_directory( path: String) -> Result< Vec< FileEntry>, String>
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Reads the text content of a file, with a size guard.
-#[tauri::command]
 pub fn	read_file_contents( path: String) -> Result< FileContents, String>
 {
     let  	filePath = PathBuf::from( &path);
@@ -157,7 +155,6 @@ pub fn	read_file_contents( path: String) -> Result< FileContents, String>
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Returns metadata about a file or directory.
-#[tauri::command]
 pub fn	get_file_info( path: String) -> Result< FileInfo, String>
 {
     let  	filePath = PathBuf::from( &path);
@@ -195,16 +192,7 @@ pub fn	get_file_info( path: String) -> Result< FileInfo, String>
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Shows a native dialog to pick a folder.
-#[tauri::command]
-pub fn	select_directory() -> Result< Option< String>, String>
-{
-    let  	fileDialog = rfd::FileDialog::new()
-        .set_title( "Select Folder to Open");
-
-    let  	folderPath = fileDialog.pick_folder();
-
-    Ok( folderPath.map( |p| p.to_string_lossy().into_owned()))
-}
+#[cfg( test)]
+mod _tests;
 
 // ---------------------------------------------------------------------------------------------------------------------------------

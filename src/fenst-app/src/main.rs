@@ -11,7 +11,7 @@ fn	main()
         std::env::set_var( "WEBKIT_DISABLE_DMABUF_RENDERER", "1"); 
         std::env::set_var( "LIBGL_ALWAYS_SOFTWARE", "1");
     }
-    fenst::run()
+    fenst_app::run()
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
