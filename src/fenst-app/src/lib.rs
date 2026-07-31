@@ -1,6 +1,6 @@
 //-- lib.rs -----------------------------------------------------------------------------------------------------------------------
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
-pub mod commands;
+pub mod xplrcmds;
 
 use	tauri::menu::{ Menu, MenuItem, PredefinedMenuItem, Submenu };
 use	tauri::Emitter;
@@ -90,13 +90,13 @@ pub fn	run()
             }
         })
         .invoke_handler( tauri::generate_handler![
-            commands::read_directory,
-            commands::read_file_contents,
-            commands::get_file_info,
-            commands::select_directory,
-            commands::xplr_children,
-            commands::xplr_providers,
-            commands::read_file_chunk,
+            xplrcmds::XplrListEntries,
+            xplrcmds::XplrFetchContent,
+            xplrcmds::XplrLeafInfo,
+            xplrcmds::XplrSelectBranch,
+            xplrcmds::XplrChildren,
+            xplrcmds::XplrListProviders,
+            xplrcmds::XplrFetchChunk,
         ])
         .run( tauri::generate_context!())
         .expect( "error while running Fenst application");

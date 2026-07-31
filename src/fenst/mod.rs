@@ -5,13 +5,13 @@ use	std::path::PathBuf;
 use	std::time::UNIX_EPOCH;
 use	serde::Serialize;
 use	crate::flux::{ BuffStream, IStream };
-use	crate::silo::{ U32, ICastExt };
+use	crate::silo::{ U32, ISliceExt };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// A single entry in a directory listing.
+/// A single entry in an explorer listing.
 #[derive( Serialize, Clone, Debug)]
-pub struct FileEntry
+pub struct XplrEntry
 {
     pub name:       String,
     pub path:       String,
@@ -24,7 +24,7 @@ pub struct FileEntry
 
 /// Contents of a file with metadata.
 #[derive( Serialize, Debug)]
-pub struct FileContents
+pub struct XplrContent
 {
     pub path:       String,
     pub content:    String,
@@ -36,7 +36,7 @@ pub struct FileContents
 
 /// Metadata about a file.
 #[derive( Serialize, Debug)]
-pub struct FileInfo
+pub struct XplrLeafInfo
 {
     pub path:       String,
     pub name:       String,
@@ -54,18 +54,18 @@ const MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;                       // 10 MB guar
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Reads a directory and returns sorted entries (directories first, then files).
-pub fn	read_directory( path: String) -> Result< Vec< FileEntry>, String>
+pub fn	XplrListEntries( path: String) -> Result< Vec< XplrEntry>, String>
 {
     let  	branch = FsBranch::New( path);
     let  	children = branch.Children()?;
-    let  	mut entries: Vec< FileEntry> = Vec::new();
+    let  	mut entries: Vec< XplrEntry> = Vec::new();
 
     for child in children {
         let  	isDir = !child.IsLeaf();
         let  	size = child.AsLeaf().map( |l| l.Size()).unwrap_or( 0);
         let  	extension = child.AsLeaf().map( |l| l.Extension().to_string()).unwrap_or_default();
 
-        entries.push( FileEntry {
+        entries.push( XplrEntry {
             name:       child.Name().to_string(),
             path:       child.Path().to_string(),
             is_dir:     isDir,
@@ -80,7 +80,7 @@ pub fn	read_directory( path: String) -> Result< Vec< FileEntry>, String>
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Reads the text content of a file using flux::BuffStream, with a size guard.
-pub fn	read_file_contents( path: String) -> Result< FileContents, String>
+pub fn	XplrFetchContent( path: String) -> Result< XplrContent, String>
 {
     let  	filePath = PathBuf::from( &path);
     if !filePath.exists() {
@@ -105,12 +105,12 @@ pub fn	read_file_contents( path: String) -> Result< FileContents, String>
         .map_err( |e| format!( "Failed to open file stream: {}", e))?;
 
     let  	bytesArr = stream.BytesAt( U32( 0), U32( size as u32));
-    let  	byteSlice = bytesArr.Cast::< &[u8]>();
+    let  	byteSlice = bytesArr.CastSlice();
     let  	content = String::from_utf8_lossy( byteSlice).into_owned();
 
     let  	lineCount = content.lines().count();
 
-    Ok( FileContents {
+    Ok( XplrContent {
         path:       filePath.to_string_lossy().into_owned(),
         content,
         size,
@@ -121,7 +121,7 @@ pub fn	read_file_contents( path: String) -> Result< FileContents, String>
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Reads a windowed chunk of a file using flux::BuffStream and silo::Buff.
-pub fn	read_file_chunk( path: String, offset: u64, size: usize) -> Result< StreamChunkDto, String>
+pub fn	XplrFetchChunk( path: String, offset: u64, size: usize) -> Result< StreamChunkDto, String>
 {
     let  	filePath = PathBuf::from( &path);
     if !filePath.exists() {
@@ -142,7 +142,7 @@ pub fn	read_file_chunk( path: String, offset: u64, size: usize) -> Result< Strea
     let  	countU32 = U32( size as u32);
 
     let  	bytesArr = stream.BytesAt( offsetU32, countU32);
-    let  	byteSlice = bytesArr.Cast::< &[u8]>();
+    let  	byteSlice = bytesArr.CastSlice();
     let  	contentStr = String::from_utf8_lossy( byteSlice).into_owned();
 
     let  	readLen = byteSlice.len();
@@ -161,7 +161,7 @@ pub fn	read_file_chunk( path: String, offset: u64, size: usize) -> Result< Strea
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Returns metadata about a file or directory.
-pub fn	get_file_info( path: String) -> Result< FileInfo, String>
+pub fn	XplrLeafInfo( path: String) -> Result< XplrLeafInfo, String>
 {
     let  	filePath = PathBuf::from( &path);
     if !filePath.exists() {
@@ -185,7 +185,7 @@ pub fn	get_file_info( path: String) -> Result< FileInfo, String>
 
     let  	readonly = metadata.permissions().readonly();
 
-    Ok( FileInfo {
+    Ok( XplrLeafInfo {
         path:       filePath.to_string_lossy().into_owned(),
         name,
         size:       metadata.len(),

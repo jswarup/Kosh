@@ -92,7 +92,7 @@ function formatSize(bytes) {
 
 async function loadDirectory(path) {
     try {
-        const entries = await invoke('read_directory', { path });
+        const entries = await invoke('XplrListEntries', { path });
         return entries;
     } catch (err) {
         console.error('Failed to load directory:', err);
@@ -253,7 +253,7 @@ async function selectFile(entry, treeItem) {
     selectTreeItem(treeItem);
 
     try {
-        const result = await invoke('read_file_contents', { path: entry.path });
+        const result = await invoke('XplrFetchContent', { path: entry.path });
 
         state.currentFile = result;
 
@@ -416,7 +416,7 @@ function customPrompt(message, defaultValue) {
 
 async function openFolder() {
     try {
-        const path = await invoke('select_directory');
+        const path = await invoke('XplrSelectBranch');
         if (!path) return;
 
         state.rootPath = path;

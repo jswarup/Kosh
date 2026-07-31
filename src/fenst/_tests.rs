@@ -1,5 +1,5 @@
 //-- fenst/_tests.rs ---------------------------------------------------------------------------------------------------------------
-use	crate::fenst::{ read_directory, read_file_contents, get_file_info };
+use	crate::fenst::{ XplrListEntries, XplrFetchContent, XplrLeafInfo };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -7,7 +7,7 @@ use	crate::fenst::{ read_directory, read_file_contents, get_file_info };
 fn	TestReadDirectory()
 {
     // Test reading the project's own src directory (known to exist)
-    let  	result = read_directory( "src".to_string());
+    let  	result = XplrListEntries( "src".to_string());
     assert!( result.is_ok(), "Failed to read 'src' directory: {:?}", result.err());
 
     let  	entries = result.unwrap();
@@ -30,7 +30,7 @@ fn	TestReadDirectory()
 #[test]
 fn	TestReadDirectoryNonExistent()
 {
-    let  	result = read_directory( "__nonexistent_dir__".to_string());
+    let  	result = XplrListEntries( "__nonexistent_dir__".to_string());
     assert!( result.is_err());
 }
 
@@ -40,7 +40,7 @@ fn	TestReadDirectoryNonExistent()
 fn	TestReadFileContents()
 {
     // Read this project's Cargo.toml (known to exist)
-    let  	result = read_file_contents( "Cargo.toml".to_string());
+    let  	result = XplrFetchContent( "Cargo.toml".to_string());
     assert!( result.is_ok(), "Failed to read Cargo.toml: {:?}", result.err());
 
     let  	contents = result.unwrap();
@@ -54,7 +54,7 @@ fn	TestReadFileContents()
 #[test]
 fn	TestReadFileContentsNonExistent()
 {
-    let  	result = read_file_contents( "__nonexistent_file__.txt".to_string());
+    let  	result = XplrFetchContent( "__nonexistent_file__.txt".to_string());
     assert!( result.is_err());
 }
 
@@ -63,7 +63,7 @@ fn	TestReadFileContentsNonExistent()
 #[test]
 fn	TestGetFileInfo()
 {
-    let  	result = get_file_info( "Cargo.toml".to_string());
+    let  	result = XplrLeafInfo( "Cargo.toml".to_string());
     assert!( result.is_ok(), "Failed to get file info: {:?}", result.err());
 
     let  	info = result.unwrap();
@@ -78,7 +78,7 @@ fn	TestGetFileInfo()
 #[test]
 fn	TestGetFileInfoDirectory()
 {
-    let  	result = get_file_info( "src".to_string());
+    let  	result = XplrLeafInfo( "src".to_string());
     assert!( result.is_ok());
 
     let  	info = result.unwrap();
@@ -175,9 +175,9 @@ fn	TestXplrRegistry()
 #[test]
 fn	TestReadFileChunk()
 {
-    use	crate::fenst::read_file_chunk;
+    use	crate::fenst::XplrFetchChunk;
 
-    let  	result = read_file_chunk( "Cargo.toml".to_string(), 0, 30);
+    let  	result = XplrFetchChunk( "Cargo.toml".to_string(), 0, 30);
     assert!( result.is_ok(), "Failed to read file chunk: {:?}", result.err());
 
     let  	chunk = result.unwrap();
