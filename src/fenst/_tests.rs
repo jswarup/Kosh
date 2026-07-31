@@ -145,3 +145,91 @@ fn	TestFsBranch()
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestXplrRegistry()
+{
+    use	crate::fenst::XplrRegistry;
+
+    let  	registry = XplrRegistry::New();
+    let  	schemes = registry.Schemes();
+    assert!( schemes.contains( &"file".to_string()));
+
+    let  	openRes = registry.OpenRoot( "file://src");
+    assert!( openRes.is_ok());
+
+    let  	( scheme, root) = openRes.unwrap();
+    assert_eq!( scheme, "file");
+    assert_eq!( root.Name(), "src");
+
+    let  	children = root.Children();
+    assert!( children.is_ok());
+    let  	entries = children.unwrap();
+    assert!( !entries.is_empty());
+
+    let  	dto = entries[0].ToDto( &scheme);
+    assert_eq!( dto.provider, "file");
+    assert!( !dto.id.is_empty());
+}
+
+#[test]
+fn	TestReadFileChunk()
+{
+    use	crate::fenst::read_file_chunk;
+
+    let  	result = read_file_chunk( "Cargo.toml".to_string(), 0, 30);
+    assert!( result.is_ok(), "Failed to read file chunk: {:?}", result.err());
+
+    let  	chunk = result.unwrap();
+    assert_eq!( chunk.offset, 0);
+    assert!( chunk.length > 0);
+    assert!( chunk.total_size > 0);
+    assert!( chunk.content.contains( "[package]"));
+}
+
+#[test]
+fn	TestFrescoProvider()
+{
+    use	crate::fenst::XplrRegistry;
+
+    let  	registry = XplrRegistry::New();
+    let  	schemes = registry.Schemes();
+    assert!( schemes.contains( &"expr".to_string()));
+
+    let  	openRes = registry.OpenRoot( "expr://demo");
+    assert!( openRes.is_ok());
+
+    let  	( scheme, root) = openRes.unwrap();
+    assert_eq!( scheme, "expr");
+    assert_eq!( root.Name(), "demo");
+
+    let  	children = root.Children();
+    assert!( children.is_ok());
+    let  	entries = children.unwrap();
+    assert!( !entries.is_empty());
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestShardProvider()
+{
+    use	crate::fenst::XplrRegistry;
+
+    let  	registry = XplrRegistry::New();
+    let  	schemes = registry.Schemes();
+    assert!( schemes.contains( &"ast".to_string()));
+
+    let  	openRes = registry.OpenRoot( "ast://demo");
+    assert!( openRes.is_ok());
+
+    let  	( scheme, root) = openRes.unwrap();
+    assert_eq!( scheme, "ast");
+
+    let  	children = root.Children();
+    assert!( children.is_ok());
+    let  	entries = children.unwrap();
+    assert!( !entries.is_empty());
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------

@@ -4,6 +4,8 @@ use	std::fs;
 use	std::path::PathBuf;
 use	std::time::UNIX_EPOCH;
 use	serde::Serialize;
+use	crate::flux::{ BuffStream, IStream };
+use	crate::silo::{ U32, ICastExt };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -77,7 +79,7 @@ pub fn	read_directory( path: String) -> Result< Vec< FileEntry>, String>
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Reads the text content of a file, with a size guard.
+/// Reads the text content of a file using flux::BuffStream, with a size guard.
 pub fn	read_file_contents( path: String) -> Result< FileContents, String>
 {
     let  	filePath = PathBuf::from( &path);
@@ -99,8 +101,12 @@ pub fn	read_file_contents( path: String) -> Result< FileContents, String>
         ));
     }
 
-    let  	content = fs::read_to_string( &filePath)
-        .map_err( |e| format!( "Failed to read file: {}", e))?;
+    let  	mut stream = BuffStream::FromFile( &filePath)
+        .map_err( |e| format!( "Failed to open file stream: {}", e))?;
+
+    let  	bytesArr = stream.BytesAt( U32( 0), U32( size as u32));
+    let  	byteSlice = bytesArr.Cast::< &[u8]>();
+    let  	content = String::from_utf8_lossy( byteSlice).into_owned();
 
     let  	lineCount = content.lines().count();
 
@@ -109,6 +115,46 @@ pub fn	read_file_contents( path: String) -> Result< FileContents, String>
         content,
         size,
         line_count: lineCount,
+    })
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Reads a windowed chunk of a file using flux::BuffStream and silo::Buff.
+pub fn	read_file_chunk( path: String, offset: u64, size: usize) -> Result< StreamChunkDto, String>
+{
+    let  	filePath = PathBuf::from( &path);
+    if !filePath.exists() {
+        return Err( format!( "File does not exist: {}", path));
+    }
+    if !filePath.is_file() {
+        return Err( format!( "Path is not a file: {}", path));
+    }
+
+    let  	metadata = fs::metadata( &filePath)
+        .map_err( |e| format!( "Failed to read metadata: {}", e))?;
+    let  	totalSize = metadata.len();
+
+    let  	mut stream = BuffStream::FromFile( &filePath)
+        .map_err( |e| format!( "Failed to open file stream: {}", e))?;
+
+    let  	offsetU32 = U32( offset as u32);
+    let  	countU32 = U32( size as u32);
+
+    let  	bytesArr = stream.BytesAt( offsetU32, countU32);
+    let  	byteSlice = bytesArr.Cast::< &[u8]>();
+    let  	contentStr = String::from_utf8_lossy( byteSlice).into_owned();
+
+    let  	readLen = byteSlice.len();
+    let  	isEof = ( offset + readLen as u64) >= totalSize;
+
+    Ok( StreamChunkDto {
+        path:       filePath.to_string_lossy().into_owned(),
+        offset,
+        length:     readLen,
+        total_size: totalSize,
+        is_eof:     isEof,
+        content:    contentStr,
     })
 }
 
@@ -154,9 +200,15 @@ pub fn	get_file_info( path: String) -> Result< FileInfo, String>
 
 pub mod xplr;
 pub mod fsxplr;
+pub mod frescoxplr;
+pub mod shardxplr;
+pub mod provider;
 
-pub use	xplr::{ Xplr, LeafXplr, BranchXplr };
+pub use	xplr::{ Xplr, LeafXplr, BranchXplr, XplrNodeDto, StreamChunkDto };
 pub use	fsxplr::{ FsLeaf, FsBranch };
+pub use	frescoxplr::{ FrescoLeaf, FrescoBranch, FrescoProvider };
+pub use	shardxplr::{ ShardLeaf, ShardBranch, ShardProvider };
+pub use	provider::{ XplrProvider, FsProvider, XplrRegistry, SharedXplrRegistry, CreateDefaultRegistry };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 

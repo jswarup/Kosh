@@ -44,3 +44,42 @@ pub fn	select_directory() -> Result< Option< String>, String>
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Fetches children of a given URI using the registered XplrProviders.
+#[tauri::command]
+pub fn	xplr_children( uri: String) -> Result< Vec< kosh::fenst::XplrNodeDto>, String>
+{
+    let  	registry = kosh::fenst::CreateDefaultRegistry();
+    let  	guard = registry.read().map_err( |e| e.to_string())?;
+    let  	( scheme, root) = guard.OpenRoot( &uri)?;
+    let  	children = root.Children()?;
+    let  	mut dtos = Vec::new();
+
+    for child in children {
+        dtos.push( child.ToDto( &scheme));
+    }
+
+    Ok( dtos)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Returns a list of supported Xplr provider schemes.
+#[tauri::command]
+pub fn	xplr_providers() -> Result< Vec< String>, String>
+{
+    let  	registry = kosh::fenst::CreateDefaultRegistry();
+    let  	guard = registry.read().map_err( |e| e.to_string())?;
+    Ok( guard.Schemes())
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Reads a windowed chunk of a file using stream buffering.
+#[tauri::command]
+pub fn	read_file_chunk( path: String, offset: u64, size: usize) -> Result< kosh::fenst::StreamChunkDto, String>
+{
+    kosh::fenst::read_file_chunk( path, offset, size)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
