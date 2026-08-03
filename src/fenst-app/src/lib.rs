@@ -2,6 +2,7 @@
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
 pub mod xplrcmds;
 
+use	tauri::Manager;
 use	tauri::menu::{ Menu, MenuItem, PredefinedMenuItem, Submenu };
 use	tauri::Emitter;
 
@@ -40,12 +41,14 @@ fn	build_menu( app: &tauri::App) -> Result< Menu< tauri::Wry>, tauri::Error>
     let  	toggleToolbar = MenuItem::with_id( app, "toggle_toolbar", "Toggle Toolbar", true, None::< &str>)?;
     let  	toggleWordWrap = MenuItem::with_id( app, "toggle_word_wrap", "Toggle Word Wrap", true, Some( "Alt+Z"))?;
     let  	toggleTheme = MenuItem::with_id( app, "toggle_theme", "Toggle Theme", true, Some( "CmdOrCtrl+T"))?;
+    let  	toggleReuseWindow = MenuItem::with_id( app, "toggle_reuse_window", "Toggle Window Reuse", true, Some( "Alt+R"))?;
 
     let  	viewMenu = Submenu::with_items( app, "View", true, &[
         &toggleExplorer,
         &toggleToolbar,
         &toggleWordWrap,
         &toggleTheme,
+        &toggleReuseWindow,
     ])?;
 
     // Help menu
@@ -75,6 +78,23 @@ pub fn	run()
         .setup( |app| {
             let  	menu = build_menu( app)?;
             app.set_menu( menu)?;
+
+            // WSLg workaround: raise the window after the event loop starts.
+            // WSLg RDP RAIL sometimes spawns windows in a hidden state; we
+            // use a background thread so the event loop is running when we
+            // call show/focus (a blocking sleep here would deadlock the app).
+            if let Some( win) = app.get_webview_window( "main") {
+                std::thread::spawn( move || {
+                    std::thread::sleep( std::time::Duration::from_millis( 500));
+                    for _ in 0..5 {
+                        let  	_ = win.unminimize();
+                        let  	_ = win.show();
+                        let  	_ = win.set_focus();
+                        std::thread::sleep( std::time::Duration::from_millis( 100));
+                    }
+                });
+            }
+
             Ok( ())
         })
         .on_menu_event( |app, event| {
@@ -83,7 +103,7 @@ pub fn	run()
                 "quit" => {
                     app.exit( 0);
                 }
-                "open_folder" | "close_folder" | "toggle_explorer" | "toggle_toolbar" | "about" | "toggle_word_wrap" | "toggle_theme" => {
+                "open_folder" | "close_folder" | "toggle_explorer" | "toggle_toolbar" | "about" | "toggle_word_wrap" | "toggle_theme" | "toggle_reuse_window" => {
                     let  	_ = app.emit( "menu-event", menuId);
                 }
                 _ => {}
@@ -97,6 +117,7 @@ pub fn	run()
             xplrcmds::XplrChildren,
             xplrcmds::XplrListProviders,
             xplrcmds::XplrFetchChunk,
+            xplrcmds::XplrOpenContentWindow,
         ])
         .run( tauri::generate_context!())
         .expect( "error while running Fenst application");

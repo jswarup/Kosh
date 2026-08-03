@@ -29,6 +29,12 @@
                 </button>
             </div>
             <div class="toolbar-group toolbar-right">
+                <button id="btn-toggle-reuse-window" class="toolbar-btn active" title="Toggle Window Reuse (Alt+R)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="3" width="14" height="12" rx="2"/>
+                        <path d="M8 21h12a2 2 0 0 0 2-2V9"/>
+                    </svg>
+                </button>
                 <button id="btn-toggle-theme" class="toolbar-btn" title="Toggle Theme (Ctrl+T)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="5"/>
@@ -102,12 +108,7 @@
                     </div>
                 </div>
                 <div id="content-viewer" class="content-viewer" style="display: none;">
-                    <div id="content-tab-bar" class="tab-bar">
-                        <div id="active-tab" class="tab active">
-                            <span id="tab-filename" class="tab-name">untitled</span>
-                            <button id="tab-close" class="tab-close" title="Close">&times;</button>
-                        </div>
-                    </div>
+                    <div id="content-tab-bar" class="tab-bar"></div>
                     <div id="file-content" class="file-content"></div>
                 </div>
             </main>

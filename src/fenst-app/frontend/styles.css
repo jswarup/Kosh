@@ -511,6 +511,7 @@ kbd {
     background: var(--tab-bg);
     border-bottom: 1px solid var(--tab-border);
     flex-shrink: 0;
+    overflow-x: auto;
 }
 
 .tab {

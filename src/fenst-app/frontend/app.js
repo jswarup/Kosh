@@ -14,6 +14,9 @@ const state = {
     toolbarVisible: true,
     wordWrap: false,
     theme: 'dark',
+    reuseWindow: true,
+    openTabs: [],
+    activeTabId: null,
     expandedDirs: new Set(),
     selectedTreeItem: null,
 };
@@ -27,8 +30,7 @@ const dom = {
     contentWelcome:     document.getElementById('content-welcome'),
     contentViewer:      document.getElementById('content-viewer'),
     fileContent:        document.getElementById('file-content'),
-    tabFilename:        document.getElementById('tab-filename'),
-    tabClose:           document.getElementById('tab-close'),
+    tabBar:             document.getElementById('content-tab-bar'),
     statusFilePath:     document.getElementById('status-file-path'),
     statusLines:        document.getElementById('status-lines'),
     statusSize:         document.getElementById('status-size'),
@@ -39,6 +41,7 @@ const dom = {
     btnToggleExplorer:  document.getElementById('btn-toggle-explorer'),
     btnToggleWordWrap:  document.getElementById('btn-toggle-word-wrap'),
     btnToggleTheme:     document.getElementById('btn-toggle-theme'),
+    btnToggleReuseWindow: document.getElementById('btn-toggle-reuse-window'),
 };
 
 // ---- File Icons (SVG) ----
@@ -220,8 +223,10 @@ function selectTreeItem(item) {
     if (state.selectedTreeItem) {
         state.selectedTreeItem.classList.remove('selected');
     }
-    item.classList.add('selected');
-    state.selectedTreeItem = item;
+    if (item) {
+        item.classList.add('selected');
+        state.selectedTreeItem = item;
+    }
 }
 
 // ---- File Viewer ----
@@ -249,26 +254,135 @@ function renderFileContent(content) {
     dom.fileContent.appendChild(fragment);
 }
 
+function renderTabBar() {
+    const tabBar = document.getElementById('content-tab-bar');
+    if (!tabBar) return;
+    tabBar.innerHTML = '';
+
+    const fragment = document.createDocumentFragment();
+    state.openTabs.forEach(tab => {
+        const tabEl = document.createElement('div');
+        tabEl.className = 'tab' + (tab.id === state.activeTabId ? ' active' : '');
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'tab-name';
+        nameSpan.textContent = tab.name;
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'tab-close';
+        closeBtn.title = 'Close';
+        closeBtn.innerHTML = '&times;';
+
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeTab(tab.id);
+        });
+
+        tabEl.addEventListener('click', () => {
+            activateTab(tab.id);
+        });
+
+        tabEl.appendChild(nameSpan);
+        tabEl.appendChild(closeBtn);
+        fragment.appendChild(tabEl);
+    });
+
+    tabBar.appendChild(fragment);
+}
+
+function displayActiveTabContent() {
+    const tab = state.openTabs.find(t => t.id === state.activeTabId);
+    if (!tab) {
+        closeFile();
+        return;
+    }
+
+    state.currentFile = tab;
+
+    // Show viewer, hide welcome
+    dom.contentWelcome.style.display = 'none';
+    dom.contentViewer.style.display = 'flex';
+
+    // Render content
+    renderFileContent(tab.content);
+
+    // Update status bar
+    updateStatusBar(tab);
+}
+
+function activateTab(tabId) {
+    const tab = state.openTabs.find(t => t.id === tabId);
+    if (!tab) return;
+
+    state.activeTabId = tabId;
+    renderTabBar();
+    displayActiveTabContent();
+}
+
+function closeTab(tabId) {
+    const index = state.openTabs.findIndex(t => t.id === tabId);
+    if (index === -1) return;
+
+    state.openTabs.splice(index, 1);
+
+    if (state.activeTabId === tabId) {
+        if (state.openTabs.length > 0) {
+            const nextIndex = Math.min(index, state.openTabs.length - 1);
+            state.activeTabId = state.openTabs[nextIndex].id;
+        } else {
+            state.activeTabId = null;
+        }
+    }
+
+    if (state.openTabs.length === 0) {
+        closeFile();
+    } else {
+        renderTabBar();
+        displayActiveTabContent();
+    }
+}
+
 async function selectFile(entry, treeItem) {
-    selectTreeItem(treeItem);
+    if (treeItem) {
+        selectTreeItem(treeItem);
+    }
+
+    // Check if the file is already open in a tab
+    const existingTab = state.openTabs.find(tab => tab.path === entry.path);
+    if (existingTab) {
+        activateTab(existingTab.id);
+        return;
+    }
 
     try {
         const result = await invoke('XplrFetchContent', { path: entry.path });
+        const tabId = 'tab_' + Math.random().toString(36).substr(2, 9);
+        const newTab = {
+            id: tabId,
+            path: result.path,
+            name: entry.name || entry.path.split(/[/\\]/).pop(),
+            content: result.content,
+            line_count: result.line_count,
+            size: result.size,
+        };
 
-        state.currentFile = result;
+        if (state.reuseWindow && state.openTabs.length > 0) {
+            // Reuse active tab slot
+            const activeIndex = state.openTabs.findIndex(t => t.id === state.activeTabId);
+            if (activeIndex !== -1) {
+                state.openTabs[activeIndex] = newTab;
+            } else {
+                state.openTabs = [newTab];
+            }
+        } else {
+            // Open in a new tab
+            state.openTabs.push(newTab);
+        }
 
-        // Show viewer, hide welcome
-        dom.contentWelcome.style.display = 'none';
-        dom.contentViewer.style.display = 'flex';
+        state.activeTabId = newTab.id;
 
-        // Update tab
-        dom.tabFilename.textContent = entry.name;
-
-        // Render file content row-by-row
-        renderFileContent(result.content);
-
-        // Update status bar
-        updateStatusBar(result);
+        renderTabBar();
+        displayActiveTabContent();
 
     } catch (err) {
         console.error('Failed to read file:', err);
@@ -276,11 +390,11 @@ async function selectFile(entry, treeItem) {
     }
 }
 
-function updateStatusBar(fileContents) {
-    if (fileContents) {
-        dom.statusFilePath.textContent = fileContents.path;
-        dom.statusLines.textContent = `Ln ${fileContents.line_count}`;
-        dom.statusSize.textContent = formatSize(fileContents.size);
+function updateStatusBar(fileInfo) {
+    if (fileInfo) {
+        dom.statusFilePath.textContent = fileInfo.path;
+        dom.statusLines.textContent = `Ln ${fileInfo.line_count}`;
+        dom.statusSize.textContent = formatSize(fileInfo.size);
     } else {
         dom.statusFilePath.textContent = '';
         dom.statusLines.textContent = '';
@@ -288,11 +402,29 @@ function updateStatusBar(fileContents) {
     }
 }
 
+function updateReuseWindowUI() {
+    if (dom.btnToggleReuseWindow) {
+        dom.btnToggleReuseWindow.classList.toggle('active', state.reuseWindow);
+        dom.btnToggleReuseWindow.title = state.reuseWindow
+            ? 'Toggle Tab Reuse (Current: Reuse Active Tab) [Alt+R]'
+            : 'Toggle Tab Reuse (Current: Open in New Tab) [Alt+R]';
+    }
+}
+
+function toggleReuseWindow() {
+    state.reuseWindow = !state.reuseWindow;
+    updateReuseWindowUI();
+}
+
 function closeFile() {
+    state.openTabs = [];
+    state.activeTabId = null;
     state.currentFile = null;
     dom.contentViewer.style.display = 'none';
     dom.contentWelcome.style.display = 'flex';
     dom.fileContent.innerHTML = '';
+    const tabBar = document.getElementById('content-tab-bar');
+    if (tabBar) tabBar.innerHTML = '';
     updateStatusBar(null);
 }
 
@@ -534,6 +666,9 @@ async function initMenuEvents() {
                 case 'toggle_theme':
                     toggleTheme();
                     break;
+                case 'toggle_reuse_window':
+                    toggleReuseWindow();
+                    break;
                 case 'about':
                     alert('Fenst v0.1.0\nLightweight File Explorer & Viewer\nBuilt with Tauri');
                     break;
@@ -562,6 +697,9 @@ function initKeyboardShortcuts() {
         } else if (e.altKey && e.key.toLowerCase() === 'z') {
             e.preventDefault();
             toggleWordWrap();
+        } else if (e.altKey && e.key.toLowerCase() === 'r') {
+            e.preventDefault();
+            toggleReuseWindow();
         }
     });
 }
@@ -590,12 +728,26 @@ function init() {
     dom.btnToggleExplorer.addEventListener('click', toggleExplorer);
     dom.btnToggleWordWrap.addEventListener('click', toggleWordWrap);
     dom.btnToggleTheme.addEventListener('click', toggleTheme);
-    dom.tabClose.addEventListener('click', closeFile);
+    if (dom.btnToggleReuseWindow) {
+        dom.btnToggleReuseWindow.addEventListener('click', toggleReuseWindow);
+    }
 
     // Initialize subsystems
+    updateReuseWindowUI();
     initResize();
     initKeyboardShortcuts();
     initMenuEvents();
+
+    // Check if launched as a dedicated file viewer window via URL query parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const fileParam = urlParams.get('file');
+    if (fileParam) {
+        const fileName = fileParam.split(/[/\\]/).pop() || fileParam;
+        const savedReuse = state.reuseWindow;
+        state.reuseWindow = true;
+        selectFile({ path: fileParam, name: fileName }, null);
+        state.reuseWindow = savedReuse;
+    }
 }
 
 // Start when DOM is ready
