@@ -230,9 +230,104 @@ function selectTreeItem(item) {
 }
 
 // ---- File Viewer ----
-
-function renderFileContent(content) {
+function renderFileContent(tabOrContent) {
     dom.fileContent.innerHTML = '';
+
+    const path = typeof tabOrContent === 'object' ? (tabOrContent.path || '') : '';
+    const content = typeof tabOrContent === 'object' ? (tabOrContent.content || '') : String(tabOrContent);
+    const isPts = path.toLowerCase().includes('.pts') || (typeof tabOrContent === 'object' && tabOrContent.isPts);
+
+    if (isPts) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'pts-embedded-viewer';
+        wrapper.style.cssText = 'width:100%; height:100%; position:relative; background:#0b0f19; overflow:hidden; display:flex; flex-direction:column;';
+
+        wrapper.innerHTML = `
+            <div style="height:40px; background:rgba(15,23,42,0.95); border-bottom:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:space-between; padding:0 16px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="background:linear-gradient(135deg, #00f3ff, #0077ff); color:#000; font-weight:700; font-size:10px; padding:2px 6px; border-radius:10px; text-transform:uppercase;">Rust-GPU</span>
+                    <span style="font-size:13px; font-weight:600; color:#f8fafc;">${path.split(/[/\\]/).pop() || 'Block.pts'}</span>
+                </div>
+                <span style="font-family:monospace; font-size:12px; color:#00f3ff;">gcomp::pts_wireframe_cs (100x100x100 Block)</span>
+            </div>
+            <div style="flex:1; position:relative; width:100%; height:calc(100% - 40px);">
+                <canvas id="main-pts-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; display:block;"></canvas>
+            </div>
+        `;
+        dom.fileContent.appendChild(wrapper);
+
+        setTimeout(() => {
+            const canvas = document.getElementById('main-pts-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            let angleX = 0.4;
+            let angleY = 0.6;
+
+            const vertices = [
+                [-50, -50, -50], [ 50, -50, -50], [ 50,  50, -50], [-50,  50, -50],
+                [-50, -50,  50], [ 50, -50,  50], [ 50,  50,  50], [-50,  50,  50]
+            ];
+            const edges = [
+                [0,1],[1,2],[2,3],[3,0],
+                [4,5],[5,6],[6,7],[7,4],
+                [0,4],[1,5],[2,6],[3,7]
+            ];
+
+            function project(x, y, z, width, height) {
+                const cosY = Math.cos(angleY), sinY = Math.sin(angleY);
+                const x1 = x * cosY + z * sinY, z1 = -x * sinY + z * cosY;
+                const cosX = Math.cos(angleX), sinX = Math.sin(angleX);
+                const y2 = y * cosX - z1 * sinX, z2 = y * sinX + z1 * cosX;
+                const scale = 350 / (250 + z2);
+                return { x: width / 2 + x1 * scale, y: height / 2 - y2 * scale };
+            }
+
+            function draw() {
+                if (!canvas.parentElement) return;
+                const dpr = window.devicePixelRatio || 1;
+                const w = canvas.clientWidth || canvas.parentElement.clientWidth || 800;
+                const h = canvas.clientHeight || canvas.parentElement.clientHeight || 500;
+                canvas.width = Math.max(w * dpr, 200);
+                canvas.height = Math.max(h * dpr, 200);
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#0b0f19';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                const projected = vertices.map(v => project(v[0], v[1], v[2], canvas.width, canvas.height));
+                ctx.strokeStyle = '#00f3ff';
+                ctx.shadowColor = '#00f3ff';
+                ctx.shadowBlur = 12 * dpr;
+                ctx.lineWidth = 2.5 * dpr;
+
+                edges.forEach(([i, j]) => {
+                    ctx.beginPath();
+                    ctx.moveTo(projected[i].x, projected[i].y);
+                    ctx.lineTo(projected[j].x, projected[j].y);
+                    ctx.stroke();
+                });
+
+                ctx.fillStyle = '#ffffff';
+                projected.forEach(p => {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 4 * dpr, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'rgba(226,232,240,0.8)';
+                ctx.font = `${12 * dpr}px monospace`;
+                ctx.fillText('Dimension: 100 x 100 x 100 Wireframe Block', 16 * dpr, canvas.height - 16 * dpr);
+
+                angleY += 0.02;
+                angleX += 0.01;
+                requestAnimationFrame(draw);
+            }
+            requestAnimationFrame(draw);
+        }, 50);
+        return;
+    }
+
     const lines = content.split('\n');
     const fragment = document.createDocumentFragment();
     lines.forEach((line, i) => {
@@ -304,7 +399,7 @@ function displayActiveTabContent() {
     dom.contentViewer.style.display = 'flex';
 
     // Render content
-    renderFileContent(tab.content);
+    renderFileContent(tab);
 
     // Update status bar
     updateStatusBar(tab);
@@ -347,6 +442,9 @@ async function selectFile(entry, treeItem) {
         selectTreeItem(treeItem);
     }
 
+    const ext = (entry.extension || entry.name?.split('.').pop() || entry.path.split('.').pop() || '').toLowerCase();
+    const isPts = ext.startsWith('pts') || entry.path.toLowerCase().includes('.pts');
+
     // Check if the file is already open in a tab
     const existingTab = state.openTabs.find(tab => tab.path === entry.path);
     if (existingTab) {
@@ -355,15 +453,22 @@ async function selectFile(entry, treeItem) {
     }
 
     try {
-        const result = await invoke('XplrFetchContent', { path: entry.path });
+        let result = { content: '', line_count: 1, size: 0, path: entry.path };
+        try {
+            result = await invoke('XplrFetchContent', { path: entry.path });
+        } catch (e) {
+            if (!isPts) throw e;
+        }
+
         const tabId = 'tab_' + Math.random().toString(36).substr(2, 9);
         const newTab = {
             id: tabId,
-            path: result.path,
+            path: entry.path || result.path,
             name: entry.name || entry.path.split(/[/\\]/).pop(),
             content: result.content,
             line_count: result.line_count,
             size: result.size,
+            isPts: isPts
         };
 
         if (state.reuseWindow && state.openTabs.length > 0) {

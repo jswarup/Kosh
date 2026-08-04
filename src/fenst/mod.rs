@@ -198,6 +198,24 @@ pub fn	XplrLeafInfo( path: String) -> Result< XplrLeafInfo, String>
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
+/// Checks if a file path or extension corresponds to a .pts file (extension starting with .pts).
+pub fn	IsPtsFile( path: &str) -> bool
+{
+    let  	filePath = PathBuf::from( path);
+    let  	ext = filePath.extension()
+        .map( |e| e.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+
+    let  	fileName = filePath.file_name()
+        .map( |n| n.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+
+    ext.starts_with( "pts") || fileName.contains( ".pts")
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+
 pub mod xplr;
 pub mod fsxplr;
 pub mod frescoxplr;

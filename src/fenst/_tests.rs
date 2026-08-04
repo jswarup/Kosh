@@ -233,3 +233,18 @@ fn	TestShardProvider()
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestPtsFileExtensionDetection()
+{
+    use	crate::fenst::IsPtsFile;
+
+    assert!( IsPtsFile( "model.pts"));
+    assert!( IsPtsFile( "data/pointcloud.pts"));
+    assert!( IsPtsFile( "test.pts.json"));
+    assert!( !IsPtsFile( "main.rs"));
+    assert!( !IsPtsFile( "Cargo.toml"));
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+

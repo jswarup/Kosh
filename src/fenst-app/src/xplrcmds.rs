@@ -107,6 +107,10 @@ pub fn	XplrFetchChunk( path: String, offset: u64, size: usize) -> Result< Stream
 #[tauri::command]
 pub fn	XplrOpenContentWindow( app: tauri::AppHandle, path: String) -> Result< (), String>
 {
+    if kosh::fenst::IsPtsFile( &path) {
+        return XplrOpenPtsGraphicsWindow( app, path);
+    }
+
     let  	fileName = std::path::Path::new( &path)
         .file_name()
         .map( |n| n.to_string_lossy().into_owned())
@@ -140,4 +144,43 @@ pub fn	XplrOpenContentWindow( app: tauri::AppHandle, path: String) -> Result< ()
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Opens a dedicated rust-gpu graphics shader window displaying a 100x100x100 wireframe block for .pts files.
+#[tauri::command]
+pub fn	XplrOpenPtsGraphicsWindow( app: tauri::AppHandle, path: String) -> Result< (), String>
+{
+    let  	fileName = std::path::Path::new( &path)
+        .file_name()
+        .map( |n| n.to_string_lossy().into_owned())
+        .unwrap_or_else( || "Block.pts".to_string());
+
+    let  	mut hashVal: u64 = 5381;
+    for b in path.bytes() {
+        hashVal = hashVal.wrapping_mul( 33).wrapping_add( b as u64);
+    }
+    let  	label = format!( "pts_win_{:x}", hashVal);
+
+    if let Some( win) = app.get_webview_window( &label) {
+        let  	_ = win.set_focus();
+        return Ok( ());
+    }
+
+    let  	encodedPath = UrlEncode( &path);
+    let  	url = format!( "pts_viewer.html?file={}", encodedPath);
+
+    let  	builder = tauri::WebviewWindowBuilder::new(
+        &app,
+        &label,
+        tauri::WebviewUrl::App( url.into())
+    )
+    .title( format!( "Fenst — Rust-GPU Wireframe Viewer (100x100x100 Block) — {}", fileName))
+    .inner_size( 960.0, 720.0);
+
+    builder.build().map_err( |e| e.to_string())?;
+
+    Ok( ())
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
 
