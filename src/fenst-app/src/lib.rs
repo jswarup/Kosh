@@ -120,6 +120,7 @@ pub fn	run()
             xplrcmds::XplrFetchPtsPoints,
             xplrcmds::XplrOpenContentWindow,
             xplrcmds::XplrOpenPtsGraphicsWindow,
+            xplrcmds::XplrProjectPts,
         ])
         .run( tauri::generate_context!())
         .expect( "error while running Fenst application");

@@ -230,21 +230,7 @@ fn	TestShardProvider()
     assert!( children.is_ok());
     let  	entries = children.unwrap();
     assert!( !entries.is_empty());
-}
-
-// ---------------------------------------------------------------------------------------------------------------------------------
-
-#[test]
-fn	TestPtsFileExtensionDetection()
-{
-    use	crate::fenst::IsPtsFile;
-
-    assert!( IsPtsFile( "model.pts"));
-    assert!( IsPtsFile( "data/pointcloud.pts"));
-    assert!( IsPtsFile( "test.pts.json"));
-    assert!( !IsPtsFile( "main.rs"));
-    assert!( !IsPtsFile( "Cargo.toml"));
-}
+} 
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 

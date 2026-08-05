@@ -33,21 +33,6 @@
     let bboxMin = [-20, -20, -20];
     let bboxMax = [20, 20, 20];
 
-    // Bounding box wireframe edges (8 corners, 12 edges)
-    function getBboxVerts() {
-        return [
-            [bboxMin[0], bboxMin[1], bboxMin[2]], [bboxMax[0], bboxMin[1], bboxMin[2]],
-            [bboxMax[0], bboxMax[1], bboxMin[2]], [bboxMin[0], bboxMax[1], bboxMin[2]],
-            [bboxMin[0], bboxMin[1], bboxMax[2]], [bboxMax[0], bboxMin[1], bboxMax[2]],
-            [bboxMax[0], bboxMax[1], bboxMax[2]], [bboxMin[0], bboxMax[1], bboxMax[2]]
-        ];
-    }
-    const bboxEdges = [
-        [0, 1], [1, 2], [2, 3], [3, 0],
-        [4, 5], [5, 6], [6, 7], [7, 4],
-        [0, 4], [1, 5], [2, 6], [3, 7]
-    ];
-
     // Fetch point cloud from GPU compute shader via Tauri IPC
     async function fetchPointCloud() {
         try {
@@ -80,35 +65,35 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    function project(x, y, z, width, height) {
-        // Rotate around Y axis
-        const cosY = Math.cos(angleY);
-        const sinY = Math.sin(angleY);
-        const x1 = x * cosY + z * sinY;
-        const z1 = -x * sinY + z * cosY;
-
-        // Rotate around X axis
-        const cosX = Math.cos(angleX);
-        const sinX = Math.sin(angleX);
-        const y2 = y * cosX - z1 * sinX;
-        const z2 = y * sinX + z1 * cosX;
-
-        // Perspective projection
-        const fov = 350;
-        const distance = 250;
-        const scale = fov / (distance + z2);
-
-        const projX = width / 2 + x1 * scale;
-        const projY = height / 2 - y2 * scale;
-
-        return { x: projX, y: projY, scale, z: z2 };
-    }
-
-    function render() {
+    async function render() {
         resizeCanvas();
         const width = canvas.width;
         const height = canvas.height;
         const dpr = window.devicePixelRatio || 1;
+
+        // Call backend to compute projected frame
+        let frameData;
+        try {
+            const { invoke } = window.__TAURI__.core;
+            frameData = await invoke('XplrProjectPts', {
+                points: points,
+                bboxMin: bboxMin,
+                bboxMax: bboxMax,
+                angleX: angleX,
+                angleY: angleY,
+                width: width,
+                height: height,
+                dpr: dpr
+            });
+        } catch (err) {
+            console.error('Failed to compute frame in Rust:', err);
+            // Schedule next frame anyway to keep animating when connection recovers
+            const speed = parseFloat((rotSpeedInput && rotSpeedInput.value) || 30) / 1000;
+            angleY += speed;
+            angleX += speed * 0.5;
+            requestAnimationFrame(render);
+            return;
+        }
 
         ctx.clearRect(0, 0, width, height);
 
@@ -137,19 +122,15 @@
         }
 
         // Draw bounding box wireframe (faint)
-        const bboxVerts = getBboxVerts();
-        const projBox = bboxVerts.map(v => project(v[0], v[1], v[2], width, height));
         ctx.strokeStyle = 'rgba(0, 243, 255, 0.18)';
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
         ctx.lineWidth = 1.5 * dpr;
 
-        bboxEdges.forEach(([i, j]) => {
-            const p1 = projBox[i];
-            const p2 = projBox[j];
+        frameData.box_lines.forEach(line => {
             ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
+            ctx.moveTo(line.x1, line.y1);
+            ctx.lineTo(line.x2, line.y2);
             ctx.stroke();
         });
 
@@ -163,27 +144,19 @@
         ctx.shadowColor = color;
         ctx.shadowBlur = 10 * dpr;
 
-        points.forEach(pt => {
-            const p = project(pt[0], pt[1], pt[2], width, height);
-            const depthFactor = Math.max(0.3, Math.min(1.0, (300 - p.z) / 400));
-            const radius = (3 + depthFactor * 4) * dpr;
-            const alpha = 0.5 + depthFactor * 0.5;
-
-            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        frameData.points.forEach(p => {
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${p.alpha})`;
             ctx.beginPath();
-            ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
             ctx.fill();
         });
 
         // Draw small white core for each point (depth-sorted visual)
         ctx.shadowBlur = 0;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-        points.forEach(pt => {
-            const p = project(pt[0], pt[1], pt[2], width, height);
-            const depthFactor = Math.max(0.3, Math.min(1.0, (300 - p.z) / 400));
-            const coreRadius = (1 + depthFactor * 1.5) * dpr;
+        frameData.points.forEach(p => {
             ctx.beginPath();
-            ctx.arc(p.x, p.y, coreRadius, 0, Math.PI * 2);
+            ctx.arc(p.x, p.y, p.core_radius, 0, Math.PI * 2);
             ctx.fill();
         });
 
