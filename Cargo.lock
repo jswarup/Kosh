@@ -1320,6 +1320,7 @@ dependencies = [
  "rfd",
  "serde",
  "serde_json",
+ "spirv-builder",
  "tauri",
  "tauri-build",
 ]

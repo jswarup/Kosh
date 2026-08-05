@@ -117,6 +117,7 @@ pub fn	run()
             xplrcmds::XplrChildren,
             xplrcmds::XplrListProviders,
             xplrcmds::XplrFetchChunk,
+            xplrcmds::XplrFetchPtsPoints,
             xplrcmds::XplrOpenContentWindow,
             xplrcmds::XplrOpenPtsGraphicsWindow,
         ])

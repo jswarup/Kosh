@@ -238,17 +238,21 @@ function renderFileContent(tabOrContent) {
     const isPts = path.toLowerCase().includes('.pts') || (typeof tabOrContent === 'object' && tabOrContent.isPts);
 
     if (isPts) {
+        const ptsData = typeof tabOrContent === 'object' ? tabOrContent.ptsData : null;
         const wrapper = document.createElement('div');
         wrapper.className = 'pts-embedded-viewer';
         wrapper.style.cssText = 'width:100%; height:100%; position:relative; background:#0b0f19; overflow:hidden; display:flex; flex-direction:column;';
+
+        const ptCount = ptsData ? ptsData.count : 0;
+        const bboxLabel = ptsData ? `[${ptsData.bbox_min.map(v => v.toFixed(0)).join(', ')}] → [${ptsData.bbox_max.map(v => v.toFixed(0)).join(', ')}]` : '—';
 
         wrapper.innerHTML = `
             <div style="height:40px; background:rgba(15,23,42,0.95); border-bottom:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:space-between; padding:0 16px;">
                 <div style="display:flex; align-items:center; gap:8px;">
                     <span style="background:linear-gradient(135deg, #00f3ff, #0077ff); color:#000; font-weight:700; font-size:10px; padding:2px 6px; border-radius:10px; text-transform:uppercase;">Rust-GPU</span>
-                    <span style="font-size:13px; font-weight:600; color:#f8fafc;">${path.split(/[/\\]/).pop() || 'Block.pts'}</span>
+                    <span style="font-size:13px; font-weight:600; color:#f8fafc;">${path.split(/[/\\]/).pop() || 'pointcloud.pts'}</span>
                 </div>
-                <span style="font-family:monospace; font-size:12px; color:#00f3ff;">gcomp::pts_wireframe_cs (100x100x100 Block)</span>
+                <span style="font-family:monospace; font-size:12px; color:#00f3ff;">gcomp::pts_pointcloud_cs | ${ptCount} Points | BBox: ${bboxLabel}</span>
             </div>
             <div style="flex:1; position:relative; width:100%; height:calc(100% - 40px);">
                 <canvas id="main-pts-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; display:block;"></canvas>
@@ -258,16 +262,23 @@ function renderFileContent(tabOrContent) {
 
         setTimeout(() => {
             const canvas = document.getElementById('main-pts-canvas');
-            if (!canvas) return;
+            if (!canvas || !ptsData) return;
             const ctx = canvas.getContext('2d');
             let angleX = 0.4;
             let angleY = 0.6;
 
-            const vertices = [
-                [-50, -50, -50], [ 50, -50, -50], [ 50,  50, -50], [-50,  50, -50],
-                [-50, -50,  50], [ 50, -50,  50], [ 50,  50,  50], [-50,  50,  50]
+            const points = ptsData.points;
+            const bMin = ptsData.bbox_min;
+            const bMax = ptsData.bbox_max;
+
+            // Bounding box vertices
+            const bboxVerts = [
+                [bMin[0], bMin[1], bMin[2]], [bMax[0], bMin[1], bMin[2]],
+                [bMax[0], bMax[1], bMin[2]], [bMin[0], bMax[1], bMin[2]],
+                [bMin[0], bMin[1], bMax[2]], [bMax[0], bMin[1], bMax[2]],
+                [bMax[0], bMax[1], bMax[2]], [bMin[0], bMax[1], bMax[2]]
             ];
-            const edges = [
+            const bboxEdges = [
                 [0,1],[1,2],[2,3],[3,0],
                 [4,5],[5,6],[6,7],[7,4],
                 [0,4],[1,5],[2,6],[3,7]
@@ -279,7 +290,7 @@ function renderFileContent(tabOrContent) {
                 const cosX = Math.cos(angleX), sinX = Math.sin(angleX);
                 const y2 = y * cosX - z1 * sinX, z2 = y * sinX + z1 * cosX;
                 const scale = 350 / (250 + z2);
-                return { x: width / 2 + x1 * scale, y: height / 2 - y2 * scale };
+                return { x: width / 2 + x1 * scale, y: height / 2 - y2 * scale, z: z2 };
             }
 
             function draw() {
@@ -294,30 +305,37 @@ function renderFileContent(tabOrContent) {
                 ctx.fillStyle = '#0b0f19';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                const projected = vertices.map(v => project(v[0], v[1], v[2], canvas.width, canvas.height));
-                ctx.strokeStyle = '#00f3ff';
-                ctx.shadowColor = '#00f3ff';
-                ctx.shadowBlur = 12 * dpr;
-                ctx.lineWidth = 2.5 * dpr;
-
-                edges.forEach(([i, j]) => {
+                // Draw faint bounding box wireframe
+                const projBox = bboxVerts.map(v => project(v[0], v[1], v[2], canvas.width, canvas.height));
+                ctx.strokeStyle = 'rgba(0, 243, 255, 0.15)';
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                ctx.lineWidth = 1 * dpr;
+                bboxEdges.forEach(([i, j]) => {
                     ctx.beginPath();
-                    ctx.moveTo(projected[i].x, projected[i].y);
-                    ctx.lineTo(projected[j].x, projected[j].y);
+                    ctx.moveTo(projBox[i].x, projBox[i].y);
+                    ctx.lineTo(projBox[j].x, projBox[j].y);
                     ctx.stroke();
                 });
 
-                ctx.fillStyle = '#ffffff';
-                projected.forEach(p => {
+                // Draw point cloud
+                ctx.shadowColor = '#00f3ff';
+                ctx.shadowBlur = 8 * dpr;
+                points.forEach(pt => {
+                    const p = project(pt[0], pt[1], pt[2], canvas.width, canvas.height);
+                    const depthFactor = Math.max(0.3, Math.min(1.0, (300 - p.z) / 400));
+                    const radius = (3 + depthFactor * 3) * dpr;
+                    const alpha = 0.5 + depthFactor * 0.5;
+                    ctx.fillStyle = `rgba(0, 243, 255, ${alpha})`;
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, 4 * dpr, 0, Math.PI * 2);
+                    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
                     ctx.fill();
                 });
 
                 ctx.shadowBlur = 0;
                 ctx.fillStyle = 'rgba(226,232,240,0.8)';
                 ctx.font = `${12 * dpr}px monospace`;
-                ctx.fillText('Dimension: 100 x 100 x 100 Wireframe Block', 16 * dpr, canvas.height - 16 * dpr);
+                ctx.fillText(`${ptCount} Points | BBox: ${bboxLabel}`, 16 * dpr, canvas.height - 16 * dpr);
 
                 angleY += 0.02;
                 angleX += 0.01;
@@ -454,10 +472,16 @@ async function selectFile(entry, treeItem) {
 
     try {
         let result = { content: '', line_count: 1, size: 0, path: entry.path };
-        try {
+        let ptsData = null;
+
+        if (isPts) {
+            try {
+                ptsData = await invoke('XplrFetchPtsPoints');
+            } catch (e) {
+                console.error('GPU point cloud generation failed:', e);
+            }
+        } else {
             result = await invoke('XplrFetchContent', { path: entry.path });
-        } catch (e) {
-            if (!isPts) throw e;
         }
 
         const tabId = 'tab_' + Math.random().toString(36).substr(2, 9);
@@ -468,7 +492,8 @@ async function selectFile(entry, treeItem) {
             content: result.content,
             line_count: result.line_count,
             size: result.size,
-            isPts: isPts
+            isPts: isPts,
+            ptsData: ptsData
         };
 
         if (state.reuseWindow && state.openTabs.length > 0) {

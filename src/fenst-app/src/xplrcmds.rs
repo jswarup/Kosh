@@ -1,7 +1,7 @@
 //-- xplrcmds.rs ------------------------------------------------------------------------------------------------------------------
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
 use	tauri::Manager;
-use	kosh::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, CreateDefaultRegistry };
+use	kosh::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, CreateDefaultRegistry };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -103,6 +103,16 @@ pub fn	XplrFetchChunk( path: String, offset: u64, size: usize) -> Result< Stream
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
+/// Generates 100 pseudo-random 3D points on the GPU using the rust-gpu pts_pointcloud_cs compute shader.
+#[tauri::command]
+pub fn	XplrFetchPtsPoints() -> Result< PtsPointsDto, String>
+{
+    static GCOMP_SPV: &[u8] = include_bytes!( env!( "GCOMP_SPV_PATH"));
+    kosh::fenst::XplrFetchPtsPoints( GCOMP_SPV)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
 /// Opens a file content view in a new or existing separate window.
 #[tauri::command]
 pub fn	XplrOpenContentWindow( app: tauri::AppHandle, path: String) -> Result< (), String>
@@ -173,7 +183,7 @@ pub fn	XplrOpenPtsGraphicsWindow( app: tauri::AppHandle, path: String) -> Result
         &label,
         tauri::WebviewUrl::App( url.into())
     )
-    .title( format!( "Fenst — Rust-GPU Wireframe Viewer (100x100x100 Block) — {}", fileName))
+    .title( format!( "Fenst — Point Cloud Viewer — {}", fileName))
     .inner_size( 960.0, 720.0);
 
     builder.build().map_err( |e| e.to_string())?;
