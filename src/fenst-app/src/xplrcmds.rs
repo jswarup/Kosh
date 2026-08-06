@@ -7,6 +7,9 @@ use	std::collections::HashMap;
 use	std::sync::Mutex;
 use	std::sync::LazyLock;
 
+
+static GCOMP_SPV: &[u8] = include_bytes!( env!( "GCOMP_SPV_PATH"));
+
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 fn	UrlEncode( input: &str) -> String
@@ -111,7 +114,6 @@ pub fn	XplrFetchChunk( path: String, offset: u64, size: usize) -> Result< Stream
 #[tauri::command]
 pub fn	XplrFetchPtsPoints() -> Result< PtsPointsDto, String>
 {
-    static GCOMP_SPV: &[u8] = include_bytes!( env!( "GCOMP_SPV_PATH"));
     kosh::fenst::XplrFetchPtsPoints( GCOMP_SPV)
 }
 
@@ -303,7 +305,6 @@ pub fn	XplrProjectPts(
 {
     let  	mut guard = PTS_STATE.lock().map_err( |e| e.to_string())?;
     let  	state = guard.entry( path.clone()).or_insert_with( || {
-        static GCOMP_SPV: &[u8] = include_bytes!( env!( "GCOMP_SPV_PATH"));
         let  	dto = kosh::fenst::XplrFetchPtsPoints( GCOMP_SPV).unwrap_or_else( |_| PtsPointsDto {
             points: Vec::new(),
             count: 0,
