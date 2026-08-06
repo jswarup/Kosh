@@ -3,6 +3,9 @@
 use	tauri::Manager;
 use	kosh::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, CreateDefaultRegistry };
 use	serde::Serialize;
+use	std::collections::HashMap;
+use	std::sync::Mutex;
+use	std::sync::LazyLock;
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -185,14 +188,31 @@ pub fn	XplrOpenPtsGraphicsWindow( app: tauri::AppHandle, path: String) -> Result
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
+struct PtsSessionState
+{
+    points:       Vec< [f32; 3]>,
+    bbox_min:     [f32; 3],
+    bbox_max:     [f32; 3],
+    angle_x:      f32,
+    angle_y:      f32,
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+static PTS_STATE: LazyLock< Mutex< HashMap< String, PtsSessionState>>> = LazyLock::new( || {
+    Mutex::new( HashMap::new())
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
 #[derive( Serialize, Debug)]
 pub struct ProjectedPoint
 {
     pub x:            f32,
     pub y:            f32,
     pub radius:       f32,
-    pub alpha:        f32,
     pub core_radius:  f32,
+    pub color:        String,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -211,8 +231,14 @@ pub struct ProjectedLine
 #[derive( Serialize, Debug)]
 pub struct PtsFrameDto
 {
-    pub points:       Vec< ProjectedPoint>,
-    pub box_lines:    Vec< ProjectedLine>,
+    pub points:         Vec< ProjectedPoint>,
+    pub box_lines:      Vec< ProjectedLine>,
+    pub file_name:      String,
+    pub count:          usize,
+    pub bbox_label:     String,
+    pub shader_status:  String,
+    pub overlay_text1:  String,
+    pub overlay_text2:  String,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -249,19 +275,60 @@ fn	Project3d(
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Transforms and projects 3D point cloud coordinates and its bounding box to 2D screen coordinates.
+fn	ParseHexColor( hex: &str) -> ( u8, u8, u8)
+{
+    let  	clean = hex.trim_start_matches( '#');
+    if clean.len() == 6 {
+        let  	r = u8::from_str_radix( &clean[0..2], 16).unwrap_or( 0);
+        let  	g = u8::from_str_radix( &clean[2..4], 16).unwrap_or( 243);
+        let  	b = u8::from_str_radix( &clean[4..6], 16).unwrap_or( 255);
+        ( r, g, b)
+    } else {
+        ( 0, 243, 255)
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Transforms and projects 3D point cloud coordinates and its bounding box to 2D screen coordinates, managing rotation state.
 #[tauri::command]
 pub fn	XplrProjectPts(
-    points: Vec< [f32; 3]>,
-    bboxMin: [f32; 3],
-    bboxMax: [f32; 3],
-    angleX: f32,
-    angleY: f32,
+    path: String,
     width: f32,
     height: f32,
     dpr: f32,
+    speed: f32,
+    color: String,
 ) -> Result< PtsFrameDto, String>
 {
+    let  	mut guard = PTS_STATE.lock().map_err( |e| e.to_string())?;
+    let  	state = guard.entry( path.clone()).or_insert_with( || {
+        static GCOMP_SPV: &[u8] = include_bytes!( env!( "GCOMP_SPV_PATH"));
+        let  	dto = kosh::fenst::XplrFetchPtsPoints( GCOMP_SPV).unwrap_or_else( |_| PtsPointsDto {
+            points: Vec::new(),
+            count: 0,
+            bbox_min: [ 0.0, 0.0, 0.0 ],
+            bbox_max: [ 0.0, 0.0, 0.0 ],
+        });
+
+        PtsSessionState {
+            points: dto.points,
+            bbox_min: dto.bbox_min,
+            bbox_max: dto.bbox_max,
+            angle_x: 0.4,
+            angle_y: 0.6,
+        }
+    });
+
+    let  	speedRad = speed / 1000.0;
+    state.angle_y += speedRad;
+    state.angle_x += speedRad * 0.5;
+
+    let  	angleX = state.angle_x;
+    let  	angleY = state.angle_y;
+    let  	bboxMin = state.bbox_min;
+    let  	bboxMax = state.bbox_max;
+
     let  	bboxVerts = [
         [ bboxMin[0], bboxMin[1], bboxMin[2] ],
         [ bboxMax[0], bboxMin[1], bboxMin[2] ],
@@ -297,26 +364,48 @@ pub fn	XplrProjectPts(
         });
     }
 
-    let  	mut projectedPoints = Vec::with_capacity( points.len());
-    for pt in &points {
+    let  	( r, g, b) = ParseHexColor( &color);
+    let  	mut projectedPoints = Vec::with_capacity( state.points.len());
+    for pt in &state.points {
         let  	( px, py, pz) = Project3d( pt[0], pt[1], pt[2], angleX, angleY, width, height);
         let  	depthFactor = 0.3f32.max( 1.0f32.min( ( 300.0 - pz) / 400.0));
         let  	radius = ( 3.0 + depthFactor * 4.0) * dpr;
         let  	alpha = 0.5 + depthFactor * 0.5;
         let  	core_radius = ( 1.0 + depthFactor * 1.5) * dpr;
 
+        let  	colorStr = format!( "rgba({}, {}, {}, {:.3})", r, g, b, alpha);
+
         projectedPoints.push( ProjectedPoint {
             x: px,
             y: py,
             radius,
-            alpha,
             core_radius,
+            color: colorStr,
         });
     }
+
+    let  	fileName = std::path::Path::new( &path)
+        .file_name()
+        .map( |n| n.to_string_lossy().into_owned())
+        .unwrap_or_else( || "Block.pts".to_string());
+
+    let  	bboxLabel = format!( "[{}, {}, {}] → [{}, {}, {}]",
+        bboxMin[0] as i32, bboxMin[1] as i32, bboxMin[2] as i32,
+        bboxMax[0] as i32, bboxMax[1] as i32, bboxMax[2] as i32
+    );
+
+    let  	overlay1 = format!( "Points: {} | BBox: {}", state.points.len(), bboxLabel);
+    let  	overlay2 = "Shader Backend: Rust-GPU (gcomp::pts_pointcloud_cs)".to_string();
 
     Ok( PtsFrameDto {
         points: projectedPoints,
         box_lines,
+        file_name: fileName,
+        count: state.points.len(),
+        bbox_label: bboxLabel,
+        shader_status: "Shader Active: gcomp::pts_pointcloud_cs".to_string(),
+        overlay_text1: overlay1,
+        overlay_text2: overlay2,
     })
 }
 

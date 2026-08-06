@@ -6,12 +6,6 @@
 (function () {
     const urlParams = new URLSearchParams(window.location.search);
     const filePath = urlParams.get('file') || 'pointcloud.pts';
-    const fileName = filePath.split(/[/\\]/).pop();
-
-    const titleEl = document.getElementById('pts-filename-txt');
-    if (titleEl) {
-        titleEl.textContent = fileName;
-    }
 
     const canvas = document.getElementById('pts-canvas');
     if (!canvas) return;
@@ -21,38 +15,10 @@
     const lineColorInput = document.getElementById('pts-line-color');
 
     // Stats elements for updating after GPU data arrives
+    const titleEl = document.getElementById('pts-filename-txt');
     const statPointCount = document.getElementById('pts-stat-count');
     const statBbox = document.getElementById('pts-stat-bbox');
     const statShaderStatus = document.getElementById('pts-shader-status');
-
-    let angleX = 0.4;
-    let angleY = 0.6;
-
-    // Point cloud data — populated by GPU compute shader
-    let points = [];
-    let bboxMin = [-20, -20, -20];
-    let bboxMax = [20, 20, 20];
-
-    // Fetch point cloud from GPU compute shader via Tauri IPC
-    async function fetchPointCloud() {
-        try {
-            const { invoke } = window.__TAURI__.core;
-            const data = await invoke('XplrFetchPtsPoints');
-            points = data.points;
-            bboxMin = data.bbox_min;
-            bboxMax = data.bbox_max;
-
-            // Update sidebar stats
-            if (statPointCount) statPointCount.textContent = data.count;
-            if (statBbox) {
-                statBbox.textContent = `[${bboxMin.map(v => v.toFixed(0)).join(', ')}] → [${bboxMax.map(v => v.toFixed(0)).join(', ')}]`;
-            }
-            if (statShaderStatus) statShaderStatus.textContent = 'Shader Active: gcomp::pts_pointcloud_cs';
-        } catch (err) {
-            console.error('Failed to fetch point cloud:', err);
-            if (statShaderStatus) statShaderStatus.textContent = 'Shader Error: ' + err;
-        }
-    }
 
     function resizeCanvas() {
         const dpr = window.devicePixelRatio || 1;
@@ -71,29 +37,32 @@
         const height = canvas.height;
         const dpr = window.devicePixelRatio || 1;
 
+        const color = (lineColorInput && lineColorInput.value) ? lineColorInput.value : '#00f3ff';
+        const speed = parseFloat((rotSpeedInput && rotSpeedInput.value) || 30);
+
         // Call backend to compute projected frame
         let frameData;
         try {
             const { invoke } = window.__TAURI__.core;
             frameData = await invoke('XplrProjectPts', {
-                points: points,
-                bboxMin: bboxMin,
-                bboxMax: bboxMax,
-                angleX: angleX,
-                angleY: angleY,
+                path: filePath,
                 width: width,
                 height: height,
-                dpr: dpr
+                dpr: dpr,
+                speed: speed,
+                color: color
             });
         } catch (err) {
             console.error('Failed to compute frame in Rust:', err);
-            // Schedule next frame anyway to keep animating when connection recovers
-            const speed = parseFloat((rotSpeedInput && rotSpeedInput.value) || 30) / 1000;
-            angleY += speed;
-            angleX += speed * 0.5;
             requestAnimationFrame(render);
             return;
         }
+
+        // Update UI panels with backend pre-formatted strings
+        if (titleEl) titleEl.textContent = frameData.file_name;
+        if (statPointCount) statPointCount.textContent = frameData.count;
+        if (statBbox) statBbox.textContent = frameData.bbox_label;
+        if (statShaderStatus) statShaderStatus.textContent = frameData.shader_status;
 
         ctx.clearRect(0, 0, width, height);
 
@@ -134,18 +103,12 @@
             ctx.stroke();
         });
 
-        // Draw point cloud
-        const color = (lineColorInput && lineColorInput.value) ? lineColorInput.value : '#00f3ff';
-        // Parse hex color for rgba usage
-        const r = parseInt(color.slice(1, 3), 16);
-        const g = parseInt(color.slice(3, 5), 16);
-        const b = parseInt(color.slice(5, 7), 16);
-
+        // Draw point cloud (outer glow)
         ctx.shadowColor = color;
         ctx.shadowBlur = 10 * dpr;
 
         frameData.points.forEach(p => {
-            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${p.alpha})`;
+            ctx.fillStyle = p.color;
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
             ctx.fill();
@@ -163,23 +126,15 @@
         // Reset shadow
         ctx.shadowBlur = 0;
 
-        // Draw dimension text overlays at bottom left
-        const bboxLabel = `[${bboxMin.map(v => v.toFixed(0)).join(', ')}] → [${bboxMax.map(v => v.toFixed(0)).join(', ')}]`;
+        // Draw overlays
         ctx.fillStyle = 'rgba(226, 232, 240, 0.85)';
         ctx.font = `${13 * dpr}px monospace`;
-        ctx.fillText(`Points: ${points.length} | BBox: ${bboxLabel}`, 20 * dpr, height - 35 * dpr);
-        ctx.fillText('Shader Backend: Rust-GPU (gcomp::pts_pointcloud_cs)', 20 * dpr, height - 15 * dpr);
-
-        // Update rotation angle
-        const speed = parseFloat((rotSpeedInput && rotSpeedInput.value) || 30) / 1000;
-        angleY += speed;
-        angleX += speed * 0.5;
+        ctx.fillText(frameData.overlay_text1, 20 * dpr, height - 35 * dpr);
+        ctx.fillText(frameData.overlay_text2, 20 * dpr, height - 15 * dpr);
 
         requestAnimationFrame(render);
     }
 
-    // Initialize: fetch GPU data then start rendering
-    fetchPointCloud().then(() => {
-        requestAnimationFrame(render);
-    });
+    // Start rendering loop immediately (state initialization is handled lazily in Rust backend)
+    requestAnimationFrame(render);
 })();
