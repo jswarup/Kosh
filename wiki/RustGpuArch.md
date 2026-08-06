@@ -34,7 +34,7 @@ Rust-GPU shaders are compiled into SPIR-V binaries at build time using custom co
 
 ### A. The Build Script (`build.rs`)
 
-The desktop application ([src/fenst-app/build.rs](file:///mnt/c/Work/Taregna/Kosh/src/fenst-app/build.rs)) leverages `spirv_builder` to orchestrate shader compilation:
+The desktop application ([src/fenst-app/build.rs](../src/fenst-app/build.rs)) leverages `spirv_builder` to orchestrate shader compilation:
 
 ```rust
 let compileResult = spirv_builder::SpirvBuilder::new( "../../src/gcomp", "spirv-unknown-vulkan1.1")
@@ -58,7 +58,7 @@ static GCOMP_SPV: &[u8] = include_bytes!( env!( "GCOMP_SPV_PATH"));
 
 ## 2. Shader Crate Architecture (`gcomp`)
 
-The `gcomp` crate ([src/gcomp/src/lib.rs](file:///mnt/c/Work/Taregna/Kosh/src/gcomp/src/lib.rs)) contains the GPU compute kernels. It is configured for dual-compilation: it compiles as `#![no_std]` for the `spirv` target and as a standard Rust library for unit testing.
+The `gcomp` crate ([src/gcomp/src/lib.rs](../src/gcomp/src/lib.rs)) contains the GPU compute kernels. It is configured for dual-compilation: it compiles as `#![no_std]` for the `spirv` target and as a standard Rust library for unit testing.
 
 ### A. Attributes & Imports
 
@@ -114,7 +114,7 @@ pub fn pts_pointcloud_cs(
 
 ## 3. Host GPU Operator Trait (`IGpuOp`)
 
-Kosh standardizes WebGPU / `wgpu` hardware interaction via the `IGpuOp` trait ([src/swarm/gpusop.rs](file:///mnt/c/Work/Taregna/Kosh/src/swarm/gpusop.rs)), implemented directly on `wgpu::Device`.
+Kosh standardizes WebGPU / `wgpu` hardware interaction via the `IGpuOp` trait ([src/swarm/gpusop.rs](../src/swarm/gpusop.rs)), implemented directly on `wgpu::Device`.
 
 ```rust
 pub trait IGpuOp {
@@ -142,7 +142,7 @@ Reads storage buffer contents back to CPU memory synchronously:
 
 ## 4. Execution & Pipeline Dispatch (`XplrFetchPtsPoints`)
 
-The host library function `XplrFetchPtsPoints` ([src/fenst/mod.rs](file:///mnt/c/Work/Taregna/Kosh/src/fenst/mod.rs#L233)) coordinates the complete GPU execution lifecycle:
+The host library function `XplrFetchPtsPoints` ([src/fenst/mod.rs](../src/fenst/mod.rs)) coordinates the complete GPU execution lifecycle:
 
 ```
  [Host CPU]                              [GPU Hardware]

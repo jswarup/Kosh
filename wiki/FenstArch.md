@@ -64,7 +64,7 @@ The **Fenst** framework provides file exploration, multi-scheme content abstract
 
 ## 1. Provider Abstraction & Exploration Engine
 
-The `fenst` library ([src/fenst](file:///mnt/c/Work/Taregna/Kosh/src/fenst)) defines a extensible provider registry for uniform tree navigation:
+The `fenst` library ([src/fenst](../src/fenst)) defines an extensible provider registry for uniform tree navigation:
 
 ### Key Interfaces
 
@@ -78,7 +78,7 @@ The `fenst` library ([src/fenst](file:///mnt/c/Work/Taregna/Kosh/src/fenst)) def
 * **`BranchXplr` & `LeafXplr` Traits**: Abstract directories/branches (`BranchXplr`) and individual files/leaves (`LeafXplr`).
 * **`XplrRegistry`**: Global thread-safe registry mapping URI schemes (e.g., `file://`, `ast://`) to their corresponding providers.
 
-### IPC Commands ([xplrcmds.rs](file:///mnt/c/Work/Taregna/Kosh/src/fenst-app/src/xplrcmds.rs))
+### IPC Commands ([xplrcmds.rs](../src/fenst-app/src/xplrcmds.rs))
 
 * **`XplrListEntries(path)`**: Enumerates directory contents sorted with directories first.
 * **`XplrFetchContent(path)`**: Reads text content with configurable size guards.
@@ -93,7 +93,7 @@ Window creation and focus management are centralized in `fenst-app`:
 
 ### `OpenWindowHelper`
 
-A unified helper function in [xplrcmds.rs](file:///mnt/c/Work/Taregna/Kosh/src/fenst-app/src/xplrcmds.rs#L120) eliminates duplicate Tauri WebView construction code:
+A unified helper function in [xplrcmds.rs](../src/fenst-app/src/xplrcmds.rs) eliminates duplicate Tauri WebView construction code:
 - Computes a deterministic DJB2 hash of the file path string (`5381` hash multiplier) to form unique window labels (`win_<hash>` or `pts_win_<hash>`).
 - Focuses the existing window if a path is already open.
 - Builds and opens a new Tauri WebView window when required.
@@ -105,7 +105,7 @@ A unified helper function in [xplrcmds.rs](file:///mnt/c/Work/Taregna/Kosh/src/f
 `.pts` files trigger a dedicated hardware-accelerated pipeline integrating **rust-gpu**, **wgpu**, and backend 3D math projection.
 
 ### A. Build-Time Shader Compilation (`build.rs`)
-During project compilation, `fenst-app`'s [build.rs](file:///mnt/c/Work/Taregna/Kosh/src/fenst-app/build.rs) invokes `spirv_builder`:
+During project compilation, `fenst-app`'s [build.rs](../src/fenst-app/build.rs) invokes `spirv_builder`:
 - Targets `spirv-unknown-vulkan1.1` to compile the `#![no_std]` crate in `src/gcomp`.
 - Emits `GCOMP_SPV_PATH` environment variable.
 - Embedded statically at runtime via `include_bytes!(env!("GCOMP_SPV_PATH"))`.
@@ -116,7 +116,7 @@ The `pts_pointcloud_cs` compute shader runs directly on GPU hardware:
 - Writes output `Vec4(x, y, z, 1.0)` structs into a GPU storage buffer.
 
 ### C. Backend Session State & Projection (`XplrProjectPts`)
-Rather than running 3D math on the frontend Javascript engine, [XplrProjectPts](file:///mnt/c/Work/Taregna/Kosh/src/fenst-app/src/xplrcmds.rs#L283) manages state and projection in Rust:
+Rather than running 3D math on the frontend Javascript engine, `XplrProjectPts` ([xplrcmds.rs](../src/fenst-app/src/xplrcmds.rs)) manages state and projection in Rust:
 
 1. **State Storage (`PTS_STATE`)**:
    Uses a thread-safe `LazyLock<Mutex<HashMap<String, PtsSessionState>>>` to store cached point clouds, bounding boxes, and incremental rotation angles (`angle_x`, `angle_y`) per file path.
@@ -131,7 +131,7 @@ Rather than running 3D math on the frontend Javascript engine, [XplrProjectPts](
 
 ## 4. Frontend Architecture
 
-The frontend ([src/fenst-app/frontend](file:///mnt/c/Work/Taregna/Kosh/src/fenst-app/frontend)) consists of two lightweight WebView views:
+The frontend ([src/fenst-app/frontend](../src/fenst-app/frontend)) consists of two lightweight WebView views:
 
 1. **Explorer Interface (`index.html` / `app.js`)**:
    - Sidebar tree view navigation, provider scheme list, tab management, and text content viewing.

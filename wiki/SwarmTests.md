@@ -17,7 +17,7 @@ fn	GpuInit() -> Option< ( wgpu::Device, wgpu::Queue)>
 * **Graceful Fallback**: If no compatible adapter is found, `GpuInit` returns `None`. The tests log a skip message and return early rather than panicking.
 
 ### 2. Zero-Copy Slice Casting (`ISliceExt`)
-WebGPU buffers require raw bytes (`&[u8]`) for data transfer. To achieve zero-cost casting between typed slices (e.g., `&[f32]`, `&[u32]`) and byte slices, the project defines the `ISliceExt` trait in [silo/cast.rs](file:///mnt/c/Work/Taregna/Kosh/src/silo/cast.rs):
+WebGPU buffers require raw bytes (`&[u8]`) for data transfer. To achieve zero-cost casting between typed slices (e.g., `&[f32]`, `&[u32]`) and byte slices, the project defines the `ISliceExt` trait in [silo/cast.rs](../src/silo/cast.rs):
 ```rust
 pub trait ISliceExt
 {
@@ -32,7 +32,7 @@ pub trait ISliceExt
 
 ## Test Demonstrations
 
-Three GPU tests are implemented in [swarm/_tests.rs](file:///mnt/c/Work/Taregna/Kosh/src/swarm/_tests.rs), showcasing progressive complexity.
+Three GPU tests are implemented in [swarm/_tests.rs](../src/swarm/_tests.rs), showcasing progressive complexity.
 
 ### 1. Double Values (`TestGpuDoubleValues`)
 Demonstrates the "Hello World" of GPU compute: uploading a single buffer, running a shader that modifies it in place, and reading it back.
