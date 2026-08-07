@@ -7,5 +7,7 @@ pub mod silo;pub mod stalks;
 pub mod fenst;
 pub mod fresco;
 pub mod swarm;
+pub mod fleck;
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
