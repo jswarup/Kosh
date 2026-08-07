@@ -1,9 +1,8 @@
 //-- mod.rs ------------------------------------------------------------------------------------------------------------------------
 
-pub mod	ptsio;
-pub use	ptsio::{ ParsePts, ParsePtsBytes, ParsePtsStream, PtsCloud, PtsPoint, PtsShard };
-
 pub mod	ptio;
+pub use	ptio::{ ParsePts, ParsePtsBytes, ParsePtsStream, PtsCloud, PtsPoint, PtsShard };
+
 
 #[cfg( test)]
 mod	_tests;

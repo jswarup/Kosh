@@ -1,7 +1,7 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 
 use	crate::{
-    fleck::ptsio::{ ParsePts, ParsePtsBytes, ParsePtsStream, PtsCloud, PtsShard },
+    fleck::ptio::{ ParsePts, ParsePtsBytes, ParsePtsStream, PtsCloud, PtsShard },
     flux::instream::FixedStream,
     shard::Parser,
     silo::{ IAccess, U32, U8 },
