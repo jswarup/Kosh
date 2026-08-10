@@ -4,24 +4,36 @@ use	std::fmt;
 use	crate::{
     fenst::PtsPointsDto,
     flux::instream::{ FixedStream, IStream },
-    shard::{ IGrammar, Parser, Real },
+    shard::{ IGrammar, Parser, Real, Charset },
     silo::{ Buff, IAccess, U32, U8 },
     ShardTree,
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+#[derive( Clone, Copy, Debug, PartialEq)]
+pub struct Point32
+{
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+}
+
+#[derive( Clone, Copy, Debug, PartialEq)]
+pub struct RGB
+{
+    pub r: U8,
+    pub g: U8,
+    pub b: U8,
+}
+
 /// Represents a single 3D point in a .pts point cloud with optional intensity and RGB color.
 #[derive( Clone, Copy, Debug, PartialEq)]
 pub struct PtsPoint
 {
-    pub x:          f32,
-    pub y:          f32,
-    pub z:          f32,
+    pub pos:        Point32,
     pub intensity:  Option< f32>,
-    pub r:          Option< U8>,
-    pub g:          Option< U8>,
-    pub b:          Option< U8>,
+    pub color:      Option< RGB>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -31,19 +43,15 @@ impl PtsPoint
     pub fn	New( x: f32, y: f32, z: f32) -> Self
     {
         Self {
-            x,
-            y,
-            z,
+            pos: Point32 { x, y, z },
             intensity: None,
-            r: None,
-            g: None,
-            b: None,
+            color: None,
         }
     }
 
     pub fn	Pos( &self) -> [f32; 3]
     {
-        [self.x, self.y, self.z]
+        [self.pos.x, self.pos.y, self.pos.z]
     }
 }
 
@@ -116,20 +124,20 @@ impl PtsCloud
         }
         let  	arr = self._Points.Arr();
         let  	first = arr.At( U32( 0));
-        let  	mut minX = first.x;
-        let  	mut minY = first.y;
-        let  	mut minZ = first.z;
-        let  	mut maxX = first.x;
-        let  	mut maxY = first.y;
-        let  	mut maxZ = first.z;
+        let  	mut minX = first.pos.x;
+        let  	mut minY = first.pos.y;
+        let  	mut minZ = first.pos.z;
+        let  	mut maxX = first.pos.x;
+        let  	mut maxY = first.pos.y;
+        let  	mut maxZ = first.pos.z;
         for i in 1..self._Points.Size().AsUsize() {
             let  	pt = arr.At( U32( i as u32));
-            if pt.x < minX { minX = pt.x; }
-            if pt.y < minY { minY = pt.y; }
-            if pt.z < minZ { minZ = pt.z; }
-            if pt.x > maxX { maxX = pt.x; }
-            if pt.y > maxY { maxY = pt.y; }
-            if pt.z > maxZ { maxZ = pt.z; }
+            if pt.pos.x < minX { minX = pt.pos.x; }
+            if pt.pos.y < minY { minY = pt.pos.y; }
+            if pt.pos.z < minZ { minZ = pt.pos.z; }
+            if pt.pos.x > maxX { maxX = pt.pos.x; }
+            if pt.pos.y > maxY { maxY = pt.pos.y; }
+            if pt.pos.z > maxZ { maxZ = pt.pos.z; }
         }
         ( [minX, minY, minZ], [maxX, maxY, maxZ])
     }
@@ -144,7 +152,7 @@ impl PtsCloud
         let  	arr = self._Points.Arr();
         for i in 0..totalPoints {
             let  	pt = arr.At( U32( i as u32));
-            pointsVec.push( [pt.x, pt.y, pt.z]);
+            pointsVec.push( [pt.pos.x, pt.pos.y, pt.pos.z]);
         }
         PtsPointsDto {
             points: pointsVec,
@@ -173,64 +181,22 @@ impl< 'a> IGrammar for PtsShard< 'a>
         let  	cloud = unsafe { &mut *cloudPtr };
 
         let  	mut m = parser.CurrMark();
-        let  	numGrammar = ShardTree!( Real );
+        let  	numGrammar = ShardTree!( Real  );
         let  	hspcGrammar = ShardTree!( +[ " \t," ] );
         let  	nlGrammar = ShardTree!( ( ?'\r' < '\n' ) | '\r' );
 
         // Helper: skip whitespace, comments, and empty lines
         let  	mut isFirstLine = true;
 
+        let  	skippable = ShardTree!( *(( ( "#" | "//" ) < *( Charset::EndLine().Negative()) < "\n") |  [ " \r\n\t," ] ));
+
         while m < parser.InStream().Size() {
-            // Check for comment (# or //)
-            let  	c0 = parser.GetAt( m);
-            if c0 == U8( b'#') {
-                while m < parser.InStream().Size() {
-                    let  	c = parser.GetAt( m);
-                    if let Some( nextM) = parser.Incr( m) {
-                        m = nextM;
-                    } else {
-                        break;
-                    }
-                    if c == U8( b'\n') {
-                        break;
-                    }
-                }
-                continue;
-            }
-
-            if c0 == U8( b'/') {
-                if let Some( nxt) = parser.Incr( m) {
-                    if parser.GetAt( nxt) == U8( b'/') {
-                        while m < parser.InStream().Size() {
-                            let  	c = parser.GetAt( m);
-                            if let Some( nextM) = parser.Incr( m) {
-                                m = nextM;
-                            } else {
-                                break;
-                            }
-                            if c == U8( b'\n') {
-                                break;
-                            }
-                        }
-                        continue;
-                    }
-                }
-            }
-
-            // Check for newline / blank line
-            if c0 == U8( b'\r') || c0 == U8( b'\n') {
-                if let Some( nextM) = parser.ParseGrammar( &nlGrammar, m) {
-                    m = nextM;
-                } else if let Some( nextM) = parser.Incr( m) {
-                    m = nextM;
-                }
-                continue;
-            }
-
-            // Skip leading horizontal whitespace on line
-            if let Some( nextM) = parser.ParseGrammar( &hspcGrammar, m) {
+            if let Some( nextM) = parser.ParseGrammar( &skippable, m) {
                 m = nextM;
-                continue;
+            }
+
+            if m >= parser.InStream().Size() {
+                break;
             }
 
             // Parse tokens on this line
@@ -296,17 +262,21 @@ impl< 'a> IGrammar for PtsShard< 'a>
                     PtsPoint { intensity: Some( lineNums[3]), ..PtsPoint::New( lineNums[0], lineNums[1], lineNums[2]) }
                 } else if numCount == 6 {
                     PtsPoint { 
-                        r: Some( U8( lineNums[3] as u8)), 
-                        g: Some( U8( lineNums[4] as u8)), 
-                        b: Some( U8( lineNums[5] as u8)),
+                        color: Some( RGB {
+                            r: U8( lineNums[3] as u8), 
+                            g: U8( lineNums[4] as u8), 
+                            b: U8( lineNums[5] as u8),
+                        }),
                         ..PtsPoint::New( lineNums[0], lineNums[1], lineNums[2]) 
                     }
                 } else if numCount >= 7 {
                     PtsPoint { 
                         intensity: Some( lineNums[3]), 
-                        r: Some( U8( lineNums[4] as u8)), 
-                        g: Some( U8( lineNums[5] as u8)), 
-                        b: Some( U8( lineNums[6] as u8)),
+                        color: Some( RGB {
+                            r: U8( lineNums[4] as u8), 
+                            g: U8( lineNums[5] as u8), 
+                            b: U8( lineNums[6] as u8),
+                        }),
                         ..PtsPoint::New( lineNums[0], lineNums[1], lineNums[2]) 
                     }
                 } else {

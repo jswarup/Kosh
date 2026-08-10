@@ -22,16 +22,16 @@ fn	TestPtsBasic3D()
 
     let  	arr = cloud.Points().Arr();
     let  	p0 = arr.At( U32( 0));
-    assert_eq!( p0.x, 10.0);
-    assert_eq!( p0.y, 20.0);
-    assert_eq!( p0.z, 30.0);
+    assert_eq!( p0.pos.x, 10.0);
+    assert_eq!( p0.pos.y, 20.0);
+    assert_eq!( p0.pos.z, 30.0);
     assert_eq!( p0.intensity, None);
-    assert_eq!( p0.r, None);
+    assert_eq!( p0.color, None);
 
     let  	p1 = arr.At( U32( 1));
-    assert_eq!( p1.x, 40.5);
-    assert_eq!( p1.y, -50.25);
-    assert_eq!( p1.z, 60.125);
+    assert_eq!( p1.pos.x, 40.5);
+    assert_eq!( p1.pos.y, -50.25);
+    assert_eq!( p1.pos.z, 60.125);
 
     let  	( minBbox, maxBbox) = cloud.BoundingBox();
     assert_eq!( minBbox, [0.0, -50.25, 0.0]);
@@ -53,15 +53,15 @@ fn	TestPtsWithHeaderAndIntensity()
 
     let  	arr = cloud.Points().Arr();
     let  	p0 = arr.At( U32( 0));
-    assert_eq!( p0.x, 1.0);
-    assert_eq!( p0.y, 2.0);
-    assert_eq!( p0.z, 3.0);
+    assert_eq!( p0.pos.x, 1.0);
+    assert_eq!( p0.pos.y, 2.0);
+    assert_eq!( p0.pos.z, 3.0);
     assert_eq!( p0.intensity, Some( 0.75));
 
     let  	p1 = arr.At( U32( 1));
-    assert_eq!( p1.x, -4.0);
-    assert_eq!( p1.y, -5.0);
-    assert_eq!( p1.z, -6.0);
+    assert_eq!( p1.pos.x, -4.0);
+    assert_eq!( p1.pos.y, -5.0);
+    assert_eq!( p1.pos.z, -6.0);
     assert_eq!( p1.intensity, Some( 0.25));
 }
 
@@ -79,17 +79,19 @@ fn	TestPtsWithColorRGB()
 
     let  	arr = cloud.Points().Arr();
     let  	p0 = arr.At( U32( 0));
-    assert_eq!( p0.x, 10.0);
-    assert_eq!( p0.y, 20.0);
-    assert_eq!( p0.z, 30.0);
-    assert_eq!( p0.r, Some( U8( 255)));
-    assert_eq!( p0.g, Some( U8( 128)));
-    assert_eq!( p0.b, Some( U8( 64)));
+    assert_eq!( p0.pos.x, 10.0);
+    assert_eq!( p0.pos.y, 20.0);
+    assert_eq!( p0.pos.z, 30.0);
+    let  	color0 = p0.color.unwrap();
+    assert_eq!( color0.r, U8( 255));
+    assert_eq!( color0.g, U8( 128));
+    assert_eq!( color0.b, U8( 64));
 
     let  	p1 = arr.At( U32( 1));
-    assert_eq!( p1.r, Some( U8( 0)));
-    assert_eq!( p1.g, Some( U8( 255)));
-    assert_eq!( p1.b, Some( U8( 0)));
+    let  	color1 = p1.color.unwrap();
+    assert_eq!( color1.r, U8( 0));
+    assert_eq!( color1.g, U8( 255));
+    assert_eq!( color1.b, U8( 0));
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -106,13 +108,14 @@ fn	TestPtsWithIntensityAndColor()
 
     let  	arr = cloud.Points().Arr();
     let  	p0 = arr.At( U32( 0));
-    assert_eq!( p0.x, 1.0);
-    assert_eq!( p0.y, 2.0);
-    assert_eq!( p0.z, 3.0);
+    assert_eq!( p0.pos.x, 1.0);
+    assert_eq!( p0.pos.y, 2.0);
+    assert_eq!( p0.pos.z, 3.0);
     assert_eq!( p0.intensity, Some( 0.9));
-    assert_eq!( p0.r, Some( U8( 255)));
-    assert_eq!( p0.g, Some( U8( 200)));
-    assert_eq!( p0.b, Some( U8( 150)));
+    let  	color0 = p0.color.unwrap();
+    assert_eq!( color0.r, U8( 255));
+    assert_eq!( color0.g, U8( 200));
+    assert_eq!( color0.b, U8( 150));
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -129,14 +132,14 @@ fn	TestPtsScientificNotationAndComments()
 
     let  	arr = cloud.Points().Arr();
     let  	p0 = arr.At( U32( 0));
-    assert_eq!( p0.x, 0.0125);
-    assert_eq!( p0.y, -35.0);
-    assert_eq!( p0.z, 4.0);
+    assert_eq!( p0.pos.x, 0.0125);
+    assert_eq!( p0.pos.y, -35.0);
+    assert_eq!( p0.pos.z, 4.0);
 
     let  	p1 = arr.At( U32( 1));
-    assert_eq!( p1.x, 10.0);
-    assert_eq!( p1.y, 20.0);
-    assert_eq!( p1.z, 30.0);
+    assert_eq!( p1.pos.x, 10.0);
+    assert_eq!( p1.pos.y, 20.0);
+    assert_eq!( p1.pos.z, 30.0);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -187,9 +190,9 @@ fn	TestPtsShardGrammarDirect()
 
     let  	arr = cloud.Points().Arr();
     let  	p0 = arr.At( U32( 0));
-    assert_eq!( p0.x, 5.0);
-    assert_eq!( p0.y, 15.0);
-    assert_eq!( p0.z, 25.0);
+    assert_eq!( p0.pos.x, 5.0);
+    assert_eq!( p0.pos.y, 15.0);
+    assert_eq!( p0.pos.z, 25.0);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

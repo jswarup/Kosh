@@ -2,7 +2,7 @@
 
 use	std::{ cmp, fmt, ops::{ BitAnd, BitAndAssign, BitOr, BitOrAssign, Not } };
 use	std::sync::LazyLock;
-use	crate::silo::{ Arr, Buff, U8, U32, U64 };
+use	crate::silo::{ Arr, Buff, IAccess, IArr, U8, U32, U64 };
 
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -24,7 +24,8 @@ impl Charset
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub const fn	New() -> Self
-    { Self  { 
+    { 
+        Self  { 
             _Bits: [U64::_0; Self::SZ] 
         } 
     }
@@ -46,22 +47,8 @@ impl Charset
 impl From< &[u8]> for Charset
 {
     fn	from( spec: &[u8]) -> Self
-    {
-        let  	mut cs = Self::New();
-        let  	mut i = 0usize;
-        while i < spec.len() {
-            let  	first = U8( spec[i]);
-            cs.SetChar( first);
-            // peek for  '-' range
-            if i + 2 < spec.len() && spec[i + 1] == b'-' {
-                let  	last = U8( spec[i + 2]);
-                cs.SetByteRange( first, last, true);
-                i += 3;
-            } else {
-                i += 1;
-            }
-        }
-        cs
+    { 
+        Self::from( Arr::< '_, U8>::from( Arr::from( spec)))
     }
 }
 
@@ -71,14 +58,59 @@ impl< 'a> From< Arr< 'a, U8>> for Charset
 {
     fn	from( spec: Arr< 'a, U8>) -> Self
     {
+        if ( spec.Size() > 2) && ( *spec.First() == b':') && ( *spec.Last() == b':') {
+            let   csetStr : &str = spec.LSnip( 1u32).RSnip( 1u32).into(); 
+            if csetStr == "alnum"	{
+                return *Self::AlphaNum();
+            }
+            if csetStr == "alpha"	{
+                return Self::Lower().Union(Self::Upper());
+            }
+            if csetStr == "ascii"	{
+                return *Self::Ascii();
+            }
+            if csetStr == "blank"	{
+                return *Self::Blank();
+            }
+            if csetStr == "cntrl"	{
+                return *Self::Cntrl();
+            }
+            if csetStr == "digit"	{
+                return *Self::Digit();
+            }
+            if csetStr == "graph"	{
+                return *Self::Graph();
+            }
+            if csetStr == "lower"	{
+                return *Self::Lower();
+            } 
+            if csetStr == "print"	{
+                return *Self::Print();
+            } 
+            if csetStr == "punct"	{
+                return *Self::Punct();
+            }
+            if csetStr == "space"	{
+                return *Self::Space();
+            }
+            if csetStr == "upper"	{
+                return *Self::Upper();
+            }
+            if csetStr == "word"	{
+                return *Self::Word();
+            }
+            if csetStr == "xdigit"	{
+                return *Self::XDigit();
+            }  
+        }
         let  	mut cs = Self::New();
         let  	mut i = 0usize;
-        while i < spec.len() {
-            let  	first = spec[i];
+        while i < spec.Size().AsUsize() {
+            let  	first = *spec.At( U32( i as u32));
             cs.SetChar( first);
             // peek for  '-' range
-            if i + 2 < spec.len() && spec[i + 1] == U8( b'-') {
-                let  	last = spec[i + 2];
+            if i + 2 < spec.Size().AsUsize() && *spec.At( U32( i as u32 + 1)) == U8( b'-') {
+                let  	last = *spec.At( U32( i as u32 + 2));
                 cs.SetByteRange( first, last, true);
                 i += 3;
             } else {
@@ -102,7 +134,6 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-
     pub fn	SetChar< C: Into< U8>>( &mut self, c: C)
     {
         let  	c = c.into();
@@ -122,7 +153,6 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-
     /// Set the bit for byte `c` to `v`.
     pub fn	Set< C: Into< U8>>( &mut self, c: C, v: bool)
     {
@@ -142,7 +172,6 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-
     /// Flip all 256 bits ( complement).
     pub fn	Negate( &mut self)
     {
@@ -152,7 +181,6 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-
     /// Return a negated copy.
     pub fn	Negative( &self) -> Self
     {
@@ -162,7 +190,6 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-
     /// Check whether `self` and `other` share any set bit.
     pub fn	IsIntersect( &self, other: &Charset) -> bool
     {
@@ -175,7 +202,6 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-
     /// OR `other` into self.
     pub fn	UnionWith( &mut self, other: &Charset)
     {
@@ -185,7 +211,6 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-
     /// AND `other` into self.
     pub fn	IntersectWith( &mut self, other: &Charset)
     {
@@ -195,7 +220,13 @@ impl Charset
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
+    /// Diff `other` into self.
+    pub fn	DiffWith( &mut self, other: &Charset)
+    {
+        self.IntersectWith( &other.Negative())
+    }
 
+    //-----------------------------------------------------------------------------------------------------------------------------
     /// Return the union of self and `other`
     ///
     pub fn	Union( &self, other: &Charset) -> Self
