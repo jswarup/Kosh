@@ -1,13 +1,13 @@
 
+use	std::collections::HashSet;
+use	std::sync::Arc;
+use	std::sync::atomic::Ordering;
 use	std::{ fmt, hint::spin_loop, thread::{ scope, yield_now } };
-
-//-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
 use	crate::heist::Maestro;
 use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, U16, U32 };
-use crate::silo::uint::Xplod;
+use	crate::silo::uint::Xplod;
 use	crate::stalks::{ Atm, Spinlock, WorkPtr };
-use	std::sync::atomic::Ordering;
-use std::collections::HashSet;
+use	crate::swarm::SwarmEngine;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -22,6 +22,7 @@ pub struct Atelier< 'a>
     _JobBuff: Buff< WorkPtr< 'a>>,
     _JobDocBuff: Buff< &'static str>,
     _Terminal: U16,
+    _Swarm: Option< Arc< SwarmEngine>>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -43,11 +44,35 @@ impl< 'a> Atelier< 'a>
             _JobBuff: Buff::New( U32::_16Sz, WorkPtr::Null()),
             _JobDocBuff: Buff::New( U32::_16Sz, "Free"),
             _Terminal: U16( 0),
+            _Swarm: None,
         };
         atelier._FreeJobStash.DoIndexSetup();
         atelier._Terminal = atelier.ConstructJob( U32( 0), U16( 0), WorkPtr::Dummy(), "Terminal");
         atelier._Maestros.Arr().MutAt( 0).SetCurSuccId( atelier._Terminal);
         atelier
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	NewWithSwarm( szMaestro: U32, swarm: SwarmEngine) -> Atelier< 'a>
+    {
+        let  	mut atelier = Self::New( szMaestro);
+        atelier._Swarm = Some( Arc::new( swarm));
+        atelier
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	SetSwarm( &mut self, swarm: SwarmEngine)
+    {
+        self._Swarm = Some( Arc::new( swarm));
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	Swarm( &self) -> Option< &SwarmEngine>
+    {
+        self._Swarm.as_deref()
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

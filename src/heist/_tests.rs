@@ -5,8 +5,9 @@ use	crate::{
     silo::
     { Buff, IAccess, IArr, U16, U32 },
     stalks::
-    { DynIWorker, IWorker, Worker, IntoWorkPtr },
+    { DynIWorker, IntoWorkPtr, IWorker, Worker },
 };
+use	std::sync::atomic::Ordering;
 use	std::sync::{ Arc, Mutex };
 use	std::thread;
 
@@ -193,6 +194,148 @@ fn	TestDoQSortSequential()
     worker.PostJob( quickSorter.IntoWorkPtr());
     assert!( buff.Arr().SortSanity( |a, b| { a > b }));
     println!( "{} ", buff.Arr());
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+use	std::sync::atomic::AtomicU32;
+
+static CPU_COUNT: AtomicU32 = AtomicU32::new( 0);
+
+#[test]
+fn	TestHeistSwarmCpuChore()
+{
+    use	crate::heist::{ Chore, ChoreTarget };
+
+    CPU_COUNT.store( 0, Ordering::Release);
+
+    fn	stepA( _w: &DynIWorker< '_>)
+    {
+        CPU_COUNT.fetch_add( 10, Ordering::AcqRel);
+    }
+
+    fn	stepB( _w: &DynIWorker< '_>)
+    {
+        CPU_COUNT.fetch_add( 20, Ordering::AcqRel);
+    }
+
+    let  	choreA = Chore::Cpu( "CpuStepA", stepA);
+    let  	choreB = Chore::Cpu( "CpuStepB", stepB);
+
+    assert_eq!( choreA.Target(), ChoreTarget::Cpu);
+    assert_eq!( choreB.Target(), ChoreTarget::Cpu);
+
+    let  	choreTree = crate::ChoreTree!( choreA < choreB);
+    let  	atelier = Atelier::New( U32( 2));
+    let  	mainMaestro = atelier.MainMaestro();
+    mainMaestro.PostChoreTree( &choreTree);
+    atelier.DoLaunch();
+
+    assert_eq!( CPU_COUNT.load( Ordering::Acquire), 30);
+    println!( "TestHeistSwarmCpuChore: Sequential CPU chores executed via Heist ✓");
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+static GPU_RESULT_SUM: AtomicU32 = AtomicU32::new( 0);
+
+#[test]
+fn	TestHeistSwarmGpuChore()
+{
+    use	crate::heist::{ Chore, ChoreTarget };
+    use	crate::swarm::SwarmEngine;
+
+    GPU_RESULT_SUM.store( 0, Ordering::Release);
+
+    fn	gpuWork( w: &DynIWorker< '_>)
+    {
+        let  	maestro = Maestro::FromWorker( w);
+        if let Some( swarm) = maestro.Swarm() {
+            let  	input = vec![1.0f32, 2.0, 3.0, 4.0, 5.0];
+            let  	res = swarm.RunDouble( &input).unwrap();
+            let  	sum: u32 = res.iter().map( |x| *x as u32).sum();
+            GPU_RESULT_SUM.store( sum, Ordering::Release);
+        }
+    }
+
+    let  	engine = SwarmEngine::Auto();
+    let  	atelier = Atelier::NewWithSwarm( U32( 2), engine);
+
+    let  	gpuChore = Chore::GpuAuto( "GpuDouble", gpuWork);
+    assert_eq!( gpuChore.Target(), ChoreTarget::GpuAuto);
+
+    let  	mainMaestro = atelier.MainMaestro();
+    mainMaestro.PostChoreTree( &gpuChore);
+    atelier.DoLaunch();
+
+    assert_eq!( GPU_RESULT_SUM.load( Ordering::Acquire), 30);
+    println!( "TestHeistSwarmGpuChore: GPU chore executed via Heist Atelier ✓");
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+static STAGE1_A: AtomicU32 = AtomicU32::new( 0);
+static STAGE1_B: AtomicU32 = AtomicU32::new( 0);
+static STAGE2_SUM: AtomicU32 = AtomicU32::new( 0);
+static STAGE3_FINAL: AtomicU32 = AtomicU32::new( 0);
+
+#[test]
+fn	TestHeistSwarmHeterogeneousPipeline()
+{
+    use	crate::heist::Chore;
+    use	crate::swarm::SwarmEngine;
+
+    STAGE1_A.store( 0, Ordering::Release);
+    STAGE1_B.store( 0, Ordering::Release);
+    STAGE2_SUM.store( 0, Ordering::Release);
+    STAGE3_FINAL.store( 0, Ordering::Release);
+
+    fn	produceA( _w: &DynIWorker< '_>)
+    {
+        STAGE1_A.store( 10, Ordering::Release);
+    }
+
+    fn	produceB( _w: &DynIWorker< '_>)
+    {
+        STAGE1_B.store( 20, Ordering::Release);
+    }
+
+    fn	mergeChunks( _w: &DynIWorker< '_>)
+    {
+        let  	valA = STAGE1_A.load( Ordering::Acquire);
+        let  	valB = STAGE1_B.load( Ordering::Acquire);
+        STAGE2_SUM.store( valA + valB, Ordering::Release);
+    }
+
+    fn	gpuCompute( w: &DynIWorker< '_>)
+    {
+        let  	maestro = Maestro::FromWorker( w);
+        if let Some( swarm) = maestro.Swarm() {
+            let  	sumVal = STAGE2_SUM.load( Ordering::Acquire) as f32;
+            let  	input = vec![sumVal];
+            let  	res = swarm.RunDouble( &input).unwrap();
+            STAGE3_FINAL.store( res[0] as u32, Ordering::Release);
+        }
+    }
+
+    let  	engine = SwarmEngine::Auto();
+    let  	atelier = Atelier::NewWithSwarm( U32( 4), engine);
+
+    let  	choreA = Chore::Cpu( "ProduceA", produceA);
+    let  	choreB = Chore::Cpu( "ProduceB", produceB);
+    let  	mergeChore = Chore::Cpu( "Merge", mergeChunks);
+    let  	computeChore = Chore::GpuAuto( "GpuCompute", gpuCompute);
+
+    let  	pipeline = crate::ChoreTree!(
+        ( choreA | choreB ) < mergeChore < computeChore
+    );
+
+    let  	mainMaestro = atelier.MainMaestro();
+    mainMaestro.PostChoreTree( &pipeline);
+    atelier.DoLaunch();
+
+    assert_eq!( STAGE3_FINAL.load( Ordering::Acquire), 60);
+    println!( "TestHeistSwarmHeterogeneousPipeline: Parallel CPU -> Merge -> GPU pipeline completed ✓");
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

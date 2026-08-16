@@ -5,7 +5,7 @@ pub mod atelier;
 pub mod choretree;
 pub mod maestro;
 pub use	atelier::Atelier;
-pub use	choretree::Chore;
+pub use	choretree::{ Chore, ChoreTarget };
 pub use	maestro::Maestro;
 
 //---------------------------------------------------------------------------------------------------------------------------------

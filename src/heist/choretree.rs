@@ -1,9 +1,30 @@
 //-- choretree.rs ---------------------------------------------------------------------------------------------------------------------
-use	crate::{
-    stalks::{ IntoWorkPtr, BinNode, DynIWorker, IWork, INode, BinOp },
-    silo::{ U16, Buff},
-};
+
 use	std::fmt;
+use	crate::{
+    silo::{ Buff, U16 },
+    stalks::{ BinNode, BinOp, DynIWorker, INode, IntoWorkPtr, IWork },
+    swarm::BackendKind,
+};
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+/// Execution target affinity for a chore.
+#[derive( Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ChoreTarget
+{
+    Cpu,
+    Gpu( BackendKind),
+    GpuAuto,
+}
+
+impl Default for ChoreTarget
+{
+    fn	default() -> Self
+    {
+        ChoreTarget::Cpu
+    }
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -11,6 +32,7 @@ use	std::fmt;
 pub struct Chore
 {
     pub _DocStr: &'static str,
+    pub _Target: ChoreTarget,
     _Closure: fn( &DynIWorker< '_>),
 }
 
@@ -20,23 +42,66 @@ impl Default for Chore
 {
     fn	default() -> Self
     {
-        Self { _DocStr: "", _Closure: |_| {} }
+        Self {
+            _DocStr: "",
+            _Target: ChoreTarget::Cpu,
+            _Closure: |_| {},
+        }
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-
 impl Chore
 {
     pub fn	New( f: fn( &DynIWorker< '_>)) -> Self
     {
-        Self { _DocStr: "", _Closure: f }
+        Self {
+            _DocStr: "",
+            _Target: ChoreTarget::Cpu,
+            _Closure: f,
+        }
     }
 
     pub fn	NewDoc( docStr: &'static str, f: fn( &DynIWorker< '_>)) -> Self
     {
-        Self { _DocStr: docStr, _Closure: f }
+        Self {
+            _DocStr: docStr,
+            _Target: ChoreTarget::Cpu,
+            _Closure: f,
+        }
+    }
+
+    pub fn	Cpu( docStr: &'static str, f: fn( &DynIWorker< '_>)) -> Self
+    {
+        Self {
+            _DocStr: docStr,
+            _Target: ChoreTarget::Cpu,
+            _Closure: f,
+        }
+    }
+
+    pub fn	Gpu( docStr: &'static str, backend: BackendKind, f: fn( &DynIWorker< '_>)) -> Self
+    {
+        Self {
+            _DocStr: docStr,
+            _Target: ChoreTarget::Gpu( backend),
+            _Closure: f,
+        }
+    }
+
+    pub fn	GpuAuto( docStr: &'static str, f: fn( &DynIWorker< '_>)) -> Self
+    {
+        Self {
+            _DocStr: docStr,
+            _Target: ChoreTarget::GpuAuto,
+            _Closure: f,
+        }
+    }
+
+    pub fn	Target( &self) -> ChoreTarget
+    {
+        self._Target
     }
 }
 
@@ -56,10 +121,20 @@ impl fmt::Display for Chore
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
+        let  	targetStr = match self._Target {
+            ChoreTarget::Cpu => "CPU",
+            ChoreTarget::Gpu( b) => match b {
+                BackendKind::Cpu => "CPU",
+                BackendKind::RustGpu => "Rust-GPU",
+                BackendKind::CudaOxide => "CUDA",
+            },
+            ChoreTarget::GpuAuto => "GPU-Auto",
+        };
+
         if self._DocStr.is_empty() {
-            write!( f, "Chore")
+            write!( f, "Chore[{}]", targetStr)
         } else {
-            write!( f, "Chore: {}", self._DocStr)
+            write!( f, "Chore[{}]: {}", targetStr, self._DocStr)
         }
     }
 }
@@ -73,6 +148,39 @@ macro_rules! Chore {
     };
     ( $doc:expr, $closure:expr) => {
         $crate::heist::Chore::NewDoc( $doc, $closure)
+    };
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[macro_export]
+macro_rules! CpuChore {
+    ( $closure:expr) => {
+        $crate::heist::Chore::Cpu( "", $closure)
+    };
+    ( $doc:expr, $closure:expr) => {
+        $crate::heist::Chore::Cpu( $doc, $closure)
+    };
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[macro_export]
+macro_rules! GpuChore {
+    ( $doc:expr, $backend:expr, $closure:expr) => {
+        $crate::heist::Chore::Gpu( $doc, $backend, $closure)
+    };
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[macro_export]
+macro_rules! GpuAutoChore {
+    ( $closure:expr) => {
+        $crate::heist::Chore::GpuAuto( "", $closure)
+    };
+    ( $doc:expr, $closure:expr) => {
+        $crate::heist::Chore::GpuAuto( $doc, $closure)
     };
 }
 
@@ -141,6 +249,7 @@ impl IChoreNode for Chore
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
 impl< L, R> IChoreNode for BinNode< L, R>
 where
     L: IChoreNode,
@@ -181,4 +290,3 @@ where
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-

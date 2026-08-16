@@ -77,6 +77,20 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    pub fn	Swarm( &self) -> Option< &crate::swarm::SwarmEngine>
+    {
+        self.Atelier().Swarm()
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	Device( &self) -> Option< &crate::swarm::SwarmDevice>
+    {
+        self.Swarm().map( |s| s.Device())
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	ConstructJob( &self, succId: U16, job: impl IntoWorkPtr< 'a>, docStr: &'static str) -> U16
     {
         self.Atelier().ConstructJob( self._Index, succId, job.IntoWorkPtr(), docStr)
