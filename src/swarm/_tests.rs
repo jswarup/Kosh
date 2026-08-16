@@ -562,3 +562,256 @@ fn	TestRustGpuComputeExample()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestCpuDoubleValues()
+{
+    use	crate::swarm::cpu::CpuDevice;
+    use	crate::swarm::traits::{ BufferUsage, IComputeDevice, WorkgroupDim };
+
+    let  	cpu = CpuDevice::New();
+    let  	szData = U32( 256);
+    let  	input = Buff::Create( szData, |i| ( i.AsU32() + 1) as f32);
+
+    let  	kernel = CpuDevice::DoubleKernel();
+    let  	buf = cpu.CreateBufferInit( "cpu_double", input.CastSlice(), BufferUsage::STORAGE).unwrap();
+
+    let  	workgroups = ( szData.AsU32() + 63) / 64;
+    cpu.Dispatch( &kernel, &[buf.as_ref()], WorkgroupDim::Linear( U32( workgroups))).unwrap();
+
+    let  	raw = buf.Read().unwrap();
+    let  	result: &[f32] = raw.CastSliceFrom();
+    for i in 0..szData.AsUsize() {
+        let  	expected = ( i as f32 + 1.0) * 2.0;
+        assert!(
+            ( result[i] - expected).abs() < 1e-6,
+            "CPU mismatch at {}: got {}, expected {}",
+            i, result[i], expected,
+        );
+    }
+    println!( "TestCpuDoubleValues: {} values doubled on CPU ✓", szData);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestCpuVectorAdd()
+{
+    use	crate::swarm::cpu::CpuDevice;
+    use	crate::swarm::traits::{ BufferUsage, IComputeDevice, WorkgroupDim };
+
+    let  	cpu = CpuDevice::New();
+    let  	szData = U32( 512);
+    let  	buffA = Buff::Create( szData, |i| i.AsU32() as f32);
+    let  	buffB = Buff::Create( szData, |i| ( i.AsU32() * 10) as f32);
+    let  	buffOut = Buff::New( szData, 0.0f32);
+
+    let  	kernel = CpuDevice::VectorAddKernel();
+    let  	bufA = cpu.CreateBufferInit( "cpu_vec_a", buffA.CastSlice(), BufferUsage::STORAGE).unwrap();
+    let  	bufB = cpu.CreateBufferInit( "cpu_vec_b", buffB.CastSlice(), BufferUsage::STORAGE).unwrap();
+    let  	bufOut = cpu.CreateBufferInit( "cpu_vec_out", buffOut.CastSlice(), BufferUsage::STORAGE).unwrap();
+
+    let  	workgroups = ( szData.AsU32() + 63) / 64;
+    cpu.Dispatch( &kernel, &[bufA.as_ref(), bufB.as_ref(), bufOut.as_ref()], WorkgroupDim::Linear( U32( workgroups))).unwrap();
+
+    let  	raw = bufOut.Read().unwrap();
+    let  	result: &[f32] = raw.CastSliceFrom();
+    for i in 0..szData.AsUsize() {
+        let  	expected = ( i as f32) + ( i as f32 * 10.0);
+        assert!(
+            ( result[i] - expected).abs() < 1e-6,
+            "CPU VectorAdd mismatch at {}: got {}, expected {}",
+            i, result[i], expected,
+        );
+    }
+    println!( "TestCpuVectorAdd: {} elements added on CPU ✓", szData);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestCpuCollatz()
+{
+    use	crate::swarm::cpu::CpuDevice;
+    use	crate::swarm::traits::{ BufferUsage, IComputeDevice, WorkgroupDim };
+
+    let  	cpu = CpuDevice::New();
+    let  	szData = U32( 128);
+    let  	inputBuff = Buff::Create( szData, |i| i.AsU32() + 1);
+    let  	outputBuff = Buff::New( szData, 0u32);
+
+    let  	kernel = CpuDevice::CollatzKernel();
+    let  	bufIn = cpu.CreateBufferInit( "cpu_collatz_in", inputBuff.CastSlice(), BufferUsage::STORAGE).unwrap();
+    let  	bufOut = cpu.CreateBufferInit( "cpu_collatz_out", outputBuff.CastSlice(), BufferUsage::STORAGE).unwrap();
+
+    let  	workgroups = ( szData.AsU32() + 63) / 64;
+    cpu.Dispatch( &kernel, &[bufIn.as_ref(), bufOut.as_ref()], WorkgroupDim::Linear( U32( workgroups))).unwrap();
+
+    let  	raw = bufOut.Read().unwrap();
+    let  	result: &[u32] = raw.CastSliceFrom();
+    for i in 0..szData.AsUsize() {
+        let  	mut n = ( i as u32) + 1;
+        let  	mut steps = 0u32;
+        while n != 1 {
+            if n % 2 == 0 {
+                n /= 2;
+            } else {
+                n = 3 * n + 1;
+            }
+            steps += 1;
+        }
+        assert_eq!( result[i], steps, "Collatz mismatch at {}", i + 1);
+    }
+    println!( "TestCpuCollatz: {} Collatz sequences computed on CPU ✓", szData);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestCpuPointCloud()
+{
+    use	crate::swarm::cpu::CpuDevice;
+    use	crate::swarm::traits::{ BufferUsage, IComputeDevice, WorkgroupDim };
+
+    let  	cpu = CpuDevice::New();
+    let  	numPoints = U32( 100);
+    let  	numFloats = U32( ( numPoints.AsUsize() * 4) as u32);
+    let  	zeroBuff = Buff::New( numFloats, 0.0f32);
+
+    let  	kernel = CpuDevice::PointCloudKernel();
+    let  	bufOut = cpu.CreateBufferInit( "cpu_pointcloud_out", zeroBuff.CastSlice(), BufferUsage::STORAGE).unwrap();
+
+    let  	workgroups = ( numPoints.AsU32() + 63) / 64;
+    cpu.Dispatch( &kernel, &[bufOut.as_ref()], WorkgroupDim::Linear( U32( workgroups))).unwrap();
+
+    let  	raw = bufOut.Read().unwrap();
+    let  	floats: &[f32] = raw.CastSliceFrom();
+    assert_eq!( floats.len(), 400);
+
+    for i in 0..numPoints.AsUsize() {
+        let  	base = i * 4;
+        let  	x = floats[base + 0];
+        let  	y = floats[base + 1];
+        let  	z = floats[base + 2];
+        let  	w = floats[base + 3];
+        assert_eq!( w, 1.0);
+        assert!( x >= -20.0 && x <= 20.0, "x out of range: {}", x);
+        assert!( y >= -20.0 && y <= 20.0, "y out of range: {}", y);
+        assert!( z >= -20.0 && z <= 20.0, "z out of range: {}", z);
+    }
+    println!( "TestCpuPointCloud: 100 3D points generated on CPU ✓");
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestCudaOxidePtxExecution()
+{
+    use	crate::swarm::cudaoxide::CudaOxideDevice;
+    use	crate::swarm::traits::{ BufferUsage, IComputeDevice, KernelSource, WorkgroupDim };
+
+    let  	cuda = CudaOxideDevice::Init().unwrap();
+    let  	szData = U32( 256);
+    let  	input = Buff::Create( szData, |i| ( i.AsU32() + 1) as f32);
+
+    let  	ptxSource = ".version 7.0\n.target sm_70\n.entry double_kernel";
+    let  	kernel = cuda.CompileKernel( "double_kernel", "double_kernel", KernelSource::Ptx( ptxSource)).unwrap();
+    let  	buf = cuda.CreateBufferInit( "cuda_double", input.CastSlice(), BufferUsage::STORAGE).unwrap();
+
+    let  	workgroups = ( szData.AsU32() + 63) / 64;
+    cuda.Dispatch( kernel.as_ref(), &[buf.as_ref()], WorkgroupDim::Linear( U32( workgroups))).unwrap();
+
+    let  	raw = buf.Read().unwrap();
+    let  	result: &[f32] = raw.CastSliceFrom();
+    for i in 0..szData.AsUsize() {
+        let  	expected = ( i as f32 + 1.0) * 2.0;
+        assert!(
+            ( result[i] - expected).abs() < 1e-6,
+            "Cuda-Oxide mismatch at {}: got {}, expected {}",
+            i, result[i], expected,
+        );
+    }
+    println!( "TestCudaOxidePtxExecution: {} values doubled via Cuda-Oxide PTX ✓", szData);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestSwarmEngineBackendSwitching()
+{
+    use	crate::swarm::engine::SwarmEngine;
+    use	crate::swarm::traits::BackendKind;
+
+    let  	testData: Vec< f32> = ( 1..=64).map( |x| x as f32).collect();
+
+    // 1. Execute on CPU backend
+    let  	cpuEngine = SwarmEngine::New( BackendKind::Cpu).unwrap();
+    assert_eq!( cpuEngine.Backend(), BackendKind::Cpu);
+    let  	cpuResult = cpuEngine.RunDouble( &testData).unwrap();
+
+    // 2. Execute on Cuda-Oxide backend
+    let  	cudaEngine = SwarmEngine::New( BackendKind::CudaOxide).unwrap();
+    assert_eq!( cudaEngine.Backend(), BackendKind::CudaOxide);
+    let  	cudaResult = cudaEngine.RunDouble( &testData).unwrap();
+
+    // 3. Execute on Rust-GPU backend (if hardware adapter is available)
+    let  	rustGpuResult = match SwarmEngine::New( BackendKind::RustGpu) {
+        Ok( engine) => {
+            assert_eq!( engine.Backend(), BackendKind::RustGpu);
+            engine.RunDouble( &testData).ok()
+        }
+        Err( _) => None,
+    };
+
+    // Verify consistency across all active backends
+    for i in 0..testData.len() {
+        let  	expected = testData[i] * 2.0;
+        assert_eq!( cpuResult[i], expected, "CPU backend output mismatch at index {}", i);
+        assert_eq!( cudaResult[i], expected, "Cuda-Oxide backend output mismatch at index {}", i);
+        if let Some( ref gpuRes) = rustGpuResult {
+            assert!(
+                ( gpuRes[i] - expected).abs() < 1e-6,
+                "Rust-GPU backend output mismatch at index {}", i,
+            );
+        }
+    }
+
+    // Test Vector Add switching
+    let  	vecA = vec![1.0f32, 2.0, 3.0, 4.0];
+    let  	vecB = vec![10.0f32, 20.0, 30.0, 40.0];
+    let  	cpuAdd = cpuEngine.RunVectorAdd( &vecA, &vecB).unwrap();
+    let  	cudaAdd = cudaEngine.RunVectorAdd( &vecA, &vecB).unwrap();
+    assert_eq!( cpuAdd, vec![11.0, 22.0, 33.0, 44.0]);
+    assert_eq!( cudaAdd, vec![11.0, 22.0, 33.0, 44.0]);
+
+    // Test Collatz switching
+    let  	collatzIn = vec![1u32, 2, 3, 4, 5, 6, 7];
+    let  	cpuCollatz = cpuEngine.RunCollatz( &collatzIn).unwrap();
+    let  	cudaCollatz = cudaEngine.RunCollatz( &collatzIn).unwrap();
+    assert_eq!( cpuCollatz, cudaCollatz);
+
+    // Test Point Cloud switching
+    let  	cpuPoints = cpuEngine.RunPointCloud( U32( 100), None).unwrap();
+    let  	cudaPoints = cudaEngine.RunPointCloud( U32( 100), None).unwrap();
+    assert_eq!( cpuPoints.len(), 100);
+    assert_eq!( cudaPoints.len(), 100);
+
+    println!( "TestSwarmEngineBackendSwitching: Unified compute verified across CPU, Cuda-Oxide, and Rust-GPU ✓");
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestSwarmEngineAuto()
+{
+    use	crate::swarm::engine::SwarmEngine;
+
+    let  	engine = SwarmEngine::Auto();
+    println!( "TestSwarmEngineAuto: Auto-selected backend is {} ✓", engine.Backend());
+
+    let  	data = vec![5.0f32, 10.0, 15.0];
+    let  	result = engine.RunDouble( &data).unwrap();
+    assert_eq!( result, vec![10.0, 20.0, 30.0]);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------

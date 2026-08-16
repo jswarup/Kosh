@@ -24,3 +24,6 @@ spirv-builder = { git = "https://github.com/Rust-GPU/rust-gpu.git" }
 [profile.dev.build-override]
 opt-level = 3
 
+[profile.dev.package.rustc_codegen_spirv]
+opt-level = 3
+

@@ -170,6 +170,7 @@ pub trait ISliceExt
 {
     fn	CastSlice( &self) -> &[u8];
     fn	CastSliceFrom< U: Copy>( &self) -> &[U];
+    fn	CastSliceMut< U: Copy>( &mut self) -> &mut [U];
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -197,6 +198,21 @@ impl< T: Copy> ISliceExt for [T]
         unsafe {
             std::slice::from_raw_parts(
                 self.as_ptr() as *const U,
+                ( self.len() * szT) / szU,
+            )
+        }
+    }
+
+    #[inline( always)]
+    fn	CastSliceMut< U: Copy>( &mut self) -> &mut [U]
+    {
+        let  	szT = std::mem::size_of::< T>();
+        let  	szU = std::mem::size_of::< U>();
+        assert!( szU > 0, "Cannot cast to ZST");
+        assert_eq!( ( self.len() * szT) % szU, 0, "Slice size in bytes not aligned to target type");
+        unsafe {
+            std::slice::from_raw_parts_mut(
+                self.as_mut_ptr() as *mut U,
                 ( self.len() * szT) / szU,
             )
         }

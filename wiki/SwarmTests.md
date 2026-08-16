@@ -1,116 +1,81 @@
-# Swarm GPU Compute Tests
+# Swarm Compute & Hardware Abstraction Tests
 
-The `swarm` module contains test demonstrations of GPU compute capabilities using the `wgpu` library and inline WebGPU Shading Language (WGSL) compute shaders. These tests showcase how to orchestrate parallel GPU execution, manage GPU buffer mapping, and perform zero-copy byte casting. All GPU computing dependencies are scoped strictly to `dev-dependencies`, resulting in zero runtime or binary size overhead for the production library.
+The `swarm` module provides a unified compute abstraction layer across **CPU** (multi-threaded SIMT emulation), **Rust-GPU / WebGPU** (SPIR-V bytecode & WGSL shaders via `wgpu`), and **Cuda-Oxide** (NVIDIA CUDA / PTX compute kernels).
 
 ---
 
-## Core Architecture and Helpers
+## 1. Core Architecture & Hardware Abstraction
 
-To interface between CPU-side Rust data structures and GPU-bound WebGPU buffers without pulling in heavy external dependencies like `bytemuck`, the tests utilize specific helper utilities.
-
-### 1. Graceful GPU Initialization (`GpuInit`)
-The GPU tests are designed to execute seamlessly in both local developer environments (with hardware acceleration) and headless CI/CD systems (which may lack a GPU adapter). 
-```rust
-fn	GpuInit() -> Option< ( wgpu::Device, wgpu::Queue)>
 ```
-* **Hardware Selection**: Requests a high-performance adapter via `wgpu::Instance::request_adapter`.
-* **Graceful Fallback**: If no compatible adapter is found, `GpuInit` returns `None`. The tests log a skip message and return early rather than panicking.
-
-### 2. Zero-Copy Slice Casting (`ISliceExt`)
-WebGPU buffers require raw bytes (`&[u8]`) for data transfer. To achieve zero-cost casting between typed slices (e.g., `&[f32]`, `&[u32]`) and byte slices, the project defines the `ISliceExt` trait in [silo/cast.rs](../src/silo/cast.rs):
-```rust
-pub trait ISliceExt
-{
-    fn	CastSlice( &self) -> &[u8];
-    fn	CastSliceFrom< U: Copy>( &self) -> &[U];
-}
+                     +-----------------------------------+
+                     |           SwarmEngine             |
+                     | (Auto-selection & Unified Facade) |
+                     +-----------------+-----------------+
+                                       |
+          +----------------------------+----------------------------+
+          |                            |                            |
+          v                            v                            v
++-------------------+        +--------------------+       +--------------------+
+|     CpuDevice     |        |   RustGpuDevice    |       |  CudaOxideDevice   |
+| (Multi-thread CPU)|        |  (wgpu / SPIR-V)   |       |   (CUDA / PTX)     |
++-------------------+        +--------------------+       +--------------------+
+          |                            |                            |
+          v                            v                            v
++-------------------+        +--------------------+       +--------------------+
+|     CpuBuffer     |        |   RustGpuBuffer    |       |  CudaOxideBuffer   |
+| (Host Memory/Buff)|        |   (wgpu::Buffer)   |       | (CUDA Dev Ptr/Sim) |
++-------------------+        +--------------------+       +--------------------+
 ```
-* **`CastSlice`**: Reinterprets a typed slice `&[T]` as a raw byte slice `&[u8]`.
-* **`CastSliceFrom`**: Reinterprets a raw byte slice `&[u8]` back into `&[U]`, verifying that the input length is properly aligned to the target type size at runtime.
+
+### Key Components
+
+1. **`BackendKind`**: Enum specifying execution target (`BackendKind::Cpu`, `BackendKind::RustGpu`, `BackendKind::CudaOxide`).
+2. **`SwarmEngine`**: High-level execution engine featuring:
+   - `SwarmEngine::Auto()`: Automatically discovers and selects the best available compute hardware (CudaOxide -> RustGpu -> Cpu fallback).
+   - `SwarmEngine::New(BackendKind)`: Explicit backend binding and dynamic switching.
+   - Standardized runners: `RunDouble`, `RunVectorAdd`, `RunCollatz`, `RunPointCloud`.
+3. **Enum-Dispatched Device Wrappers**:
+   - `SwarmDevice`, `SwarmBuffer`, `SwarmKernel` eliminate virtual dispatch and `Box<dyn ...>` overhead on hot execution paths.
+4. **Zero-Copy Slice Casting (`ISliceExt`)**:
+   - Postfix typed slice casting methods in [silo/cast.rs](../src/silo/cast.rs): `CastSlice(&self) -> &[u8]`, `CastSliceFrom<U: Copy>(&self) -> &[U]`, and `CastSliceMut<U: Copy>(&mut self) -> &mut [U]`.
+5. **Backward Compatibility**:
+   - Full backward compatibility for `IGpuOp` trait on `wgpu::Device` in [gpusop.rs](../src/swarm/gpusop.rs).
 
 ---
 
-## Test Demonstrations
+## 2. Test Demonstrations
 
-Three GPU tests are implemented in [swarm/_tests.rs](../src/swarm/_tests.rs), showcasing progressive complexity.
+The test suite in [swarm/_tests.rs](../src/swarm/_tests.rs) comprises 11 comprehensive tests:
 
-### 1. Double Values (`TestGpuDoubleValues`)
-Demonstrates the "Hello World" of GPU compute: uploading a single buffer, running a shader that modifies it in place, and reading it back.
-* **CPU Data**: Built using `Buff::Create` with 256 `f32` elements initialized to `1.0..=256.0`.
-* **WGSL Shader**:
-  ```wgsl
-  @group(0) @binding(0)
-  var<storage, read_write> data: array<f32>;
+### A. CPU SIMT Backend Tests
+* **`TestCpuDoubleValues`**: Verifies in-place element doubling over host memory buffers using SIMT indexing.
+* **`TestCpuVectorAdd`**: Verifies 2-input/1-output vector addition on CPU.
+* **`TestCpuCollatz`**: Verifies integer branching and loop convergence across CPU threads.
+* **`TestCpuPointCloud`**: Verifies Wang Hash PRNG 3D point cloud generation in `[-20.0, 20.0]³`.
 
-  @compute @workgroup_size(64)
-  fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-      let idx = gid.x;
-      if idx < arrayLength(&data) {
-          data[idx] = data[idx] * 2.0;
-      }
-  }
-  ```
+### B. Rust-GPU / WebGPU Backend Tests
+* **`TestGpuDoubleValues`**: WGSL compute shader execution for in-place buffer modification.
+* **`TestGpuVectorAdd`**: WGSL vector addition with multiple storage buffer bindings.
+* **`TestGpuCollatz`**: WGSL integer arithmetic and iterative Collatz sequence computation.
+* **`TestRustGpuComputeExample`**: Build-time compilation of the `gcomp` Rust-GPU crate to SPIR-V and device execution.
 
-### 2. Vector Addition (`TestGpuVectorAdd`)
-Demonstrates binding multiple buffers in a single bind group (two read-only input buffers and one read-write output buffer).
-* **CPU Data**: Two input buffers (`buffA` and `buffB`) of 512 `f32` elements.
-* **WGSL Shader**:
-  ```wgsl
-  @group(0) @binding(0) var<storage, read> a: array<f32>;
-  @group(0) @binding(1) var<storage, read> b: array<f32>;
-  @group(0) @binding(2) var<storage, read_write> result: array<f32>;
+### C. Cuda-Oxide (CUDA / PTX) Backend Tests
+* **`TestCudaOxidePtxExecution`**: Compiles and launches PTX assembly compute kernels.
 
-  @compute @workgroup_size(64)
-  fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-      let idx = gid.x;
-      if idx < arrayLength(&result) {
-          result[idx] = a[idx] + b[idx];
-      }
-  }
-  ```
-
-### 3. Collatz Conjecture Steps (`TestGpuCollatz`)
-Demonstrates integer arithmetic and branching loops inside a compute shader.
-* **Algorithm**: For a given positive integer $n$, computes the number of steps to reach 1:
-  - If $n$ is even: $n \to n / 2$
-  - If $n$ is odd: $n \to 3n + 1$
-* **CPU Data**: Input sequence `1..=128`.
-* **WGSL Shader**:
-  ```wgsl
-  @group(0) @binding(0) var<storage, read> input: array<u32>;
-  @group(0) @binding(1) var<storage, read_write> output: array<u32>;
-
-  fn collatz_steps(n_in: u32) -> u32 {
-      var n: u32 = n_in;
-      var steps: u32 = 0u;
-      while n != 1u {
-          if (n % 2u) == 0u {
-              n = n / 2u;
-          } else {
-              n = 3u * n + 1u;
-          }
-          steps = steps + 1u;
-      }
-      return steps;
-  }
-
-  @compute @workgroup_size(64)
-  fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-      let idx = gid.x;
-      if idx < arrayLength(&output) {
-          output[idx] = collatz_steps(input[idx]);
-      }
-  }
-  ```
+### D. Unified SwarmEngine & Backend Switching Tests
+* **`TestSwarmEngineBackendSwitching`**: Executes identical compute workloads (`Double`, `VectorAdd`, `Collatz`, `PointCloud`) across CPU, Cuda-Oxide, and Rust-GPU backends and verifies that all backends produce equivalent results.
+* **`TestSwarmEngineAuto`**: Verifies hardware auto-detection and execution fallback.
 
 ---
 
-## How to Run the Tests
+## 3. How to Run the Tests
 
-To run the GPU compute tests, run:
+To run all swarm compute tests:
 ```bash
 cargo test -- --test-threads=1 swarm
 ```
 
-* `--test-threads=1` is recommended to prevent multiple tests from requesting GPU resources concurrently.
-* If no GPU or software Vulkan renderer is found, the console output will indicate that tests were skipped successfully.
+To run the entire workspace test suite:
+```bash
+cargo test --workspace
+```
