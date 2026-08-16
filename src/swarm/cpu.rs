@@ -2,7 +2,7 @@
 
 use	std::sync::{ Arc, RwLock };
 use	crate::silo::{ U32, U64 };
-use	crate::swarm::ops::{ StandardOp, SwarmMath };
+use	crate::swarm::ops::StandardOp;
 use	crate::swarm::traits::{
     BackendKind, BufferUsage, CpuKernelFn, IComputeBuffer, IComputeDevice,
     IComputeKernel, KernelSource, SwarmError, WorkgroupDim,
