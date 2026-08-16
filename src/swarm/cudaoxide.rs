@@ -2,7 +2,6 @@
 
 use	std::sync::{ Arc, RwLock };
 use	crate::silo::{ ISliceExt, U32, U64 };
-use	crate::swarm::ops::SwarmMath;
 use	crate::swarm::traits::{
     BackendKind, BufferUsage, IComputeBuffer, IComputeDevice, IComputeKernel,
     KernelSource, SwarmError, WorkgroupDim,
@@ -264,7 +263,7 @@ impl IComputeDevice for CudaOxideDevice
                     let  	mut guard = cudaBuf.data.write().unwrap();
                     let  	floats: &mut [f32] = guard.as_mut_slice().CastSliceMut();
                     for i in 0..totalThreads.min( floats.len()) {
-                        floats[i] *= 2.0;
+                        gcomp::double_elem( i, floats);
                     }
                 }
             }
@@ -279,7 +278,7 @@ impl IComputeDevice for CudaOxideDevice
                     let  	mut guard = cudaOut.data.write().unwrap();
                     let  	outFloats: &mut [f32] = guard.as_mut_slice().CastSliceMut();
                     for i in 0..totalThreads.min( outFloats.len()).min( inA.len()).min( inB.len()) {
-                        outFloats[i] = inA[i] + inB[i];
+                        gcomp::vector_add_elem( i, inA, inB, outFloats);
                     }
                 }
             }
@@ -292,7 +291,7 @@ impl IComputeDevice for CudaOxideDevice
                     let  	mut guard = cudaOut.data.write().unwrap();
                     let  	outU32: &mut [u32] = guard.as_mut_slice().CastSliceMut();
                     for i in 0..totalThreads.min( outU32.len()).min( inU32.len()) {
-                        outU32[i] = SwarmMath::CollatzSteps( inU32[i]);
+                        gcomp::collatz_elem( i, inU32, outU32);
                     }
                 }
             }
@@ -302,17 +301,7 @@ impl IComputeDevice for CudaOxideDevice
                     let  	mut guard = buf.data.write().unwrap();
                     let  	outFloats: &mut [f32] = guard.as_mut_slice().CastSliceMut();
                     for idx in 0..totalThreads {
-                        let  	base = idx * 4;
-                        if base + 3 < outFloats.len() {
-                            let  	hx = SwarmMath::WangHash( ( idx as u32) * 3 + 0);
-                            let  	hy = SwarmMath::WangHash( ( idx as u32) * 3 + 1);
-                            let  	hz = SwarmMath::WangHash( ( idx as u32) * 3 + 2);
-
-                            outFloats[base + 0] = SwarmMath::HashToFloat( hx) * 40.0 - 20.0;
-                            outFloats[base + 1] = SwarmMath::HashToFloat( hy) * 40.0 - 20.0;
-                            outFloats[base + 2] = SwarmMath::HashToFloat( hz) * 40.0 - 20.0;
-                            outFloats[base + 3] = 1.0;
-                        }
+                        gcomp::pointcloud_elem( idx, outFloats);
                     }
                 }
             }

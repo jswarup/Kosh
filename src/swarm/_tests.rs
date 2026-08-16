@@ -815,3 +815,66 @@ fn	TestSwarmEngineAuto()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestSharedGcompKernelParity()
+{
+    use	crate::swarm::traits::BackendKind;
+    use	crate::swarm::engine::SwarmEngine;
+
+    // 1. Direct invocation of shared gcomp kernels
+    let  	mut testData = vec![1.0f32, 2.0, 3.0, 4.0];
+    for i in 0..testData.len() {
+        gcomp::double_elem( i, &mut testData);
+    }
+    assert_eq!( testData, vec![2.0, 4.0, 6.0, 8.0]);
+
+    let  	a = vec![10.0f32, 20.0, 30.0];
+    let  	b = vec![1.0f32, 2.0, 3.0];
+    let  	mut sumOut = vec![0.0f32; 3];
+    for i in 0..3 {
+        gcomp::vector_add_elem( i, &a, &b, &mut sumOut);
+    }
+    assert_eq!( sumOut, vec![11.0, 22.0, 33.0]);
+
+    let  	collatzIn = vec![6u32, 11, 27];
+    let  	mut collatzOut = vec![0u32; 3];
+    for i in 0..3 {
+        gcomp::collatz_elem( i, &collatzIn, &mut collatzOut);
+    }
+    assert_eq!( collatzOut, vec![8, 14, 111]);
+
+    // 2. Cross-backend parity between CPU and Cuda-Oxide running shared gcomp kernels
+    let  	cpuEngine = SwarmEngine::New( BackendKind::Cpu).unwrap();
+    let  	cudaEngine = SwarmEngine::New( BackendKind::CudaOxide).unwrap();
+
+    let  	cpuDouble = cpuEngine.RunDouble( &a).unwrap();
+    let  	cudaDouble = cudaEngine.RunDouble( &a).unwrap();
+    assert_eq!( cpuDouble, cudaDouble);
+
+    let  	cpuAdd = cpuEngine.RunVectorAdd( &a, &b).unwrap();
+    let  	cudaAdd = cudaEngine.RunVectorAdd( &a, &b).unwrap();
+    assert_eq!( cpuAdd, cudaAdd);
+
+    let  	cpuCollatz = cpuEngine.RunCollatz( &collatzIn).unwrap();
+    let  	cudaCollatz = cudaEngine.RunCollatz( &collatzIn).unwrap();
+    assert_eq!( cpuCollatz, cudaCollatz);
+
+    // 3. Test swarm_kernel! macro definition
+    crate::swarm_kernel!( CustomScaleKernel, |idx, input: &[f32], output: &mut [f32]| {
+        if idx < output.len() && idx < input.len() {
+            output[idx] = input[idx] * 10.0;
+        }
+    });
+
+    let  	inVec = vec![1.0f32, 2.0, 3.0];
+    let  	mut outVec = vec![0.0f32; 3];
+    for i in 0..3 {
+        CustomScaleKernel( i, &inVec, &mut outVec);
+    }
+    assert_eq!( outVec, vec![10.0, 20.0, 30.0]);
+
+    println!( "TestSharedGcompKernelParity: CPU, Cuda-Oxide, and gcomp shared kernel parity verified ✓");
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------

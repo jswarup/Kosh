@@ -2410,6 +2410,7 @@ dependencies = [
  "anyhow",
  "clap",
  "colored",
+ "gcomp",
  "paste",
  "pollster",
  "rand 0.10.2",

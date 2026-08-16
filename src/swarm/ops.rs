@@ -6,47 +6,27 @@ use	crate::swarm::traits::{ BackendKind, CpuKernelFn, KernelSource };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Standard PRNG and numeric algorithms shared across compute implementations.
+/// Standard PRNG and numeric algorithms shared across compute implementations (backed by gcomp).
 pub struct SwarmMath;
 
 impl SwarmMath
 {
-    #[inline]
-    pub fn	WangHash( mut seed: u32) -> u32
+    #[inline( always)]
+    pub fn	WangHash( seed: u32) -> u32
     {
-        seed = ( seed ^ 61) ^ ( seed >> 16);
-        seed = seed.wrapping_mul( 9);
-        seed = seed ^ ( seed >> 4);
-        seed = seed.wrapping_mul( 0x27d4eb2d);
-        seed = seed ^ ( seed >> 15);
-        seed
+        gcomp::wang_hash( seed)
     }
 
-    #[inline]
+    #[inline( always)]
     pub fn	HashToFloat( h: u32) -> f32
     {
-        ( h & 0x00FF_FFFF) as f32 / 16777216.0
+        gcomp::hash_to_float( h)
     }
 
-    #[inline]
-    pub fn	CollatzSteps( mut n: u32) -> u32
+    #[inline( always)]
+    pub fn	CollatzSteps( n: u32) -> u32
     {
-        if n == 0 {
-            return u32::MAX;
-        }
-        let  	mut steps = 0u32;
-        while n != 1 {
-            if n % 2 == 0 {
-                n /= 2;
-            } else {
-                if n >= 0x5555_5555 {
-                    return u32::MAX;
-                }
-                n = 3 * n + 1;
-            }
-            steps += 1;
-        }
-        steps
+        gcomp::collatz( n).unwrap_or( u32::MAX)
     }
 }
 
@@ -78,6 +58,9 @@ impl StandardOp
     {
         match ( self, backend) {
             ( StandardOp::PointCloud, BackendKind::RustGpu) => "pts_pointcloud_cs",
+            ( StandardOp::Double, BackendKind::RustGpu) => "double_cs",
+            ( StandardOp::VectorAdd, BackendKind::RustGpu) => "vecadd_cs",
+            ( StandardOp::Collatz, BackendKind::RustGpu) => "collatz_cs",
             ( StandardOp::Double, BackendKind::CudaOxide) => "double_kernel",
             ( StandardOp::VectorAdd, BackendKind::CudaOxide) => "vecadd_kernel",
             ( StandardOp::Collatz, BackendKind::CudaOxide) => "collatz_kernel",
@@ -91,7 +74,7 @@ impl StandardOp
         match self {
             StandardOp::Double => r#"
                 @group(0) @binding(0) var<storage, read_write> data: array<f32>;
-                @compute @workgroup_size(64) fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+                @compute @workgroup_size(64) fn double_cs(@builtin(global_invocation_id) gid: vec3<u32>) {
                     let idx = gid.x;
                     if idx < arrayLength(&data) { data[idx] = data[idx] * 2.0; }
                 }
@@ -100,7 +83,7 @@ impl StandardOp
                 @group(0) @binding(0) var<storage, read> a: array<f32>;
                 @group(0) @binding(1) var<storage, read> b: array<f32>;
                 @group(0) @binding(2) var<storage, read_write> result: array<f32>;
-                @compute @workgroup_size(64) fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+                @compute @workgroup_size(64) fn vecadd_cs(@builtin(global_invocation_id) gid: vec3<u32>) {
                     let idx = gid.x;
                     if idx < arrayLength(&result) { result[idx] = a[idx] + b[idx]; }
                 }
@@ -117,15 +100,36 @@ impl StandardOp
                     }
                     return steps;
                 }
-                @compute @workgroup_size(64) fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+                @compute @workgroup_size(64) fn collatz_cs(@builtin(global_invocation_id) gid: vec3<u32>) {
                     let idx = gid.x;
                     if idx < arrayLength(&output) { output[idx] = collatz_steps(input[idx]); }
                 }
             "#,
             StandardOp::PointCloud => r#"
                 @group(0) @binding(0) var<storage, read_write> points: array<vec4<f32>>;
-                @compute @workgroup_size(64) fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+                fn wang_hash(seed_in: u32) -> u32 {
+                    var seed: u32 = seed_in;
+                    seed = (seed ^ 61u) ^ (seed >> 16u);
+                    seed = seed * 9u;
+                    seed = seed ^ (seed >> 4u);
+                    seed = seed * 0x27d4eb2du;
+                    seed = seed ^ (seed >> 15u);
+                    return seed;
+                }
+                fn hash_to_float(h: u32) -> f32 {
+                    return f32(h & 0x00FFFFFFu) / 16777216.0;
+                }
+                @compute @workgroup_size(64) fn pts_pointcloud_cs(@builtin(global_invocation_id) gid: vec3<u32>) {
                     let idx = gid.x;
+                    if idx < arrayLength(&points) {
+                        let hx = wang_hash(idx * 3u + 0u);
+                        let hy = wang_hash(idx * 3u + 1u);
+                        let hz = wang_hash(idx * 3u + 2u);
+                        let x = hash_to_float(hx) * 40.0 - 20.0;
+                        let y = hash_to_float(hy) * 40.0 - 20.0;
+                        let z = hash_to_float(hz) * 40.0 - 20.0;
+                        points[idx] = vec4<f32>(x, y, z, 1.0);
+                    }
                 }
             "#,
         }
@@ -149,10 +153,7 @@ impl StandardOp
                     return;
                 }
                 let  	outBuf: &mut [f32] = outputs[0].CastSliceMut();
-                let  	idx = gidX.AsUsize();
-                if idx < outBuf.len() {
-                    outBuf[idx] *= 2.0;
-                }
+                gcomp::double_elem( gidX.AsUsize(), outBuf);
             }),
             StandardOp::VectorAdd => Arc::new( |inputs, outputs, gidX, _gidY, _gidZ| {
                 if inputs.len() < 2 || outputs.is_empty() {
@@ -161,10 +162,7 @@ impl StandardOp
                 let  	inA: &[f32] = inputs[0].CastSliceFrom();
                 let  	inB: &[f32] = inputs[1].CastSliceFrom();
                 let  	outBuf: &mut [f32] = outputs[0].CastSliceMut();
-                let  	idx = gidX.AsUsize();
-                if idx < outBuf.len() && idx < inA.len() && idx < inB.len() {
-                    outBuf[idx] = inA[idx] + inB[idx];
-                }
+                gcomp::vector_add_elem( gidX.AsUsize(), inA, inB, outBuf);
             }),
             StandardOp::Collatz => Arc::new( |inputs, outputs, gidX, _gidY, _gidZ| {
                 if inputs.is_empty() || outputs.is_empty() {
@@ -172,28 +170,14 @@ impl StandardOp
                 }
                 let  	inData: &[u32] = inputs[0].CastSliceFrom();
                 let  	outBuf: &mut [u32] = outputs[0].CastSliceMut();
-                let  	idx = gidX.AsUsize();
-                if idx < outBuf.len() && idx < inData.len() {
-                    outBuf[idx] = SwarmMath::CollatzSteps( inData[idx]);
-                }
+                gcomp::collatz_elem( gidX.AsUsize(), inData, outBuf);
             }),
             StandardOp::PointCloud => Arc::new( |_inputs, outputs, gidX, _gidY, _gidZ| {
                 if outputs.is_empty() {
                     return;
                 }
                 let  	outBuf: &mut [f32] = outputs[0].CastSliceMut();
-                let  	idx = gidX.AsUsize();
-                let  	base = idx * 4;
-                if base + 3 < outBuf.len() {
-                    let  	hx = SwarmMath::WangHash( ( idx as u32) * 3 + 0);
-                    let  	hy = SwarmMath::WangHash( ( idx as u32) * 3 + 1);
-                    let  	hz = SwarmMath::WangHash( ( idx as u32) * 3 + 2);
-
-                    outBuf[base + 0] = SwarmMath::HashToFloat( hx) * 40.0 - 20.0;
-                    outBuf[base + 1] = SwarmMath::HashToFloat( hy) * 40.0 - 20.0;
-                    outBuf[base + 2] = SwarmMath::HashToFloat( hz) * 40.0 - 20.0;
-                    outBuf[base + 3] = 1.0;
-                }
+                gcomp::pointcloud_elem( gidX.AsUsize(), outBuf);
             }),
         }
     }
@@ -206,6 +190,23 @@ impl StandardOp
             BackendKind::CudaOxide => KernelSource::Ptx( self.Ptx()),
         }
     }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+/// Universal compute kernel definition macro that creates a shared SIMT function.
+#[macro_export]
+macro_rules! swarm_kernel {
+    (
+        $name:ident,
+        |$idx:ident, $input:ident: $in_ty:ty, $output:ident: $out_ty:ty| $body:block
+    ) => {
+        #[inline( always)]
+        pub fn $name( $idx: usize, $input: $in_ty, $output: $out_ty)
+        {
+            $body
+        }
+    };
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
