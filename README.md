@@ -1,124 +1,171 @@
-# Kosh
+# Kosh — High-Performance Computational, Symbolic & Heterogeneous SIMT Engine
 
-A high-performance geometry, constraints, and BRep kernel written in Rust. Kosh explores modern programming paradigms—zero-heap AST construction, Rust-GPU compute shaders, work-stealing parallelism, and unified zero-allocation data exchange—to build a fast, cache-friendly foundation for geometric computation.
+[![Rust](https://img.shields.io/badge/rust-2021_edition-orange.svg)](https://www.rust-lang.org)
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
+[![Backends](https://img.shields.io/badge/compute-CPU%20%7C%20WebGPU%20%7C%20Vulkan%20%7C%20CUDA-green.svg)]()
 
-## Architecture Overview
+**Kosh** is a systems-level computational platform written in Rust. It combines a zero-heap-allocation recursive-descent grammar engine, a symbolic mathematical algebra repository, an asynchronous work-stealing DAG orchestrator, and a unified heterogeneous compute runtime targeting multithreaded CPU SIMT, WebGPU / Vulkan (Rust-GPU SPIR-V), and CUDA PTX.
 
-Kosh is organized as a layered workspace of tightly integrated modules. The dependency graph flows from low-level primitives upward to the desktop application:
+---
+
+## 🏛️ System Architecture
 
 ```mermaid
 graph TD
-    subgraph "Desktop Application"
-        FA["fenst-app<br/>(Tauri 2.0 GUI)"]
+    subgraph AppLayer ["Presentation & GUI Layer"]
+        FenstApp["<b>fenst-app</b><br/>Tauri v2 Desktop App<br/>Multi-window & 3D WebGL Canvas"]
+        Fenst["<b>fenst</b><br/>Virtual File Explorer Hub<br/>(file://, expr://, ast://)"]
     end
 
-    subgraph "Core Libraries"
-        FE["fenst<br/>(Exploration & GPU dispatch)"]
-        FR["fresco<br/>(Algebraic expressions)"]
-        SH["shard<br/>(Grammar parsing)"]
-        FX["flux<br/>(Serialization)"]
-        HE["heist<br/>(Work-stealing scheduler)"]
-        SW["swarm<br/>(GPU compute ops)"]
+    subgraph DomainLayer ["Domain Engines & File Formats"]
+        Fleck["<b>fleck</b><br/>3D Point Cloud (.pts) Parser<br/>Streaming Geometry & Bounding Box"]
+        Fresco["<b>fresco</b><br/>Symbolic Mathematics Engine<br/>Term Repositories & Polynomials"]
+        Heist["<b>heist</b><br/>Work-Stealing DAG Orchestrator<br/>Atelier & Maestro Workflows"]
     end
 
-    subgraph "Foundations"
-        ST["stalks<br/>(AST nodes, work traits, atomics)"]
-        SI["silo<br/>(Numeric types, buffers, collections)"]
+    subgraph ComputeLayer ["Heterogeneous SIMT Compute Runtime"]
+        Swarm["<b>swarm</b><br/>Unified Hardware Engine<br/>(CPU / Rust-GPU / Cuda-Oxide)"]
+        GComp["<b>gcomp</b><br/>no_std SPIR-V / SIMT Library<br/>Wang Hash, Point Cloud, Collatz"]
     end
 
-    subgraph "GPU Shader"
-        GC["gcomp<br/>(Rust-GPU SPIR-V shaders)"]
+    subgraph CoreLayer ["Grammar & Serialization Foundations"]
+        Shard["<b>shard</b><br/>Zero-Box Grammar Engine<br/>256-Bit Charset & JSON Parser"]
+        Flux["<b>flux</b><br/>Stream I/O & Visitor Serde<br/>BuffStream & JsonOutStream"]
     end
 
-    FA --> FE
-    FE --> FR
-    FE --> SH
-    FE --> SW
-    FR --> ST
-    SH --> FX
-    SH --> ST
-    FX --> SI
-    HE --> ST
-    SW --> GC
-    ST --> SI
+    subgraph BaseLayer ["Memory & Concurrency Primitives"]
+        Stalks["<b>stalks</b><br/>AST Tree Nodes, Atomics,<br/>Spinlocks & NodeTree! Engine"]
+        Silo["<b>silo</b><br/>Memory Buffers (Buff, Arr),<br/>Custom Unsigned Math (U8..U64)"]
+    end
+
+    FenstApp --> Fenst
+    FenstApp --> GComp
+    Fenst --> Silo
+    Fenst --> Flux
+    Fenst --> Swarm
+    Fenst --> Fresco
+    Fenst --> Shard
+
+    Fleck --> Shard
+    Fleck --> Silo
+    Fleck --> Flux
+    Fleck --> Fenst
+
+    Fresco --> Silo
+    Fresco --> Flux
+    Fresco --> Stalks
+
+    Heist --> Silo
+    Heist --> Stalks
+    Heist --> Swarm
+
+    Swarm --> Silo
+    Swarm --> GComp
+
+    Shard --> Silo
+    Shard --> Stalks
+    Shard --> Flux
+
+    Flux --> Silo
+    Stalks --> Silo
 ```
 
-## Module Inventory
+---
 
-| Module | Purpose | Key Source Files |
-|--------|---------|-----------------|
-| **silo** | Custom numeric types (`U8`, `U16`, `U32`, `U64`), contiguous buffers (`Buff`, `Arr`), stack collections (`Stk`, `Stash`), range segments (`USeg`), and zero-copy slice casting (`ISliceExt`). | [uint.rs](src/silo/uint.rs), [buff.rs](src/silo/buff.rs), [arr.rs](src/silo/arr.rs), [cast.rs](src/silo/cast.rs) |
-| **stalks** | Unified AST node generics (`BinNode`, `UniNode`), the `NodeTree!` macro for operator-precedence parsing, atomic primitives (`Atm`, `Spinlock`), and the `IWork`/`IWorker` trait hierarchy. | [node.rs](src/stalks/node.rs), [atm.rs](src/stalks/atm.rs), [work.rs](src/stalks/work.rs) |
-| **flux** | Zero-allocation serialization framework. `FluxOut` (export via `IFluxExportSource`) and `FluxIn` (import via `IFluxImportSource`) pipelines inject/extract data directly into struct memory layouts. Includes `JsonOutStream`, `FixedStream`, and `BuffStream`. | [fluxexport.rs](src/flux/fluxexport.rs), [fluximport.rs](src/flux/fluximport.rs), [instream.rs](src/flux/instream.rs) |
-| **shard** | Zero-heap-allocation grammar parsing AST. Leaf nodes (`StrShard`, `Charset`), binary nodes (`BinShard`), unary modifiers (`RepeatShard`, `ActionShard`), and the `ShardTree!` DSL macro. Includes a JSON parser (`JsonShard`). | [leaves.rs](src/shard/leaves.rs), [binshard.rs](src/shard/binshard.rs), [parser.rs](src/shard/parser.rs), [jsonshard.rs](src/shard/jsonshard.rs) |
-| **fresco** | Algebraic expression repository. `TermTree!` builds symbolic math ASTs on the stack; `ExprRepos` flattens and compiles them into efficient multi-operand expressions (`SumExpr`, `ProdExpr`, `PowExpr`, `VarExpr`). | [termtree.rs](src/fresco/termtree.rs), [exprrepos.rs](src/fresco/exprrepos.rs) |
-| **heist** | Work-stealing task scheduler with DAG-based dependency resolution. `Atelier` manages a thread pool, `Maestro` workers steal jobs via randomized Knuth hashing, and `ChoreTree!` defines dependency graphs with `<` (sequencing) and `\|` (parallelism). | [atelier.rs](src/heist/atelier.rs), [maestro.rs](src/heist/maestro.rs), [choretree.rs](src/heist/choretree.rs) |
-| **swarm** | Unified CPU and GPU compute abstraction layer across **CPU** (multi-threaded SIMT), **Rust-GPU / WebGPU** (SPIR-V & WGSL via `wgpu`), and **Cuda-Oxide** (CUDA / PTX). Provides hardware discovery, `SwarmEngine`, `IComputeDevice`, and `IGpuOp`. | [mod.rs](src/swarm/mod.rs), [engine.rs](src/swarm/engine.rs), [traits.rs](src/swarm/traits.rs) |
-| **gcomp** | Rust-GPU `#![no_std]` compute shader crate. Contains the `pts_pointcloud_cs` kernel using Wang Hash PRNG for deterministic 3D point generation. Compiled to SPIR-V at build time. | [lib.rs](src/gcomp/src/lib.rs) |
-| **fenst** | Multi-scheme file exploration engine (`file://`, `ast://`, `fresco://`, `shard://`). `XplrProvider` trait, `XplrRegistry`, content chunking, and GPU point cloud pipeline dispatch via `wgpu`. | [mod.rs](src/fenst/mod.rs), [provider.rs](src/fenst/provider.rs), [xplr.rs](src/fenst/xplr.rs) |
-| **fenst-app** | Tauri 2.0 desktop application. Interactive file explorer frontend, dedicated `.pts` point cloud viewer window with Rust-GPU-powered 3D rendering, and backend-driven projection/depth-sorting. | [xplrcmds.rs](src/fenst-app/src/xplrcmds.rs), [pts_viewer.js](src/fenst-app/frontend/pts_viewer.js) |
+## 📦 Subsystem & Module Matrix
 
-## Unified AST Architecture
+| Module | Core Purpose | Primary Structs & Enums | Primary Traits & Macros | Wiki Reference |
+| :--- | :--- | :--- | :--- | :--- |
+| **`silo`** | Memory management, custom unsigned numerics, contiguous arrays | `U8`, `U16`, `U32`, `U64`, `Buff<T>`, `Arr<'a, T>`, `Stk<'a, 'b, T>`, `Stash<T>`, `USeg` | `IAccess`, `IArr`, `ICastExt`, `ISliceExt`, `Buff!`, `Stash!` | [Silo.md](wiki/Silo.md) |
+| **`stalks`** | Concurrency primitives, AST nodes, worker thread abstraction | `Atm<T>`, `Spinlock`, `UniNode<C, Op>`, `BinNode<L, R, Op>`, `BinOp`, `WorkPtr<'a>`, `Worker` | `AtomicInt`, `INode`, `IWork`, `IWorker`, `NodeTree!` | [Stalks.md](wiki/Stalks.md) |
+| **`shard`** | Recursive-descent grammar combinators and streaming JSON | `Parser<'p>`, `Charset`, `Str`, `UIntShard`, `IntShard`, `HexShard`, `RealShard`, `WSpc`, `JSon<'a>` | `IGrammar`, `INotify`, `ShardTree!` | [Shard.md](wiki/Shard.md) |
+| **`fresco`** | Symbolic algebra expressions and term repositories | `ExprRepos`, `PolyExpr`, `SumExpr`, `ProdExpr`, `PowExpr`, `RealExpr`, `VarExpr`, `VarAttrib`, `Term` | `ITermNode`, `AsTermNode`, `BaseExpr`, `TermTree!` | [Fresco.md](wiki/Fresco.md) |
+| **`flux`** | Dynamic visitor serialization, streaming I/O buffers | `FixedStream<'a>`, `BuffStream<R>`, `OutStream<'a, W>`, `JsonOutStream<W>`, `FieldExp<'a>`, `FieldImp<'a>` | `IStream`, `IFluxExportSource`, `IFluxImportSource`, `ImplFluxSource!` | [Flux.md](wiki/Flux.md) |
+| **`swarm`** | Hardware compute engine across CPU, WebGPU, and CUDA | `SwarmEngine`, `SwarmDevice`, `SwarmBuffer`, `SwarmKernel`, `StandardOp`, `SwarmMath` | `IComputeDevice`, `IComputeBuffer`, `IComputeKernel`, `IGpuOp` | [Swarm.md](wiki/Swarm.md) |
+| **`gcomp`** | `#![no_std]` Rust-GPU SPIR-V compute kernels and algorithms | Pure SIMT functions (`wang_hash`, `collatz`, `pointcloud_elem`, `double_elem`, `vector_add_elem`) | SPIR-V Shaders (`pts_pointcloud_cs`, `double_cs`, `vecadd_cs`, `collatz_cs`) | [Swarm.md](wiki/Swarm.md) |
+| **`heist`** | Asynchronous workflow DAG orchestrator and scheduler | `Atelier<'a>`, `Maestro<'a>`, `Chore`, `ChoreTarget`, `JobInfo`, `AtelierInfo` | `IChoreNode`, `ChoreTree!`, `Chore!`, `CpuChore!`, `GpuAutoChore!` | [Heist.md](wiki/Heist.md) |
+| **`fleck`** | 3D Point Cloud (.pts) parsing and spatial bounding boxes | `PtsPoint`, `Point32`, `RGB`, `PtsCloud`, `PtsShard<'a>` | `ParsePts`, `ParsePtsStream`, `ToDto` | [Fleck.md](wiki/Fleck.md) |
+| **`fenst`** | Virtual data provider framework and explorer backend | `XplrEntry`, `XplrContent`, `XplrLeafInfo`, `FsBranch`, `FsLeaf`, `FrescoBranch`, `ShardBranch`, `XplrRegistry` | `Xplr`, `LeafXplr`, `BranchXplr`, `XplrProvider`, `CreateDefaultRegistry` | [Fenst.md](wiki/Fenst.md) |
+| **`fenst-app`** | Tauri desktop GUI application & 3D wireframe visualizer | `PtsSessionState`, `ProjectedPoint`, `ProjectedLine`, `PtsFrameDto`, `xplrcmds` IPC handlers | Tauri Command API, Desktop Menu System, Multi-Windowing | [Fenst.md](wiki/Fenst.md) |
 
-Kosh features a unified Abstract Syntax Tree (AST) design defined in [stalks/node.rs](src/stalks/node.rs) that consolidates the binary and unary node structures across all modules:
+---
 
-* **Unified Nodes**: Generics `BinNode<L, R, Op>` and `UniNode<C, Op>` represent binary and unary nodes across the entire AST framework.
-* **Unified Binary Operators**: The `BinOp` enum defines all binary operators:
-  - Arithmetic operators: `Sum = 0`, `Prod = 1`, `Sub = 2`, `Div = 3`, `Pow = 4`.
-  - Traversal/Structural operators: `Less = 6` (`<`), and `Bor = 7` (`|`).
-* **Centralized Parser (`NodeTree!`)**: A generic, highly optimized recursive macro `NodeTree!` handles infix operator precedence and prefix rule parsing. Domain-specific macros (`ChoreTree!`, `TermTree!`, `ShardTree!`) delegate parsing to `NodeTree!` and only contain leaf/node construction calls.
-* **Readable AST Output**: Implementations of `std::fmt::Display` and `std::fmt::Debug` format the unified node trees into readable symbolic infix expressions (e.g. `(a < (b | c))`).
+## ⚡ Key Architectural Pillars
 
-## Documentation
+### 1. Zero-Heap AST Allocation Policy
+In traditional AST designs, recursive trees require heap indirection (`Box<dyn Node>`), leading to allocator contention and memory fragmentation.
+Kosh solves this by compiling AST node trees directly into concrete nested generic structures (`BinNode<L, R, Op>`, `UniNode<C, Op>`) via declarative macros (`NodeTree!`, `ShardTree!`, `TermTree!`, `ChoreTree!`).
+Because the tree expressions are evaluated directly in the caller's stack frame, Rust's temporary lifetime extension guarantees that all child references remain valid without allocating a single byte on the heap.
 
-| Document | Description |
-|----------|-------------|
-| [Fenst Architecture](wiki/FenstArch.md) | Multi-scheme file exploration provider framework and Tauri desktop application. |
-| [Flux Architecture](wiki/FluxArch.md) | Zero-allocation injection/extraction data exchange standard. |
-| [Heist Architecture](wiki/HeistArch.md) | Work-stealing scheduling & dependency resolution framework. |
-| [Rust-GPU Architecture](wiki/RustGpuArch.md) | Native Rust to SPIR-V compute shader compilation pipeline and `wgpu` integration. |
-| [Shard Architecture](wiki/ShardArch.md) | Zero-heap allocation AST framework for recursive grammar parsing. |
-| [Swarm GPU Tests](wiki/SwarmTests.md) | GPU compute test demonstrations with `wgpu` and inline WGSL shaders. |
-| [TermTree Architecture](wiki/TermArch.md) | Standalone algebraic term AST and compilation framework. |
+### 2. Project-Defined Transparent Unsigned Numeric Types
+The `silo::uint` module defines custom integer wrappers (`U8`, `U16`, `U32`, `U64`) using `#[repr(transparent)]`.
+These types enforce wrapping arithmetic semantics, eliminate implicit casting pitfalls, provide atomic interoperability with `Atm<T>`, and enable zero-copy slice and buffer transformations via `ICastExt` and `ISliceExt`.
 
-## Build & Run
+### 3. Portable SIMT Compute (CPU, WebGPU, CUDA)
+Compute algorithms in `gcomp` are implemented once in pure `#![no_std]` Rust:
+- When running on GPU backends (`RustGpuDevice`), they are compiled to SPIR-V bytecodes via `rust-gpu` and dispatched over WebGPU compute pipelines.
+- When running on CUDA backends (`CudaOxideDevice`), they execute with CUDA driver / PTX headers.
+- When falling back to CPU (`CpuDevice`), they execute across multithreaded SIMT thread pools using 64-element workgroup chunks.
+
+### 4. Work-Stealing Chore DAG Engine (`heist`)
+Asynchronous workflows are represented as DAG expressions via `ChoreTree!`.
+- Sequential execution: `A < B` guarantees that job `B` will only run after `A` decrements `B`'s atomic predecessor counter (`_SzPreds`) to zero.
+- Parallel branches: `A | B` posts tasks simultaneously across worker threads.
+- Worker threads (`Maestro`) execute pending jobs from thread-local queues and dynamically steal tasks from peers using Knuth multiplicative hash pseudo-random distribution.
+
+---
+
+## 🚀 Quickstart & CLI Commands
 
 ### Prerequisites
+- **Rust Toolchain**: 2021 edition (`rustc 1.80+` recommended).
+- **Cargo**: Included with the standard Rust toolchain.
 
-- **Rust nightly** — required by the `rust-gpu` compiler backend. The project pins the toolchain via [`rust-toolchain.toml`](rust-toolchain.toml).
-- **Vulkan SDK** — required for GPU compute shader execution (both `gcomp` SPIR-V compilation and `swarm` tests).
-
-### Compile
-
-```bash
+### Build and Test
+```powershell
+# Build entire workspace
 cargo build
-```
 
-This compiles the `kosh` library and CLI, the `gcomp` shader crate to SPIR-V, and the `fenst-app` Tauri desktop application.
-
-### Test
-
-```bash
+# Run comprehensive test suite (80 unit tests)
 cargo test
+
+# Run tests in release mode with logging
+cargo test --release -- --nocapture
 ```
 
-For GPU compute tests (swarm), run with a single test thread to avoid concurrent GPU adapter contention:
+### Running Kosh CLI
+The Kosh root binary provides a built-in CLI runner and integrated test harness:
+```powershell
+# Display help and CLI options
+cargo run -- --help
 
-```bash
-cargo test -- --test-threads=1 swarm
+# Run all internal unit tests via Kosh CLI test harness
+cargo run -- -t
+
+# Filter specific tests with verbose logging
+cargo run -- --test QSort --verbose
 ```
 
-### Run CLI
-
-```bash
-cargo run -- --help           # Show CLI options
-cargo run -- --test           # Run all unit tests via the CLI wrapper
-cargo run -- --test shard     # Run tests matching "shard"
-cargo run -- -v               # Enable verbose (debug) logging
-```
-
-### Run Desktop App (Fenst)
-
-```bash
+### Running Desktop GUI (`fenst-app`)
+```powershell
+cd src/fenst-app
 cargo tauri dev
 ```
+
+---
+
+## 📖 Complete Wiki Documentation
+
+Explore the full in-depth documentation in the **[wiki/](wiki/Architecture.md)** folder:
+
+- **[System Architecture Overview](wiki/Architecture.md)**
+- **[Silo (Memory & Types)](wiki/Silo.md)**
+- **[Stalks (Concurrency & AST Nodes)](wiki/Stalks.md)**
+- **[Shard (Grammar & Parser)](wiki/Shard.md)**
+- **[Fresco (Symbolic Algebra)](wiki/Fresco.md)**
+- **[Flux (Streaming & Serialization)](wiki/Flux.md)**
+- **[Swarm & GComp (GPU/CPU Compute)](wiki/Swarm.md)**
+- **[Heist (Chore DAG Orchestration)](wiki/Heist.md)**
+- **[Fleck (Point Cloud Parsing)](wiki/Fleck.md)**
+- **[Fenst & Fenst-App (Virtual Explorer & Desktop GUI)](wiki/Fenst.md)**

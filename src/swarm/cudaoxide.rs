@@ -18,6 +18,8 @@ pub struct CudaOxideBuffer
     usage:  BufferUsage,
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl CudaOxideBuffer
 {
     pub fn	New( label: &str, size: U64, usage: BufferUsage) -> Self
@@ -45,6 +47,8 @@ impl CudaOxideBuffer
         self.usage
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 impl IComputeBuffer for CudaOxideBuffer
 {
@@ -100,6 +104,8 @@ pub struct CudaOxideKernel
     threadsPerBlock: U32,
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl CudaOxideKernel
 {
     pub fn	New( name: &str, entryPoint: &str, ptxSource: &str) -> Self
@@ -128,6 +134,8 @@ impl CudaOxideKernel
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl IComputeKernel for CudaOxideKernel
 {
     fn	Name( &self) -> &str
@@ -155,6 +163,8 @@ pub struct CudaOxideDevice
     deviceIndex: U32,
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl CudaOxideDevice
 {
     pub fn	Init() -> Result< Self, SwarmError>
@@ -181,6 +191,8 @@ impl CudaOxideDevice
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl Default for CudaOxideDevice
 {
     fn	default() -> Self
@@ -188,6 +200,8 @@ impl Default for CudaOxideDevice
         Self::Init().unwrap()
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 impl IComputeDevice for CudaOxideDevice
 {
