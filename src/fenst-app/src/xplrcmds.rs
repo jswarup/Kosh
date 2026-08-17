@@ -3,6 +3,7 @@
 use	tauri::Manager;
 use	kosh::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, CreateDefaultRegistry, Camera, SceneGraph };
 use	kosh::silo::Buff;
+use	kosh::swarm::SwarmEngine;
 use	serde::Serialize;
 use	std::collections::HashMap;
 use	std::sync::Mutex;
@@ -10,6 +11,10 @@ use	std::sync::LazyLock;
 
 
 static GCOMP_SPV: &[u8] = include_bytes!( env!( "GCOMP_SPV_PATH"));
+
+static SWARM_ENGINE: LazyLock< SwarmEngine> = LazyLock::new( || {
+    SwarmEngine::Auto()
+});
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -366,25 +371,50 @@ pub fn	XplrProjectPts(
     let  	( r, g, b) = ParseHexColor( &color);
     let  	mut projectedPoints = Buff::New();
     let  	camRef = state._Scene.Camera();
-    for pt in &state._Scene._Points {
-        let  	nx = ( pt[0] - center[0]) * scaleNorm;
-        let  	ny = ( pt[1] - center[1]) * scaleNorm;
-        let  	nz = ( pt[2] - center[2]) * scaleNorm;
-        let  	( px, py, pz) = camRef.Project( nx, ny, nz, width, height);
-        let  	depthFactor = 0.3f32.max( 1.0f32.min( ( 300.0 - pz) / 400.0));
-        let  	radius = ( 3.0 + depthFactor * 4.0) * dpr;
-        let  	alpha = 0.5 + depthFactor * 0.5;
-        let  	core_radius = ( 1.0 + depthFactor * 1.5) * dpr;
 
-        let  	colorStr = format!( "rgba({}, {}, {}, {:.3})", r, g, b, alpha);
+    let  	swarmResult = state._Scene.ProjectPointsSwarm(
+        &SWARM_ENGINE,
+        width,
+        height,
+        dpr,
+        r,
+        g,
+        b,
+        Some( GCOMP_SPV),
+    );
 
-        projectedPoints.Push( ProjectedPoint {
-            _X: px,
-            _Y: py,
-            _Radius: radius,
-            _CoreRadius: core_radius,
-            _Color: colorStr,
-        });
+    if let Ok( swarmPoints) = swarmResult {
+        for pt in &swarmPoints {
+            projectedPoints.Push( ProjectedPoint {
+                _X: pt.0,
+                _Y: pt.1,
+                _Radius: pt.2,
+                _CoreRadius: pt.3,
+                _Color: pt.4.clone(),
+            });
+        }
+    } else {
+        // High performance CPU fallback if Swarm device is uninitialized
+        for pt in &state._Scene._Points {
+            let  	nx = ( pt[0] - center[0]) * scaleNorm;
+            let  	ny = ( pt[1] - center[1]) * scaleNorm;
+            let  	nz = ( pt[2] - center[2]) * scaleNorm;
+            let  	( px, py, pz) = camRef.Project( nx, ny, nz, width, height);
+            let  	depthFactor = 0.3f32.max( 1.0f32.min( ( 300.0 - pz) / 400.0));
+            let  	radius = ( 3.0 + depthFactor * 4.0) * dpr;
+            let  	alpha = 0.5 + depthFactor * 0.5;
+            let  	core_radius = ( 1.0 + depthFactor * 1.5) * dpr;
+
+            let  	colorStr = format!( "rgba({}, {}, {}, {:.3})", r, g, b, alpha);
+
+            projectedPoints.Push( ProjectedPoint {
+                _X: px,
+                _Y: py,
+                _Radius: radius,
+                _CoreRadius: core_radius,
+                _Color: colorStr,
+            });
+        }
     }
 
     let  	fileName = std::path::Path::new( &path)
@@ -410,13 +440,9 @@ pub fn	XplrProjectPts(
     let  	overlay2 = if isParsedFile {
         format!( "Source: {} | Rot: ({:.0}°, {:.0}°)", fileName, camRef._RotX.to_degrees(), camRef._RotY.to_degrees())
     } else {
-        format!( "Rust-GPU (gcomp) | Rot: ({:.0}°, {:.0}°)", camRef._RotX.to_degrees(), camRef._RotY.to_degrees())
+        format!( "Swarm {} | Rot: ({:.0}°, {:.0}°)", SWARM_ENGINE.Backend(), camRef._RotX.to_degrees(), camRef._RotY.to_degrees())
     };
-    let  	shaderStatus = if isParsedFile {
-        format!( "SceneGraph: Active ({} pts)", state._Scene._Points.len())
-    } else {
-        "SceneGraph: Active (gcomp::pts_pointcloud_cs)".to_string()
-    };
+    let  	shaderStatus = format!( "Swarm GPU [{}] SceneGraph ({} pts)", SWARM_ENGINE.Backend(), state._Scene._Points.len());
 
     Ok( PtsFrameDto {
         _Points: projectedPoints,

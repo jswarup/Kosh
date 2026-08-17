@@ -40,6 +40,7 @@ pub enum StandardOp
     VectorAdd,
     Collatz,
     PointCloud,
+    CameraTransform,
 }
 
 impl StandardOp
@@ -51,6 +52,7 @@ impl StandardOp
             StandardOp::VectorAdd => "vecadd_kernel",
             StandardOp::Collatz => "collatz_kernel",
             StandardOp::PointCloud => "pointcloud_kernel",
+            StandardOp::CameraTransform => "camera_transform_kernel",
         }
     }
 
@@ -58,6 +60,7 @@ impl StandardOp
     {
         match ( self, backend) {
             ( StandardOp::PointCloud, BackendKind::RustGpu) => "pts_pointcloud_cs",
+            ( StandardOp::CameraTransform, BackendKind::RustGpu) => "camera_transform_cs",
             ( StandardOp::Double, BackendKind::RustGpu) => "double_cs",
             ( StandardOp::VectorAdd, BackendKind::RustGpu) => "vecadd_cs",
             ( StandardOp::Collatz, BackendKind::RustGpu) => "collatz_cs",
@@ -65,6 +68,7 @@ impl StandardOp
             ( StandardOp::VectorAdd, BackendKind::CudaOxide) => "vecadd_kernel",
             ( StandardOp::Collatz, BackendKind::CudaOxide) => "collatz_kernel",
             ( StandardOp::PointCloud, BackendKind::CudaOxide) => "pointcloud_kernel",
+            ( StandardOp::CameraTransform, BackendKind::CudaOxide) => "camera_transform_kernel",
             _ => "main",
         }
     }
@@ -132,6 +136,66 @@ impl StandardOp
                     }
                 }
             "#,
+            StandardOp::CameraTransform => r#"
+                @group(0) @binding(0) var<storage, read> in_points: array<f32>;
+                @group(0) @binding(1) var<storage, read> cam_params: array<f32>;
+                @group(0) @binding(2) var<storage, read_write> out_projected: array<f32>;
+                @compute @workgroup_size(64) fn camera_transform_cs(@builtin(global_invocation_id) gid: vec3<u32>) {
+                    let idx = gid.x;
+                    let in_base = idx * 3u;
+                    let out_base = idx * 6u;
+                    if in_base + 2u < arrayLength(&in_points) && out_base + 5u < arrayLength(&out_projected) && arrayLength(&cam_params) >= 13u {
+                        let x = in_points[in_base + 0u];
+                        let y = in_points[in_base + 1u];
+                        let z = in_points[in_base + 2u];
+
+                        let rot_x = cam_params[0];
+                        let rot_y = cam_params[1];
+                        let zoom = cam_params[2];
+                        let pan_x = cam_params[3];
+                        let pan_y = cam_params[4];
+                        let fov = cam_params[5];
+                        let distance = cam_params[6];
+                        let width = cam_params[7];
+                        let height = cam_params[8];
+                        let cx = cam_params[9];
+                        let cy = cam_params[10];
+                        let cz = cam_params[11];
+                        let scale_norm = cam_params[12];
+
+                        let nx = (x - cx) * scale_norm;
+                        let ny = (y - cy) * scale_norm;
+                        let nz = (z - cz) * scale_norm;
+
+                        let cos_y = cos(rot_y);
+                        let sin_y = sin(rot_y);
+                        let x1 = nx * cos_y + nz * sin_y;
+                        let z1 = -nx * sin_y + nz * cos_y;
+
+                        let cos_x = cos(rot_x);
+                        let sin_x = sin(rot_x);
+                        let y2 = ny * cos_x - z1 * sin_x;
+                        let z2 = ny * sin_x + z1 * cos_x;
+
+                        let scale = (fov * zoom) / (distance + z2);
+
+                        let proj_x = width / 2.0 + pan_x + x1 * scale;
+                        let proj_y = height / 2.0 + pan_y - y2 * scale;
+
+                        let depth_factor = max(0.3, min(1.0, (300.0 - z2) / 400.0));
+                        let radius = 3.0 + depth_factor * 4.0;
+                        let core_radius = 1.0 + depth_factor * 1.5;
+                        let alpha = 0.5 + depth_factor * 0.5;
+
+                        out_projected[out_base + 0u] = proj_x;
+                        out_projected[out_base + 1u] = proj_y;
+                        out_projected[out_base + 2u] = radius;
+                        out_projected[out_base + 3u] = core_radius;
+                        out_projected[out_base + 4u] = alpha;
+                        out_projected[out_base + 5u] = depth_factor;
+                    }
+                }
+            "#,
         }
     }
 
@@ -142,6 +206,7 @@ impl StandardOp
             StandardOp::VectorAdd => ".version 7.0\n.target sm_70\n.entry vecadd_kernel",
             StandardOp::Collatz => ".version 7.0\n.target sm_70\n.entry collatz_kernel",
             StandardOp::PointCloud => ".version 7.0\n.target sm_70\n.entry pointcloud_kernel",
+            StandardOp::CameraTransform => ".version 7.0\n.target sm_70\n.entry camera_transform_kernel",
         }
     }
 
@@ -178,6 +243,15 @@ impl StandardOp
                 }
                 let  	outBuf: &mut [f32] = outputs[0].CastSliceMut();
                 gcomp::pointcloud_elem( gidX.AsUsize(), outBuf);
+            }),
+            StandardOp::CameraTransform => Arc::new( |inputs, outputs, gidX, _gidY, _gidZ| {
+                if inputs.len() < 2 || outputs.is_empty() {
+                    return;
+                }
+                let  	inPoints: &[f32] = inputs[0].CastSliceFrom();
+                let  	camParams: &[f32] = inputs[1].CastSliceFrom();
+                let  	outBuf: &mut [f32] = outputs[0].CastSliceMut();
+                gcomp::camera_transform_elem( gidX.AsUsize(), inPoints, camParams, outBuf);
             }),
         }
     }

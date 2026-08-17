@@ -327,3 +327,28 @@ fn	TestSceneGraph()
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
+#[test]
+fn	TestSceneGraphSwarmProjection()
+{
+    use	crate::fenst::SceneGraph;
+    use	crate::silo::Buff;
+    use	crate::swarm::SwarmEngine;
+
+    let  	mut points = Buff::New();
+    points.Push( [ 0.0, 0.0, 0.0 ]);
+    points.Push( [ 5.0, 5.0, 5.0 ]);
+
+    let  	scene = SceneGraph::WithPoints( points, [ -10.0, -10.0, -10.0 ], [ 10.0, 10.0, 10.0 ]);
+    let  	engine = SwarmEngine::Auto();
+
+    let  	res = scene.ProjectPointsSwarm( &engine, 800.0, 600.0, 1.0, 0, 243, 255, None);
+    assert!( res.is_ok());
+
+    let  	projPoints = res.unwrap();
+    assert_eq!( projPoints.len(), 2);
+    assert!( projPoints[0].0 > 0.0 && projPoints[0].0 < 800.0);
+    assert!( projPoints[0].1 > 0.0 && projPoints[0].1 < 600.0);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+

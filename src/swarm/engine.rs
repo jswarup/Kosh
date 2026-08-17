@@ -358,6 +358,71 @@ impl SwarmEngine
 
         Ok( points)
     }
+
+    /// Unified Camera Projection and Transformation runner across all compute backends.
+    /// Takes 3D points [x, y, z] and 13 camera uniform parameters, returns projected [f32; 6] for each point:
+    /// [screen_x, screen_y, radius, core_radius, alpha, depth_factor].
+    pub fn	RunCameraTransform(
+        &self,
+        points: &[[f32; 3]],
+        camParams: &[f32; 13],
+        spirvBytes: Option< &[u8]>,
+    ) -> Result< Buff< [f32; 6]>, SwarmError>
+    {
+        let  	numPoints = points.len();
+        if numPoints == 0 {
+            return Ok( Buff::New());
+        }
+
+        let  	mut flatPoints = Buff::New();
+        for pt in points {
+            flatPoints.Push( pt[0]);
+            flatPoints.Push( pt[1]);
+            flatPoints.Push( pt[2]);
+        }
+
+        let  	zeroOutput = Buff::Create( ( numPoints * 6) as u32, |_| 0.0f32);
+        let  	workgroups = ( ( numPoints as u32) + 63) / 64;
+
+        let  	kernel = match ( self._Device.Backend(), spirvBytes) {
+            ( BackendKind::RustGpu, Some( spv)) => {
+                self._Device.CompileKernel( "camera_transform_shader", "camera_transform_cs", KernelSource::SpirV( spv))
+                    .or_else( |_| self.CompileOp( StandardOp::CameraTransform))?
+            }
+            _ => self.CompileOp( StandardOp::CameraTransform)?,
+        };
+
+        let  	bufInPoints = self._Device.CreateBufferInit( "in_points", flatPoints.CastSlice(), BufferUsage::STORAGE)?;
+        let  	bufCamParams = self._Device.CreateBufferInit( "cam_params", camParams.CastSlice(), BufferUsage::STORAGE)?;
+        let  	bufOut = self._Device.CreateBufferInit( "out_projected", zeroOutput.CastSlice(), BufferUsage::STORAGE)?;
+
+        self._Device.Dispatch(
+            kernel.as_ref(),
+            &[bufInPoints.as_ref(), bufCamParams.as_ref(), bufOut.as_ref()],
+            WorkgroupDim::Linear( U32( workgroups)),
+        )?;
+
+        let  	raw = bufOut.Read()?;
+        let  	rawFloats: &[f32] = raw.CastSliceFrom();
+
+        let  	projected = Buff::Create( U32( numPoints as u32), |i| {
+            let  	base = i.AsUsize() * 6;
+            if base + 5 < rawFloats.len() {
+                [
+                    rawFloats[base + 0],
+                    rawFloats[base + 1],
+                    rawFloats[base + 2],
+                    rawFloats[base + 3],
+                    rawFloats[base + 4],
+                    rawFloats[base + 5],
+                ]
+            } else {
+                [0.0f32, 0.0, 0.0, 0.0, 0.0, 0.0]
+            }
+        });
+
+        Ok( projected)
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

@@ -369,7 +369,7 @@ impl IComputeDevice for RustGpuDevice
         };
 
         // Determine number of buffer bindings based on kernel label/entryPoint
-        let  	bindingCount = if label.contains( "vecadd") {
+        let  	bindingCount = if label.contains( "vecadd") || label.contains( "camera_transform") || entryPoint.contains( "camera_transform") {
             3
         } else if label.contains( "collatz") {
             2

@@ -131,7 +131,9 @@ The `gcomp` crate is compiled as a `#![no_std]` module when targeting SPIR-V via
 | `vector_add_elem(idx, a, b, out)` | Shared | Vector addition: `out[idx] = a[idx] + b[idx]`. |
 | `collatz_elem(idx, in, out)` | Shared | Collatz sequence computation: `out[idx] = collatz(in[idx])`. |
 | `pointcloud_elem(idx, out)` | Shared | Pseudo-random 3D point generator in $[-20, 20]^3$. |
+| `camera_transform_elem(idx, in, params, out)` | Shared | 3D point cloud camera transformation, perspective projection, and depth scaling. |
 | `pts_pointcloud_cs` | SPIR-V (GPU) | WebGPU compute shader dispatching 64 threads per workgroup to generate 3D `Vec4` points. |
+| `camera_transform_cs` | SPIR-V (GPU) | WebGPU compute shader projecting 3D points with camera pan, zoom, and rotation parameters. |
 | `double_cs` | SPIR-V (GPU) | In-place storage buffer element doubling shader. |
 | `vecadd_cs` | SPIR-V (GPU) | Vector addition storage buffer shader. |
 | `collatz_cs` / `main_cs` | SPIR-V (GPU) | Collatz step computation storage buffer shader. |
@@ -149,6 +151,7 @@ High-level compute orchestrator:
 - `RunVectorAdd(&self, a: &[f32], b: &[f32]) -> Result<Buff<f32>, SwarmError>`: Adds two float buffers.
 - `RunCollatz(&self, input: &[u32]) -> Result<Buff<u32>, SwarmError>`: Computes Collatz sequence.
 - `RunPointCloud(&self, numPoints: U32, spirvBytes: Option<&[u8]>) -> Result<Buff<[f32; 3]>, SwarmError>`: Synthesizes 3D point cloud dataset.
+- `RunCameraTransform(&self, points: &[[f32; 3]], camParams: &[f32; 13], spirvBytes: Option<&[u8]>) -> Result<Buff<[f32; 6]>, SwarmError>`: Accelerates 3D camera transformation and perspective projection across GPU/CPU backends.
 
 ### `RustGpuDevice` & `RustGpuBuffer` & `RustGpuKernel`
 WebGPU backend powered by `wgpu`:

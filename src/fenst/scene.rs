@@ -245,6 +245,62 @@ impl SceneGraph
 
         lines
     }
+
+    // -----------------------------------------------------------------------------------------------------------------------------
+
+    /// Encodes camera parameters and scene normalization into a 13-float uniform array for Swarm GPU kernels.
+    pub fn	CameraParams( &self, width: f32, height: f32) -> [f32; 13]
+    {
+        let  	( center, scaleNorm) = self.CalcNormalization();
+        [
+            self._Camera._RotX,
+            self._Camera._RotY,
+            self._Camera._Zoom,
+            self._Camera._PanX,
+            self._Camera._PanY,
+            self._Camera._Fov,
+            self._Camera._Distance,
+            width,
+            height,
+            center[0],
+            center[1],
+            center[2],
+            scaleNorm,
+        ]
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------------------
+
+    /// Dispatches point cloud transformation to the Swarm compute framework (GPU/CPU)
+    /// and formats the resulting 2D coordinates with depth-scaled radius and alpha.
+    pub fn	ProjectPointsSwarm(
+        &self,
+        engine: &crate::swarm::SwarmEngine,
+        width: f32,
+        height: f32,
+        dpr: f32,
+        r: u8,
+        g: u8,
+        b: u8,
+        spirvBytes: Option< &[u8]>,
+    ) -> Result< Buff< ( f32, f32, f32, f32, String)>, crate::swarm::SwarmError>
+    {
+        let  	camParams = self.CameraParams( width, height);
+        let  	rawProjected = engine.RunCameraTransform( &self._Points, &camParams, spirvBytes)?;
+
+        let  	mut result = Buff::New();
+        for proj in &rawProjected {
+            let  	px = proj[0];
+            let  	py = proj[1];
+            let  	radius = proj[2] * dpr;
+            let  	coreRadius = proj[3] * dpr;
+            let  	alpha = proj[4];
+            let  	colorStr = format!( "rgba({}, {}, {}, {:.3})", r, g, b, alpha);
+            result.Push( ( px, py, radius, coreRadius, colorStr));
+        }
+
+        Ok( result)
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------

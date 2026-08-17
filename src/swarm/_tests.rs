@@ -878,3 +878,56 @@ fn	TestSharedGcompKernelParity()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestSwarmCameraTransform()
+{
+    use	crate::swarm::engine::SwarmEngine;
+    use	crate::swarm::traits::BackendKind;
+
+    let  	points = [
+        [ 0.0f32, 0.0, 0.0 ],
+        [ 10.0, 10.0, 10.0 ],
+        [ -10.0, -10.0, -10.0 ],
+    ];
+
+    let  	camParams: [f32; 13] = [
+        0.4,   // rotX
+        0.6,   // rotY
+        1.0,   // zoom
+        0.0,   // panX
+        0.0,   // panY
+        350.0, // fov
+        250.0, // distance
+        800.0, // width
+        600.0, // height
+        0.0,   // cx
+        0.0,   // cy
+        0.0,   // cz
+        1.0,   // scaleNorm
+    ];
+
+    let  	cpuEngine = SwarmEngine::New( BackendKind::Cpu).unwrap();
+    let  	resCpu = cpuEngine.RunCameraTransform( &points, &camParams, None);
+    assert!( resCpu.is_ok());
+
+    let  	projectedCpu = resCpu.unwrap();
+    assert_eq!( projectedCpu.len(), 3);
+
+    // Verify first point (0,0,0) projects to screen center (400, 300)
+    assert!( ( projectedCpu[0][0] - 400.0).abs() < 1e-4);
+    assert!( ( projectedCpu[0][1] - 300.0).abs() < 1e-4);
+    assert!( projectedCpu[0][2] > 0.0); // radius
+    assert!( projectedCpu[0][3] > 0.0); // core_radius
+    assert!( projectedCpu[0][4] > 0.0); // alpha
+
+    let  	autoEngine = SwarmEngine::Auto();
+    let  	resAuto = autoEngine.RunCameraTransform( &points, &camParams, None);
+    assert!( resAuto.is_ok());
+    let  	projectedAuto = resAuto.unwrap();
+    assert_eq!( projectedAuto.len(), 3);
+
+    println!( "TestSwarmCameraTransform: Camera transformation verified on Swarm (backend: {}) ✓", autoEngine.Backend());
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------

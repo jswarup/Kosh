@@ -1,8 +1,8 @@
 #![cfg_attr( target_arch = "spirv", no_std)]
 #![deny( warnings)]
-#![allow( unexpected_cfgs)]
+#![allow( unexpected_cfgs, non_snake_case, unused_imports)]
 
-use	spirv_std::{ glam::UVec3, spirv };
+use	spirv_std::{ glam::UVec3, num_traits::Float, spirv };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 // Pure Mathematical Algorithms (#![no_std] portable across CPU, SPIR-V, and CUDA)
@@ -113,6 +113,74 @@ pub fn	pointcloud_elem( idx: usize, output: &mut [f32])
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+/// Element-wise 3D point cloud camera transformation and perspective projection.
+/// Reads 3D point (x, y, z) and camera uniform parameters, writes 6 projected values:
+/// [screen_x, screen_y, radius, core_radius, alpha, depth_factor].
+#[inline( always)]
+pub fn	camera_transform_elem(
+    idx: usize,
+    in_points: &[f32],
+    cam_params: &[f32],
+    out_projected: &mut [f32],
+)
+{
+    let  	inBase = idx * 3;
+    let  	outBase = idx * 6;
+
+    if inBase + 2 < in_points.len() && outBase + 5 < out_projected.len() && cam_params.len() >= 13 {
+        let  	x = in_points[inBase + 0];
+        let  	y = in_points[inBase + 1];
+        let  	z = in_points[inBase + 2];
+
+        let  	rotX = cam_params[0];
+        let  	rotY = cam_params[1];
+        let  	zoom = cam_params[2];
+        let  	panX = cam_params[3];
+        let  	panY = cam_params[4];
+        let  	fov = cam_params[5];
+        let  	distance = cam_params[6];
+        let  	width = cam_params[7];
+        let  	height = cam_params[8];
+        let  	cx = cam_params[9];
+        let  	cy = cam_params[10];
+        let  	cz = cam_params[11];
+        let  	scaleNorm = cam_params[12];
+
+        let  	nx = ( x - cx) * scaleNorm;
+        let  	ny = ( y - cy) * scaleNorm;
+        let  	nz = ( z - cz) * scaleNorm;
+
+        let  	cosY = rotY.cos();
+        let  	sinY = rotY.sin();
+        let  	x1 = nx * cosY + nz * sinY;
+        let  	z1 = -nx * sinY + nz * cosY;
+
+        let  	cosX = rotX.cos();
+        let  	sinX = rotX.sin();
+        let  	y2 = ny * cosX - z1 * sinX;
+        let  	z2 = ny * sinX + z1 * cosX;
+
+        let  	scale = ( fov * zoom) / ( distance + z2);
+
+        let  	projX = width / 2.0 + panX + x1 * scale;
+        let  	projY = height / 2.0 + panY - y2 * scale;
+
+        let  	depthFactor = 0.3f32.max( 1.0f32.min( ( 300.0 - z2) / 400.0));
+        let  	radius = 3.0 + depthFactor * 4.0;
+        let  	coreRadius = 1.0 + depthFactor * 1.5;
+        let  	alpha = 0.5 + depthFactor * 0.5;
+
+        out_projected[outBase + 0] = projX;
+        out_projected[outBase + 1] = projY;
+        out_projected[outBase + 2] = radius;
+        out_projected[outBase + 3] = coreRadius;
+        out_projected[outBase + 4] = alpha;
+        out_projected[outBase + 5] = depthFactor;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
 // Rust-GPU (SPIR-V) Entrypoints
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -186,6 +254,20 @@ pub fn	pts_pointcloud_cs(
     let  	z = hash_to_float( hz) * 40.0 - 20.0;
 
     output[idx] = spirv_std::glam::Vec4::new( x, y, z, 1.0);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+/// Transforms and projects 3D point cloud coordinates to screen space with camera uniforms.
+#[spirv( compute( threads( 64)))]
+pub fn	camera_transform_cs(
+    #[spirv( global_invocation_id)] id: UVec3,
+    #[spirv( storage_buffer, descriptor_set = 0, binding = 0)] in_points: &[f32],
+    #[spirv( storage_buffer, descriptor_set = 0, binding = 1)] cam_params: &[f32],
+    #[spirv( storage_buffer, descriptor_set = 0, binding = 2)] out_projected: &mut [f32],
+)
+{
+    camera_transform_elem( id.x as usize, in_points, cam_params, out_projected);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
