@@ -218,7 +218,7 @@ impl< 'a> Atelier< 'a>
                 let  	job = *self._JobBuff.Arr().At( jobId);
                 assert!( !job.IsNull(), "jobId {} is null!", jobId.AsU16());
 
-                ( job.func)( job.data, maestro);                   // Run job
+                ( job._Func)( job._Data, maestro);                   // Run job
                 self._JobBuff.Arr().SetAt( jobId, &WorkPtr::Null());
                 maestro._SzProcessed += 1;
 

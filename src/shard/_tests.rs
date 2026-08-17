@@ -335,9 +335,9 @@ fn	TestJsonParsingStruct()
 
     #[derive( Default, Debug, PartialEq)]
     struct Person {
-        name: String,
-        age: U64,
-        is_active: bool,
+        _Name: String,
+        _Age: U64,
+        _IsActive: bool,
     }
 
     impl IFluxImportSource for Person {
@@ -346,13 +346,13 @@ fn	TestJsonParsingStruct()
             *field = FieldImp::Obj( Box::new( move |key, child| {
                 let person = unsafe { &mut *person_ptr };
                 if key == "name" {
-                    *child = FieldImp::String( &mut person.name);
+                    *child = FieldImp::String( &mut person._Name);
                     true
                 } else if key == "age" {
-                    *child = FieldImp::U64( &mut person.age);
+                    *child = FieldImp::U64( &mut person._Age);
                     true
                 } else if key == "is_active" {
-                    *child = FieldImp::Bool( &mut person.is_active);
+                    *child = FieldImp::Bool( &mut person._IsActive);
                     true
                 } else {
                     false

@@ -16,6 +16,7 @@ This project has strict, non-standard Rust formatting rules defined in `FORMATTI
 7. **Use statements**: The `use` keyword MUST be followed by a tab (`\t`) (e.g., `use\tcrate::silo`). Prefer file-level use statements to full-path and function level use statements. Group file-level use statements. Do not use full-paths inline; rely on file-level `use` instead.
 
 8. **return**: Must be on separate line
+9. **Struct Data Members**: All struct fields (data members) must be named in PascalCase preceded by an underscore `_` (e.g. `_Data`, `_Size`, `_Points`, `_BBoxMin`).
 
 When modifying files, please ensure you don't inadvertently reformat existing code that already complies with these rules. Be extremely careful when using automated formatting tools like `rustfmt`, as they will likely destroy these custom formatting rules.
 

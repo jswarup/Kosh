@@ -26,9 +26,9 @@ pub type JobFn = for< 'r> fn(data: *mut (), worker: &'r DynIWorker< 'r>);
 #[derive( Copy, Clone)]
 pub struct WorkPtr< 'a>
 {
-    pub     data: *mut (),
-    pub     func: JobFn,
-    _marker: PhantomData< &'a ()>,
+    pub     _Data: *mut (),
+    pub     _Func: JobFn,
+    _Marker: PhantomData< &'a ()>,
 }
 
 unsafe impl< 'a> Send for WorkPtr< 'a>
@@ -43,22 +43,22 @@ impl< 'a> WorkPtr< 'a>
     pub fn	Null() -> Self
     {
         Self {
-            data: null_mut(),
-            func: |_, _| {},
-            _marker: PhantomData,
+            _Data: null_mut(),
+            _Func: |_, _| {},
+            _Marker: PhantomData,
         }
     }
     pub fn	Dummy() -> Self
     {
         Self {
-            data: 1 as *mut (),
-            func: |_, _| {},
-            _marker: PhantomData,
+            _Data: 1 as *mut (),
+            _Func: |_, _| {},
+            _Marker: PhantomData,
         }
     }
     pub fn	IsNull( &self) -> bool
     {
-        self.data.is_null()
+        self._Data.is_null()
     }
     pub fn	FromRef< T: IWork + 'a>( inner: &'a mut T) -> Self
     {
@@ -68,15 +68,15 @@ impl< 'a> WorkPtr< 'a>
             actual.DoWork( worker);
         };
         Self {
-            data,
-            func,
-            _marker: PhantomData,
+            _Data: data,
+            _Func: func,
+            _Marker: PhantomData,
         }
     }
 
     pub fn	DoWork( &self, worker: &DynIWorker< '_>)
     {
-        (self.func)( self.data, worker);
+        (self._Func)( self._Data, worker);
     }
 
 
@@ -111,9 +111,9 @@ where
             owned.DoWork( worker);
         };
         WorkPtr {
-            data,
-            func,
-            _marker: PhantomData,
+            _Data: data,
+            _Func: func,
+            _Marker: PhantomData,
         }
     }
 }
@@ -163,7 +163,7 @@ impl IWorker for Worker
     fn	PostJob( &self, job: WorkPtr< '_>)
     {
         if !job.IsNull() {
-            ( job.func)( job.data, self);
+            ( job._Func)( job._Data, self);
         }
     }
 }

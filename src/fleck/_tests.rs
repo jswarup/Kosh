@@ -22,16 +22,16 @@ fn	TestPtsBasic3D()
 
     let  	arr = cloud.Points().Arr();
     let  	p0 = arr.At( U32( 0));
-    assert_eq!( p0.pos.x, 10.0);
-    assert_eq!( p0.pos.y, 20.0);
-    assert_eq!( p0.pos.z, 30.0);
-    assert_eq!( p0.intensity, None);
-    assert_eq!( p0.color, None);
+    assert_eq!( p0._Pos._X, 10.0);
+    assert_eq!( p0._Pos._Y, 20.0);
+    assert_eq!( p0._Pos._Z, 30.0);
+    assert_eq!( p0._Intensity, None);
+    assert_eq!( p0._Color, None);
 
     let  	p1 = arr.At( U32( 1));
-    assert_eq!( p1.pos.x, 40.5);
-    assert_eq!( p1.pos.y, -50.25);
-    assert_eq!( p1.pos.z, 60.125);
+    assert_eq!( p1._Pos._X, 40.5);
+    assert_eq!( p1._Pos._Y, -50.25);
+    assert_eq!( p1._Pos._Z, 60.125);
 
     let  	( minBbox, maxBbox) = cloud.BoundingBox();
     assert_eq!( minBbox, [0.0, -50.25, 0.0]);
@@ -53,16 +53,16 @@ fn	TestPtsWithHeaderAndIntensity()
 
     let  	arr = cloud.Points().Arr();
     let  	p0 = arr.At( U32( 0));
-    assert_eq!( p0.pos.x, 1.0);
-    assert_eq!( p0.pos.y, 2.0);
-    assert_eq!( p0.pos.z, 3.0);
-    assert_eq!( p0.intensity, Some( 0.75));
+    assert_eq!( p0._Pos._X, 1.0);
+    assert_eq!( p0._Pos._Y, 2.0);
+    assert_eq!( p0._Pos._Z, 3.0);
+    assert_eq!( p0._Intensity, Some( 0.75));
 
     let  	p1 = arr.At( U32( 1));
-    assert_eq!( p1.pos.x, -4.0);
-    assert_eq!( p1.pos.y, -5.0);
-    assert_eq!( p1.pos.z, -6.0);
-    assert_eq!( p1.intensity, Some( 0.25));
+    assert_eq!( p1._Pos._X, -4.0);
+    assert_eq!( p1._Pos._Y, -5.0);
+    assert_eq!( p1._Pos._Z, -6.0);
+    assert_eq!( p1._Intensity, Some( 0.25));
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -79,19 +79,19 @@ fn	TestPtsWithColorRGB()
 
     let  	arr = cloud.Points().Arr();
     let  	p0 = arr.At( U32( 0));
-    assert_eq!( p0.pos.x, 10.0);
-    assert_eq!( p0.pos.y, 20.0);
-    assert_eq!( p0.pos.z, 30.0);
-    let  	color0 = p0.color.unwrap();
-    assert_eq!( color0.r, U8( 255));
-    assert_eq!( color0.g, U8( 128));
-    assert_eq!( color0.b, U8( 64));
+    assert_eq!( p0._Pos._X, 10.0);
+    assert_eq!( p0._Pos._Y, 20.0);
+    assert_eq!( p0._Pos._Z, 30.0);
+    let  	color0 = p0._Color.unwrap();
+    assert_eq!( color0._R, U8( 255));
+    assert_eq!( color0._G, U8( 128));
+    assert_eq!( color0._B, U8( 64));
 
     let  	p1 = arr.At( U32( 1));
-    let  	color1 = p1.color.unwrap();
-    assert_eq!( color1.r, U8( 0));
-    assert_eq!( color1.g, U8( 255));
-    assert_eq!( color1.b, U8( 0));
+    let  	color1 = p1._Color.unwrap();
+    assert_eq!( color1._R, U8( 0));
+    assert_eq!( color1._G, U8( 255));
+    assert_eq!( color1._B, U8( 0));
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -108,14 +108,14 @@ fn	TestPtsWithIntensityAndColor()
 
     let  	arr = cloud.Points().Arr();
     let  	p0 = arr.At( U32( 0));
-    assert_eq!( p0.pos.x, 1.0);
-    assert_eq!( p0.pos.y, 2.0);
-    assert_eq!( p0.pos.z, 3.0);
-    assert_eq!( p0.intensity, Some( 0.9));
-    let  	color0 = p0.color.unwrap();
-    assert_eq!( color0.r, U8( 255));
-    assert_eq!( color0.g, U8( 200));
-    assert_eq!( color0.b, U8( 150));
+    assert_eq!( p0._Pos._X, 1.0);
+    assert_eq!( p0._Pos._Y, 2.0);
+    assert_eq!( p0._Pos._Z, 3.0);
+    assert_eq!( p0._Intensity, Some( 0.9));
+    let  	color0 = p0._Color.unwrap();
+    assert_eq!( color0._R, U8( 255));
+    assert_eq!( color0._G, U8( 200));
+    assert_eq!( color0._B, U8( 150));
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -132,14 +132,14 @@ fn	TestPtsScientificNotationAndComments()
 
     let  	arr = cloud.Points().Arr();
     let  	p0 = arr.At( U32( 0));
-    assert_eq!( p0.pos.x, 0.0125);
-    assert_eq!( p0.pos.y, -35.0);
-    assert_eq!( p0.pos.z, 4.0);
+    assert_eq!( p0._Pos._X, 0.0125);
+    assert_eq!( p0._Pos._Y, -35.0);
+    assert_eq!( p0._Pos._Z, 4.0);
 
     let  	p1 = arr.At( U32( 1));
-    assert_eq!( p1.pos.x, 10.0);
-    assert_eq!( p1.pos.y, 20.0);
-    assert_eq!( p1.pos.z, 30.0);
+    assert_eq!( p1._Pos._X, 10.0);
+    assert_eq!( p1._Pos._Y, 20.0);
+    assert_eq!( p1._Pos._Z, 30.0);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -151,12 +151,12 @@ fn	TestPtsToDtoConversion()
     let  	cloud = ParsePts( ptsData).unwrap();
     let  	dto = cloud.ToDto();
 
-    assert_eq!( dto.count, 2);
-    assert_eq!( dto.points.len(), 2);
-    assert_eq!( dto.points[0], [0.0, 0.0, 0.0]);
-    assert_eq!( dto.points[1], [100.0, 200.0, 300.0]);
-    assert_eq!( dto.bbox_min, [0.0, 0.0, 0.0]);
-    assert_eq!( dto.bbox_max, [100.0, 200.0, 300.0]);
+    assert_eq!( dto._Count, 2);
+    assert_eq!( dto._Points.len(), 2);
+    assert_eq!( dto._Points[0], [0.0, 0.0, 0.0]);
+    assert_eq!( dto._Points[1], [100.0, 200.0, 300.0]);
+    assert_eq!( dto._BboxMin, [0.0, 0.0, 0.0]);
+    assert_eq!( dto._BboxMax, [100.0, 200.0, 300.0]);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -190,9 +190,9 @@ fn	TestPtsShardGrammarDirect()
 
     let  	arr = cloud.Points().Arr();
     let  	p0 = arr.At( U32( 0));
-    assert_eq!( p0.pos.x, 5.0);
-    assert_eq!( p0.pos.y, 15.0);
-    assert_eq!( p0.pos.z, 25.0);
+    assert_eq!( p0._Pos._X, 5.0);
+    assert_eq!( p0._Pos._Y, 15.0);
+    assert_eq!( p0._Pos._Z, 25.0);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

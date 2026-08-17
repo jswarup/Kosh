@@ -8,9 +8,9 @@ use	crate::silo::{ Buff, U32 };
 
 pub struct FrescoLeaf
 {
-    name:   String,
-    path:   String,
-    value:  String,
+    _Name:   String,
+    _Path:   String,
+    _Value:  String,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -20,9 +20,9 @@ impl FrescoLeaf
     pub fn	New( name: String, path: String, value: String) -> Self
     {
         Self {
-            name,
-            path,
-            value,
+            _Name: name,
+            _Path: path,
+            _Value: value,
         }
     }
 }
@@ -33,12 +33,12 @@ impl Xplr for FrescoLeaf
 {
     fn	Name( &self) -> &str
     {
-        &self.name
+        &self._Name
     }
 
     fn	Path( &self) -> &str
     {
-        &self.path
+        &self._Path
     }
 
     fn	IsLeaf( &self) -> bool
@@ -63,7 +63,7 @@ impl LeafXplr for FrescoLeaf
 {
     fn	Size( &self) -> u64
     {
-        self.value.len() as u64
+        self._Value.len() as u64
     }
 
     fn	Extension( &self) -> &str
@@ -76,9 +76,9 @@ impl LeafXplr for FrescoLeaf
 
 pub struct FrescoBranch
 {
-    name:     String,
-    path:     String,
-    entries:  Buff< Box< dyn Xplr>>,
+    _Name:     String,
+    _Path:     String,
+    _Entries:  Buff< Box< dyn Xplr>>,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -88,9 +88,9 @@ impl FrescoBranch
     pub fn	New( name: String, path: String, entries: Buff< Box< dyn Xplr>>) -> Self
     {
         Self {
-            name,
-            path,
-            entries,
+            _Name: name,
+            _Path: path,
+            _Entries: entries,
         }
     }
 
@@ -115,12 +115,12 @@ impl Xplr for FrescoBranch
 {
     fn	Name( &self) -> &str
     {
-        &self.name
+        &self._Name
     }
 
     fn	Path( &self) -> &str
     {
-        &self.path
+        &self._Path
     }
 
     fn	IsLeaf( &self) -> bool
@@ -146,7 +146,7 @@ impl BranchXplr for FrescoBranch
     fn	Children( &self) -> Result< Buff< Box< dyn Xplr>>, String>
     {
         let  	mut children: Buff< Box< dyn Xplr>> = Buff::NewEmpty();
-        for entry in &self.entries {
+        for entry in &self._Entries {
             if entry.IsLeaf() {
                 if let  	Some( leaf) = entry.AsLeaf() {
                     children.Push( Box::new( FrescoLeaf::New( entry.Name().to_string(), entry.Path().to_string(), leaf.Size().to_string())));
@@ -160,7 +160,7 @@ impl BranchXplr for FrescoBranch
 
     fn	ChildCount( &self) -> Result< U32, String>
     {
-        Ok( self.entries.Size())
+        Ok( self._Entries.Size())
     }
 }
 

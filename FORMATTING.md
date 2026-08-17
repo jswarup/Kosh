@@ -28,4 +28,5 @@ All Rust source files (`.rs`) in this project must adhere to the following forma
 - **Indentation**: The `use` keyword must be immediately followed by a tab character (`\t`) instead of a space.
 - **Braces**: The outer-most opening brace `{` following `use` must remain on the same line as the `use` path/keyword.  
 
-
+## 8. Struct Data Members
+- **Naming Convention**: All struct fields (data members) must be named in PascalCase preceded by an underscore `_` (e.g. `_Data`, `_Size`, `_Points`, `_BBoxMin`).

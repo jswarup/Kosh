@@ -52,7 +52,7 @@ impl XplrProvider for FsProvider
 
 pub struct XplrRegistry
 {
-    providers: HashMap< String, Box< dyn XplrProvider>>,
+    _Providers: HashMap< String, Box< dyn XplrProvider>>,
 }
 
 use	crate::fenst::frescoxplr::FrescoProvider;
@@ -65,7 +65,7 @@ impl XplrRegistry
     pub fn	New() -> Self
     {
         let  	mut registry = Self {
-            providers: HashMap::new(),
+            _Providers: HashMap::new(),
         };
         registry.Register( Box::new( FsProvider::New()));
         registry.Register( Box::new( FrescoProvider::New()));
@@ -76,17 +76,17 @@ impl XplrRegistry
     pub fn	Register( &mut self, provider: Box< dyn XplrProvider>)
     {
         let  	scheme = provider.Scheme().to_string();
-        self.providers.insert( scheme, provider);
+        self._Providers.insert( scheme, provider);
     }
 
     pub fn	GetProvider( &self, scheme: &str) -> Option< &dyn XplrProvider>
     {
-        self.providers.get( scheme).map( |p| p.as_ref())
+        self._Providers.get( scheme).map( |p| p.as_ref())
     }
 
     pub fn	Schemes( &self) -> Buff< String>
     {
-        let  	mut keys: Buff< String> = self.providers.keys().cloned().collect();
+        let  	mut keys: Buff< String> = self._Providers.keys().cloned().collect();
         keys.sort();
         keys
     }

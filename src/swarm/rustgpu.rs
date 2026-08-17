@@ -22,12 +22,12 @@ use	crate::swarm::traits::{
 /// WebGPU storage buffer on GPU hardware.
 pub struct RustGpuBuffer
 {
-    label:  String,
-    device: Arc< Device>,
-    queue:  Arc< Queue>,
-    buffer: Arc< Buffer>,
-    size:   U64,
-    usage:  BufferUsage,
+    _Label:  String,
+    _Device: Arc< Device>,
+    _Queue:  Arc< Queue>,
+    _Buffer: Arc< Buffer>,
+    _Size:   U64,
+    _Usage:  BufferUsage,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -44,23 +44,23 @@ impl RustGpuBuffer
     ) -> Self
     {
         RustGpuBuffer {
-            label: label.to_string(),
-            device,
-            queue,
-            buffer: Arc::new( buffer),
-            size,
-            usage,
+            _Label: label.to_string(),
+            _Device: device,
+            _Queue: queue,
+            _Buffer: Arc::new( buffer),
+            _Size: size,
+            _Usage: usage,
         }
     }
 
     pub fn	Usage( &self) -> BufferUsage
     {
-        self.usage
+        self._Usage
     }
 
     pub fn	RawBuffer( &self) -> &Buffer
     {
-        &self.buffer
+        &self._Buffer
     }
 }
 
@@ -70,41 +70,41 @@ impl IComputeBuffer for RustGpuBuffer
 {
     fn	Size( &self) -> U64
     {
-        self.size
+        self._Size
     }
 
     fn	Label( &self) -> &str
     {
-        &self.label
+        &self._Label
     }
 
     fn	Write( &mut self, data: &[u8]) -> Result< (), SwarmError>
     {
-        self.queue.write_buffer( &self.buffer, 0, data);
+        self._Queue.write_buffer( &self._Buffer, 0, data);
         Ok( ())
     }
 
     fn	Read( &self) -> Result< Buff< u8>, SwarmError>
     {
-        let  	staging = self.device.create_buffer( &BufferDescriptor {
+        let  	staging = self._Device.create_buffer( &BufferDescriptor {
             label: Some( "staging_read"),
-            size: self.size.AsUsize() as u64,
+            size: self._Size.AsUsize() as u64,
             usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
-        let  	mut encoder = self.device.create_command_encoder( &CommandEncoderDescriptor {
+        let  	mut encoder = self._Device.create_command_encoder( &CommandEncoderDescriptor {
             label: Some( "readback_encoder"),
         });
-        encoder.copy_buffer_to_buffer( &self.buffer, 0, &staging, 0, self.size.AsUsize() as u64);
-        self.queue.submit( std::iter::once( encoder.finish()));
+        encoder.copy_buffer_to_buffer( &self._Buffer, 0, &staging, 0, self._Size.AsUsize() as u64);
+        self._Queue.submit( std::iter::once( encoder.finish()));
 
         let  	slice = staging.slice( ..);
         let  	( tx, rx) = mpsc::channel();
         slice.map_async( MapMode::Read, move |result| {
             tx.send( result).unwrap();
         });
-        self.device.poll( PollType::Wait { submission_index: None, timeout: None }).map_err( |e| {
+        self._Device.poll( PollType::Wait { submission_index: None, timeout: None }).map_err( |e| {
             SwarmError::BufferError( format!( "Device poll failed: {:?}", e))
         })?;
         rx.recv().map_err( |e| {
@@ -137,10 +137,10 @@ impl IComputeBuffer for RustGpuBuffer
 /// WebGPU compute pipeline compiled from WGSL or Rust-GPU SPIR-V bytecode.
 pub struct RustGpuKernel
 {
-    name:               String,
-    entryPoint:         String,
-    pipeline:           Arc< ComputePipeline>,
-    bindGroupLayout:    Arc< BindGroupLayout>,
+    _Name:               String,
+    _EntryPoint:         String,
+    _Pipeline:           Arc< ComputePipeline>,
+    _BindGroupLayout:    Arc< BindGroupLayout>,
 }
 
 impl RustGpuKernel
@@ -153,26 +153,26 @@ impl RustGpuKernel
     ) -> Self
     {
         RustGpuKernel {
-            name: name.to_string(),
-            entryPoint: entryPoint.to_string(),
-            pipeline: Arc::new( pipeline),
-            bindGroupLayout: Arc::new( bindGroupLayout),
+            _Name: name.to_string(),
+            _EntryPoint: entryPoint.to_string(),
+            _Pipeline: Arc::new( pipeline),
+            _BindGroupLayout: Arc::new( bindGroupLayout),
         }
     }
 
     pub fn	EntryPoint( &self) -> &str
     {
-        &self.entryPoint
+        &self._EntryPoint
     }
 
     pub fn	Pipeline( &self) -> &ComputePipeline
     {
-        &self.pipeline
+        &self._Pipeline
     }
 
     pub fn	BindGroupLayout( &self) -> &BindGroupLayout
     {
-        &self.bindGroupLayout
+        &self._BindGroupLayout
     }
 }
 
@@ -182,7 +182,7 @@ impl IComputeKernel for RustGpuKernel
 {
     fn	Name( &self) -> &str
     {
-        &self.name
+        &self._Name
     }
 
     fn	Backend( &self) -> BackendKind
@@ -201,8 +201,8 @@ impl IComputeKernel for RustGpuKernel
 /// Rust-GPU compute device wrapping `wgpu` Device & Queue.
 pub struct RustGpuDevice
 {
-    device: Arc< Device>,
-    queue:  Arc< Queue>,
+    _Device: Arc< Device>,
+    _Queue:  Arc< Queue>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -237,27 +237,27 @@ impl RustGpuDevice
         })?;
 
         Ok( RustGpuDevice {
-            device: Arc::new( device),
-            queue: Arc::new( queue),
+            _Device: Arc::new( device),
+            _Queue: Arc::new( queue),
         })
     }
 
     pub fn	FromDeviceQueue( device: Device, queue: Queue) -> Self
     {
         RustGpuDevice {
-            device: Arc::new( device),
-            queue: Arc::new( queue),
+            _Device: Arc::new( device),
+            _Queue: Arc::new( queue),
         }
     }
 
     pub fn	RawDevice( &self) -> &Device
     {
-        &self.device
+        &self._Device
     }
 
     pub fn	RawQueue( &self) -> &Queue
     {
-        &self.queue
+        &self._Queue
     }
 
     fn	ToWgpuUsage( usage: BufferUsage) -> BufferUsages
@@ -299,7 +299,7 @@ impl IComputeDevice for RustGpuDevice
     ) -> Result< Box< dyn IComputeBuffer>, SwarmError>
     {
         let  	wgpuUsage = Self::ToWgpuUsage( usage);
-        let  	buf = self.device.create_buffer( &BufferDescriptor {
+        let  	buf = self._Device.create_buffer( &BufferDescriptor {
             label: Some( label),
             size: size.AsUsize() as u64,
             usage: wgpuUsage,
@@ -308,8 +308,8 @@ impl IComputeDevice for RustGpuDevice
 
         Ok( Box::new( RustGpuBuffer::New(
             label,
-            Arc::clone( &self.device),
-            Arc::clone( &self.queue),
+            Arc::clone( &self._Device),
+            Arc::clone( &self._Queue),
             buf,
             size,
             usage,
@@ -324,7 +324,7 @@ impl IComputeDevice for RustGpuDevice
     ) -> Result< Box< dyn IComputeBuffer>, SwarmError>
     {
         let  	wgpuUsage = Self::ToWgpuUsage( usage);
-        let  	buf = self.device.create_buffer_init( &BufferInitDescriptor {
+        let  	buf = self._Device.create_buffer_init( &BufferInitDescriptor {
             label: Some( label),
             contents: data,
             usage: wgpuUsage,
@@ -332,8 +332,8 @@ impl IComputeDevice for RustGpuDevice
 
         Ok( Box::new( RustGpuBuffer::New(
             label,
-            Arc::clone( &self.device),
-            Arc::clone( &self.queue),
+            Arc::clone( &self._Device),
+            Arc::clone( &self._Queue),
             buf,
             U64( data.len() as u64),
             usage,
@@ -349,7 +349,7 @@ impl IComputeDevice for RustGpuDevice
     {
         let  	shaderModule = match source {
             KernelSource::Wgsl( src) => {
-                self.device.create_shader_module( ShaderModuleDescriptor {
+                self._Device.create_shader_module( ShaderModuleDescriptor {
                     label: Some( label),
                     source: WgpuShaderSource::Wgsl( src.into()),
                 })
@@ -358,7 +358,7 @@ impl IComputeDevice for RustGpuDevice
                 let  	spirv = std::borrow::Cow::Owned(
                     wgpu::util::make_spirv_raw( bytes).into_owned(),
                 );
-                self.device.create_shader_module( ShaderModuleDescriptor {
+                self._Device.create_shader_module( ShaderModuleDescriptor {
                     label: Some( label),
                     source: WgpuShaderSource::SpirV( spirv),
                 })
@@ -392,18 +392,18 @@ impl IComputeDevice for RustGpuDevice
             });
         }
 
-        let  	bindGroupLayout = self.device.create_bind_group_layout( &BindGroupLayoutDescriptor {
+        let  	bindGroupLayout = self._Device.create_bind_group_layout( &BindGroupLayoutDescriptor {
             label: Some( &format!( "{}_bgl", label)),
             entries: &entries,
         });
 
-        let  	pipelineLayout = self.device.create_pipeline_layout( &PipelineLayoutDescriptor {
+        let  	pipelineLayout = self._Device.create_pipeline_layout( &PipelineLayoutDescriptor {
             label: Some( &format!( "{}_pl", label)),
             bind_group_layouts: &[Some( &bindGroupLayout)],
             immediate_size: 0,
         });
 
-        let  	pipeline = self.device.create_compute_pipeline( &ComputePipelineDescriptor {
+        let  	pipeline = self._Device.create_compute_pipeline( &ComputePipelineDescriptor {
             label: Some( &format!( "{}_pipe", label)),
             layout: Some( &pipelineLayout),
             module: &shaderModule,
@@ -450,13 +450,13 @@ impl IComputeDevice for RustGpuDevice
             }
         }
 
-        let  	bindGroup = self.device.create_bind_group( &BindGroupDescriptor {
+        let  	bindGroup = self._Device.create_bind_group( &BindGroupDescriptor {
             label: Some( &format!( "{}_bg", rustKernel.Name())),
             layout: rustKernel.BindGroupLayout(),
             entries: &entries,
         });
 
-        let  	mut encoder = self.device.create_command_encoder( &CommandEncoderDescriptor {
+        let  	mut encoder = self._Device.create_command_encoder( &CommandEncoderDescriptor {
             label: Some( "dispatch_encoder"),
         });
         {
@@ -466,16 +466,16 @@ impl IComputeDevice for RustGpuDevice
             });
             pass.set_pipeline( rustKernel.Pipeline());
             pass.set_bind_group( 0, &bindGroup, &[]);
-            pass.dispatch_workgroups( dim.x.AsU32(), dim.y.AsU32(), dim.z.AsU32());
+            pass.dispatch_workgroups( dim._X.AsU32(), dim._Y.AsU32(), dim._Z.AsU32());
         }
-        self.queue.submit( std::iter::once( encoder.finish()));
+        self._Queue.submit( std::iter::once( encoder.finish()));
 
         Ok( ())
     }
 
     fn	Synchronize( &self) -> Result< (), SwarmError>
     {
-        self.device.poll( PollType::Wait { submission_index: None, timeout: None }).map_err( |e| {
+        self._Device.poll( PollType::Wait { submission_index: None, timeout: None }).map_err( |e| {
             SwarmError::ExecutionError( format!( "Device synchronization failed: {:?}", e))
         })?;
         Ok( ())

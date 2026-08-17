@@ -16,11 +16,11 @@ fn	TestReadDirectory()
     // Verify directories come before files
     let  	mut seenFile = false;
     for entry in &entries {
-        if !entry.is_dir {
+        if !entry._IsDir {
             seenFile = true;
         }
-        if entry.is_dir && seenFile {
-            panic!( "Directory '{}' appeared after a file — sort order broken", entry.name);
+        if entry._IsDir && seenFile {
+            panic!( "Directory '{}' appeared after a file — sort order broken", entry._Name);
         }
     }
 }
@@ -44,9 +44,9 @@ fn	TestReadFileContents()
     assert!( result.is_ok(), "Failed to read Cargo.toml: {:?}", result.err());
 
     let  	contents = result.unwrap();
-    assert!( contents.size > 0);
-    assert!( contents.line_count > 0);
-    assert!( contents.content.contains( "[package]"));
+    assert!( contents._Size > 0);
+    assert!( contents._LineCount > 0);
+    assert!( contents._Content.contains( "[package]"));
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -67,10 +67,10 @@ fn	TestGetFileInfo()
     assert!( result.is_ok(), "Failed to get file info: {:?}", result.err());
 
     let  	info = result.unwrap();
-    assert_eq!( info.name, "Cargo.toml");
-    assert!( !info.is_dir);
-    assert!( info.size > 0);
-    assert_eq!( info.extension, "toml");
+    assert_eq!( info._Name, "Cargo.toml");
+    assert!( !info._IsDir);
+    assert!( info._Size > 0);
+    assert_eq!( info._Extension, "toml");
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -82,8 +82,8 @@ fn	TestGetFileInfoDirectory()
     assert!( result.is_ok());
 
     let  	info = result.unwrap();
-    assert!( info.is_dir);
-    assert_eq!( info.name, "src");
+    assert!( info._IsDir);
+    assert_eq!( info._Name, "src");
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -168,8 +168,8 @@ fn	TestXplrRegistry()
     assert!( !entries.is_empty());
 
     let  	dto = entries[0].ToDto( &scheme);
-    assert_eq!( dto.provider, "file");
-    assert!( !dto.id.is_empty());
+    assert_eq!( dto._Provider, "file");
+    assert!( !dto._Id.is_empty());
 }
 
 #[test]
@@ -181,10 +181,10 @@ fn	TestReadFileChunk()
     assert!( result.is_ok(), "Failed to read file chunk: {:?}", result.err());
 
     let  	chunk = result.unwrap();
-    assert_eq!( chunk.offset, 0);
-    assert!( chunk.length > 0);
-    assert!( chunk.total_size > 0);
-    assert!( chunk.content.contains( "[package]"));
+    assert_eq!( chunk._Offset, 0);
+    assert!( chunk._Length > 0);
+    assert!( chunk._TotalSize > 0);
+    assert!( chunk._Content.contains( "[package]"));
 }
 
 #[test]

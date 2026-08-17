@@ -617,21 +617,21 @@ fn	TestStashAppend()
 #[derive( Clone, PartialEq, Debug)]
 struct NonDefaultStruct
 {
-    value: i32,
+    _Value: i32,
 }
 #[test]
 fn	TestBuffResize()
 {
     // Create a buffer of size 3 initialized with NonDefaultStruct
-    let  	mut buff = Buff::Create( 3, |_| NonDefaultStruct { value: 42 });
+    let  	mut buff = Buff::Create( 3, |_| NonDefaultStruct { _Value: 42 });
     assert_eq!( buff.len(), 3);
-    assert_eq!( buff[0].value, 42);
+    assert_eq!( buff[0]._Value, 42);
     // Resize using Resize
-    buff.Resize( U32( 5), |_| NonDefaultStruct { value: 100 });
+    buff.Resize( U32( 5), |_| NonDefaultStruct { _Value: 100 });
     assert_eq!( buff.len(), 5);
-    assert_eq!( buff[2].value, 42);
-    assert_eq!( buff[3].value, 100);
-    assert_eq!( buff[4].value, 100);
+    assert_eq!( buff[2]._Value, 42);
+    assert_eq!( buff[3]._Value, 100);
+    assert_eq!( buff[4]._Value, 100);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

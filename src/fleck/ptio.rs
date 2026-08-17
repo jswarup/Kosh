@@ -14,26 +14,26 @@ use	crate::{
 #[derive( Clone, Copy, Debug, PartialEq)]
 pub struct Point32
 {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
+    pub _X: f32,
+    pub _Y: f32,
+    pub _Z: f32,
 }
 
 #[derive( Clone, Copy, Debug, PartialEq)]
 pub struct RGB
 {
-    pub r: U8,
-    pub g: U8,
-    pub b: U8,
+    pub _R: U8,
+    pub _G: U8,
+    pub _B: U8,
 }
 
 /// Represents a single 3D point in a .pts point cloud with optional intensity and RGB color.
 #[derive( Clone, Copy, Debug, PartialEq)]
 pub struct PtsPoint
 {
-    pub pos:        Point32,
-    pub intensity:  Option< f32>,
-    pub color:      Option< RGB>,
+    pub _Pos:        Point32,
+    pub _Intensity:  Option< f32>,
+    pub _Color:      Option< RGB>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -43,15 +43,15 @@ impl PtsPoint
     pub fn	New( x: f32, y: f32, z: f32) -> Self
     {
         Self {
-            pos: Point32 { x, y, z },
-            intensity: None,
-            color: None,
+            _Pos: Point32 { _X: x, _Y: y, _Z: z },
+            _Intensity: None,
+            _Color: None,
         }
     }
 
     pub fn	Pos( &self) -> [f32; 3]
     {
-        [self.pos.x, self.pos.y, self.pos.z]
+        [self._Pos._X, self._Pos._Y, self._Pos._Z]
     }
 }
 
@@ -124,20 +124,20 @@ impl PtsCloud
         }
         let  	arr = self._Points.Arr();
         let  	first = arr.At( U32( 0));
-        let  	mut minX = first.pos.x;
-        let  	mut minY = first.pos.y;
-        let  	mut minZ = first.pos.z;
-        let  	mut maxX = first.pos.x;
-        let  	mut maxY = first.pos.y;
-        let  	mut maxZ = first.pos.z;
+        let  	mut minX = first._Pos._X;
+        let  	mut minY = first._Pos._Y;
+        let  	mut minZ = first._Pos._Z;
+        let  	mut maxX = first._Pos._X;
+        let  	mut maxY = first._Pos._Y;
+        let  	mut maxZ = first._Pos._Z;
         for i in 1..self._Points.Size().AsUsize() {
             let  	pt = arr.At( U32( i as u32));
-            if pt.pos.x < minX { minX = pt.pos.x; }
-            if pt.pos.y < minY { minY = pt.pos.y; }
-            if pt.pos.z < minZ { minZ = pt.pos.z; }
-            if pt.pos.x > maxX { maxX = pt.pos.x; }
-            if pt.pos.y > maxY { maxY = pt.pos.y; }
-            if pt.pos.z > maxZ { maxZ = pt.pos.z; }
+            if pt._Pos._X < minX { minX = pt._Pos._X; }
+            if pt._Pos._Y < minY { minY = pt._Pos._Y; }
+            if pt._Pos._Z < minZ { minZ = pt._Pos._Z; }
+            if pt._Pos._X > maxX { maxX = pt._Pos._X; }
+            if pt._Pos._Y > maxY { maxY = pt._Pos._Y; }
+            if pt._Pos._Z > maxZ { maxZ = pt._Pos._Z; }
         }
         ( [minX, minY, minZ], [maxX, maxY, maxZ])
     }
@@ -151,13 +151,13 @@ impl PtsCloud
         let  	arr = self._Points.Arr();
         let  	pointsBuff = Buff::Create( totalPoints, |i| {
             let  	pt = arr.At( i);
-            [pt.pos.x, pt.pos.y, pt.pos.z]
+            [pt._Pos._X, pt._Pos._Y, pt._Pos._Z]
         });
         PtsPointsDto {
-            points: pointsBuff,
-            count: totalPoints.AsUsize(),
-            bbox_min: bboxMin,
-            bbox_max: bboxMax,
+            _Points: pointsBuff,
+            _Count: totalPoints.AsUsize(),
+            _BboxMin: bboxMin,
+            _BboxMax: bboxMax,
         }
     }
 }
@@ -249,8 +249,8 @@ impl< 'a> IGrammar for PtsShard< 'a>
                 }
             }
 
-            // Check if first line was a point count header (single integer count on line)
             if isFirstLine && numCount == 1 {
+                // Header line with total points count
                 cloud._HeaderCount = Some( U32( lineNums[0] as u32));
                 isFirstLine = false;
             } else if numCount >= 3 {
@@ -258,23 +258,23 @@ impl< 'a> IGrammar for PtsShard< 'a>
                 let  	pt = if numCount == 3 {
                     PtsPoint::New( lineNums[0], lineNums[1], lineNums[2])
                 } else if numCount == 4 {
-                    PtsPoint { intensity: Some( lineNums[3]), ..PtsPoint::New( lineNums[0], lineNums[1], lineNums[2]) }
+                    PtsPoint { _Intensity: Some( lineNums[3]), ..PtsPoint::New( lineNums[0], lineNums[1], lineNums[2]) }
                 } else if numCount == 6 {
                     PtsPoint { 
-                        color: Some( RGB {
-                            r: U8( lineNums[3] as u8), 
-                            g: U8( lineNums[4] as u8), 
-                            b: U8( lineNums[5] as u8),
+                        _Color: Some( RGB {
+                            _R: U8( lineNums[3] as u8), 
+                            _G: U8( lineNums[4] as u8), 
+                            _B: U8( lineNums[5] as u8),
                         }),
                         ..PtsPoint::New( lineNums[0], lineNums[1], lineNums[2]) 
                     }
                 } else if numCount >= 7 {
                     PtsPoint { 
-                        intensity: Some( lineNums[3]), 
-                        color: Some( RGB {
-                            r: U8( lineNums[4] as u8), 
-                            g: U8( lineNums[5] as u8), 
-                            b: U8( lineNums[6] as u8),
+                        _Intensity: Some( lineNums[3]), 
+                        _Color: Some( RGB {
+                            _R: U8( lineNums[4] as u8), 
+                            _G: U8( lineNums[5] as u8), 
+                            _B: U8( lineNums[6] as u8),
                         }),
                         ..PtsPoint::New( lineNums[0], lineNums[1], lineNums[2]) 
                     }

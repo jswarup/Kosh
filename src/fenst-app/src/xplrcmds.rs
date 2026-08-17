@@ -193,11 +193,11 @@ pub fn	XplrOpenPtsGraphicsWindow( app: tauri::AppHandle, path: String) -> Result
 
 struct PtsSessionState
 {
-    points:       Buff< [f32; 3]>,
-    bbox_min:     [f32; 3],
-    bbox_max:     [f32; 3],
-    angle_x:      f32,
-    angle_y:      f32,
+    _Points:       Buff< [f32; 3]>,
+    _BboxMin:     [f32; 3],
+    _BboxMax:     [f32; 3],
+    _AngleX:      f32,
+    _AngleY:      f32,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -209,39 +209,42 @@ static PTS_STATE: LazyLock< Mutex< HashMap< String, PtsSessionState>>> = LazyLoc
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Serialize, Debug)]
+#[serde( rename_all = "snake_case")]
 pub struct ProjectedPoint
 {
-    pub x:            f32,
-    pub y:            f32,
-    pub radius:       f32,
-    pub core_radius:  f32,
-    pub color:        String,
+    pub _X:            f32,
+    pub _Y:            f32,
+    pub _Radius:       f32,
+    pub _CoreRadius:  f32,
+    pub _Color:        String,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Serialize, Debug)]
+#[serde( rename_all = "snake_case")]
 pub struct ProjectedLine
 {
-    pub x1:   f32,
-    pub y1:   f32,
-    pub x2:   f32,
-    pub y2:   f32,
+    pub _X1:   f32,
+    pub _Y1:   f32,
+    pub _X2:   f32,
+    pub _Y2:   f32,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Serialize, Debug)]
+#[serde( rename_all = "snake_case")]
 pub struct PtsFrameDto
 {
-    pub points:         Buff< ProjectedPoint>,
-    pub box_lines:      Buff< ProjectedLine>,
-    pub file_name:      String,
-    pub count:          usize,
-    pub bbox_label:     String,
-    pub shader_status:  String,
-    pub overlay_text1:  String,
-    pub overlay_text2:  String,
+    pub _Points:         Buff< ProjectedPoint>,
+    pub _BoxLines:      Buff< ProjectedLine>,
+    pub _FileName:      String,
+    pub _Count:          usize,
+    pub _BboxLabel:     String,
+    pub _ShaderStatus:  String,
+    pub _OverlayText1:  String,
+    pub _OverlayText2:  String,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -307,29 +310,29 @@ pub fn	XplrProjectPts(
     let  	mut guard = PTS_STATE.lock().map_err( |e| e.to_string())?;
     let  	state = guard.entry( path.clone()).or_insert_with( || {
         let  	dto = kosh::fenst::XplrFetchPtsPoints( GCOMP_SPV).unwrap_or_else( |_| PtsPointsDto {
-            points: Buff::NewEmpty(),
-            count: 0,
-            bbox_min: [ 0.0, 0.0, 0.0 ],
-            bbox_max: [ 0.0, 0.0, 0.0 ],
+            _Points: Buff::NewEmpty(),
+            _Count: 0,
+            _BboxMin: [ 0.0, 0.0, 0.0 ],
+            _BboxMax: [ 0.0, 0.0, 0.0 ],
         });
 
         PtsSessionState {
-            points: dto.points,
-            bbox_min: dto.bbox_min,
-            bbox_max: dto.bbox_max,
-            angle_x: 0.4,
-            angle_y: 0.6,
+            _Points: dto._Points,
+            _BboxMin: dto._BboxMin,
+            _BboxMax: dto._BboxMax,
+            _AngleX: 0.4,
+            _AngleY: 0.6,
         }
     });
 
     let  	speedRad = speed / 1000.0;
-    state.angle_y += speedRad;
-    state.angle_x += speedRad * 0.5;
+    state._AngleY += speedRad;
+    state._AngleX += speedRad * 0.5;
 
-    let  	angleX = state.angle_x;
-    let  	angleY = state.angle_y;
-    let  	bboxMin = state.bbox_min;
-    let  	bboxMax = state.bbox_max;
+    let  	angleX = state._AngleX;
+    let  	angleY = state._AngleY;
+    let  	bboxMin = state._BboxMin;
+    let  	bboxMax = state._BboxMax;
 
     let  	bboxVerts = [
         [ bboxMin[0], bboxMin[1], bboxMin[2] ],
@@ -359,16 +362,16 @@ pub fn	XplrProjectPts(
         let  	p1 = projectedBox[*i];
         let  	p2 = projectedBox[*j];
         box_lines.Push( ProjectedLine {
-            x1: p1.0,
-            y1: p1.1,
-            x2: p2.0,
-            y2: p2.1,
+            _X1: p1.0,
+            _Y1: p1.1,
+            _X2: p2.0,
+            _Y2: p2.1,
         });
     }
 
     let  	( r, g, b) = ParseHexColor( &color);
     let  	mut projectedPoints = Buff::NewEmpty();
-    for pt in &state.points {
+    for pt in &state._Points {
         let  	( px, py, pz) = Project3d( pt[0], pt[1], pt[2], angleX, angleY, width, height);
         let  	depthFactor = 0.3f32.max( 1.0f32.min( ( 300.0 - pz) / 400.0));
         let  	radius = ( 3.0 + depthFactor * 4.0) * dpr;
@@ -378,11 +381,11 @@ pub fn	XplrProjectPts(
         let  	colorStr = format!( "rgba({}, {}, {}, {:.3})", r, g, b, alpha);
 
         projectedPoints.Push( ProjectedPoint {
-            x: px,
-            y: py,
-            radius,
-            core_radius,
-            color: colorStr,
+            _X: px,
+            _Y: py,
+            _Radius: radius,
+            _CoreRadius: core_radius,
+            _Color: colorStr,
         });
     }
 
@@ -396,18 +399,18 @@ pub fn	XplrProjectPts(
         bboxMax[0] as i32, bboxMax[1] as i32, bboxMax[2] as i32
     );
 
-    let  	overlay1 = format!( "Points: {} | BBox: {}", state.points.len(), bboxLabel);
+    let  	overlay1 = format!( "Points: {} | BBox: {}", state._Points.len(), bboxLabel);
     let  	overlay2 = "Shader Backend: Rust-GPU (gcomp::pts_pointcloud_cs)".to_string();
 
     Ok( PtsFrameDto {
-        points: projectedPoints,
-        box_lines,
-        file_name: fileName,
-        count: state.points.len(),
-        bbox_label: bboxLabel,
-        shader_status: "Shader Active: gcomp::pts_pointcloud_cs".to_string(),
-        overlay_text1: overlay1,
-        overlay_text2: overlay2,
+        _Points: projectedPoints,
+        _BoxLines: box_lines,
+        _FileName: fileName,
+        _Count: state._Points.len(),
+        _BboxLabel: bboxLabel,
+        _ShaderStatus: "Shader Active: gcomp::pts_pointcloud_cs".to_string(),
+        _OverlayText1: overlay1,
+        _OverlayText2: overlay2,
     })
 }
 

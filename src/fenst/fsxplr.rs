@@ -8,9 +8,9 @@ use	std::path::{ Path, PathBuf };
 
 pub struct FsLeaf
 {
-    name:       String,
-    path:       String,
-    extension:  String,
+    _Name:       String,
+    _Path:       String,
+    _Extension:  String,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -27,9 +27,9 @@ impl FsLeaf
             .map( |e| e.to_string_lossy().into_owned())
             .unwrap_or_default();
         Self {
-            name,
-            path,
-            extension,
+            _Name: name,
+            _Path: path,
+            _Extension: extension,
         }
     }
 }
@@ -40,12 +40,12 @@ impl Xplr for FsLeaf
 {
     fn	Name( &self) -> &str
     {
-        &self.name
+        &self._Name
     }
 
     fn	Path( &self) -> &str
     {
-        &self.path
+        &self._Path
     }
 
     fn	IsLeaf( &self) -> bool
@@ -70,12 +70,12 @@ impl LeafXplr for FsLeaf
 {
     fn	Size( &self) -> u64
     {
-        fs::metadata( &self.path).map( |m| m.len()).unwrap_or( 0)
+        fs::metadata( &self._Path).map( |m| m.len()).unwrap_or( 0)
     }
 
     fn	Extension( &self) -> &str
     {
-        &self.extension
+        &self._Extension
     }
 }
 
@@ -83,8 +83,8 @@ impl LeafXplr for FsLeaf
 
 pub struct FsBranch
 {
-    name: String,
-    path: String,
+    _Name: String,
+    _Path: String,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -98,8 +98,8 @@ impl FsBranch
             .map( |n| n.to_string_lossy().into_owned())
             .unwrap_or_default();
         Self {
-            name,
-            path,
+            _Name: name,
+            _Path: path,
         }
     }
 }
@@ -110,12 +110,12 @@ impl Xplr for FsBranch
 {
     fn	Name( &self) -> &str
     {
-        &self.name
+        &self._Name
     }
 
     fn	Path( &self) -> &str
     {
-        &self.path
+        &self._Path
     }
 
     fn	IsLeaf( &self) -> bool
@@ -140,12 +140,12 @@ impl BranchXplr for FsBranch
 {
     fn	Children( &self) -> Result< Buff< Box< dyn Xplr>>, String>
     {
-        let  	dirPath = Path::new( &self.path);
+        let  	dirPath = Path::new( &self._Path);
         if !dirPath.exists() {
-            return Err( format!( "Path does not exist: {}", self.path));
+            return Err( format!( "Path does not exist: {}", self._Path));
         }
         if !dirPath.is_dir() {
-            return Err( format!( "Path is not a directory: {}", self.path));
+            return Err( format!( "Path is not a directory: {}", self._Path));
         }
 
         let  	readDir = fs::read_dir( dirPath)
@@ -194,12 +194,12 @@ impl BranchXplr for FsBranch
 
     fn	ChildCount( &self) -> Result< U32, String>
     {
-        let  	dirPath = Path::new( &self.path);
+        let  	dirPath = Path::new( &self._Path);
         if !dirPath.exists() {
-            return Err( format!( "Path does not exist: {}", self.path));
+            return Err( format!( "Path does not exist: {}", self._Path));
         }
         if !dirPath.is_dir() {
-            return Err( format!( "Path is not a directory: {}", self.path));
+            return Err( format!( "Path is not a directory: {}", self._Path));
         }
 
         let  	readDir = fs::read_dir( dirPath)

@@ -202,7 +202,7 @@ impl IComputeDevice for SwarmDevice
 /// Unified high-level compute engine providing hardware discovery, backend selection, and execution.
 pub struct SwarmEngine
 {
-    device: SwarmDevice,
+    _Device: SwarmDevice,
 }
 
 impl SwarmEngine
@@ -216,7 +216,7 @@ impl SwarmEngine
             BackendKind::CudaOxide => SwarmDevice::CudaOxide( CudaOxideDevice::Init()?),
         };
 
-        Ok( SwarmEngine { device })
+        Ok( SwarmEngine { _Device: device })
     }
 
     /// Automatically discovers and selects the best available compute hardware.
@@ -225,37 +225,37 @@ impl SwarmEngine
     {
         if let Ok( dev) = RustGpuDevice::Init() {
             return SwarmEngine {
-                device: SwarmDevice::RustGpu( dev),
+                _Device: SwarmDevice::RustGpu( dev),
             };
         }
 
         if let Ok( dev) = CudaOxideDevice::Init() {
             return SwarmEngine {
-                device: SwarmDevice::CudaOxide( dev),
+                _Device: SwarmDevice::CudaOxide( dev),
             };
         }
 
         SwarmEngine {
-            device: SwarmDevice::Cpu( CpuDevice::New()),
+            _Device: SwarmDevice::Cpu( CpuDevice::New()),
         }
     }
 
     pub fn	Backend( &self) -> BackendKind
     {
-        self.device.Backend()
+        self._Device.Backend()
     }
 
     pub fn	Device( &self) -> &SwarmDevice
     {
-        &self.device
+        &self._Device
     }
 
     /// Compiles a standard built-in compute operation for the active backend.
     pub fn	CompileOp( &self, op: StandardOp) -> Result< Box< dyn IComputeKernel>, SwarmError>
     {
-        let  	backend = self.device.Backend();
+        let  	backend = self._Device.Backend();
         let  	source = op.KernelSource( backend);
-        self.device.CompileKernel( op.Label(), op.EntryPoint( backend), source)
+        self._Device.CompileKernel( op.Label(), op.EntryPoint( backend), source)
     }
 
     pub fn	CreateBufferInit(
@@ -265,7 +265,7 @@ impl SwarmEngine
         usage: BufferUsage,
     ) -> Result< Box< dyn IComputeBuffer>, SwarmError>
     {
-        self.device.CreateBufferInit( label, data, usage)
+        self._Device.CreateBufferInit( label, data, usage)
     }
 
     pub fn	CompileKernel(
@@ -275,16 +275,16 @@ impl SwarmEngine
         source: KernelSource,
     ) -> Result< Box< dyn IComputeKernel>, SwarmError>
     {
-        self.device.CompileKernel( label, entryPoint, source)
+        self._Device.CompileKernel( label, entryPoint, source)
     }
 
     /// Unified Vector Double runner across all backends.
     pub fn	RunDouble( &self, data: &[f32]) -> Result< Buff< f32>, SwarmError>
     {
         let  	kernel = self.CompileOp( StandardOp::Double)?;
-        let  	buf = self.device.CreateBufferInit( "double_data", data.CastSlice(), BufferUsage::STORAGE)?;
+        let  	buf = self._Device.CreateBufferInit( "double_data", data.CastSlice(), BufferUsage::STORAGE)?;
         let  	workgroups = ( ( data.len() as u32) + 63) / 64;
-        self.device.Dispatch( kernel.as_ref(), &[buf.as_ref()], WorkgroupDim::Linear( U32( workgroups)))?;
+        self._Device.Dispatch( kernel.as_ref(), &[buf.as_ref()], WorkgroupDim::Linear( U32( workgroups)))?;
         let  	raw = buf.Read()?;
         let  	res: &[f32] = raw.CastSliceFrom();
         Ok( Buff::from( res))
@@ -299,11 +299,11 @@ impl SwarmEngine
         let  	sz = a.len();
         let  	zeroBuff = Buff::Create( sz, |_| 0.0f32);
         let  	kernel = self.CompileOp( StandardOp::VectorAdd)?;
-        let  	bufA = self.device.CreateBufferInit( "vecadd_a", a.CastSlice(), BufferUsage::STORAGE)?;
-        let  	bufB = self.device.CreateBufferInit( "vecadd_b", b.CastSlice(), BufferUsage::STORAGE)?;
-        let  	bufOut = self.device.CreateBufferInit( "vecadd_out", zeroBuff.CastSlice(), BufferUsage::STORAGE)?;
+        let  	bufA = self._Device.CreateBufferInit( "vecadd_a", a.CastSlice(), BufferUsage::STORAGE)?;
+        let  	bufB = self._Device.CreateBufferInit( "vecadd_b", b.CastSlice(), BufferUsage::STORAGE)?;
+        let  	bufOut = self._Device.CreateBufferInit( "vecadd_out", zeroBuff.CastSlice(), BufferUsage::STORAGE)?;
         let  	workgroups = ( ( sz as u32) + 63) / 64;
-        self.device.Dispatch( kernel.as_ref(), &[bufA.as_ref(), bufB.as_ref(), bufOut.as_ref()], WorkgroupDim::Linear( U32( workgroups)))?;
+        self._Device.Dispatch( kernel.as_ref(), &[bufA.as_ref(), bufB.as_ref(), bufOut.as_ref()], WorkgroupDim::Linear( U32( workgroups)))?;
         let  	raw = bufOut.Read()?;
         let  	res: &[f32] = raw.CastSliceFrom();
         Ok( Buff::from( res))
@@ -315,10 +315,10 @@ impl SwarmEngine
         let  	sz = input.len();
         let  	zeroBuff = Buff::Create( sz, |_| 0u32);
         let  	kernel = self.CompileOp( StandardOp::Collatz)?;
-        let  	bufIn = self.device.CreateBufferInit( "collatz_in", input.CastSlice(), BufferUsage::STORAGE)?;
-        let  	bufOut = self.device.CreateBufferInit( "collatz_out", zeroBuff.CastSlice(), BufferUsage::STORAGE)?;
+        let  	bufIn = self._Device.CreateBufferInit( "collatz_in", input.CastSlice(), BufferUsage::STORAGE)?;
+        let  	bufOut = self._Device.CreateBufferInit( "collatz_out", zeroBuff.CastSlice(), BufferUsage::STORAGE)?;
         let  	workgroups = ( ( sz as u32) + 63) / 64;
-        self.device.Dispatch( kernel.as_ref(), &[bufIn.as_ref(), bufOut.as_ref()], WorkgroupDim::Linear( U32( workgroups)))?;
+        self._Device.Dispatch( kernel.as_ref(), &[bufIn.as_ref(), bufOut.as_ref()], WorkgroupDim::Linear( U32( workgroups)))?;
         let  	raw = bufOut.Read()?;
         let  	res: &[u32] = raw.CastSliceFrom();
         Ok( Buff::from( res))
@@ -335,15 +335,15 @@ impl SwarmEngine
         let  	zeroFloats = Buff::Create( ( count * 4) as u32, |_| 0.0f32);
         let  	workgroups = ( numPoints.AsU32() + 63) / 64;
 
-        let  	kernel = match ( self.device.Backend(), spirvBytes) {
+        let  	kernel = match ( self._Device.Backend(), spirvBytes) {
             ( BackendKind::RustGpu, Some( spv)) => {
-                self.device.CompileKernel( "pts_pointcloud_shader", "pts_pointcloud_cs", KernelSource::SpirV( spv))?
+                self._Device.CompileKernel( "pts_pointcloud_shader", "pts_pointcloud_cs", KernelSource::SpirV( spv))?
             }
             _ => self.CompileOp( StandardOp::PointCloud)?,
         };
 
-        let  	bufOut = self.device.CreateBufferInit( "pointcloud_out", zeroFloats.CastSlice(), BufferUsage::STORAGE)?;
-        self.device.Dispatch( kernel.as_ref(), &[bufOut.as_ref()], WorkgroupDim::Linear( U32( workgroups)))?;
+        let  	bufOut = self._Device.CreateBufferInit( "pointcloud_out", zeroFloats.CastSlice(), BufferUsage::STORAGE)?;
+        self._Device.Dispatch( kernel.as_ref(), &[bufOut.as_ref()], WorkgroupDim::Linear( U32( workgroups)))?;
         let  	raw = bufOut.Read()?;
         let  	rawFloats: &[f32] = raw.CastSliceFrom();
 

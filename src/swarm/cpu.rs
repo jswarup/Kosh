@@ -13,9 +13,9 @@ use	crate::swarm::traits::{
 /// In-memory compute buffer for CPU SIMT execution.
 pub struct CpuBuffer
 {
-    label:  String,
-    data:   Arc< RwLock< Buff< u8>>>,
-    usage:  BufferUsage,
+    _Label:  String,
+    _Data:   Arc< RwLock< Buff< u8>>>,
+    _Usage:  BufferUsage,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -25,29 +25,29 @@ impl CpuBuffer
     pub fn	New( label: &str, size: U64, usage: BufferUsage) -> Self
     {
         CpuBuffer {
-            label: label.to_string(),
-            data: Arc::new( RwLock::new( Buff::Create( size.0 as u32, |_| 0u8))),
-            usage,
+            _Label: label.to_string(),
+            _Data: Arc::new( RwLock::new( Buff::Create( size.0 as u32, |_| 0u8))),
+            _Usage: usage,
         }
     }
 
     pub fn	FromSlice( label: &str, data: &[u8], usage: BufferUsage) -> Self
     {
         CpuBuffer {
-            label: label.to_string(),
-            data: Arc::new( RwLock::new( Buff::from( data))),
-            usage,
+            _Label: label.to_string(),
+            _Data: Arc::new( RwLock::new( Buff::from( data))),
+            _Usage: usage,
         }
     }
 
     pub fn	Usage( &self) -> BufferUsage
     {
-        self.usage
+        self._Usage
     }
 
     pub fn	DataLock( &self) -> Arc< RwLock< Buff< u8>>>
     {
-        Arc::clone( &self.data)
+        Arc::clone( &self._Data)
     }
 }
 
@@ -57,18 +57,18 @@ impl IComputeBuffer for CpuBuffer
 {
     fn	Size( &self) -> U64
     {
-        let  	guard = self.data.read().unwrap();
+        let  	guard = self._Data.read().unwrap();
         U64( guard.len() as u64)
     }
 
     fn	Label( &self) -> &str
     {
-        &self.label
+        &self._Label
     }
 
     fn	Write( &mut self, data: &[u8]) -> Result< (), SwarmError>
     {
-        let  	mut guard = self.data.write().map_err( |e| {
+        let  	mut guard = self._Data.write().map_err( |e| {
             SwarmError::BufferError( format!( "Write lock failed: {}", e))
         })?;
         if data.len() > guard.len() {
@@ -80,7 +80,7 @@ impl IComputeBuffer for CpuBuffer
 
     fn	Read( &self) -> Result< Buff< u8>, SwarmError>
     {
-        let  	guard = self.data.read().map_err( |e| {
+        let  	guard = self._Data.read().map_err( |e| {
             SwarmError::BufferError( format!( "Read lock failed: {}", e))
         })?;
         Ok( guard.clone())
@@ -102,9 +102,9 @@ impl IComputeBuffer for CpuBuffer
 /// Executable kernel closure on the CPU.
 pub struct CpuKernel
 {
-    name:       String,
-    entryPoint: String,
-    kernelFn:   CpuKernelFn,
+    _Name:       String,
+    _EntryPoint: String,
+    _KernelFn:   CpuKernelFn,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -114,15 +114,15 @@ impl CpuKernel
     pub fn	New( name: &str, entryPoint: &str, kernelFn: CpuKernelFn) -> Self
     {
         CpuKernel {
-            name: name.to_string(),
-            entryPoint: entryPoint.to_string(),
-            kernelFn,
+            _Name: name.to_string(),
+            _EntryPoint: entryPoint.to_string(),
+            _KernelFn: kernelFn,
         }
     }
 
     pub fn	EntryPoint( &self) -> &str
     {
-        &self.entryPoint
+        &self._EntryPoint
     }
 
     pub fn	Execute(
@@ -134,7 +134,7 @@ impl CpuKernel
         gidZ: U32,
     )
     {
-        ( self.kernelFn)( inputs, outputs, gidX, gidY, gidZ);
+        ( self._KernelFn)( inputs, outputs, gidX, gidY, gidZ);
     }
 }
 
@@ -144,7 +144,7 @@ impl IComputeKernel for CpuKernel
 {
     fn	Name( &self) -> &str
     {
-        &self.name
+        &self._Name
     }
 
     fn	Backend( &self) -> BackendKind
@@ -163,7 +163,7 @@ impl IComputeKernel for CpuKernel
 /// CPU compute device executing kernels over host CPU worker threads.
 pub struct CpuDevice
 {
-    workerCount: usize,
+    _WorkerCount: usize,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -176,20 +176,20 @@ impl CpuDevice
             .map( |p| p.get())
             .unwrap_or( 4);
         CpuDevice {
-            workerCount: workers,
+            _WorkerCount: workers,
         }
     }
 
     pub fn	WithWorkers( workers: usize) -> Self
     {
         CpuDevice {
-            workerCount: workers.max( 1),
+            _WorkerCount: workers.max( 1),
         }
     }
 
     pub fn	WorkerCount( &self) -> usize
     {
-        self.workerCount
+        self._WorkerCount
     }
 
     /// Creates a CPU kernel that doubles f32 values.
@@ -315,9 +315,9 @@ impl IComputeDevice for CpuDevice
     ) -> Result< (), SwarmError>
     {
         // Total threads: workgroups * 64 (standard workgroup size)
-        let  	threadsX = dim.x.AsU32() * 64;
-        let  	threadsY = dim.y.AsU32();
-        let  	threadsZ = dim.z.AsU32();
+        let  	threadsX = dim._X.AsU32() * 64;
+        let  	threadsY = dim._Y.AsU32();
+        let  	threadsZ = dim._Z.AsU32();
 
         // Read all buffers into CPU memory
         let  	mut rawData: Buff< Buff< u8>> = Buff::NewEmpty();
@@ -356,7 +356,7 @@ impl IComputeDevice for CpuDevice
         // Write modified output buffer back to target buffer
         if let Some( targetBuf) = buffers.last() {
             if let Some( targetCpu) = (*targetBuf).AsAny().downcast_ref::< CpuBuffer>() {
-                let  	mut guard = targetCpu.data.write().unwrap();
+                let  	mut guard = targetCpu._Data.write().unwrap();
                 *guard = outputVectors[0].clone();
             }
         }

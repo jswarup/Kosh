@@ -14,14 +14,14 @@ use	tracing_subscriber::EnvFilter;
 struct Args
 {
     /// Enable verbose logging ( debug messages)
-    #[arg( short, long)]
-    verbose: bool,
+    #[arg( short = 'v', long = "verbose")]
+    _Verbose: bool,
     /// Run unit tests (optionally specify a filter)
-    #[arg( long, num_args = 0..=1, default_missing_value = "all" )]
-    test: Option< String>,
+    #[arg( long = "test", num_args = 0..=1, default_missing_value = "all" )]
+    _Test: Option< String>,
     /// Enable output prints from tests (nocapture)
-    #[arg( short = 'g', long)]
-    nocapture: bool,
+    #[arg( short = 'g', long = "nocapture")]
+    _Nocapture: bool,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -72,10 +72,10 @@ fn	run_tests( filter: &str, nocapture: bool) -> Result< ()>
 fn	main() -> Result< ()>
 {
     let  	args = Args::parse();                                      // Parse command line arguments
-    if let  	Some( ref filter) = args.test {
-        return run_tests( filter, args.nocapture);
+    if let  	Some( ref filter) = args._Test {
+        return run_tests( filter, args._Nocapture);
     }
-    setup_logging( args.verbose).context( "Setting up logging framework failed")?; // Initialize logging based on verbosity flag
+    setup_logging( args._Verbose).context( "Setting up logging framework failed")?; // Initialize logging based on verbosity flag
     debug!( "Kosh CLI execution finished successfully");
     Ok( ())
 }

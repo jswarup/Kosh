@@ -72,26 +72,26 @@ impl std::ops::BitOr for BufferUsage
 #[derive( Clone, Copy, Debug, PartialEq, Eq)]
 pub struct WorkgroupDim
 {
-    pub x: U32,
-    pub y: U32,
-    pub z: U32,
+    pub _X: U32,
+    pub _Y: U32,
+    pub _Z: U32,
 }
 
 impl WorkgroupDim
 {
     pub fn	New< X: Into< U32>, Y: Into< U32>, Z: Into< U32>>( x: X, y: Y, z: Z) -> Self
     {
-        WorkgroupDim { x: x.into(), y: y.into(), z: z.into() }
+        WorkgroupDim { _X: x.into(), _Y: y.into(), _Z: z.into() }
     }
 
     pub fn	Linear< X: Into< U32>>( x: X) -> Self
     {
-        WorkgroupDim { x: x.into(), y: U32( 1), z: U32( 1) }
+        WorkgroupDim { _X: x.into(), _Y: U32( 1), _Z: U32( 1) }
     }
 
     pub fn	Total( &self) -> U64
     {
-        U64( ( self.x.AsUsize() * self.y.AsUsize() * self.z.AsUsize()) as u64)
+        U64( ( self._X.AsUsize() * self._Y.AsUsize() * self._Z.AsUsize()) as u64)
     }
 }
 

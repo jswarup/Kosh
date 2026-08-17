@@ -12,10 +12,10 @@ use	crate::swarm::traits::{
 /// CUDA device memory buffer abstraction.
 pub struct CudaOxideBuffer
 {
-    label:  String,
-    data:   Arc< RwLock< Buff< u8>>>,
-    size:   U64,
-    usage:  BufferUsage,
+    _Label:  String,
+    _Data:   Arc< RwLock< Buff< u8>>>,
+    _Size:   U64,
+    _Usage:  BufferUsage,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -25,26 +25,26 @@ impl CudaOxideBuffer
     pub fn	New( label: &str, size: U64, usage: BufferUsage) -> Self
     {
         CudaOxideBuffer {
-            label: label.to_string(),
-            data: Arc::new( RwLock::new( Buff::Create( size.0 as u32, |_| 0u8))),
-            size,
-            usage,
+            _Label: label.to_string(),
+            _Data: Arc::new( RwLock::new( Buff::Create( size.0 as u32, |_| 0u8))),
+            _Size: size,
+            _Usage: usage,
         }
     }
 
     pub fn	FromSlice( label: &str, data: &[u8], usage: BufferUsage) -> Self
     {
         CudaOxideBuffer {
-            label: label.to_string(),
-            data: Arc::new( RwLock::new( Buff::from( data))),
-            size: U64( data.len() as u64),
-            usage,
+            _Label: label.to_string(),
+            _Data: Arc::new( RwLock::new( Buff::from( data))),
+            _Size: U64( data.len() as u64),
+            _Usage: usage,
         }
     }
 
     pub fn	Usage( &self) -> BufferUsage
     {
-        self.usage
+        self._Usage
     }
 }
 
@@ -54,17 +54,17 @@ impl IComputeBuffer for CudaOxideBuffer
 {
     fn	Size( &self) -> U64
     {
-        self.size
+        self._Size
     }
 
     fn	Label( &self) -> &str
     {
-        &self.label
+        &self._Label
     }
 
     fn	Write( &mut self, data: &[u8]) -> Result< (), SwarmError>
     {
-        let  	mut guard = self.data.write().map_err( |e| {
+        let  	mut guard = self._Data.write().map_err( |e| {
             SwarmError::BufferError( format!( "CUDA buffer write lock failed: {}", e))
         })?;
         if data.len() > guard.len() {
@@ -76,7 +76,7 @@ impl IComputeBuffer for CudaOxideBuffer
 
     fn	Read( &self) -> Result< Buff< u8>, SwarmError>
     {
-        let  	guard = self.data.read().map_err( |e| {
+        let  	guard = self._Data.read().map_err( |e| {
             SwarmError::BufferError( format!( "CUDA buffer read lock failed: {}", e))
         })?;
         Ok( guard.clone())
@@ -98,10 +98,10 @@ impl IComputeBuffer for CudaOxideBuffer
 /// Compiled CUDA PTX / CUBIN kernel module.
 pub struct CudaOxideKernel
 {
-    name:           String,
-    entryPoint:     String,
-    ptxSource:      String,
-    threadsPerBlock: U32,
+    _Name:           String,
+    _EntryPoint:     String,
+    _PtxSource:      String,
+    _ThreadsPerBlock: U32,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -111,26 +111,26 @@ impl CudaOxideKernel
     pub fn	New( name: &str, entryPoint: &str, ptxSource: &str) -> Self
     {
         CudaOxideKernel {
-            name: name.to_string(),
-            entryPoint: entryPoint.to_string(),
-            ptxSource: ptxSource.to_string(),
-            threadsPerBlock: U32( 64),
+            _Name: name.to_string(),
+            _EntryPoint: entryPoint.to_string(),
+            _PtxSource: ptxSource.to_string(),
+            _ThreadsPerBlock: U32( 64),
         }
     }
 
     pub fn	Ptx( &self) -> &str
     {
-        &self.ptxSource
+        &self._PtxSource
     }
 
     pub fn	EntryPoint( &self) -> &str
     {
-        &self.entryPoint
+        &self._EntryPoint
     }
 
     pub fn	ThreadsPerBlock( &self) -> U32
     {
-        self.threadsPerBlock
+        self._ThreadsPerBlock
     }
 }
 
@@ -140,7 +140,7 @@ impl IComputeKernel for CudaOxideKernel
 {
     fn	Name( &self) -> &str
     {
-        &self.name
+        &self._Name
     }
 
     fn	Backend( &self) -> BackendKind
@@ -159,8 +159,8 @@ impl IComputeKernel for CudaOxideKernel
 /// Cuda-Oxide compute device managing CUDA stream execution and memory.
 pub struct CudaOxideDevice
 {
-    deviceName: String,
-    deviceIndex: U32,
+    _DeviceName: String,
+    _DeviceIndex: U32,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -170,8 +170,8 @@ impl CudaOxideDevice
     pub fn	Init() -> Result< Self, SwarmError>
     {
         Ok( CudaOxideDevice {
-            deviceName: "NVIDIA CUDA Device (Cuda-Oxide)".to_string(),
-            deviceIndex: U32( 0),
+            _DeviceName: "NVIDIA CUDA Device (Cuda-Oxide)".to_string(),
+            _DeviceIndex: U32( 0),
         })
     }
 
@@ -182,12 +182,12 @@ impl CudaOxideDevice
 
     pub fn	DeviceName( &self) -> &str
     {
-        &self.deviceName
+        &self._DeviceName
     }
 
     pub fn	DeviceIndex( &self) -> U32
     {
-        self.deviceIndex
+        self._DeviceIndex
     }
 }
 
@@ -269,12 +269,12 @@ impl IComputeDevice for CudaOxideDevice
             }
         };
 
-        let  	totalThreads = dim.x.AsUsize() * 64;
+        let  	totalThreads = dim._X.AsUsize() * 64;
 
         if cudaKernel.EntryPoint().contains( "double") || cudaKernel.Ptx().contains( "double") {
             if let Some( targetBuf) = buffers.first() {
                 if let Some( cudaBuf) = (*targetBuf).AsAny().downcast_ref::< CudaOxideBuffer>() {
-                    let  	mut guard = cudaBuf.data.write().unwrap();
+                    let  	mut guard = cudaBuf._Data.write().unwrap();
                     let  	floats: &mut [f32] = ( &mut guard[..]).CastSliceMut();
                     for i in 0..totalThreads.min( floats.len()) {
                         gcomp::double_elem( i, floats);
@@ -289,7 +289,7 @@ impl IComputeDevice for CudaOxideDevice
                 let  	inB: &[f32] = rawB.CastSliceFrom();
 
                 if let Some( cudaOut) = buffers[2].AsAny().downcast_ref::< CudaOxideBuffer>() {
-                    let  	mut guard = cudaOut.data.write().unwrap();
+                    let  	mut guard = cudaOut._Data.write().unwrap();
                     let  	outFloats: &mut [f32] = ( &mut guard[..]).CastSliceMut();
                     for i in 0..totalThreads.min( outFloats.len()).min( inA.len()).min( inB.len()) {
                         gcomp::vector_add_elem( i, inA, inB, outFloats);
@@ -302,7 +302,7 @@ impl IComputeDevice for CudaOxideDevice
                 let  	inU32: &[u32] = rawIn.CastSliceFrom();
 
                 if let Some( cudaOut) = buffers[1].AsAny().downcast_ref::< CudaOxideBuffer>() {
-                    let  	mut guard = cudaOut.data.write().unwrap();
+                    let  	mut guard = cudaOut._Data.write().unwrap();
                     let  	outU32: &mut [u32] = ( &mut guard[..]).CastSliceMut();
                     for i in 0..totalThreads.min( outU32.len()).min( inU32.len()) {
                         gcomp::collatz_elem( i, inU32, outU32);
@@ -312,7 +312,7 @@ impl IComputeDevice for CudaOxideDevice
         } else if cudaKernel.EntryPoint().contains( "pointcloud") || cudaKernel.Ptx().contains( "pointcloud") {
             if let Some( cudaOut) = buffers.first() {
                 if let Some( buf) = (*cudaOut).AsAny().downcast_ref::< CudaOxideBuffer>() {
-                    let  	mut guard = buf.data.write().unwrap();
+                    let  	mut guard = buf._Data.write().unwrap();
                     let  	outFloats: &mut [f32] = ( &mut guard[..]).CastSliceMut();
                     for idx in 0..totalThreads {
                         gcomp::pointcloud_elem( idx, outFloats);

@@ -7,9 +7,9 @@ use	crate::silo::{ Buff, U32 };
 
 pub struct ShardLeaf
 {
-    name:   String,
-    path:   String,
-    token:  String,
+    _Name:   String,
+    _Path:   String,
+    _Token:  String,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -19,9 +19,9 @@ impl ShardLeaf
     pub fn	New( name: String, path: String, token: String) -> Self
     {
         Self {
-            name,
-            path,
-            token,
+            _Name: name,
+            _Path: path,
+            _Token: token,
         }
     }
 }
@@ -32,12 +32,12 @@ impl Xplr for ShardLeaf
 {
     fn	Name( &self) -> &str
     {
-        &self.name
+        &self._Name
     }
 
     fn	Path( &self) -> &str
     {
-        &self.path
+        &self._Path
     }
 
     fn	IsLeaf( &self) -> bool
@@ -62,7 +62,7 @@ impl LeafXplr for ShardLeaf
 {
     fn	Size( &self) -> u64
     {
-        self.token.len() as u64
+        self._Token.len() as u64
     }
 
     fn	Extension( &self) -> &str
@@ -75,9 +75,9 @@ impl LeafXplr for ShardLeaf
 
 pub struct ShardBranch
 {
-    name:     String,
-    path:     String,
-    children: Buff< Box< dyn Xplr>>,
+    _Name:     String,
+    _Path:     String,
+    _Children: Buff< Box< dyn Xplr>>,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -87,9 +87,9 @@ impl ShardBranch
     pub fn	New( name: String, path: String, children: Buff< Box< dyn Xplr>>) -> Self
     {
         Self {
-            name,
-            path,
-            children,
+            _Name: name,
+            _Path: path,
+            _Children: children,
         }
     }
 
@@ -109,12 +109,12 @@ impl Xplr for ShardBranch
 {
     fn	Name( &self) -> &str
     {
-        &self.name
+        &self._Name
     }
 
     fn	Path( &self) -> &str
     {
-        &self.path
+        &self._Path
     }
 
     fn	IsLeaf( &self) -> bool
@@ -140,7 +140,7 @@ impl BranchXplr for ShardBranch
     fn	Children( &self) -> Result< Buff< Box< dyn Xplr>>, String>
     {
         let  	mut res: Buff< Box< dyn Xplr>> = Buff::NewEmpty();
-        for child in &self.children {
+        for child in &self._Children {
             if child.IsLeaf() {
                 if let  	Some( leaf) = child.AsLeaf() {
                     res.Push( Box::new( ShardLeaf::New( child.Name().to_string(), child.Path().to_string(), leaf.Size().to_string())));
@@ -154,7 +154,7 @@ impl BranchXplr for ShardBranch
 
     fn	ChildCount( &self) -> Result< U32, String>
     {
-        Ok( self.children.Size())
+        Ok( self._Children.Size())
     }
 }
 

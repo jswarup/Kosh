@@ -5,27 +5,29 @@ use	serde::{ Serialize, Deserialize };
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde( rename_all = "snake_case")]
 pub struct XplrNodeDto
 {
-    pub id:          String,
-    pub name:        String,
-    pub is_leaf:     bool,
-    pub provider:    String,
-    pub size:        u64,
-    pub extension:   String,
+    pub _Id:          String,
+    pub _Name:        String,
+    pub _IsLeaf:      bool,
+    pub _Provider:    String,
+    pub _Size:        u64,
+    pub _Extension:   String,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde( rename_all = "snake_case")]
 pub struct StreamChunkDto
 {
-    pub path:        String,
-    pub offset:      u64,
-    pub length:      usize,
-    pub total_size:  u64,
-    pub is_eof:      bool,
-    pub content:     String,
+    pub _Path:        String,
+    pub _Offset:      u64,
+    pub _Length:      usize,
+    pub _TotalSize:   u64,
+    pub _IsEof:       bool,
+    pub _Content:     String,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -45,12 +47,12 @@ pub trait Xplr
         let  	extension = self.AsLeaf().map( |l| l.Extension().to_string()).unwrap_or_default();
 
         XplrNodeDto {
-            id:          self.Path().to_string(),
-            name:        self.Name().to_string(),
-            is_leaf:     isLeaf,
-            provider:    providerScheme.to_string(),
-            size,
-            extension,
+            _Id:          self.Path().to_string(),
+            _Name:        self.Name().to_string(),
+            _IsLeaf:      isLeaf,
+            _Provider:    providerScheme.to_string(),
+            _Size:        size,
+            _Extension:   extension,
         }
     }
 }

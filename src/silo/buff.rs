@@ -604,8 +604,8 @@ impl< 'de, T: serde::Deserialize< 'de>> serde::Deserialize< 'de> for Buff< T>
 
 pub struct BuffIter< T>
 {
-    buff:   Buff< T>,
-    index:  usize,
+    _Buff:   Buff< T>,
+    _Index:  usize,
 }
 
 impl< T> Iterator for BuffIter< T>
@@ -614,11 +614,11 @@ impl< T> Iterator for BuffIter< T>
 
     fn	next( &mut self) -> Option< Self::Item>
     {
-        if self.index >= self.buff._Ptr.len() {
+        if self._Index >= self._Buff._Ptr.len() {
             return None;
         }
-        let  	val = unsafe { read( self.buff._Ptr.as_ptr().cast::< T>().add( self.index)) };
-        self.index += 1;
+        let  	val = unsafe { read( self._Buff._Ptr.as_ptr().cast::< T>().add( self._Index)) };
+        self._Index += 1;
         Some( val)
     }
 }
@@ -628,15 +628,15 @@ impl< T> Drop for BuffIter< T>
     fn	drop( &mut self)
     {
         unsafe {
-            let  	len = self.buff._Ptr.len();
-            for i in self.index..len {
-                drop_in_place( self.buff._Ptr.as_ptr().cast::< T>().add( i));
+            let  	len = self._Buff._Ptr.len();
+            for i in self._Index..len {
+                drop_in_place( self._Buff._Ptr.as_ptr().cast::< T>().add( i));
             }
             if len > 0 && size_of::< T>() > 0 {
                 let  	layout = Layout::array::< T>( len).unwrap();
-                dealloc( self.buff._Ptr.cast::< u8>().as_ptr(), layout);
+                dealloc( self._Buff._Ptr.cast::< u8>().as_ptr(), layout);
             }
-            forget( std::mem::replace( &mut self.buff, Buff::NewEmpty()));
+            forget( std::mem::replace( &mut self._Buff, Buff::NewEmpty()));
         }
     }
 }
@@ -650,7 +650,7 @@ impl< T> IntoIterator for Buff< T>
 
     fn	into_iter( self) -> Self::IntoIter
     {
-        BuffIter { buff: self, index: 0 }
+        BuffIter { _Buff: self, _Index: 0 }
     }
 }
 
