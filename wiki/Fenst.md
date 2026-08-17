@@ -77,27 +77,37 @@ classDiagram
 
 ---
 
-## 3. Desktop 3D Point Cloud Rendering Pipeline
+## 3. Desktop 3D Graphics Scene GPU Display Pipeline
 
 ```mermaid
 flowchart TD
     Frontend["Tauri Frontend (WebGL/Canvas/HTML)"] -->|Invokes 'XplrProjectPts'| BackendCmd["fenst-app::xplrcmds::XplrProjectPts"]
     BackendCmd --> CheckState["Lookup or Initialize PtsSessionState (Singleton)"]
     
-    CheckState -->|If initial load| GenPoints["Generate 100 points via GPU Compute Shader (gcomp::pts_pointcloud_cs)"]
+    CheckState -->|If initial load| GenPoints["Generate points via GPU Compute Shader (gcomp::pts_pointcloud_cs)"]
     GenPoints --> InitBBox["Initialize Bounding Box [-20, -20, -20] to [20, 20, 20]"]
-    InitBBox --> RotateState["Update angle_x and angle_y based on speed parameter"]
+    InitBBox --> RotateState["Update angle_x and angle_y based on speed/interaction"]
     
     CheckState -->|Existing session| RotateState
-    RotateState --> ProjectBox["Project 8 Bounding Box Vertices via Project3d()"]
-    ProjectBox --> ConnectBox["Assemble 12 Bounding Box Projected Lines"]
-    RotateState --> ProjectCloud["Project all 3D points via Project3d()"]
-    ProjectCloud --> DepthScale["Calculate depth factor, screen radius, and alpha blending"]
+    RotateState --> GPUScene["Dispatch ProjectSceneSwarm via SwarmEngine / Rust-GPU"]
+    GPUScene --> GPUPoints["GPU Point Transform (camera_transform_cs / scene_vs)"]
+    GPUScene --> GPUBox["GPU Bounding Box Vertices Transform (RunCameraTransform)"]
+    GPUBox --> ConnectBox["Assemble 12 Projected Bounding Box Lines"]
     
     ConnectBox --> AssembleDto["Assemble PtsFrameDto"]
-    DepthScale --> AssembleDto
-    AssembleDto --> ReturnJSON["Return serializable frame DTO to Frontend for 60 FPS redraw"]
+    GPUPoints --> AssembleDto
+    AssembleDto --> ReturnJSON["Return serializable frame DTO to Frontend for 60+ FPS redraw"]
 ```
+
+### Dedicated GPU Hardware Shader Pipeline (`gcomp`)
+When a dedicated graphics card is present, `gcomp` provides dedicated Rust-GPU SPIR-V graphics stages:
+1. **Vertex Shader (`scene_vs`)**:
+   - `#[spirv(vertex)]` entrypoint performing 3D camera model-view-projection to NDC coordinates.
+   - Computes depth factor, point size (`gl_PointSize`), and vertex color in parallel per vertex.
+2. **Fragment Shader (`scene_fs`)**:
+   - `#[spirv(fragment)]` entrypoint evaluating point-sprite radial falloff, depth alpha blending, and glowing core.
+3. **Compute Kernel (`camera_transform_cs`)**:
+   - `#[spirv(compute)]` SIMT kernel for unified scene projection across Swarm backends (Rust-GPU, CUDA, CPU fallback).
 
 ---
 
@@ -122,6 +132,7 @@ z_2 &= y \sin(\theta_x) + z_1 \cos(\theta_x) \\
 ### Core Scene Types (`fenst::scene`)
 - `Camera`: Viewport camera (`_PanX`, `_PanY`, `_Zoom`, `_RotX`, `_RotY`, `_Fov`, `_Distance`).
 - `SceneGraph`: Active 3D visualization scene owning camera, points, and bounding box geometry.
+- `SceneDisplayFrame`: GPU-computed 2D graphics scene display payload (`_Points: Buff<(f32, f32, f32, f32, String)>`, `_BoxLines: Buff<((f32, f32), (f32, f32))>`).
 
 ### DTOs (`fenst::mod.rs` & `fenst::xplr.rs`)
 - `XplrEntry`: Directory entry (`name`, `path`, `is_dir`, `size`, `extension`).
@@ -152,5 +163,6 @@ z_2 &= y \sin(\theta_x) + z_1 \cos(\theta_x) \\
 | `XplrFetchPtsPoints`| `(path: Option<String>) -> Result<PtsPointsDto, String>` | Generates 3D points from `.pts` file or `rust-gpu` compute shader. |
 | `XplrOpenContentWindow`| `(app, path) -> Result<(), String>` | Opens file in separate dedicated webview window. |
 | `XplrOpenPtsGraphicsWindow`| `(app, path) -> Result<(), String>` | Opens dedicated 3D shader window for `.pts` point cloud files. |
-| `XplrProjectPts`  | `(path, width, height, dpr, speed, color, pan_x, pan_y, zoom, rot_x, rot_y, is_interactive) -> Result<PtsFrameDto, String>` | Projects SceneGraph 3D points & bounding box with pan/zoom/rotate. |
+| `XplrProjectPts`  | `(path, width, height, dpr, speed, color, pan_x, pan_y, zoom, rot_x, rot_y, is_interactive) -> Result<PtsFrameDto, String>` | Projects SceneGraph 3D points & bounding box with pan/zoom/rotate on GPU. |
 | `XplrResetCamera` | `(path: String) -> Result<Camera, String>` | Resets SceneGraph camera pan, zoom, and rotation to defaults. |
+

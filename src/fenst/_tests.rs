@@ -352,3 +352,57 @@ fn	TestSceneGraphSwarmProjection()
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
+#[test]
+fn	TestSceneGraphSwarmBoundingBoxProjection()
+{
+    use	crate::fenst::SceneGraph;
+    use	crate::silo::Buff;
+    use	crate::swarm::SwarmEngine;
+
+    let  	points = Buff::New();
+    let  	scene = SceneGraph::WithPoints( points, [ -10.0, -10.0, -10.0 ], [ 10.0, 10.0, 10.0 ]);
+    let  	engine = SwarmEngine::Auto();
+
+    let  	res = scene.ProjectBoundingBoxSwarm( &engine, 800.0, 600.0, None);
+    assert!( res.is_ok());
+
+    let  	lines = res.unwrap();
+    assert_eq!( lines.len(), 12);
+
+    let  	cpuLines = scene.ProjectBoundingBox( 800.0, 600.0);
+    assert_eq!( cpuLines.len(), 12);
+    for i in 0..12 {
+        assert!( ( lines[i].0.0 - cpuLines[i].0.0).abs() < 1e-2);
+        assert!( ( lines[i].0.1 - cpuLines[i].0.1).abs() < 1e-2);
+        assert!( ( lines[i].1.0 - cpuLines[i].1.0).abs() < 1e-2);
+        assert!( ( lines[i].1.1 - cpuLines[i].1.1).abs() < 1e-2);
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestSceneGraphSwarmFullSceneProjection()
+{
+    use	crate::fenst::SceneGraph;
+    use	crate::silo::Buff;
+    use	crate::swarm::SwarmEngine;
+
+    let  	mut points = Buff::New();
+    points.Push( [ 0.0, 0.0, 0.0 ]);
+    points.Push( [ 10.0, 10.0, 10.0 ]);
+
+    let  	scene = SceneGraph::WithPoints( points, [ -20.0, -20.0, -20.0 ], [ 20.0, 20.0, 20.0 ]);
+    let  	engine = SwarmEngine::Auto();
+
+    let  	res = scene.ProjectSceneSwarm( &engine, 800.0, 600.0, 1.0, 0, 243, 255, None);
+    assert!( res.is_ok());
+
+    let  	frame = res.unwrap();
+    assert_eq!( frame._Points.len(), 2);
+    assert_eq!( frame._BoxLines.len(), 12);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+

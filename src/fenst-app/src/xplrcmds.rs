@@ -355,24 +355,12 @@ pub fn	XplrProjectPts(
         cam._RotX += speedRad * 0.5;
     }
 
-    let  	( center, scaleNorm) = state._Scene.CalcNormalization();
-    let  	bboxLines = state._Scene.ProjectBoundingBox( width, height);
-
-    let  	mut box_lines = Buff::New();
-    for ( p1, p2) in &bboxLines {
-        box_lines.Push( ProjectedLine {
-            _X1: p1.0,
-            _Y1: p1.1,
-            _X2: p2.0,
-            _Y2: p2.1,
-        });
-    }
-
     let  	( r, g, b) = ParseHexColor( &color);
+    let  	mut box_lines = Buff::New();
     let  	mut projectedPoints = Buff::New();
     let  	camRef = state._Scene.Camera();
 
-    let  	swarmResult = state._Scene.ProjectPointsSwarm(
+    let  	sceneResult = state._Scene.ProjectSceneSwarm(
         &SWARM_ENGINE,
         width,
         height,
@@ -383,8 +371,16 @@ pub fn	XplrProjectPts(
         Some( GCOMP_SPV),
     );
 
-    if let Ok( swarmPoints) = swarmResult {
-        for pt in &swarmPoints {
+    if let Ok( sceneFrame) = sceneResult {
+        for line in &sceneFrame._BoxLines {
+            box_lines.Push( ProjectedLine {
+                _X1: line.0.0,
+                _Y1: line.0.1,
+                _X2: line.1.0,
+                _Y2: line.1.1,
+            });
+        }
+        for pt in &sceneFrame._Points {
             projectedPoints.Push( ProjectedPoint {
                 _X: pt.0,
                 _Y: pt.1,
@@ -395,6 +391,17 @@ pub fn	XplrProjectPts(
         }
     } else {
         // High performance CPU fallback if Swarm device is uninitialized
+        let  	( center, scaleNorm) = state._Scene.CalcNormalization();
+        let  	bboxLines = state._Scene.ProjectBoundingBox( width, height);
+        for ( p1, p2) in &bboxLines {
+            box_lines.Push( ProjectedLine {
+                _X1: p1.0,
+                _Y1: p1.1,
+                _X2: p2.0,
+                _Y2: p2.1,
+            });
+        }
+
         for pt in &state._Scene._Points {
             let  	nx = ( pt[0] - center[0]) * scaleNorm;
             let  	ny = ( pt[1] - center[1]) * scaleNorm;

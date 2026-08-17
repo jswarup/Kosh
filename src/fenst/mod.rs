@@ -399,7 +399,7 @@ pub use	fsxplr::{ FsLeaf, FsBranch };
 pub use	frescoxplr::{ FrescoLeaf, FrescoBranch, FrescoProvider };
 pub use	shardxplr::{ ShardLeaf, ShardBranch, ShardProvider };
 pub use	provider::{ XplrProvider, FsProvider, XplrRegistry, SharedXplrRegistry, CreateDefaultRegistry };
-pub use	scene::{ Camera, SceneGraph };
+pub use	scene::{ Camera, SceneGraph, SceneDisplayFrame };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 

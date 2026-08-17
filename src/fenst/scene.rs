@@ -301,6 +301,88 @@ impl SceneGraph
 
         Ok( result)
     }
+
+    // -----------------------------------------------------------------------------------------------------------------------------
+
+    /// Dispatches bounding box wireframe vertex transformation to the Swarm compute GPU engine
+    /// and connects the projected vertices into 12 line segments.
+    pub fn	ProjectBoundingBoxSwarm(
+        &self,
+        engine: &crate::swarm::SwarmEngine,
+        width: f32,
+        height: f32,
+        spirvBytes: Option< &[u8]>,
+    ) -> Result< Buff< ( ( f32, f32), ( f32, f32))>, crate::swarm::SwarmError>
+    {
+        let  	bMin = self._BboxMin;
+        let  	bMax = self._BboxMax;
+        let  	corners = [
+            [ bMin[0], bMin[1], bMin[2] ],
+            [ bMax[0], bMin[1], bMin[2] ],
+            [ bMax[0], bMax[1], bMin[2] ],
+            [ bMin[0], bMax[1], bMin[2] ],
+            [ bMin[0], bMin[1], bMax[2] ],
+            [ bMax[0], bMin[1], bMax[2] ],
+            [ bMax[0], bMax[1], bMax[2] ],
+            [ bMin[0], bMax[1], bMax[2] ],
+        ];
+
+        let  	camParams = self.CameraParams( width, height);
+        let  	rawProjected = engine.RunCameraTransform( &corners, &camParams, spirvBytes)?;
+
+        let  	edges = [
+            ( 0, 1), ( 1, 2), ( 2, 3), ( 3, 0),
+            ( 4, 5), ( 5, 6), ( 6, 7), ( 7, 4),
+            ( 0, 4), ( 1, 5), ( 2, 6), ( 3, 7),
+        ];
+
+        let  	mut lines = Buff::New();
+        if rawProjected.len() >= 8 {
+            for ( i, j) in &edges {
+                let  	p1 = ( rawProjected[*i][0], rawProjected[*i][1]);
+                let  	p2 = ( rawProjected[*j][0], rawProjected[*j][1]);
+                lines.Push( ( p1, p2));
+            }
+        }
+
+        Ok( lines)
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------------------
+
+    /// Dispatches the complete graphics scene projection (point cloud and bounding box wireframe)
+    /// to the Swarm compute GPU engine for display.
+    pub fn	ProjectSceneSwarm(
+        &self,
+        engine: &crate::swarm::SwarmEngine,
+        width: f32,
+        height: f32,
+        dpr: f32,
+        r: u8,
+        g: u8,
+        b: u8,
+        spirvBytes: Option< &[u8]>,
+    ) -> Result< SceneDisplayFrame, crate::swarm::SwarmError>
+    {
+        let  	points = self.ProjectPointsSwarm( engine, width, height, dpr, r, g, b, spirvBytes)?;
+        let  	boxLines = self.ProjectBoundingBoxSwarm( engine, width, height, spirvBytes)?;
+
+        Ok( SceneDisplayFrame {
+            _Points:    points,
+            _BoxLines:  boxLines,
+        })
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Complete projected 2D display frame for the graphics scene (points and bounding box wireframe).
+#[derive( Clone, Debug)]
+pub struct SceneDisplayFrame
+{
+    pub _Points:    Buff< ( f32, f32, f32, f32, String)>,
+    pub _BoxLines:  Buff< ( ( f32, f32), ( f32, f32))>,
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
