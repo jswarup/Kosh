@@ -234,3 +234,36 @@ fn	TestShardProvider()
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
+#[test]
+fn	TestParsePtsFileStream()
+{
+    use	crate::fenst::XplrParsePtsFile;
+    use	std::fs::File;
+    use	std::io::Write;
+
+    let  	tempPath = std::env::temp_dir().join( "test_stream_cloud.pts");
+    {
+        let  	mut f = File::create( &tempPath).unwrap();
+        writeln!( f, "3").unwrap();
+        writeln!( f, "1.0 2.0 3.0").unwrap();
+        writeln!( f, "4.0 5.0 6.0 100.0").unwrap();
+        writeln!( f, "7.0 8.0 9.0 255 128 64").unwrap();
+    }
+
+    let  	result = XplrParsePtsFile( tempPath.to_str().unwrap());
+    assert!( result.is_ok(), "Failed to parse pts file stream: {:?}", result.err());
+
+    let  	dto = result.unwrap();
+    assert_eq!( dto._Count, 3);
+    assert_eq!( dto._Points.len(), 3);
+    assert_eq!( dto._Points[0], [1.0, 2.0, 3.0]);
+    assert_eq!( dto._Points[1], [4.0, 5.0, 6.0]);
+    assert_eq!( dto._Points[2], [7.0, 8.0, 9.0]);
+    assert_eq!( dto._BboxMin, [1.0, 2.0, 3.0]);
+    assert_eq!( dto._BboxMax, [7.0, 8.0, 9.0]);
+
+    let  	_ = std::fs::remove_file( &tempPath);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+

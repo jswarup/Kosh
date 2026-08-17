@@ -111,10 +111,15 @@ pub fn	XplrFetchChunk( path: String, offset: u64, size: usize) -> Result< Stream
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Generates 100 pseudo-random 3D points on the GPU using the rust-gpu pts_pointcloud_cs compute shader.
+/// Generates 3D points from a .pts file (using fleck::ParsePtsStream) or from GPU compute shader if path is empty/omitted.
 #[tauri::command]
-pub fn	XplrFetchPtsPoints() -> Result< PtsPointsDto, String>
+pub fn	XplrFetchPtsPoints( path: Option< String>) -> Result< PtsPointsDto, String>
 {
+    if let Some( ref filePath) = path {
+        if !filePath.is_empty() && std::path::Path::new( filePath).exists() {
+            return kosh::fenst::XplrParsePtsFile( filePath);
+        }
+    }
     kosh::fenst::XplrFetchPtsPoints( GCOMP_SPV)
 }
 
@@ -209,41 +214,55 @@ static PTS_STATE: LazyLock< Mutex< HashMap< String, PtsSessionState>>> = LazyLoc
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Serialize, Debug)]
-#[serde( rename_all = "snake_case")]
 pub struct ProjectedPoint
 {
+    #[serde( rename = "x")]
     pub _X:            f32,
+    #[serde( rename = "y")]
     pub _Y:            f32,
+    #[serde( rename = "radius")]
     pub _Radius:       f32,
+    #[serde( rename = "core_radius")]
     pub _CoreRadius:  f32,
+    #[serde( rename = "color")]
     pub _Color:        String,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Serialize, Debug)]
-#[serde( rename_all = "snake_case")]
 pub struct ProjectedLine
 {
+    #[serde( rename = "x1")]
     pub _X1:   f32,
+    #[serde( rename = "y1")]
     pub _Y1:   f32,
+    #[serde( rename = "x2")]
     pub _X2:   f32,
+    #[serde( rename = "y2")]
     pub _Y2:   f32,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Serialize, Debug)]
-#[serde( rename_all = "snake_case")]
 pub struct PtsFrameDto
 {
+    #[serde( rename = "points")]
     pub _Points:         Buff< ProjectedPoint>,
+    #[serde( rename = "box_lines")]
     pub _BoxLines:      Buff< ProjectedLine>,
+    #[serde( rename = "file_name")]
     pub _FileName:      String,
+    #[serde( rename = "count")]
     pub _Count:          usize,
+    #[serde( rename = "bbox_label")]
     pub _BboxLabel:     String,
+    #[serde( rename = "shader_status")]
     pub _ShaderStatus:  String,
+    #[serde( rename = "overlay_text1")]
     pub _OverlayText1:  String,
+    #[serde( rename = "overlay_text2")]
     pub _OverlayText2:  String,
 }
 
@@ -309,12 +328,23 @@ pub fn	XplrProjectPts(
 {
     let  	mut guard = PTS_STATE.lock().map_err( |e| e.to_string())?;
     let  	state = guard.entry( path.clone()).or_insert_with( || {
-        let  	dto = kosh::fenst::XplrFetchPtsPoints( GCOMP_SPV).unwrap_or_else( |_| PtsPointsDto {
-            _Points: Buff::New(),
-            _Count: 0,
-            _BboxMin: [ 0.0, 0.0, 0.0 ],
-            _BboxMax: [ 0.0, 0.0, 0.0 ],
-        });
+        let  	dto = if std::path::Path::new( &path).exists() {
+            kosh::fenst::XplrParsePtsFile( &path)
+                .or_else( |_| kosh::fenst::XplrFetchPtsPoints( GCOMP_SPV))
+                .unwrap_or_else( |_| PtsPointsDto {
+                    _Points: Buff::New(),
+                    _Count: 0,
+                    _BboxMin: [ 0.0, 0.0, 0.0 ],
+                    _BboxMax: [ 0.0, 0.0, 0.0 ],
+                })
+        } else {
+            kosh::fenst::XplrFetchPtsPoints( GCOMP_SPV).unwrap_or_else( |_| PtsPointsDto {
+                _Points: Buff::New(),
+                _Count: 0,
+                _BboxMin: [ 0.0, 0.0, 0.0 ],
+                _BboxMax: [ 0.0, 0.0, 0.0 ],
+            })
+        };
 
         PtsSessionState {
             _Points: dto._Points,
@@ -334,15 +364,24 @@ pub fn	XplrProjectPts(
     let  	bboxMin = state._BboxMin;
     let  	bboxMax = state._BboxMax;
 
+    let  	cx = ( bboxMin[0] + bboxMax[0]) * 0.5;
+    let  	cy = ( bboxMin[1] + bboxMax[1]) * 0.5;
+    let  	cz = ( bboxMin[2] + bboxMax[2]) * 0.5;
+    let  	dx = bboxMax[0] - bboxMin[0];
+    let  	dy = bboxMax[1] - bboxMin[1];
+    let  	dz = bboxMax[2] - bboxMin[2];
+    let  	maxDim = dx.max( dy).max( dz);
+    let  	scaleNorm = if maxDim > 1e-4 { 35.0 / maxDim } else { 1.0 };
+
     let  	bboxVerts = [
-        [ bboxMin[0], bboxMin[1], bboxMin[2] ],
-        [ bboxMax[0], bboxMin[1], bboxMin[2] ],
-        [ bboxMax[0], bboxMax[1], bboxMin[2] ],
-        [ bboxMin[0], bboxMax[1], bboxMin[2] ],
-        [ bboxMin[0], bboxMin[1], bboxMax[2] ],
-        [ bboxMax[0], bboxMin[1], bboxMax[2] ],
-        [ bboxMax[0], bboxMax[1], bboxMax[2] ],
-        [ bboxMin[0], bboxMax[1], bboxMax[2] ],
+        [ ( bboxMin[0] - cx) * scaleNorm, ( bboxMin[1] - cy) * scaleNorm, ( bboxMin[2] - cz) * scaleNorm ],
+        [ ( bboxMax[0] - cx) * scaleNorm, ( bboxMin[1] - cy) * scaleNorm, ( bboxMin[2] - cz) * scaleNorm ],
+        [ ( bboxMax[0] - cx) * scaleNorm, ( bboxMax[1] - cy) * scaleNorm, ( bboxMin[2] - cz) * scaleNorm ],
+        [ ( bboxMin[0] - cx) * scaleNorm, ( bboxMax[1] - cy) * scaleNorm, ( bboxMin[2] - cz) * scaleNorm ],
+        [ ( bboxMin[0] - cx) * scaleNorm, ( bboxMin[1] - cy) * scaleNorm, ( bboxMax[2] - cz) * scaleNorm ],
+        [ ( bboxMax[0] - cx) * scaleNorm, ( bboxMin[1] - cy) * scaleNorm, ( bboxMax[2] - cz) * scaleNorm ],
+        [ ( bboxMax[0] - cx) * scaleNorm, ( bboxMax[1] - cy) * scaleNorm, ( bboxMax[2] - cz) * scaleNorm ],
+        [ ( bboxMin[0] - cx) * scaleNorm, ( bboxMax[1] - cy) * scaleNorm, ( bboxMax[2] - cz) * scaleNorm ],
     ];
 
     let  	bboxEdges = [
@@ -372,7 +411,10 @@ pub fn	XplrProjectPts(
     let  	( r, g, b) = ParseHexColor( &color);
     let  	mut projectedPoints = Buff::New();
     for pt in &state._Points {
-        let  	( px, py, pz) = Project3d( pt[0], pt[1], pt[2], angleX, angleY, width, height);
+        let  	nx = ( pt[0] - cx) * scaleNorm;
+        let  	ny = ( pt[1] - cy) * scaleNorm;
+        let  	nz = ( pt[2] - cz) * scaleNorm;
+        let  	( px, py, pz) = Project3d( nx, ny, nz, angleX, angleY, width, height);
         let  	depthFactor = 0.3f32.max( 1.0f32.min( ( 300.0 - pz) / 400.0));
         let  	radius = ( 3.0 + depthFactor * 4.0) * dpr;
         let  	alpha = 0.5 + depthFactor * 0.5;
@@ -394,13 +436,23 @@ pub fn	XplrProjectPts(
         .map( |n| n.to_string_lossy().into_owned())
         .unwrap_or_else( || "Block.pts".to_string());
 
-    let  	bboxLabel = format!( "[{}, {}, {}] → [{}, {}, {}]",
-        bboxMin[0] as i32, bboxMin[1] as i32, bboxMin[2] as i32,
-        bboxMax[0] as i32, bboxMax[1] as i32, bboxMax[2] as i32
+    let  	bboxLabel = format!( "[{:.2}, {:.2}, {:.2}] → [{:.2}, {:.2}, {:.2}]",
+        bboxMin[0], bboxMin[1], bboxMin[2],
+        bboxMax[0], bboxMax[1], bboxMax[2]
     );
 
+    let  	isParsedFile = std::path::Path::new( &path).exists();
     let  	overlay1 = format!( "Points: {} | BBox: {}", state._Points.len(), bboxLabel);
-    let  	overlay2 = "Shader Backend: Rust-GPU (gcomp::pts_pointcloud_cs)".to_string();
+    let  	overlay2 = if isParsedFile {
+        format!( "Source: {}", fileName)
+    } else {
+        "Shader Backend: Rust-GPU (gcomp::pts_pointcloud_cs)".to_string()
+    };
+    let  	shaderStatus = if isParsedFile {
+        format!( "Stream Parser: ParsePtsStream ({} pts)", state._Points.len())
+    } else {
+        "Shader Active: gcomp::pts_pointcloud_cs".to_string()
+    };
 
     Ok( PtsFrameDto {
         _Points: projectedPoints,
@@ -408,10 +460,97 @@ pub fn	XplrProjectPts(
         _FileName: fileName,
         _Count: state._Points.len(),
         _BboxLabel: bboxLabel,
-        _ShaderStatus: "Shader Active: gcomp::pts_pointcloud_cs".to_string(),
+        _ShaderStatus: shaderStatus,
         _OverlayText1: overlay1,
         _OverlayText2: overlay2,
     })
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+#[cfg( test)]
+mod _tests
+{
+    use	super::*;
+    use	std::fs::File;
+    use	std::io::Write;
+
+    #[test]
+    fn	TestXplrFetchPtsPointsWithFile()
+    {
+        let  	tempPath = std::env::temp_dir().join( "test_fenst_cloud.pts");
+        {
+            let  	mut f = File::create( &tempPath).unwrap();
+            writeln!( f, "3").unwrap();
+            writeln!( f, "10.0 20.0 30.0").unwrap();
+            writeln!( f, "40.0 50.0 60.0").unwrap();
+            writeln!( f, "70.0 80.0 90.0").unwrap();
+        }
+
+        let  	res = XplrFetchPtsPoints( Some( tempPath.to_str().unwrap().to_string()));
+        assert!( res.is_ok());
+
+        let  	dto = res.unwrap();
+        assert_eq!( dto._Count, 3);
+        assert_eq!( dto._Points.len(), 3);
+        assert_eq!( dto._Points[0], [10.0, 20.0, 30.0]);
+        assert_eq!( dto._BboxMin, [10.0, 20.0, 30.0]);
+        assert_eq!( dto._BboxMax, [70.0, 80.0, 90.0]);
+
+        let  	_ = std::fs::remove_file( &tempPath);
+    }
+
+    #[test]
+    fn	TestXplrProjectPtsWithFile()
+    {
+        let  	tempPath = std::env::temp_dir().join( "test_fenst_project.pts");
+        {
+            let  	mut f = File::create( &tempPath).unwrap();
+            writeln!( f, "2").unwrap();
+            writeln!( f, "0.0 0.0 0.0").unwrap();
+            writeln!( f, "10.0 10.0 10.0").unwrap();
+        }
+
+        let  	pathStr = tempPath.to_str().unwrap().to_string();
+        let  	res = XplrProjectPts( pathStr, 800.0, 600.0, 1.0, 30.0, "#00f3ff".to_string());
+        assert!( res.is_ok());
+
+        let  	frame = res.unwrap();
+        assert_eq!( frame._Count, 2);
+        assert_eq!( frame._Points.len(), 2);
+        assert_eq!( frame._BoxLines.len(), 12);
+        assert!( frame._ShaderStatus.contains( "ParsePtsStream"));
+
+        let  	_ = std::fs::remove_file( &tempPath);
+    }
+
+    #[test]
+    fn	TestXplrCommandsGeneral()
+    {
+        let  	contentRes = XplrFetchContent( "Cargo.toml".to_string());
+        assert!( contentRes.is_ok());
+
+        let  	chunkRes = XplrFetchChunk( "Cargo.toml".to_string(), 0, 50);
+        assert!( chunkRes.is_ok());
+        assert_eq!( chunkRes.unwrap()._Length, 50);
+
+        let  	infoRes = XplrLeafInfo( "Cargo.toml".to_string());
+        assert!( infoRes.is_ok());
+        assert_eq!( infoRes.unwrap()._Name, "Cargo.toml");
+    }
+
+    #[test]
+    fn	TestWorkbenchBunnyDataParsing()
+    {
+        let  	bunnyPath = std::path::Path::new( "workbench/bunnyData.pts");
+        if bunnyPath.exists() {
+            let  	res = XplrFetchPtsPoints( Some( "workbench/bunnyData.pts".to_string()));
+            assert!( res.is_ok());
+            let  	dto = res.unwrap();
+            assert_eq!( dto._Count, 30571);
+            assert_eq!( dto._Points.len(), 30571);
+        }
+    }
 }
 
 

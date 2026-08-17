@@ -93,9 +93,40 @@ function formatSize(bytes) {
 
 // ---- Explorer Tree ----
 
+function normalizeEntry(entry) {
+    if (!entry) return entry;
+    const path = entry.path ?? entry._path ?? '';
+    const name = entry.name ?? entry._name ?? (path.split(/[/\\]/).pop() || '');
+    const is_dir = entry.is_dir !== undefined ? Boolean(entry.is_dir) : (entry._is_dir !== undefined ? Boolean(entry._is_dir) : false);
+    const size = entry.size ?? entry._size ?? 0;
+    const extension = entry.extension ?? entry._extension ?? (name.includes('.') ? name.split('.').pop() : '');
+    return { path, name, is_dir, size, extension };
+}
+
+function normalizeContent(res) {
+    if (!res) return { path: '', content: '', size: 0, line_count: 1 };
+    return {
+        path: res.path ?? res._path ?? '',
+        content: res.content ?? res._content ?? '',
+        size: res.size ?? res._size ?? 0,
+        line_count: res.line_count ?? res._line_count ?? 1,
+    };
+}
+
+function normalizePtsData(dto) {
+    if (!dto) return null;
+    return {
+        points: dto.points ?? dto._points ?? [],
+        count: dto.count ?? dto._count ?? 0,
+        bbox_min: dto.bbox_min ?? dto._bbox_min ?? [-20, -20, -20],
+        bbox_max: dto.bbox_max ?? dto._bbox_max ?? [20, 20, 20],
+    };
+}
+
 async function loadDirectory(path) {
     try {
-        const entries = await invoke('XplrListEntries', { path });
+        const rawEntries = await invoke('XplrListEntries', { path });
+        const entries = (rawEntries || []).map(normalizeEntry);
         return entries;
     } catch (err) {
         console.error('Failed to load directory:', err);
@@ -103,7 +134,8 @@ async function loadDirectory(path) {
     }
 }
 
-function createTreeItem(entry, depth) {
+function createTreeItem(rawEntry, depth) {
+    const entry = normalizeEntry(rawEntry);
     const item = document.createElement('div');
     item.className = 'tree-item';
     item.dataset.path = entry.path;
@@ -244,15 +276,15 @@ function renderFileContent(tabOrContent) {
         wrapper.style.cssText = 'width:100%; height:100%; position:relative; background:#0b0f19; overflow:hidden; display:flex; flex-direction:column;';
 
         const ptCount = ptsData ? ptsData.count : 0;
-        const bboxLabel = ptsData ? `[${ptsData.bbox_min.map(v => v.toFixed(0)).join(', ')}] → [${ptsData.bbox_max.map(v => v.toFixed(0)).join(', ')}]` : '—';
+        const bboxLabel = ptsData ? `[${ptsData.bbox_min.map(v => v.toFixed(2)).join(', ')}] → [${ptsData.bbox_max.map(v => v.toFixed(2)).join(', ')}]` : '—';
 
         wrapper.innerHTML = `
             <div style="height:40px; background:rgba(15,23,42,0.95); border-bottom:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:space-between; padding:0 16px;">
                 <div style="display:flex; align-items:center; gap:8px;">
-                    <span style="background:linear-gradient(135deg, #00f3ff, #0077ff); color:#000; font-weight:700; font-size:10px; padding:2px 6px; border-radius:10px; text-transform:uppercase;">Rust-GPU</span>
+                    <span style="background:linear-gradient(135deg, #00f3ff, #0077ff); color:#000; font-weight:700; font-size:10px; padding:2px 6px; border-radius:10px; text-transform:uppercase;">ParsePtsStream</span>
                     <span style="font-size:13px; font-weight:600; color:#f8fafc;">${path.split(/[/\\]/).pop() || 'pointcloud.pts'}</span>
                 </div>
-                <span style="font-family:monospace; font-size:12px; color:#00f3ff;">gcomp::pts_pointcloud_cs | ${ptCount} Points | BBox: ${bboxLabel}</span>
+                <span style="font-family:monospace; font-size:12px; color:#00f3ff;">${ptCount} Points | BBox: ${bboxLabel}</span>
             </div>
             <div style="flex:1; position:relative; width:100%; height:calc(100% - 40px);">
                 <canvas id="main-pts-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; display:block;"></canvas>
@@ -271,12 +303,25 @@ function renderFileContent(tabOrContent) {
             const bMin = ptsData.bbox_min;
             const bMax = ptsData.bbox_max;
 
-            // Bounding box vertices
+            const cx = (bMin[0] + bMax[0]) * 0.5;
+            const cy = (bMin[1] + bMax[1]) * 0.5;
+            const cz = (bMin[2] + bMax[2]) * 0.5;
+            const dx = bMax[0] - bMin[0];
+            const dy = bMax[1] - bMin[1];
+            const dz = bMax[2] - bMin[2];
+            const maxDim = Math.max(dx, dy, dz);
+            const scaleNorm = maxDim > 1e-4 ? (35.0 / maxDim) : 1.0;
+
+            // Bounding box vertices normalized and centered
             const bboxVerts = [
-                [bMin[0], bMin[1], bMin[2]], [bMax[0], bMin[1], bMin[2]],
-                [bMax[0], bMax[1], bMin[2]], [bMin[0], bMax[1], bMin[2]],
-                [bMin[0], bMin[1], bMax[2]], [bMax[0], bMin[1], bMax[2]],
-                [bMax[0], bMax[1], bMax[2]], [bMin[0], bMax[1], bMax[2]]
+                [(bMin[0] - cx) * scaleNorm, (bMin[1] - cy) * scaleNorm, (bMin[2] - cz) * scaleNorm],
+                [(bMax[0] - cx) * scaleNorm, (bMin[1] - cy) * scaleNorm, (bMin[2] - cz) * scaleNorm],
+                [(bMax[0] - cx) * scaleNorm, (bMax[1] - cy) * scaleNorm, (bMin[2] - cz) * scaleNorm],
+                [(bMin[0] - cx) * scaleNorm, (bMax[1] - cy) * scaleNorm, (bMin[2] - cz) * scaleNorm],
+                [(bMin[0] - cx) * scaleNorm, (bMin[1] - cy) * scaleNorm, (bMax[2] - cz) * scaleNorm],
+                [(bMax[0] - cx) * scaleNorm, (bMin[1] - cy) * scaleNorm, (bMax[2] - cz) * scaleNorm],
+                [(bMax[0] - cx) * scaleNorm, (bMax[1] - cy) * scaleNorm, (bMax[2] - cz) * scaleNorm],
+                [(bMin[0] - cx) * scaleNorm, (bMax[1] - cy) * scaleNorm, (bMax[2] - cz) * scaleNorm]
             ];
             const bboxEdges = [
                 [0,1],[1,2],[2,3],[3,0],
@@ -320,11 +365,14 @@ function renderFileContent(tabOrContent) {
 
                 // Draw point cloud
                 ctx.shadowColor = '#00f3ff';
-                ctx.shadowBlur = 8 * dpr;
+                ctx.shadowBlur = 6 * dpr;
                 points.forEach(pt => {
-                    const p = project(pt[0], pt[1], pt[2], canvas.width, canvas.height);
+                    const nx = (pt[0] - cx) * scaleNorm;
+                    const ny = (pt[1] - cy) * scaleNorm;
+                    const nz = (pt[2] - cz) * scaleNorm;
+                    const p = project(nx, ny, nz, canvas.width, canvas.height);
                     const depthFactor = Math.max(0.3, Math.min(1.0, (300 - p.z) / 400));
-                    const radius = (3 + depthFactor * 3) * dpr;
+                    const radius = (2.5 + depthFactor * 2.5) * dpr;
                     const alpha = 0.5 + depthFactor * 0.5;
                     ctx.fillStyle = `rgba(0, 243, 255, ${alpha})`;
                     ctx.beginPath();
@@ -455,7 +503,8 @@ function closeTab(tabId) {
     }
 }
 
-async function selectFile(entry, treeItem) {
+async function selectFile(rawEntry, treeItem) {
+    const entry = normalizeEntry(rawEntry);
     if (treeItem) {
         selectTreeItem(treeItem);
     }
@@ -476,12 +525,14 @@ async function selectFile(entry, treeItem) {
 
         if (isPts) {
             try {
-                ptsData = await invoke('XplrFetchPtsPoints');
+                const rawPts = await invoke('XplrFetchPtsPoints', { path: entry.path });
+                ptsData = normalizePtsData(rawPts);
             } catch (e) {
-                console.error('GPU point cloud generation failed:', e);
+                console.error('GPU point cloud generation / stream parse failed:', e);
             }
         } else {
-            result = await invoke('XplrFetchContent', { path: entry.path });
+            const rawContent = await invoke('XplrFetchContent', { path: entry.path });
+            result = normalizeContent(rawContent);
         }
 
         const tabId = 'tab_' + Math.random().toString(36).substr(2, 9);
@@ -491,7 +542,7 @@ async function selectFile(entry, treeItem) {
             name: entry.name || entry.path.split(/[/\\]/).pop(),
             content: result.content,
             line_count: result.line_count,
-            size: result.size,
+            size: result.size || entry.size,
             isPts: isPts,
             ptsData: ptsData
         };

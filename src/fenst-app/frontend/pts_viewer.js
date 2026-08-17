@@ -44,7 +44,7 @@
         let frameData;
         try {
             const { invoke } = window.__TAURI__.core;
-            frameData = await invoke('XplrProjectPts', {
+            const rawFrame = await invoke('XplrProjectPts', {
                 path: filePath,
                 width: width,
                 height: height,
@@ -52,6 +52,25 @@
                 speed: speed,
                 color: color
             });
+            frameData = {
+                file_name: rawFrame.file_name ?? rawFrame._file_name ?? 'pointcloud.pts',
+                count: rawFrame.count ?? rawFrame._count ?? 0,
+                bbox_label: rawFrame.bbox_label ?? rawFrame._bbox_label ?? '—',
+                shader_status: rawFrame.shader_status ?? rawFrame._shader_status ?? '',
+                box_lines: (rawFrame.box_lines ?? rawFrame._box_lines ?? []).map(l => ({
+                    x1: l.x1 ?? l._x1 ?? 0,
+                    y1: l.y1 ?? l._y1 ?? 0,
+                    x2: l.x2 ?? l._x2 ?? 0,
+                    y2: l.y2 ?? l._y2 ?? 0,
+                })),
+                points: (rawFrame.points ?? rawFrame._points ?? []).map(p => ({
+                    x: p.x ?? p._x ?? 0,
+                    y: p.y ?? p._y ?? 0,
+                    radius: p.radius ?? p._radius ?? 3,
+                    core_radius: p.core_radius ?? p._core_radius ?? 1,
+                    color: p.color ?? p._color ?? '#00f3ff',
+                })),
+            };
         } catch (err) {
             console.error('Failed to compute frame in Rust:', err);
             requestAnimationFrame(render);

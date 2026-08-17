@@ -110,27 +110,43 @@ impl BuffStream<io::Stdin> {
 }
 
 impl<R: Read> BuffStream<R> {
-    fn EnsureCached(&mut self, required: usize) -> io::Result<()> {
-        let mut currSize = self._Buff.Size().AsUsize();
+    pub fn	EnsureCached( &mut self, required: usize) -> io::Result< ()> {
+        let  	mut currSize = self._Buff.Size().AsUsize();
 
         while currSize < required {
-            let chunkSize = cmp::max(4096, required - currSize);
-            let mut chunk = Buff::Create( chunkSize, |_| 0u8);
-            let readBytes = self._Inner.read(&mut chunk)?;
+            let  	chunkSize = cmp::max( 4096, required - currSize);
+            let  	mut chunk = Buff::Create( chunkSize, |_| 0u8);
+            let  	readBytes = self._Inner.read( &mut chunk)?;
 
             if readBytes == 0 {
                 break;
             }
 
-            let newSize = currSize + readBytes;
-            self._Buff.Resize(U32(newSize as u32), |_| U8::_0);
+            let  	newSize = currSize + readBytes;
+            self._Buff.Resize( U32( newSize as u32), |_| U8::_0);
 
-            let slice = (&mut *self._Buff).Cast::<&mut [u8]>();
-            slice[currSize..newSize].copy_from_slice(&chunk[..readBytes]);
+            let  	slice = ( &mut *self._Buff).Cast::< &mut [u8]>();
+            slice[currSize..newSize].copy_from_slice( &chunk[..readBytes]);
             currSize = newSize;
         }
 
-        Ok(())
+        Ok( ())
+    }
+
+    pub fn	ReadAll( &mut self) -> io::Result< ()> {
+        let  	mut chunk = [0u8; 65536];
+        loop {
+            let  	readBytes = self._Inner.read( &mut chunk)?;
+            if readBytes == 0 {
+                break;
+            }
+            let  	currSize = self._Buff.Size().AsUsize();
+            let  	newSize = currSize + readBytes;
+            self._Buff.Resize( U32( newSize as u32), |_| U8::_0);
+            let  	slice = ( &mut *self._Buff).Cast::< &mut [u8]>();
+            slice[currSize..newSize].copy_from_slice( &chunk[..readBytes]);
+        }
+        Ok( ())
     }
 }
 
