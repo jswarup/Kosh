@@ -298,6 +298,77 @@ function renderFileContent(tabOrContent) {
             const ctx = canvas.getContext('2d');
             let angleX = 0.4;
             let angleY = 0.6;
+            let panX = 0.0;
+            let panY = 0.0;
+            let zoom = 1.0;
+            let isDragging = false;
+            let dragMode = 'rotate';
+            let lastMouseX = 0;
+            let lastMouseY = 0;
+            let isInteractive = false;
+            let interactiveTimer = null;
+
+            function markInteractive() {
+                isInteractive = true;
+                if (interactiveTimer) clearTimeout(interactiveTimer);
+                interactiveTimer = setTimeout(() => {
+                    if (!isDragging) isInteractive = false;
+                }, 500);
+            }
+
+            canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            canvas.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                dragMode = (e.button === 2 || e.shiftKey || e.button === 1) ? 'pan' : 'rotate';
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                canvas.style.cursor = dragMode === 'pan' ? 'move' : 'grabbing';
+                markInteractive();
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - lastMouseX;
+                const dy = e.clientY - lastMouseY;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+
+                if (dragMode === 'rotate') {
+                    angleY += dx * 0.008;
+                    angleX += dy * 0.008;
+                } else {
+                    panX += dx;
+                    panY += dy;
+                }
+                markInteractive();
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    canvas.style.cursor = 'grab';
+                    markInteractive();
+                }
+            });
+
+            canvas.style.cursor = 'grab';
+
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const factor = e.deltaY < 0 ? 1.12 : 0.89;
+                zoom = Math.max(0.05, Math.min(50.0, zoom * factor));
+                markInteractive();
+            }, { passive: false });
+
+            canvas.addEventListener('dblclick', () => {
+                panX = 0.0;
+                panY = 0.0;
+                zoom = 1.0;
+                angleX = 0.4;
+                angleY = 0.6;
+                markInteractive();
+            });
 
             const points = ptsData.points;
             const bMin = ptsData.bbox_min;
@@ -334,8 +405,8 @@ function renderFileContent(tabOrContent) {
                 const x1 = x * cosY + z * sinY, z1 = -x * sinY + z * cosY;
                 const cosX = Math.cos(angleX), sinX = Math.sin(angleX);
                 const y2 = y * cosX - z1 * sinX, z2 = y * sinX + z1 * cosX;
-                const scale = 350 / (250 + z2);
-                return { x: width / 2 + x1 * scale, y: height / 2 - y2 * scale, z: z2 };
+                const scale = (350 * zoom) / (250 + z2);
+                return { x: width / 2 + panX + x1 * scale, y: height / 2 + panY - y2 * scale, z: z2 };
             }
 
             function draw() {
@@ -383,10 +454,12 @@ function renderFileContent(tabOrContent) {
                 ctx.shadowBlur = 0;
                 ctx.fillStyle = 'rgba(226,232,240,0.8)';
                 ctx.font = `${12 * dpr}px monospace`;
-                ctx.fillText(`${ptCount} Points | BBox: ${bboxLabel}`, 16 * dpr, canvas.height - 16 * dpr);
+                ctx.fillText(`${ptCount} Points | Zoom: ${zoom.toFixed(2)}x | Pan: (${Math.round(panX)}, ${Math.round(panY)})`, 16 * dpr, canvas.height - 16 * dpr);
 
-                angleY += 0.02;
-                angleX += 0.01;
+                if (!isDragging && !isInteractive) {
+                    angleY += 0.02;
+                    angleX += 0.01;
+                }
                 requestAnimationFrame(draw);
             }
             requestAnimationFrame(draw);

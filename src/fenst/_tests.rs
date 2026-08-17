@@ -267,3 +267,63 @@ fn	TestParsePtsFileStream()
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
+#[test]
+fn	TestCameraOperations()
+{
+    use	crate::fenst::Camera;
+
+    let  	mut cam = Camera::New();
+    assert_eq!( cam._PanX, 0.0);
+    assert_eq!( cam._PanY, 0.0);
+    assert_eq!( cam._Zoom, 1.0);
+
+    cam.Pan( 50.0, -30.0);
+    assert_eq!( cam._PanX, 50.0);
+    assert_eq!( cam._PanY, -30.0);
+
+    cam.Zoom( 1.5);
+    assert_eq!( cam._Zoom, 1.5);
+
+    cam.Rotate( 0.1, 0.2);
+    assert!( ( cam._RotX - 0.5).abs() < 1e-5);
+    assert!( ( cam._RotY - 0.8).abs() < 1e-5);
+
+    let  	( px, py, pz) = cam.Project( 0.0, 0.0, 0.0, 800.0, 600.0);
+    assert!( px > 0.0 && px < 800.0);
+    assert!( py > 0.0 && py < 600.0);
+    assert_eq!( pz, 0.0);
+
+    cam.Reset();
+    assert_eq!( cam._PanX, 0.0);
+    assert_eq!( cam._PanY, 0.0);
+    assert_eq!( cam._Zoom, 1.0);
+    assert_eq!( cam._RotX, 0.4);
+    assert_eq!( cam._RotY, 0.6);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestSceneGraph()
+{
+    use	crate::fenst::SceneGraph;
+    use	crate::silo::Buff;
+
+    let  	mut points = Buff::New();
+    points.Push( [ -10.0, -10.0, -10.0 ]);
+    points.Push( [ 10.0, 10.0, 10.0 ]);
+
+    let  	mut scene = SceneGraph::WithPoints( points, [ -10.0, -10.0, -10.0 ], [ 10.0, 10.0, 10.0 ]);
+    assert_eq!( scene._Points.len(), 2);
+
+    let  	lines = scene.ProjectBoundingBox( 800.0, 600.0);
+    assert_eq!( lines.len(), 12);
+
+    scene.CameraMut().Pan( 10.0, 20.0);
+    scene.CameraMut().Zoom( 2.0);
+    assert_eq!( scene.Camera()._PanX, 10.0);
+    assert_eq!( scene.Camera()._Zoom, 2.0);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+

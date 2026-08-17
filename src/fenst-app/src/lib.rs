@@ -121,6 +121,7 @@ pub fn	run()
             xplrcmds::XplrOpenContentWindow,
             xplrcmds::XplrOpenPtsGraphicsWindow,
             xplrcmds::XplrProjectPts,
+            xplrcmds::XplrResetCamera,
         ])
         .run( tauri::generate_context!())
         .expect( "error while running Fenst application");

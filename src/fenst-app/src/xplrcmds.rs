@@ -1,7 +1,7 @@
 //-- xplrcmds.rs ------------------------------------------------------------------------------------------------------------------
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
 use	tauri::Manager;
-use	kosh::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, CreateDefaultRegistry };
+use	kosh::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, CreateDefaultRegistry, Camera, SceneGraph };
 use	kosh::silo::Buff;
 use	serde::Serialize;
 use	std::collections::HashMap;
@@ -91,18 +91,23 @@ pub fn	XplrChildren( uri: String) -> Result< Buff< XplrNodeDto>, String>
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Returns a list of supported Xplr provider schemes.
+/// Returns the list of registered provider scheme prefixes.
 #[tauri::command]
 pub fn	XplrListProviders() -> Result< Buff< String>, String>
 {
     let  	registry = CreateDefaultRegistry();
     let  	guard = registry.read().map_err( |e| e.to_string())?;
-    Ok( guard.Schemes())
+    let  	schemes = guard.Schemes();
+    let  	mut buff = Buff::New();
+    for s in schemes {
+        buff.Push( s);
+    }
+    Ok( buff)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Reads a windowed chunk of a file using stream buffering.
+/// Reads a windowed chunk of a file using flux::BuffStream and silo::Buff.
 #[tauri::command]
 pub fn	XplrFetchChunk( path: String, offset: u64, size: usize) -> Result< StreamChunkDto, String>
 {
@@ -198,11 +203,7 @@ pub fn	XplrOpenPtsGraphicsWindow( app: tauri::AppHandle, path: String) -> Result
 
 struct PtsSessionState
 {
-    _Points:       Buff< [f32; 3]>,
-    _BboxMin:     [f32; 3],
-    _BboxMax:     [f32; 3],
-    _AngleX:      f32,
-    _AngleY:      f32,
+    _Scene: SceneGraph,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -268,38 +269,6 @@ pub struct PtsFrameDto
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-fn	Project3d(
-    x: f32,
-    y: f32,
-    z: f32,
-    angleX: f32,
-    angleY: f32,
-    width: f32,
-    height: f32,
-) -> ( f32, f32, f32)
-{
-    let  	cosY = angleY.cos();
-    let  	sinY = angleY.sin();
-    let  	x1 = x * cosY + z * sinY;
-    let  	z1 = -x * sinY + z * cosY;
-
-    let  	cosX = angleX.cos();
-    let  	sinX = angleX.sin();
-    let  	y2 = y * cosX - z1 * sinX;
-    let  	z2 = y * sinX + z1 * cosX;
-
-    let  	fov = 350.0;
-    let  	distance = 250.0;
-    let  	scale = fov / ( distance + z2);
-
-    let  	projX = width / 2.0 + x1 * scale;
-    let  	projY = height / 2.0 - y2 * scale;
-
-    ( projX, projY, z2)
-}
-
-// ---------------------------------------------------------------------------------------------------------------------------------
-
 fn	ParseHexColor( hex: &str) -> ( u8, u8, u8)
 {
     let  	clean = hex.trim_start_matches( '#');
@@ -315,7 +284,8 @@ fn	ParseHexColor( hex: &str) -> ( u8, u8, u8)
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Transforms and projects 3D point cloud coordinates and its bounding box to 2D screen coordinates, managing rotation state.
+/// Transforms and projects 3D point cloud coordinates and its bounding box to 2D screen coordinates,
+/// applying camera pan, zoom, and rotation state.
 #[tauri::command]
 pub fn	XplrProjectPts(
     path: String,
@@ -324,6 +294,12 @@ pub fn	XplrProjectPts(
     dpr: f32,
     speed: f32,
     color: String,
+    pan_x: Option< f32>,
+    pan_y: Option< f32>,
+    zoom: Option< f32>,
+    rot_x: Option< f32>,
+    rot_y: Option< f32>,
+    is_interactive: Option< bool>,
 ) -> Result< PtsFrameDto, String>
 {
     let  	mut guard = PTS_STATE.lock().map_err( |e| e.to_string())?;
@@ -347,59 +323,38 @@ pub fn	XplrProjectPts(
         };
 
         PtsSessionState {
-            _Points: dto._Points,
-            _BboxMin: dto._BboxMin,
-            _BboxMax: dto._BboxMax,
-            _AngleX: 0.4,
-            _AngleY: 0.6,
+            _Scene: SceneGraph::WithPoints( dto._Points, dto._BboxMin, dto._BboxMax),
         }
     });
 
-    let  	speedRad = speed / 1000.0;
-    state._AngleY += speedRad;
-    state._AngleX += speedRad * 0.5;
-
-    let  	angleX = state._AngleX;
-    let  	angleY = state._AngleY;
-    let  	bboxMin = state._BboxMin;
-    let  	bboxMax = state._BboxMax;
-
-    let  	cx = ( bboxMin[0] + bboxMax[0]) * 0.5;
-    let  	cy = ( bboxMin[1] + bboxMax[1]) * 0.5;
-    let  	cz = ( bboxMin[2] + bboxMax[2]) * 0.5;
-    let  	dx = bboxMax[0] - bboxMin[0];
-    let  	dy = bboxMax[1] - bboxMin[1];
-    let  	dz = bboxMax[2] - bboxMin[2];
-    let  	maxDim = dx.max( dy).max( dz);
-    let  	scaleNorm = if maxDim > 1e-4 { 35.0 / maxDim } else { 1.0 };
-
-    let  	bboxVerts = [
-        [ ( bboxMin[0] - cx) * scaleNorm, ( bboxMin[1] - cy) * scaleNorm, ( bboxMin[2] - cz) * scaleNorm ],
-        [ ( bboxMax[0] - cx) * scaleNorm, ( bboxMin[1] - cy) * scaleNorm, ( bboxMin[2] - cz) * scaleNorm ],
-        [ ( bboxMax[0] - cx) * scaleNorm, ( bboxMax[1] - cy) * scaleNorm, ( bboxMin[2] - cz) * scaleNorm ],
-        [ ( bboxMin[0] - cx) * scaleNorm, ( bboxMax[1] - cy) * scaleNorm, ( bboxMin[2] - cz) * scaleNorm ],
-        [ ( bboxMin[0] - cx) * scaleNorm, ( bboxMin[1] - cy) * scaleNorm, ( bboxMax[2] - cz) * scaleNorm ],
-        [ ( bboxMax[0] - cx) * scaleNorm, ( bboxMin[1] - cy) * scaleNorm, ( bboxMax[2] - cz) * scaleNorm ],
-        [ ( bboxMax[0] - cx) * scaleNorm, ( bboxMax[1] - cy) * scaleNorm, ( bboxMax[2] - cz) * scaleNorm ],
-        [ ( bboxMin[0] - cx) * scaleNorm, ( bboxMax[1] - cy) * scaleNorm, ( bboxMax[2] - cz) * scaleNorm ],
-    ];
-
-    let  	bboxEdges = [
-        ( 0, 1), ( 1, 2), ( 2, 3), ( 3, 0),
-        ( 4, 5), ( 5, 6), ( 6, 7), ( 7, 4),
-        ( 0, 4), ( 1, 5), ( 2, 6), ( 3, 7),
-    ];
-
-    let  	mut projectedBox = Buff::New();
-    for v in &bboxVerts {
-        let  	( px, py, _) = Project3d( v[0], v[1], v[2], angleX, angleY, width, height);
-        projectedBox.Push( ( px, py));
+    let  	cam = state._Scene.CameraMut();
+    if let Some( px) = pan_x {
+        cam._PanX = px;
+    }
+    if let Some( py) = pan_y {
+        cam._PanY = py;
+    }
+    if let Some( z) = zoom {
+        cam.SetZoom( z);
+    }
+    if let Some( rx) = rot_x {
+        cam._RotX = rx;
+    }
+    if let Some( ry) = rot_y {
+        cam._RotY = ry;
     }
 
+    if is_interactive != Some( true) && speed > 0.0 {
+        let  	speedRad = speed / 1000.0;
+        cam._RotY += speedRad;
+        cam._RotX += speedRad * 0.5;
+    }
+
+    let  	( center, scaleNorm) = state._Scene.CalcNormalization();
+    let  	bboxLines = state._Scene.ProjectBoundingBox( width, height);
+
     let  	mut box_lines = Buff::New();
-    for ( i, j) in &bboxEdges {
-        let  	p1 = projectedBox[*i];
-        let  	p2 = projectedBox[*j];
+    for ( p1, p2) in &bboxLines {
         box_lines.Push( ProjectedLine {
             _X1: p1.0,
             _Y1: p1.1,
@@ -410,11 +365,12 @@ pub fn	XplrProjectPts(
 
     let  	( r, g, b) = ParseHexColor( &color);
     let  	mut projectedPoints = Buff::New();
-    for pt in &state._Points {
-        let  	nx = ( pt[0] - cx) * scaleNorm;
-        let  	ny = ( pt[1] - cy) * scaleNorm;
-        let  	nz = ( pt[2] - cz) * scaleNorm;
-        let  	( px, py, pz) = Project3d( nx, ny, nz, angleX, angleY, width, height);
+    let  	camRef = state._Scene.Camera();
+    for pt in &state._Scene._Points {
+        let  	nx = ( pt[0] - center[0]) * scaleNorm;
+        let  	ny = ( pt[1] - center[1]) * scaleNorm;
+        let  	nz = ( pt[2] - center[2]) * scaleNorm;
+        let  	( px, py, pz) = camRef.Project( nx, ny, nz, width, height);
         let  	depthFactor = 0.3f32.max( 1.0f32.min( ( 300.0 - pz) / 400.0));
         let  	radius = ( 3.0 + depthFactor * 4.0) * dpr;
         let  	alpha = 0.5 + depthFactor * 0.5;
@@ -436,34 +392,57 @@ pub fn	XplrProjectPts(
         .map( |n| n.to_string_lossy().into_owned())
         .unwrap_or_else( || "Block.pts".to_string());
 
+    let  	bboxMin = state._Scene._BboxMin;
+    let  	bboxMax = state._Scene._BboxMax;
     let  	bboxLabel = format!( "[{:.2}, {:.2}, {:.2}] → [{:.2}, {:.2}, {:.2}]",
         bboxMin[0], bboxMin[1], bboxMin[2],
         bboxMax[0], bboxMax[1], bboxMax[2]
     );
 
     let  	isParsedFile = std::path::Path::new( &path).exists();
-    let  	overlay1 = format!( "Points: {} | BBox: {}", state._Points.len(), bboxLabel);
+    let  	overlay1 = format!(
+        "Points: {} | Zoom: {:.2}x | Pan: ({:.0}, {:.0})",
+        state._Scene._Points.len(),
+        camRef._Zoom,
+        camRef._PanX,
+        camRef._PanY
+    );
     let  	overlay2 = if isParsedFile {
-        format!( "Source: {}", fileName)
+        format!( "Source: {} | Rot: ({:.0}°, {:.0}°)", fileName, camRef._RotX.to_degrees(), camRef._RotY.to_degrees())
     } else {
-        "Shader Backend: Rust-GPU (gcomp::pts_pointcloud_cs)".to_string()
+        format!( "Rust-GPU (gcomp) | Rot: ({:.0}°, {:.0}°)", camRef._RotX.to_degrees(), camRef._RotY.to_degrees())
     };
     let  	shaderStatus = if isParsedFile {
-        format!( "Stream Parser: ParsePtsStream ({} pts)", state._Points.len())
+        format!( "SceneGraph: Active ({} pts)", state._Scene._Points.len())
     } else {
-        "Shader Active: gcomp::pts_pointcloud_cs".to_string()
+        "SceneGraph: Active (gcomp::pts_pointcloud_cs)".to_string()
     };
 
     Ok( PtsFrameDto {
         _Points: projectedPoints,
         _BoxLines: box_lines,
         _FileName: fileName,
-        _Count: state._Points.len(),
+        _Count: state._Scene._Points.len(),
         _BboxLabel: bboxLabel,
         _ShaderStatus: shaderStatus,
         _OverlayText1: overlay1,
         _OverlayText2: overlay2,
     })
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Resets camera pan, zoom, and rotation in the active SceneGraph to default centered view.
+#[tauri::command]
+pub fn	XplrResetCamera( path: String) -> Result< Camera, String>
+{
+    let  	mut guard = PTS_STATE.lock().map_err( |e| e.to_string())?;
+    if let Some( state) = guard.get_mut( &path) {
+        state._Scene.CameraMut().Reset();
+        Ok( *state._Scene.Camera())
+    } else {
+        Ok( Camera::New())
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -512,14 +491,93 @@ mod _tests
         }
 
         let  	pathStr = tempPath.to_str().unwrap().to_string();
-        let  	res = XplrProjectPts( pathStr, 800.0, 600.0, 1.0, 30.0, "#00f3ff".to_string());
+        let  	res = XplrProjectPts(
+            pathStr,
+            800.0,
+            600.0,
+            1.0,
+            30.0,
+            "#00f3ff".to_string(),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
         assert!( res.is_ok());
 
         let  	frame = res.unwrap();
         assert_eq!( frame._Count, 2);
         assert_eq!( frame._Points.len(), 2);
         assert_eq!( frame._BoxLines.len(), 12);
-        assert!( frame._ShaderStatus.contains( "ParsePtsStream"));
+        assert!( frame._ShaderStatus.contains( "SceneGraph"));
+
+        let  	_ = std::fs::remove_file( &tempPath);
+    }
+
+    #[test]
+    fn	TestXplrProjectPtsWithCameraPanZoomRotate()
+    {
+        let  	tempPath = std::env::temp_dir().join( "test_fenst_camera_project.pts");
+        {
+            let  	mut f = File::create( &tempPath).unwrap();
+            writeln!( f, "2").unwrap();
+            writeln!( f, "0.0 0.0 0.0").unwrap();
+            writeln!( f, "10.0 10.0 10.0").unwrap();
+        }
+
+        let  	pathStr = tempPath.to_str().unwrap().to_string();
+
+        // Standard projection
+        let  	res = XplrProjectPts(
+            pathStr.clone(),
+            800.0,
+            600.0,
+            1.0,
+            30.0,
+            "#00f3ff".to_string(),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        assert!( res.is_ok());
+        let  	frame = res.unwrap();
+        assert_eq!( frame._Count, 2);
+        assert_eq!( frame._Points.len(), 2);
+        assert_eq!( frame._BoxLines.len(), 12);
+        assert!( frame._ShaderStatus.contains( "SceneGraph"));
+
+        // Interactive projection with Pan, Zoom, and Rotation
+        let  	resInteractive = XplrProjectPts(
+            pathStr.clone(),
+            800.0,
+            600.0,
+            1.0,
+            0.0,
+            "#00f3ff".to_string(),
+            Some( 100.0),
+            Some( -50.0),
+            Some( 2.5),
+            Some( 0.8),
+            Some( 1.2),
+            Some( true),
+        );
+        assert!( resInteractive.is_ok());
+        let  	frameInteractive = resInteractive.unwrap();
+        assert!( frameInteractive._OverlayText1.contains( "2.50x"));
+        assert!( frameInteractive._OverlayText1.contains( "100, -50"));
+
+        // Reset Camera
+        let  	resetRes = XplrResetCamera( pathStr.clone());
+        assert!( resetRes.is_ok());
+        let  	cam = resetRes.unwrap();
+        assert_eq!( cam._PanX, 0.0);
+        assert_eq!( cam._PanY, 0.0);
+        assert_eq!( cam._Zoom, 1.0);
 
         let  	_ = std::fs::remove_file( &tempPath);
     }
@@ -552,5 +610,3 @@ mod _tests
         }
     }
 }
-
-

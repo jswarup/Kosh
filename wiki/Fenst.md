@@ -101,23 +101,27 @@ flowchart TD
 
 ---
 
-## 4. 3D Camera Projection Math
+## 4. 3D Camera & SceneGraph Projection Math
 
-Perspective projection is computed directly in Rust inside `fenst-app::xplrcmds::Project3d`:
+Perspective projection and camera transformations are managed through `Camera` and `SceneGraph` in `fenst::scene`:
 
 $$\begin{aligned}
 x_1 &= x \cos(\theta_y) + z \sin(\theta_y) \\
 z_1 &= -x \sin(\theta_y) + z \cos(\theta_y) \\
 y_2 &= y \cos(\theta_x) - z_1 \sin(\theta_x) \\
 z_2 &= y \sin(\theta_x) + z_1 \cos(\theta_x) \\
-\text{scale} &= \frac{\text{FOV}}{\text{Distance} + z_2} \quad (\text{FOV} = 350.0, \, \text{Distance} = 250.0) \\
-\text{screen}_x &= \frac{\text{width}}{2} + x_1 \cdot \text{scale} \\
-\text{screen}_y &= \frac{\text{height}}{2} - y_2 \cdot \text{scale}
+\text{scale} &= \frac{\text{FOV} \cdot \text{Zoom}}{\text{Distance} + z_2} \quad (\text{FOV} = 350.0, \, \text{Distance} = 250.0) \\
+\text{screen}_x &= \frac{\text{width}}{2} + \text{Pan}_x + x_1 \cdot \text{scale} \\
+\text{screen}_y &= \frac{\text{height}}{2} + \text{Pan}_y - y_2 \cdot \text{scale}
 \end{aligned}$$
 
 ---
 
 ## 5. Struct & DTO Reference
+
+### Core Scene Types (`fenst::scene`)
+- `Camera`: Viewport camera (`_PanX`, `_PanY`, `_Zoom`, `_RotX`, `_RotY`, `_Fov`, `_Distance`).
+- `SceneGraph`: Active 3D visualization scene owning camera, points, and bounding box geometry.
 
 ### DTOs (`fenst::mod.rs` & `fenst::xplr.rs`)
 - `XplrEntry`: Directory entry (`name`, `path`, `is_dir`, `size`, `extension`).
@@ -125,7 +129,7 @@ z_2 &= y \sin(\theta_x) + z_1 \cos(\theta_x) \\
 - `XplrLeafInfo`: File metadata (`path`, `name`, `size`, `is_dir`, `modified`, `extension`, `readonly`).
 - `XplrNodeDto`: Virtual provider node (`id`, `name`, `is_leaf`, `provider`, `size`, `extension`).
 - `StreamChunkDto`: Chunk slice (`path`, `offset`, `length`, `total_size`, `is_eof`, `content`).
-- `PtsPointsDto`: Raw point cloud data (`points: Vec<[f32; 3]>`, `count`, `bbox_min`, `bbox_max`).
+- `PtsPointsDto`: Raw point cloud data (`points: Buff<[f32; 3]>`, `count`, `bbox_min`, `bbox_max`).
 
 ### GUI Frame DTOs (`fenst-app::xplrcmds.rs`)
 - `ProjectedPoint`: 2D projected point (`x`, `y`, `radius`, `core_radius`, `color`).
@@ -138,14 +142,15 @@ z_2 &= y \sin(\theta_x) + z_1 \cos(\theta_x) \\
 
 | Command | Signature | Description |
 | :--- | :--- | :--- |
-| `XplrListEntries` | `(path: String) -> Result<Vec<XplrEntry>, String>` | Lists files in a directory sorted directories-first. |
+| `XplrListEntries` | `(path: String) -> Result<Buff<XplrEntry>, String>` | Lists files in a directory sorted directories-first. |
 | `XplrFetchContent`| `(path: String) -> Result<XplrContent, String>` | Reads full text file up to 10 MB limit using `BuffStream`. |
 | `XplrFetchChunk`  | `(path, offset, size) -> Result<StreamChunkDto, String>` | Reads windowed slice of a file. |
 | `XplrLeafInfo`    | `(path: String) -> Result<XplrLeafInfo, String>` | Retrieves detailed filesystem metadata. |
 | `XplrSelectBranch`| `() -> Result<Option<String>, String>` | Shows native OS folder picker dialog (`rfd`). |
-| `XplrChildren`    | `(uri: String) -> Result<Vec<XplrNodeDto>, String>` | Queries virtual explorer provider for child nodes. |
-| `XplrListProviders`| `() -> Result<Vec<String>, String>` | Returns registered URI schemes (`"file"`, `"expr"`, `"ast"`). |
-| `XplrFetchPtsPoints`| `() -> Result<PtsPointsDto, String>` | Generates 100 random 3D points via `rust-gpu` compute shader. |
+| `XplrChildren`    | `(uri: String) -> Result<Buff<XplrNodeDto>, String>` | Queries virtual explorer provider for child nodes. |
+| `XplrListProviders`| `() -> Result<Buff<String>, String>` | Returns registered URI schemes (`"file"`, `"expr"`, `"ast"`). |
+| `XplrFetchPtsPoints`| `(path: Option<String>) -> Result<PtsPointsDto, String>` | Generates 3D points from `.pts` file or `rust-gpu` compute shader. |
 | `XplrOpenContentWindow`| `(app, path) -> Result<(), String>` | Opens file in separate dedicated webview window. |
 | `XplrOpenPtsGraphicsWindow`| `(app, path) -> Result<(), String>` | Opens dedicated 3D shader window for `.pts` point cloud files. |
-| `XplrProjectPts`  | `(path, width, height, dpr, speed, color) -> Result<PtsFrameDto, String>` | Calculates 3D perspective projection and wireframe box for rendering. |
+| `XplrProjectPts`  | `(path, width, height, dpr, speed, color, pan_x, pan_y, zoom, rot_x, rot_y, is_interactive) -> Result<PtsFrameDto, String>` | Projects SceneGraph 3D points & bounding box with pan/zoom/rotate. |
+| `XplrResetCamera` | `(path: String) -> Result<Camera, String>` | Resets SceneGraph camera pan, zoom, and rotation to defaults. |
