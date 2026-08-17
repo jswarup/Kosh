@@ -742,7 +742,7 @@ fn	TestSwarmEngineBackendSwitching()
     use	crate::swarm::engine::SwarmEngine;
     use	crate::swarm::traits::BackendKind;
 
-    let  	testData: Vec< f32> = ( 1..=64).map( |x| x as f32).collect();
+    let  	testData: Buff< f32> = ( 1..=64).map( |x| x as f32).collect();
 
     // 1. Execute on CPU backend
     let  	cpuEngine = SwarmEngine::New( BackendKind::Cpu).unwrap();
@@ -777,15 +777,15 @@ fn	TestSwarmEngineBackendSwitching()
     }
 
     // Test Vector Add switching
-    let  	vecA = vec![1.0f32, 2.0, 3.0, 4.0];
-    let  	vecB = vec![10.0f32, 20.0, 30.0, 40.0];
+    let  	vecA = Buff![1.0f32, 2.0, 3.0, 4.0];
+    let  	vecB = Buff![10.0f32, 20.0, 30.0, 40.0];
     let  	cpuAdd = cpuEngine.RunVectorAdd( &vecA, &vecB).unwrap();
     let  	cudaAdd = cudaEngine.RunVectorAdd( &vecA, &vecB).unwrap();
-    assert_eq!( cpuAdd, vec![11.0, 22.0, 33.0, 44.0]);
-    assert_eq!( cudaAdd, vec![11.0, 22.0, 33.0, 44.0]);
+    assert_eq!( cpuAdd, Buff![11.0, 22.0, 33.0, 44.0]);
+    assert_eq!( cudaAdd, Buff![11.0, 22.0, 33.0, 44.0]);
 
     // Test Collatz switching
-    let  	collatzIn = vec![1u32, 2, 3, 4, 5, 6, 7];
+    let  	collatzIn = Buff![1u32, 2, 3, 4, 5, 6, 7];
     let  	cpuCollatz = cpuEngine.RunCollatz( &collatzIn).unwrap();
     let  	cudaCollatz = cudaEngine.RunCollatz( &collatzIn).unwrap();
     assert_eq!( cpuCollatz, cudaCollatz);
@@ -809,9 +809,9 @@ fn	TestSwarmEngineAuto()
     let  	engine = SwarmEngine::Auto();
     println!( "TestSwarmEngineAuto: Auto-selected backend is {} ✓", engine.Backend());
 
-    let  	data = vec![5.0f32, 10.0, 15.0];
+    let  	data = Buff![5.0f32, 10.0, 15.0];
     let  	result = engine.RunDouble( &data).unwrap();
-    assert_eq!( result, vec![10.0, 20.0, 30.0]);
+    assert_eq!( result, Buff![10.0, 20.0, 30.0]);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -823,26 +823,26 @@ fn	TestSharedGcompKernelParity()
     use	crate::swarm::engine::SwarmEngine;
 
     // 1. Direct invocation of shared gcomp kernels
-    let  	mut testData = vec![1.0f32, 2.0, 3.0, 4.0];
+    let  	mut testData = Buff![1.0f32, 2.0, 3.0, 4.0];
     for i in 0..testData.len() {
         gcomp::double_elem( i, &mut testData);
     }
-    assert_eq!( testData, vec![2.0, 4.0, 6.0, 8.0]);
+    assert_eq!( testData, Buff![2.0, 4.0, 6.0, 8.0]);
 
-    let  	a = vec![10.0f32, 20.0, 30.0];
-    let  	b = vec![1.0f32, 2.0, 3.0];
-    let  	mut sumOut = vec![0.0f32; 3];
+    let  	a = Buff![10.0f32, 20.0, 30.0];
+    let  	b = Buff![1.0f32, 2.0, 3.0];
+    let  	mut sumOut = Buff![0.0f32, 0.0, 0.0];
     for i in 0..3 {
         gcomp::vector_add_elem( i, &a, &b, &mut sumOut);
     }
-    assert_eq!( sumOut, vec![11.0, 22.0, 33.0]);
+    assert_eq!( sumOut, Buff![11.0, 22.0, 33.0]);
 
-    let  	collatzIn = vec![6u32, 11, 27];
-    let  	mut collatzOut = vec![0u32; 3];
+    let  	collatzIn = Buff![6u32, 11, 27];
+    let  	mut collatzOut = Buff![0u32, 0, 0];
     for i in 0..3 {
         gcomp::collatz_elem( i, &collatzIn, &mut collatzOut);
     }
-    assert_eq!( collatzOut, vec![8, 14, 111]);
+    assert_eq!( collatzOut, Buff![8, 14, 111]);
 
     // 2. Cross-backend parity between CPU and Cuda-Oxide running shared gcomp kernels
     let  	cpuEngine = SwarmEngine::New( BackendKind::Cpu).unwrap();
@@ -867,12 +867,12 @@ fn	TestSharedGcompKernelParity()
         }
     });
 
-    let  	inVec = vec![1.0f32, 2.0, 3.0];
-    let  	mut outVec = vec![0.0f32; 3];
+    let  	inVec = Buff![1.0f32, 2.0, 3.0];
+    let  	mut outVec = Buff![0.0f32, 0.0, 0.0];
     for i in 0..3 {
         CustomScaleKernel( i, &inVec, &mut outVec);
     }
-    assert_eq!( outVec, vec![10.0, 20.0, 30.0]);
+    assert_eq!( outVec, Buff![10.0, 20.0, 30.0]);
 
     println!( "TestSharedGcompKernelParity: CPU, Cuda-Oxide, and gcomp shared kernel parity verified ✓");
 }

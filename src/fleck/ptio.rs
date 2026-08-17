@@ -147,16 +147,15 @@ impl PtsCloud
     pub fn	ToDto( &self) -> PtsPointsDto
     {
         let  	( bboxMin, bboxMax) = self.BoundingBox();
-        let  	totalPoints = self._Points.Size().AsUsize();
-        let  	mut pointsVec = Vec::with_capacity( totalPoints);
+        let  	totalPoints = self._Points.Size();
         let  	arr = self._Points.Arr();
-        for i in 0..totalPoints {
-            let  	pt = arr.At( U32( i as u32));
-            pointsVec.push( [pt.pos.x, pt.pos.y, pt.pos.z]);
-        }
+        let  	pointsBuff = Buff::Create( totalPoints, |i| {
+            let  	pt = arr.At( i);
+            [pt.pos.x, pt.pos.y, pt.pos.z]
+        });
         PtsPointsDto {
-            points: pointsVec,
-            count: totalPoints,
+            points: pointsBuff,
+            count: totalPoints.AsUsize(),
             bbox_min: bboxMin,
             bbox_max: bboxMax,
         }

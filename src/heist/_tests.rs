@@ -249,7 +249,7 @@ fn	TestHeistSwarmGpuChore()
     {
         let  	maestro = Maestro::FromWorker( w);
         if let Some( swarm) = maestro.Swarm() {
-            let  	input = vec![1.0f32, 2.0, 3.0, 4.0, 5.0];
+            let  	input = Buff![1.0f32, 2.0, 3.0, 4.0, 5.0];
             let  	res = swarm.RunDouble( &input).unwrap();
             let  	sum: u32 = res.iter().map( |x| *x as u32).sum();
             GPU_RESULT_SUM.Store( U32( sum), Ordering::Release);
@@ -311,7 +311,7 @@ fn	TestHeistSwarmHeterogeneousPipeline()
         let  	maestro = Maestro::FromWorker( w);
         if let Some( swarm) = maestro.Swarm() {
             let  	sumVal = STAGE2_SUM.Load( Ordering::Acquire).AsU32() as f32;
-            let  	input = vec![sumVal];
+            let  	input = Buff![sumVal];
             let  	res = swarm.RunDouble( &input).unwrap();
             STAGE3_FINAL.Store( U32( res[0] as u32), Ordering::Release);
         }

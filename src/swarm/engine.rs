@@ -49,7 +49,7 @@ impl IComputeBuffer for SwarmBuffer
         }
     }
 
-    fn	Read( &self) -> Result< Vec< u8>, SwarmError>
+    fn	Read( &self) -> Result< Buff< u8>, SwarmError>
     {
         match self {
             SwarmBuffer::Cpu( b) => b.Read(),
@@ -279,7 +279,7 @@ impl SwarmEngine
     }
 
     /// Unified Vector Double runner across all backends.
-    pub fn	RunDouble( &self, data: &[f32]) -> Result< Vec< f32>, SwarmError>
+    pub fn	RunDouble( &self, data: &[f32]) -> Result< Buff< f32>, SwarmError>
     {
         let  	kernel = self.CompileOp( StandardOp::Double)?;
         let  	buf = self.device.CreateBufferInit( "double_data", data.CastSlice(), BufferUsage::STORAGE)?;
@@ -287,11 +287,11 @@ impl SwarmEngine
         self.device.Dispatch( kernel.as_ref(), &[buf.as_ref()], WorkgroupDim::Linear( U32( workgroups)))?;
         let  	raw = buf.Read()?;
         let  	res: &[f32] = raw.CastSliceFrom();
-        Ok( res.to_vec())
+        Ok( Buff::from( res))
     }
 
     /// Unified Vector Addition runner across all backends.
-    pub fn	RunVectorAdd( &self, a: &[f32], b: &[f32]) -> Result< Vec< f32>, SwarmError>
+    pub fn	RunVectorAdd( &self, a: &[f32], b: &[f32]) -> Result< Buff< f32>, SwarmError>
     {
         if a.len() != b.len() {
             return Err( SwarmError::ExecutionError( "Input buffer lengths do not match".to_string()));
@@ -306,11 +306,11 @@ impl SwarmEngine
         self.device.Dispatch( kernel.as_ref(), &[bufA.as_ref(), bufB.as_ref(), bufOut.as_ref()], WorkgroupDim::Linear( U32( workgroups)))?;
         let  	raw = bufOut.Read()?;
         let  	res: &[f32] = raw.CastSliceFrom();
-        Ok( res.to_vec())
+        Ok( Buff::from( res))
     }
 
     /// Unified Collatz sequence runner across all backends.
-    pub fn	RunCollatz( &self, input: &[u32]) -> Result< Vec< u32>, SwarmError>
+    pub fn	RunCollatz( &self, input: &[u32]) -> Result< Buff< u32>, SwarmError>
     {
         let  	sz = input.len();
         let  	zeroBuff = Buff::New( U32( sz as u32), 0u32);
@@ -321,7 +321,7 @@ impl SwarmEngine
         self.device.Dispatch( kernel.as_ref(), &[bufIn.as_ref(), bufOut.as_ref()], WorkgroupDim::Linear( U32( workgroups)))?;
         let  	raw = bufOut.Read()?;
         let  	res: &[u32] = raw.CastSliceFrom();
-        Ok( res.to_vec())
+        Ok( Buff::from( res))
     }
 
     /// Unified Point Cloud generator across all backends.
@@ -329,7 +329,7 @@ impl SwarmEngine
         &self,
         numPoints: U32,
         spirvBytes: Option< &[u8]>,
-    ) -> Result< Vec< [f32; 3]>, SwarmError>
+    ) -> Result< Buff< [f32; 3]>, SwarmError>
     {
         let  	count = numPoints.AsUsize();
         let  	zeroFloats = Buff::New( U32( ( count * 4) as u32), 0.0f32);
@@ -347,13 +347,14 @@ impl SwarmEngine
         let  	raw = bufOut.Read()?;
         let  	rawFloats: &[f32] = raw.CastSliceFrom();
 
-        let  	mut points = Vec::with_capacity( count);
-        for i in 0..count {
-            let  	base = i * 4;
+        let  	points = Buff::Create( numPoints, |i| {
+            let  	base = i.AsUsize() * 4;
             if base + 2 < rawFloats.len() {
-                points.push( [rawFloats[base], rawFloats[base + 1], rawFloats[base + 2]]);
+                [rawFloats[base], rawFloats[base + 1], rawFloats[base + 2]]
+            } else {
+                [0.0f32, 0.0, 0.0]
             }
-        }
+        });
 
         Ok( points)
     }

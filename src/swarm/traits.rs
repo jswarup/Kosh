@@ -2,7 +2,7 @@
 
 use	std::fmt;
 use	std::sync::Arc;
-use	crate::silo::{ U32, U64 };
+use	crate::silo::{ Buff, U32, U64 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -154,7 +154,7 @@ pub trait IComputeBuffer: Send + Sync + 'static
 
     fn	Write( &mut self, data: &[u8]) -> Result< (), SwarmError>;
 
-    fn	Read( &self) -> Result< Vec< u8>, SwarmError>;
+    fn	Read( &self) -> Result< Buff< u8>, SwarmError>;
 
     fn	AsAny( &self) -> &dyn std::any::Any;
 

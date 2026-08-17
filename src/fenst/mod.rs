@@ -55,18 +55,18 @@ const MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;                       // 10 MB guar
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Reads a directory and returns sorted entries (directories first, then files).
-pub fn	XplrListEntries( path: String) -> Result< Vec< XplrEntry>, String>
+pub fn	XplrListEntries( path: String) -> Result< Buff< XplrEntry>, String>
 {
     let  	branch = FsBranch::New( path);
     let  	children = branch.Children()?;
-    let  	mut entries: Vec< XplrEntry> = Vec::new();
+    let  	mut entries: Buff< XplrEntry> = Buff::NewEmpty();
 
     for child in children {
         let  	isDir = !child.IsLeaf();
         let  	size = child.AsLeaf().map( |l| l.Size()).unwrap_or( 0);
         let  	extension = child.AsLeaf().map( |l| l.Extension().to_string()).unwrap_or_default();
 
-        entries.push( XplrEntry {
+        entries.Push( XplrEntry {
             name:       child.Name().to_string(),
             path:       child.Path().to_string(),
             is_dir:     isDir,
@@ -220,7 +220,7 @@ pub fn	IsPtsFile( path: &str) -> bool
 #[derive( Serialize, Debug)]
 pub struct PtsPointsDto
 {
-    pub points:     Vec< [f32; 3]>,
+    pub points:     Buff< [f32; 3]>,
     pub count:      usize,
     pub bbox_min:   [f32; 3],
     pub bbox_max:   [f32; 3],
@@ -322,14 +322,14 @@ pub fn	XplrFetchPtsPoints( spirvBytes: &[u8]) -> Result< PtsPointsDto, String>
     let  	rawBytes = device.ReadBuffer( &queue, &gpuOut, byteLen as u64);
     let  	floatSlice: &[f32] = rawBytes.CastSliceFrom();
 
-    // Extract [x, y, z] from each Vec4(x, y, z, w)
-    let  	mut points = Vec::with_capacity( numPointsUsize);
-    for i in 0..numPointsUsize {
-        let  	base = i * 4;
+    let  	points = Buff::Create( numPoints, |i| {
+        let  	base = i.AsUsize() * 4;
         if base + 2 < floatSlice.len() {
-            points.push( [floatSlice[base], floatSlice[base + 1], floatSlice[base + 2]]);
+            [floatSlice[base], floatSlice[base + 1], floatSlice[base + 2]]
+        } else {
+            [0.0f32, 0.0, 0.0]
         }
-    }
+    });
 
     Ok( PtsPointsDto {
         count:      points.len(),

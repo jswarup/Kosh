@@ -1,6 +1,6 @@
 //-- fenst/fsxplr.rs ---------------------------------------------------------------------------------------------------------------
 use	crate::fenst::xplr::{ Xplr, LeafXplr, BranchXplr };
-use	crate::silo::U32;
+use	crate::silo::{ Buff, U32 };
 use	std::fs;
 use	std::path::{ Path, PathBuf };
 
@@ -138,7 +138,7 @@ impl Xplr for FsBranch
 
 impl BranchXplr for FsBranch
 {
-    fn	Children( &self) -> Result< Vec< Box< dyn Xplr>>, String>
+    fn	Children( &self) -> Result< Buff< Box< dyn Xplr>>, String>
     {
         let  	dirPath = Path::new( &self.path);
         if !dirPath.exists() {
@@ -151,8 +151,8 @@ impl BranchXplr for FsBranch
         let  	readDir = fs::read_dir( dirPath)
             .map_err( |e| format!( "Failed to read directory: {}", e))?;
 
-        let  	mut dirs: Vec< Box< dyn Xplr>> = Vec::new();
-        let  	mut files: Vec< Box< dyn Xplr>> = Vec::new();
+        let  	mut dirs: Buff< Box< dyn Xplr>> = Buff::NewEmpty();
+        let  	mut files: Buff< Box< dyn Xplr>> = Buff::NewEmpty();
 
         for entry in readDir {
             let  	entry = match entry {
@@ -173,17 +173,23 @@ impl BranchXplr for FsBranch
 
             let  	pathStr = filePath.to_string_lossy().into_owned();
             if metadata.is_dir() {
-                dirs.push( Box::new( FsBranch::New( pathStr)));
+                dirs.Push( Box::new( FsBranch::New( pathStr)));
             } else {
-                files.push( Box::new( FsLeaf::New( pathStr)));
+                files.Push( Box::new( FsLeaf::New( pathStr)));
             }
         }
 
         dirs.sort_by( |a, b| a.Name().to_lowercase().cmp( &b.Name().to_lowercase()));
         files.sort_by( |a, b| a.Name().to_lowercase().cmp( &b.Name().to_lowercase()));
 
-        dirs.append( &mut files);
-        Ok( dirs)
+        let  	mut result = Buff::NewEmpty();
+        for d in dirs {
+            result.Push( d);
+        }
+        for f in files {
+            result.Push( f);
+        }
+        Ok( result)
     }
 
     fn	ChildCount( &self) -> Result< U32, String>

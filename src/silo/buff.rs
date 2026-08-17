@@ -1,5 +1,5 @@
 //-- buff.rs ----------------------------------------------------------------------------------------------------------------------
-use	std::{ alloc::realloc, marker::PhantomData, mem::{ forget, size_of, swap }, ptr::{ copy_nonoverlapping, drop_in_place, read, slice_from_raw_parts_mut, write } };
+use	std::{ alloc::realloc, fmt, marker::PhantomData, mem::{ forget, size_of, swap }, ptr::{ copy_nonoverlapping, drop_in_place, read, slice_from_raw_parts_mut, write } };
 use	crate::silo::{ Arr, IAccess, IArr, U32 };
 use	std::alloc::{ Layout, alloc, dealloc, handle_alloc_error };
 
@@ -500,12 +500,203 @@ impl< 'a, T: 'a> IArr< 'a, T> for &'a mut Buff< T> {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl< T: PartialEq> PartialEq for Buff< T>
+{
+    fn	eq( &self, other: &Self) -> bool
+    {
+        self.deref() == other.deref()
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T: Eq> Eq for Buff< T>
+{
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T: PartialEq> PartialEq< [T]> for Buff< T>
+{
+    fn	eq( &self, other: &[T]) -> bool
+    {
+        self.deref() == other
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T: PartialEq, const N: usize> PartialEq< [T; N]> for Buff< T>
+{
+    fn	eq( &self, other: &[T; N]) -> bool
+    {
+        self.deref() == other
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T: PartialEq> PartialEq< Vec< T>> for Buff< T>
+{
+    fn	eq( &self, other: &Vec< T>) -> bool
+    {
+        self.deref() == other.as_slice()
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T: fmt::Debug> fmt::Debug for Buff< T>
+{
+    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
+    {
+        fmt::Debug::fmt( self.deref(), f)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T> Default for Buff< T>
+{
+    fn	default() -> Self
+    {
+        Self::NewEmpty()
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T> FromIterator< T> for Buff< T>
+{
+    fn	from_iter< I: IntoIterator< Item = T>>( iter: I) -> Self
+    {
+        let  	iterator = iter.into_iter();
+        let  	mut buff = Buff::NewEmpty();
+        for item in iterator {
+            buff.Push( item);
+        }
+        buff
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T: serde::Serialize> serde::Serialize for Buff< T>
+{
+    fn	serialize< S>( &self, serializer: S) -> Result< S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.deref().serialize( serializer)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'de, T: serde::Deserialize< 'de>> serde::Deserialize< 'de> for Buff< T>
+{
+    fn	deserialize< D>( deserializer: D) -> Result< Self, D::Error>
+    where
+        D: serde::Deserializer< 'de>,
+    {
+        let  	vec = Vec::< T>::deserialize( deserializer)?;
+        let  	mut buff = Buff::NewEmpty();
+        for item in vec {
+            buff.Push( item);
+        }
+        Ok( buff)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub struct BuffIter< T>
+{
+    buff:   Buff< T>,
+    index:  usize,
+}
+
+impl< T> Iterator for BuffIter< T>
+{
+    type Item = T;
+
+    fn	next( &mut self) -> Option< Self::Item>
+    {
+        if self.index >= self.buff._Ptr.len() {
+            return None;
+        }
+        let  	val = unsafe { read( self.buff._Ptr.as_ptr().cast::< T>().add( self.index)) };
+        self.index += 1;
+        Some( val)
+    }
+}
+
+impl< T> Drop for BuffIter< T>
+{
+    fn	drop( &mut self)
+    {
+        unsafe {
+            let  	len = self.buff._Ptr.len();
+            for i in self.index..len {
+                drop_in_place( self.buff._Ptr.as_ptr().cast::< T>().add( i));
+            }
+            if len > 0 && size_of::< T>() > 0 {
+                let  	layout = Layout::array::< T>( len).unwrap();
+                dealloc( self.buff._Ptr.cast::< u8>().as_ptr(), layout);
+            }
+            forget( std::mem::replace( &mut self.buff, Buff::NewEmpty()));
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T> IntoIterator for Buff< T>
+{
+    type Item = T;
+    type IntoIter = BuffIter< T>;
+
+    fn	into_iter( self) -> Self::IntoIter
+    {
+        BuffIter { buff: self, index: 0 }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, T> IntoIterator for &'a Buff< T>
+{
+    type Item = &'a T;
+    type IntoIter = std::slice::Iter< 'a, T>;
+
+    fn	into_iter( self) -> Self::IntoIter
+    {
+        self.deref().iter()
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, T> IntoIterator for &'a mut Buff< T>
+{
+    type Item = &'a mut T;
+    type IntoIter = std::slice::IterMut< 'a, T>;
+
+    fn	into_iter( self) -> Self::IntoIter
+    {
+        self.deref_mut().iter_mut()
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 #[macro_export]
 macro_rules! Buff {
     ( $( $x:expr ),* ) => {
         {
-            let  	temp = [$( $x ),*];
-            $crate::silo::Buff::from( temp)
+            let  	mut temp = $crate::silo::Buff::NewEmpty();
+            $( temp.Push( $x); )*
+            temp
         }
     };
     ( $( $x:expr ),+ , ) => {

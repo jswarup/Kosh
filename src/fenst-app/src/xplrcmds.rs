@@ -2,6 +2,7 @@
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
 use	tauri::Manager;
 use	kosh::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, CreateDefaultRegistry };
+use	kosh::silo::Buff;
 use	serde::Serialize;
 use	std::collections::HashMap;
 use	std::sync::Mutex;
@@ -32,7 +33,7 @@ fn	UrlEncode( input: &str) -> String
 
 /// Reads a directory and returns sorted entries (directories first, then files).
 #[tauri::command]
-pub fn	XplrListEntries( path: String) -> Result< Vec< XplrEntry>, String>
+pub fn	XplrListEntries( path: String) -> Result< Buff< XplrEntry>, String>
 {
     kosh::fenst::XplrListEntries( path)
 }
@@ -73,16 +74,16 @@ pub fn	XplrSelectBranch() -> Result< Option< String>, String>
 
 /// Fetches children of a given URI using the registered XplrProviders.
 #[tauri::command]
-pub fn	XplrChildren( uri: String) -> Result< Vec< XplrNodeDto>, String>
+pub fn	XplrChildren( uri: String) -> Result< Buff< XplrNodeDto>, String>
 {
     let  	registry = CreateDefaultRegistry();
     let  	guard = registry.read().map_err( |e| e.to_string())?;
     let  	( scheme, root) = guard.OpenRoot( &uri)?;
     let  	children = root.Children()?;
-    let  	mut dtos = Vec::new();
+    let  	mut dtos = Buff::NewEmpty();
 
     for child in children {
-        dtos.push( child.ToDto( &scheme));
+        dtos.Push( child.ToDto( &scheme));
     }
 
     Ok( dtos)
@@ -92,7 +93,7 @@ pub fn	XplrChildren( uri: String) -> Result< Vec< XplrNodeDto>, String>
 
 /// Returns a list of supported Xplr provider schemes.
 #[tauri::command]
-pub fn	XplrListProviders() -> Result< Vec< String>, String>
+pub fn	XplrListProviders() -> Result< Buff< String>, String>
 {
     let  	registry = CreateDefaultRegistry();
     let  	guard = registry.read().map_err( |e| e.to_string())?;
@@ -192,7 +193,7 @@ pub fn	XplrOpenPtsGraphicsWindow( app: tauri::AppHandle, path: String) -> Result
 
 struct PtsSessionState
 {
-    points:       Vec< [f32; 3]>,
+    points:       Buff< [f32; 3]>,
     bbox_min:     [f32; 3],
     bbox_max:     [f32; 3],
     angle_x:      f32,
@@ -233,8 +234,8 @@ pub struct ProjectedLine
 #[derive( Serialize, Debug)]
 pub struct PtsFrameDto
 {
-    pub points:         Vec< ProjectedPoint>,
-    pub box_lines:      Vec< ProjectedLine>,
+    pub points:         Buff< ProjectedPoint>,
+    pub box_lines:      Buff< ProjectedLine>,
     pub file_name:      String,
     pub count:          usize,
     pub bbox_label:     String,
@@ -306,7 +307,7 @@ pub fn	XplrProjectPts(
     let  	mut guard = PTS_STATE.lock().map_err( |e| e.to_string())?;
     let  	state = guard.entry( path.clone()).or_insert_with( || {
         let  	dto = kosh::fenst::XplrFetchPtsPoints( GCOMP_SPV).unwrap_or_else( |_| PtsPointsDto {
-            points: Vec::new(),
+            points: Buff::NewEmpty(),
             count: 0,
             bbox_min: [ 0.0, 0.0, 0.0 ],
             bbox_max: [ 0.0, 0.0, 0.0 ],
@@ -347,17 +348,17 @@ pub fn	XplrProjectPts(
         ( 0, 4), ( 1, 5), ( 2, 6), ( 3, 7),
     ];
 
-    let  	mut projectedBox = Vec::with_capacity( 8);
+    let  	mut projectedBox = Buff::NewEmpty();
     for v in &bboxVerts {
         let  	( px, py, _) = Project3d( v[0], v[1], v[2], angleX, angleY, width, height);
-        projectedBox.push( ( px, py));
+        projectedBox.Push( ( px, py));
     }
 
-    let  	mut box_lines = Vec::with_capacity( 12);
+    let  	mut box_lines = Buff::NewEmpty();
     for ( i, j) in &bboxEdges {
         let  	p1 = projectedBox[*i];
         let  	p2 = projectedBox[*j];
-        box_lines.push( ProjectedLine {
+        box_lines.Push( ProjectedLine {
             x1: p1.0,
             y1: p1.1,
             x2: p2.0,
@@ -366,7 +367,7 @@ pub fn	XplrProjectPts(
     }
 
     let  	( r, g, b) = ParseHexColor( &color);
-    let  	mut projectedPoints = Vec::with_capacity( state.points.len());
+    let  	mut projectedPoints = Buff::NewEmpty();
     for pt in &state.points {
         let  	( px, py, pz) = Project3d( pt[0], pt[1], pt[2], angleX, angleY, width, height);
         let  	depthFactor = 0.3f32.max( 1.0f32.min( ( 300.0 - pz) / 400.0));
@@ -376,7 +377,7 @@ pub fn	XplrProjectPts(
 
         let  	colorStr = format!( "rgba({}, {}, {}, {:.3})", r, g, b, alpha);
 
-        projectedPoints.push( ProjectedPoint {
+        projectedPoints.Push( ProjectedPoint {
             x: px,
             y: py,
             radius,

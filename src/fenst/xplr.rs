@@ -1,5 +1,5 @@
 //-- fenst/xplr.rs -----------------------------------------------------------------------------------------------------------------
-use	crate::silo::U32;
+use	crate::silo::{ Buff, U32 };
 use	serde::{ Serialize, Deserialize };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -67,7 +67,7 @@ pub trait LeafXplr: Xplr
 
 pub trait BranchXplr: Xplr
 {
-    fn	Children( &self) -> Result< Vec< Box< dyn Xplr>>, String>;
+    fn	Children( &self) -> Result< Buff< Box< dyn Xplr>>, String>;
     fn	ChildCount( &self) -> Result< U32, String>;
 }
 

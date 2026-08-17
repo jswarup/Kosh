@@ -1,7 +1,7 @@
 //-- fenst/shardxplr.rs ------------------------------------------------------------------------------------------------------------
 use	crate::fenst::xplr::{ Xplr, LeafXplr, BranchXplr };
 use	crate::fenst::provider::XplrProvider;
-use	crate::silo::U32;
+use	crate::silo::{ Buff, U32 };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -77,14 +77,14 @@ pub struct ShardBranch
 {
     name:     String,
     path:     String,
-    children: Vec< Box< dyn Xplr>>,
+    children: Buff< Box< dyn Xplr>>,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 impl ShardBranch
 {
-    pub fn	New( name: String, path: String, children: Vec< Box< dyn Xplr>>) -> Self
+    pub fn	New( name: String, path: String, children: Buff< Box< dyn Xplr>>) -> Self
     {
         Self {
             name,
@@ -99,7 +99,7 @@ impl ShardBranch
         let  	leaf2 = Box::new( ShardLeaf::New( "literal".to_string(), "ast://demo/lit".to_string(), "Token(Number)".to_string())) as Box< dyn Xplr>;
         let  	leaf3 = Box::new( ShardLeaf::New( "operator".to_string(), "ast://demo/op".to_string(), "Token(Plus)".to_string())) as Box< dyn Xplr>;
 
-        Self::New( "ast_root".to_string(), "ast://demo".to_string(), vec![ leaf1, leaf2, leaf3 ])
+        Self::New( "ast_root".to_string(), "ast://demo".to_string(), Buff![ leaf1, leaf2, leaf3 ])
     }
 }
 
@@ -137,16 +137,16 @@ impl Xplr for ShardBranch
 
 impl BranchXplr for ShardBranch
 {
-    fn	Children( &self) -> Result< Vec< Box< dyn Xplr>>, String>
+    fn	Children( &self) -> Result< Buff< Box< dyn Xplr>>, String>
     {
-        let  	mut res: Vec< Box< dyn Xplr>> = Vec::new();
+        let  	mut res: Buff< Box< dyn Xplr>> = Buff::NewEmpty();
         for child in &self.children {
             if child.IsLeaf() {
                 if let  	Some( leaf) = child.AsLeaf() {
-                    res.push( Box::new( ShardLeaf::New( child.Name().to_string(), child.Path().to_string(), leaf.Size().to_string())));
+                    res.Push( Box::new( ShardLeaf::New( child.Name().to_string(), child.Path().to_string(), leaf.Size().to_string())));
                 }
             } else {
-                res.push( Box::new( ShardBranch::New( child.Name().to_string(), child.Path().to_string(), Vec::new())));
+                res.Push( Box::new( ShardBranch::New( child.Name().to_string(), child.Path().to_string(), Buff::NewEmpty())));
             }
         }
         Ok( res)
@@ -154,7 +154,7 @@ impl BranchXplr for ShardBranch
 
     fn	ChildCount( &self) -> Result< U32, String>
     {
-        Ok( U32( self.children.len() as u32))
+        Ok( self.children.Size())
     }
 }
 

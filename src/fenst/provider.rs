@@ -1,6 +1,7 @@
 //-- fenst/provider.rs -------------------------------------------------------------------------------------------------------------
 use	crate::fenst::xplr::BranchXplr;
 use	crate::fenst::fsxplr::FsBranch;
+use	crate::silo::Buff;
 use	std::collections::HashMap;
 use	std::sync::{ Arc, RwLock };
 
@@ -83,9 +84,9 @@ impl XplrRegistry
         self.providers.get( scheme).map( |p| p.as_ref())
     }
 
-    pub fn	Schemes( &self) -> Vec< String>
+    pub fn	Schemes( &self) -> Buff< String>
     {
-        let  	mut keys: Vec< String> = self.providers.keys().cloned().collect();
+        let  	mut keys: Buff< String> = self.providers.keys().cloned().collect();
         keys.sort();
         keys
     }

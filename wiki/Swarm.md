@@ -42,10 +42,10 @@ classDiagram
         -device: SwarmDevice
         +New(backend) SwarmEngine
         +Auto() SwarmEngine
-        +RunDouble(data) Vec~f32~
-        +RunVectorAdd(a, b) Vec~f32~
-        +RunCollatz(input) Vec~u32~
-        +RunPointCloud(numPoints, spirv) Vec~[f32; 3]~
+        +RunDouble(data) Buff~f32~
+        +RunVectorAdd(a, b) Buff~f32~
+        +RunCollatz(input) Buff~u32~
+        +RunPointCloud(numPoints, spirv) Buff~[f32; 3]~
     }
 
     class SwarmDevice {
@@ -145,10 +145,10 @@ High-level compute orchestrator:
 - `New(backend: BackendKind) -> Result<Self, SwarmError>`: Explicitly creates engine bound to `Cpu`, `RustGpu`, or `CudaOxide`.
 - `Auto() -> Self`: Automatically queries available hardware (Vulkan/WebGPU $\to$ CUDA $\to$ CPU fallback).
 - `CompileOp(&self, op: StandardOp) -> Result<Box<dyn IComputeKernel>, SwarmError>`: Compiles built-in operation for active device.
-- `RunDouble(&self, data: &[f32]) -> Result<Vec<f32>, SwarmError>`: Doubles vector in-place.
-- `RunVectorAdd(&self, a: &[f32], b: &[f32]) -> Result<Vec<f32>, SwarmError>`: Adds two float buffers.
-- `RunCollatz(&self, input: &[u32]) -> Result<Vec<u32>, SwarmError>`: Computes Collatz sequence.
-- `RunPointCloud(&self, numPoints: U32, spirvBytes: Option<&[u8]>) -> Result<Vec<[f32; 3]>, SwarmError>`: Synthesizes 3D point cloud dataset.
+- `RunDouble(&self, data: &[f32]) -> Result<Buff<f32>, SwarmError>`: Doubles vector in-place.
+- `RunVectorAdd(&self, a: &[f32], b: &[f32]) -> Result<Buff<f32>, SwarmError>`: Adds two float buffers.
+- `RunCollatz(&self, input: &[u32]) -> Result<Buff<u32>, SwarmError>`: Computes Collatz sequence.
+- `RunPointCloud(&self, numPoints: U32, spirvBytes: Option<&[u8]>) -> Result<Buff<[f32; 3]>, SwarmError>`: Synthesizes 3D point cloud dataset.
 
 ### `RustGpuDevice` & `RustGpuBuffer` & `RustGpuKernel`
 WebGPU backend powered by `wgpu`:

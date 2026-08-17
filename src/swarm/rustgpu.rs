@@ -11,7 +11,7 @@ use	wgpu::{
     ShaderModuleDescriptor, ShaderSource as WgpuShaderSource, ShaderStages,
 };
 use	wgpu::util::{ BufferInitDescriptor, DeviceExt };
-use	crate::silo::U64;
+use	crate::silo::{ Buff, U64 };
 use	crate::swarm::traits::{
     BackendKind, BufferUsage, IComputeBuffer, IComputeDevice, IComputeKernel,
     KernelSource, SwarmError, WorkgroupDim,
@@ -84,7 +84,7 @@ impl IComputeBuffer for RustGpuBuffer
         Ok( ())
     }
 
-    fn	Read( &self) -> Result< Vec< u8>, SwarmError>
+    fn	Read( &self) -> Result< Buff< u8>, SwarmError>
     {
         let  	staging = self.device.create_buffer( &BufferDescriptor {
             label: Some( "staging_read"),
@@ -114,7 +114,7 @@ impl IComputeBuffer for RustGpuBuffer
         })?;
 
         let  	view = slice.get_mapped_range();
-        let  	result = view.to_vec();
+        let  	result = Buff::from( &*view);
         drop( view);
         staging.unmap();
 

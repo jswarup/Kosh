@@ -1,7 +1,7 @@
 //-- swarm/cudaoxide.rs --------------------------------------------------------------------------------------------------------------
 
 use	std::sync::{ Arc, RwLock };
-use	crate::silo::{ ISliceExt, U32, U64 };
+use	crate::silo::{ Buff, ISliceExt, U32, U64 };
 use	crate::swarm::traits::{
     BackendKind, BufferUsage, IComputeBuffer, IComputeDevice, IComputeKernel,
     KernelSource, SwarmError, WorkgroupDim,
@@ -13,7 +13,7 @@ use	crate::swarm::traits::{
 pub struct CudaOxideBuffer
 {
     label:  String,
-    data:   Arc< RwLock< Vec< u8>>>,
+    data:   Arc< RwLock< Buff< u8>>>,
     size:   U64,
     usage:  BufferUsage,
 }
@@ -26,7 +26,7 @@ impl CudaOxideBuffer
     {
         CudaOxideBuffer {
             label: label.to_string(),
-            data: Arc::new( RwLock::new( vec![0u8; size.AsUsize()])),
+            data: Arc::new( RwLock::new( Buff::New( U32( size.0 as u32), 0u8))),
             size,
             usage,
         }
@@ -36,7 +36,7 @@ impl CudaOxideBuffer
     {
         CudaOxideBuffer {
             label: label.to_string(),
-            data: Arc::new( RwLock::new( data.to_vec())),
+            data: Arc::new( RwLock::new( Buff::from( data))),
             size: U64( data.len() as u64),
             usage,
         }
@@ -68,13 +68,13 @@ impl IComputeBuffer for CudaOxideBuffer
             SwarmError::BufferError( format!( "CUDA buffer write lock failed: {}", e))
         })?;
         if data.len() > guard.len() {
-            guard.resize( data.len(), 0);
+            guard.Resize( U32( data.len() as u32), |_| 0);
         }
         guard[..data.len()].copy_from_slice( data);
         Ok( ())
     }
 
-    fn	Read( &self) -> Result< Vec< u8>, SwarmError>
+    fn	Read( &self) -> Result< Buff< u8>, SwarmError>
     {
         let  	guard = self.data.read().map_err( |e| {
             SwarmError::BufferError( format!( "CUDA buffer read lock failed: {}", e))
@@ -275,7 +275,7 @@ impl IComputeDevice for CudaOxideDevice
             if let Some( targetBuf) = buffers.first() {
                 if let Some( cudaBuf) = (*targetBuf).AsAny().downcast_ref::< CudaOxideBuffer>() {
                     let  	mut guard = cudaBuf.data.write().unwrap();
-                    let  	floats: &mut [f32] = guard.as_mut_slice().CastSliceMut();
+                    let  	floats: &mut [f32] = ( &mut guard[..]).CastSliceMut();
                     for i in 0..totalThreads.min( floats.len()) {
                         gcomp::double_elem( i, floats);
                     }
@@ -290,7 +290,7 @@ impl IComputeDevice for CudaOxideDevice
 
                 if let Some( cudaOut) = buffers[2].AsAny().downcast_ref::< CudaOxideBuffer>() {
                     let  	mut guard = cudaOut.data.write().unwrap();
-                    let  	outFloats: &mut [f32] = guard.as_mut_slice().CastSliceMut();
+                    let  	outFloats: &mut [f32] = ( &mut guard[..]).CastSliceMut();
                     for i in 0..totalThreads.min( outFloats.len()).min( inA.len()).min( inB.len()) {
                         gcomp::vector_add_elem( i, inA, inB, outFloats);
                     }
@@ -303,7 +303,7 @@ impl IComputeDevice for CudaOxideDevice
 
                 if let Some( cudaOut) = buffers[1].AsAny().downcast_ref::< CudaOxideBuffer>() {
                     let  	mut guard = cudaOut.data.write().unwrap();
-                    let  	outU32: &mut [u32] = guard.as_mut_slice().CastSliceMut();
+                    let  	outU32: &mut [u32] = ( &mut guard[..]).CastSliceMut();
                     for i in 0..totalThreads.min( outU32.len()).min( inU32.len()) {
                         gcomp::collatz_elem( i, inU32, outU32);
                     }
@@ -313,7 +313,7 @@ impl IComputeDevice for CudaOxideDevice
             if let Some( cudaOut) = buffers.first() {
                 if let Some( buf) = (*cudaOut).AsAny().downcast_ref::< CudaOxideBuffer>() {
                     let  	mut guard = buf.data.write().unwrap();
-                    let  	outFloats: &mut [f32] = guard.as_mut_slice().CastSliceMut();
+                    let  	outFloats: &mut [f32] = ( &mut guard[..]).CastSliceMut();
                     for idx in 0..totalThreads {
                         gcomp::pointcloud_elem( idx, outFloats);
                     }

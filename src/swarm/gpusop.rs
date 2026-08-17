@@ -7,6 +7,7 @@ use	wgpu::{
     RequestAdapterOptions,
 };
 use	wgpu::util::{ BufferInitDescriptor, DeviceExt };
+use	crate::silo::Buff;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -26,7 +27,7 @@ pub trait IGpuOp
         queue: &Queue,
         buf: &Buffer,
         size: u64,
-    ) -> Vec< u8>;
+    ) -> Buff< u8>;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -79,7 +80,7 @@ impl IGpuOp for Device
         queue: &Queue,
         buf: &Buffer,
         size: u64,
-    ) -> Vec< u8>
+    ) -> Buff< u8>
     {
         let  	staging = self.create_buffer( &BufferDescriptor {
             label: Some( "staging"),
@@ -102,7 +103,7 @@ impl IGpuOp for Device
         rx.recv().unwrap().unwrap();
 
         let  	view = slice.get_mapped_range();
-        let  	result = view.to_vec();
+        let  	result = Buff::from( &*view);
         drop( view);
         staging.unmap();
         result

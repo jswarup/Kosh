@@ -1,7 +1,7 @@
 //-- swarm/cpu.rs --------------------------------------------------------------------------------------------------------------------
 
 use	std::sync::{ Arc, RwLock };
-use	crate::silo::{ U32, U64 };
+use	crate::silo::{ Buff, U32, U64 };
 use	crate::swarm::ops::StandardOp;
 use	crate::swarm::traits::{
     BackendKind, BufferUsage, CpuKernelFn, IComputeBuffer, IComputeDevice,
@@ -14,7 +14,7 @@ use	crate::swarm::traits::{
 pub struct CpuBuffer
 {
     label:  String,
-    data:   Arc< RwLock< Vec< u8>>>,
+    data:   Arc< RwLock< Buff< u8>>>,
     usage:  BufferUsage,
 }
 
@@ -26,7 +26,7 @@ impl CpuBuffer
     {
         CpuBuffer {
             label: label.to_string(),
-            data: Arc::new( RwLock::new( vec![0u8; size.AsUsize()])),
+            data: Arc::new( RwLock::new( Buff::New( U32( size.0 as u32), 0u8))),
             usage,
         }
     }
@@ -35,7 +35,7 @@ impl CpuBuffer
     {
         CpuBuffer {
             label: label.to_string(),
-            data: Arc::new( RwLock::new( data.to_vec())),
+            data: Arc::new( RwLock::new( Buff::from( data))),
             usage,
         }
     }
@@ -45,7 +45,7 @@ impl CpuBuffer
         self.usage
     }
 
-    pub fn	DataLock( &self) -> Arc< RwLock< Vec< u8>>>
+    pub fn	DataLock( &self) -> Arc< RwLock< Buff< u8>>>
     {
         Arc::clone( &self.data)
     }
@@ -72,13 +72,13 @@ impl IComputeBuffer for CpuBuffer
             SwarmError::BufferError( format!( "Write lock failed: {}", e))
         })?;
         if data.len() > guard.len() {
-            guard.resize( data.len(), 0);
+            guard.Resize( U32( data.len() as u32), |_| 0);
         }
         guard[..data.len()].copy_from_slice( data);
         Ok( ())
     }
 
-    fn	Read( &self) -> Result< Vec< u8>, SwarmError>
+    fn	Read( &self) -> Result< Buff< u8>, SwarmError>
     {
         let  	guard = self.data.read().map_err( |e| {
             SwarmError::BufferError( format!( "Read lock failed: {}", e))
@@ -320,23 +320,23 @@ impl IComputeDevice for CpuDevice
         let  	threadsZ = dim.z.AsU32();
 
         // Read all buffers into CPU memory
-        let  	mut rawData: Vec< Vec< u8>> = Vec::with_capacity( buffers.len());
+        let  	mut rawData: Buff< Buff< u8>> = Buff::NewEmpty();
         for b in buffers {
-            rawData.push( b.Read()?);
+            rawData.Push( b.Read()?);
         }
 
         // Determine input and output buffers: if only 1 buffer, treat as read_write (input & output)
         let  	( inputSlices, mut outputVectors) = if rawData.len() == 1 {
             let  	inClone = rawData[0].clone();
-            ( vec![inClone], vec![rawData[0].clone()])
+            ( Buff![inClone], Buff![rawData[0].clone()])
         } else {
-            let  	inSlices: Vec< Vec< u8>> = rawData[..rawData.len() - 1].to_vec();
-            let  	outVecs: Vec< Vec< u8>> = vec![rawData.last().unwrap().clone()];
+            let  	inSlices: Buff< Buff< u8>> = Buff::from( &rawData[..rawData.len() - 1]);
+            let  	outVecs: Buff< Buff< u8>> = Buff![rawData.last().unwrap().clone()];
             ( inSlices, outVecs)
         };
 
-        let  	inRefs: Vec< &[u8]> = inputSlices.iter().map( |v| v.as_slice()).collect();
-        let  	mut outRefs: Vec< &mut [u8]> = outputVectors.iter_mut().map( |v| v.as_mut_slice()).collect();
+        let  	inRefs: Buff< &[u8]> = inputSlices.iter().map( |v| &v[..]).collect();
+        let  	mut outRefs: Buff< &mut [u8]> = outputVectors.iter_mut().map( |v| &mut v[..]).collect();
 
         // Execute kernel across grid
         for z in 0..threadsZ {
@@ -350,6 +350,8 @@ impl IComputeDevice for CpuDevice
                 }
             }
         }
+        drop( inRefs);
+        drop( outRefs);
 
         // Write modified output buffer back to target buffer
         if let Some( targetBuf) = buffers.last() {
