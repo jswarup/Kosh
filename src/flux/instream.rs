@@ -68,7 +68,7 @@ impl<R: Read> From<R> for BuffStream<R> {
     fn from(inner: R) -> Self {
         Self {
             _Inner: inner,
-            _Buff: Buff::NewEmpty(),
+            _Buff: Buff::New(),
         }
     }
 }

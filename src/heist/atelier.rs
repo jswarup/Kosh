@@ -40,7 +40,7 @@ impl< 'a> Atelier< 'a>
             _SzPreds: Buff::Create( U32::_16Sz, |_i| Atm::New( U16::_0)),
             _SuccIds: Buff::< U16>::Create( U32::_16Sz, |_| U16::_0),
             _FreeJobLock: Spinlock::New(),
-            _FreeJobStash: Stash::< U16>::New( U32::_16Sz, U32::_0, U16::_0),
+            _FreeJobStash: Stash::< U16>::Create( U32::_16Sz, U32::_0, |_| U16::_0),
             _JobBuff: Buff::Create( U32::_16Sz, |_| WorkPtr::Null()),
             _JobDocBuff: Buff::Create( U32::_16Sz, |_| "Free"),
             _Terminal: U16::_0,
@@ -317,7 +317,7 @@ impl AtelierInfo
     pub fn	FetchConnectedJobs( atelier: &Atelier< '_>, jobIds: Arr< U16>, jobStash: &mut Stash< JobInfo>  )
     {
         let  	mut jobSet = HashSet::< U16>::new();
-        let  	mut processStash = Stash::< U16>::New( U32( 1024), 0, U16( 0));
+        let  	mut processStash = Stash::< U16>::Create( U32( 1024), 0, |_| U16( 0));
         jobIds.Traverse( |jobId| {
             processStash.Push( *jobId);
         });
@@ -340,7 +340,7 @@ impl AtelierInfo
         let  	docArr = atelier._JobDocBuff.Arr();
         let  	freeDoc = atelier.FreeDocStr();
         let  	mut info = AtelierInfo {
-            _HookedStash: Stash::New( U32( 1024), U32::_0, JobInfo::default()),
+            _HookedStash: Stash::Create( U32( 1024), U32::_0, |_| JobInfo::default()),
             _JobRefBuff: Buff::Create( U32::_16Sz, |i| if (*docArr.At( i)).as_ptr() == (*freeDoc).as_ptr() {  i.Xplod()[ 0]} else { U16::_X}),
         };
 
@@ -354,7 +354,7 @@ impl AtelierInfo
         let  	jSeg = jobRefs.USeg();
         jSeg.QSort( |i, j| *jobRefs.At( i) < *jobRefs.At( j), |i, j| jobRefs.Swap( i, j));
         let  	hookedArr = info._HookedStash.Stk().Arr();
-        let  	mut tempStash = Stash::New( U32( 1024), U32::_0, U16::_X);
+        let  	mut tempStash = Stash::Create( U32( 1024), U32::_0, |_| U16::_X);
 
         hookedArr.Traverse( |job| {
             let  	lInd = jSeg.LowerBound( | i| *jobRefs.At( i) < job._JobId);

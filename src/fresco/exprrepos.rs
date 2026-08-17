@@ -86,11 +86,11 @@ pub struct ExprRepos
 
 impl ExprRepos
 {
-    pub fn	NewEmpty() -> Self
+    pub fn	New() -> Self
     {
         Self {
-            _Exprs: Stash::NewEmpty(),
-            _VarAttribs: Stash::NewEmpty(),
+            _Exprs: Stash::New(),
+            _VarAttribs: Stash::New(),
         }
     }
 
@@ -228,7 +228,7 @@ impl ExprRepos
 
     pub fn	PostTermTree( &mut self, node: &dyn ITermNode) -> U32
     {
-        let  	exprStash = Stash::<U32>::New( 1024, 0, 0.into());
+        let  	exprStash = Stash::<U32>::Create( 1024, 0, |_| 0.into());
         let  	mut exprStk = exprStash.Stk();
 
         fn	Collect( repos: &mut ExprRepos, child: &dyn ITermNode, parentOp: BinOp, exprStk: &mut crate::silo::Stk< '_, '_, U32>)

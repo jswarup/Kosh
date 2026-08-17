@@ -36,7 +36,7 @@ impl< 'a, W: Write> From< W> for OutStream< 'a, W>
 {
     fn from( inner: W) -> Self
     {
-        let  	buff = Buff::NewEmpty();
+        let  	buff = Buff::New();
         Self {
             _Source: OutSource::Streaming( inner, buff),
             _Marker: U32( 0),

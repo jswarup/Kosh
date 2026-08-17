@@ -81,7 +81,7 @@ unsafe impl< T: Sync> Sync for Buff< T>
 
 impl< T> Buff< T>
 {
-    pub fn	NewEmpty() -> Self
+    pub fn	New() -> Self
     {
         Self {
             _Ptr: NonNull::slice_from_raw_parts( NonNull::dangling(), 0),
@@ -317,7 +317,7 @@ impl< T> Buff< T>
         let  	bSz = b.Size().AsUsize();
         let  	totalSz = aSz + bSz;
         if totalSz == 0 {
-            return Buff::NewEmpty();
+            return Buff::New();
         }
         let  	isZst = size_of::< T>() == 0;
         if isZst {
@@ -552,7 +552,7 @@ impl< T> Default for Buff< T>
 {
     fn	default() -> Self
     {
-        Self::NewEmpty()
+        Self::New()
     }
 }
 
@@ -563,7 +563,7 @@ impl< T> FromIterator< T> for Buff< T>
     fn	from_iter< I: IntoIterator< Item = T>>( iter: I) -> Self
     {
         let  	iterator = iter.into_iter();
-        let  	mut buff = Buff::NewEmpty();
+        let  	mut buff = Buff::New();
         for item in iterator {
             buff.Push( item);
         }
@@ -592,7 +592,7 @@ impl< 'de, T: serde::Deserialize< 'de>> serde::Deserialize< 'de> for Buff< T>
         D: serde::Deserializer< 'de>,
     {
         let  	vec = Vec::< T>::deserialize( deserializer)?;
-        let  	mut buff = Buff::NewEmpty();
+        let  	mut buff = Buff::New();
         for item in vec {
             buff.Push( item);
         }
@@ -636,7 +636,7 @@ impl< T> Drop for BuffIter< T>
                 let  	layout = Layout::array::< T>( len).unwrap();
                 dealloc( self._Buff._Ptr.cast::< u8>().as_ptr(), layout);
             }
-            forget( std::mem::replace( &mut self._Buff, Buff::NewEmpty()));
+            forget( std::mem::replace( &mut self._Buff, Buff::New()));
         }
     }
 }
@@ -686,7 +686,7 @@ impl< 'a, T> IntoIterator for &'a mut Buff< T>
 macro_rules! Buff {
     ( $( $x:expr ),* ) => {
         {
-            let  	mut temp = $crate::silo::Buff::NewEmpty();
+            let  	mut temp = $crate::silo::Buff::New();
             $( temp.Push( $x); )*
             temp
         }

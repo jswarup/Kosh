@@ -44,7 +44,7 @@ classDiagram
     class ExprRepos {
         -_Exprs: Stash~ExprEntry~
         -_VarAttribs: Stash~VarAttrib~
-        +NewEmpty() ExprRepos
+        +New() ExprRepos
         +Store(expr) U32
         +VarCreate(varStr, reuse) U32
         +RealCreate(val: f64) U32
@@ -153,7 +153,7 @@ Leaf and constant representation in symbolic term trees:
 
 ### `ExprRepos`
 Central store holding expressions and variables:
-- `NewEmpty() -> Self`: Constructs empty expression repository.
+- `New() -> Self`: Constructs empty expression repository.
 - `Size(&self) -> U32`: Returns count of stored expressions.
 - `Store(&mut self, expr: Box<dyn BaseExpr>) -> U32`: Appends expression and returns assigned `U32` tag.
 - `VarCreate(&mut self, varStr: String, reuseFlg: bool) -> U32`: Registers variable in `_VarAttribs` and stores `VarExpr`.
@@ -205,6 +205,6 @@ use kosh::fresco::ExprRepos;
 // Construct algebraic term tree: (x + y) * 42.0 - z^2
 let tree = TermTree!(( "x" + "y" ) * 42.0 - ( "z" ^ 2.0 ));
 
-let mut repos = ExprRepos::NewEmpty();
+let mut repos = ExprRepos::New();
 let rootTag = repos.PostTermTree(&tree);
 ```

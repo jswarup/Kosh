@@ -139,14 +139,14 @@ impl BranchXplr for ShardBranch
 {
     fn	Children( &self) -> Result< Buff< Box< dyn Xplr>>, String>
     {
-        let  	mut res: Buff< Box< dyn Xplr>> = Buff::NewEmpty();
+        let  	mut res: Buff< Box< dyn Xplr>> = Buff::New();
         for child in &self._Children {
             if child.IsLeaf() {
                 if let  	Some( leaf) = child.AsLeaf() {
                     res.Push( Box::new( ShardLeaf::New( child.Name().to_string(), child.Path().to_string(), leaf.Size().to_string())));
                 }
             } else {
-                res.Push( Box::new( ShardBranch::New( child.Name().to_string(), child.Path().to_string(), Buff::NewEmpty())));
+                res.Push( Box::new( ShardBranch::New( child.Name().to_string(), child.Path().to_string(), Buff::New())));
             }
         }
         Ok( res)

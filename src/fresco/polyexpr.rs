@@ -17,7 +17,7 @@ impl PolyExpr
     pub fn	New() -> Self
     {
         Self {
-            _Childs: Buff::NewEmpty(),
+            _Childs: Buff::New(),
             _CoSz: U32( 0),
         }
     }

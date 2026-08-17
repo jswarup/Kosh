@@ -96,7 +96,7 @@ impl FrescoBranch
 
     pub fn	FromDemo() -> Self
     {
-        let  	mut repos = ExprRepos::NewEmpty();
+        let  	mut repos = ExprRepos::New();
         let  	varA = repos.VarCreate( "x".to_string(), false);
         let  	varB = repos.VarCreate( "y".to_string(), false);
         let  	realC = repos.RealCreate( 42.0);
@@ -145,14 +145,14 @@ impl BranchXplr for FrescoBranch
 {
     fn	Children( &self) -> Result< Buff< Box< dyn Xplr>>, String>
     {
-        let  	mut children: Buff< Box< dyn Xplr>> = Buff::NewEmpty();
+        let  	mut children: Buff< Box< dyn Xplr>> = Buff::New();
         for entry in &self._Entries {
             if entry.IsLeaf() {
                 if let  	Some( leaf) = entry.AsLeaf() {
                     children.Push( Box::new( FrescoLeaf::New( entry.Name().to_string(), entry.Path().to_string(), leaf.Size().to_string())));
                 }
             } else {
-                children.Push( Box::new( FrescoBranch::New( entry.Name().to_string(), entry.Path().to_string(), Buff::NewEmpty())));
+                children.Push( Box::new( FrescoBranch::New( entry.Name().to_string(), entry.Path().to_string(), Buff::New())));
             }
         }
         Ok( children)

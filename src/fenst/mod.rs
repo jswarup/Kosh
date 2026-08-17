@@ -62,7 +62,7 @@ pub fn	XplrListEntries( path: String) -> Result< Buff< XplrEntry>, String>
 {
     let  	branch = FsBranch::New( path);
     let  	children = branch.Children()?;
-    let  	mut entries: Buff< XplrEntry> = Buff::NewEmpty();
+    let  	mut entries: Buff< XplrEntry> = Buff::New();
 
     for child in children {
         let  	isDir = !child.IsLeaf();

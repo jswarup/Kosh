@@ -521,7 +521,7 @@ impl Default for Person
             _Name: String::new(),
             _Age: U64( 0),
             _Weight: 0.0,
-            _Groups: crate::silo::Buff::NewEmpty(),
+            _Groups: crate::silo::Buff::New(),
         }
     }
 }
@@ -530,7 +530,7 @@ crate::ImplFluxSource!( Person, _Name, _Age, _Weight, _Groups);
 #[test]
 fn	TestPersonSerialization()
 {
-    let  	mut groups = crate::silo::Buff::< MemberGroup>::NewEmpty();
+    let  	mut groups = crate::silo::Buff::< MemberGroup>::New();
     groups.Push( MemberGroup { _Name: "Group A".to_string() });
     groups.Push( MemberGroup { _Name: "Group B".to_string() });
 

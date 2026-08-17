@@ -259,8 +259,8 @@ where
     {
         match self._Op {
             BinOp::Bor => {
-                let  	mut leftTails = Buff::NewEmpty();
-                let  	mut rightTails = Buff::NewEmpty();
+                let  	mut leftTails = Buff::New();
+                let  	mut rightTails = Buff::New();
                 let  	headL = self._Left.Post( maestro, &mut leftTails);
                 let  	headR = self._Right.Post( maestro, &mut rightTails);
                 while let  	Some( t) = leftTails.Pop() {
@@ -269,14 +269,14 @@ where
                 while let  	Some( t) = rightTails.Pop() {
                     tails.Push( t);
                 }
-                let  	mut heads = Buff::NewEmpty();
+                let  	mut heads = Buff::New();
                 heads.Push( headL);
                 heads.Push( headR);
                 let  	enqId = maestro.ConstructEnqueArr( U16( 0), heads, "EnqPar");
                 enqId
             }
             BinOp::Less => {
-                let  	mut leftTails = Buff::NewEmpty();
+                let  	mut leftTails = Buff::New();
                 let  	headL = self._Left.Post( maestro, &mut leftTails);
                 let  	headR = self._Right.Post( maestro, tails);
                 while let  	Some( leftTail) = leftTails.Pop() {

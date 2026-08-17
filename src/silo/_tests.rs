@@ -35,7 +35,7 @@ fn	BuffFromTest()
     assert_eq!( buffFromSlice[1], 20);
     assert_eq!( buffFromSlice[2], 30);
     // Test creation and push/pop on Buff
-    let  	mut buffFromVec = Buff::NewEmpty();
+    let  	mut buffFromVec = Buff::New();
     assert_eq!( buffFromVec.len(), 0);
     buffFromVec.Push( 40);
     buffFromVec.Push( 50);
@@ -169,13 +169,13 @@ fn	USegSpanTest()
 {
     let  	seg = USeg::New( 10, 6);
     // Case 1: All values return true
-    let  	mut visited = Buff::NewEmpty();
+    let  	mut visited = Buff::New();
     seg.Traverse( |val| {
         visited.Push( val);
     });
     assert_eq!( &*visited, &[U32( 10), U32( 11), U32( 12), U32( 13), U32( 14), U32( 15)]);
     // Case 2: One value returns false ( early termination)
-    let  	mut visited2 = Buff::NewEmpty();
+    let  	mut visited2 = Buff::New();
     let  	result2 = seg.Span( |val| {
         visited2.Push( val);
         val < 13
@@ -373,10 +373,27 @@ fn	UIntBasicOps()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
+fn	StashBasicOps()
+{
+    let  	stash = Stash::< U32>::FromBuff( Buff::from( [U32( 10), U32( 20), U32( 30)]), U32( 3));
+    let  	stk = stash.Stk();
+    let  	mut val = U32( 0);
+    assert!( stk.Pop( &mut val));
+    assert_eq!( val, 30);
+    assert!( stk.Pop( &mut val));
+    assert_eq!( val, 20);
+    assert!( stk.Pop( &mut val));
+    assert_eq!( val, 10);
+    assert!( !stk.Pop( &mut val));
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
 #[allow( dead_code)]
 fn	StackExportImportOps()
 {
-    let  	srcStash = Stash::< U32>::New( 10, 0, U32( 0));
+    let  	srcStash = Stash::< U32>::Create( 10, 0, |_| U32( 0));
     let  	srcStk = srcStash.Stk();
     for i in 1..=5u32 {
         let     val = U32( i);
@@ -384,7 +401,7 @@ fn	StackExportImportOps()
     }
     assert_eq!( srcStk.Size(), 5);
     // Destination stack initially empty
-    let  	dstStash = Stash::< U32>::New( 10, 0, U32( 0));
+    let  	dstStash = Stash::< U32>::Create( 10, 0, |_| U32( 0));
     let  	dstStk = dstStash.Stk();
     assert_eq!( dstStk.Size(), 0);
     // Export from source to destination ( move all 5 elements)
@@ -399,24 +416,20 @@ fn	StackExportImportOps()
         assert_eq!( out, expected);
     }
     assert_eq!( dstStk.Size(), 0);
-    // Refill source stack for Import test
-    for i in 10..=14u32 {
-        let     v = U32( i);
-        assert!( srcStk.Push( v));
+    // Test Import with smaller number of elements
+    for i in 1..=10u32 {
+        srcStk.Push( U32( i));
     }
-    assert_eq!( srcStk.Size(), 5);
-    // Import from source into destination ( move all 5 elements)
-    let  	imported = dstStk.Import( &srcStk, 5);
-    // Import uses a mutable reference, srcStk remains usable.
-    assert_eq!( imported, 5);
-    assert_eq!( dstStk.Size(), 5);
-    // Verify imported order ( LIFO, should be 14..=10)
-    for expected in ( 10..=14u32).rev() {
+    assert_eq!( srcStk.Size(), 10);
+    dstStk.Import( &srcStk, 4);
+    assert_eq!( srcStk.Size(), 6);
+    assert_eq!( dstStk.Size(), 4);
+    // Destination top should be 10, 9, 8, 7
+    for expected in [10u32, 9, 8, 7] {
         let  	mut out = U32( 0);
         assert!( dstStk.Pop( &mut out));
         assert_eq!( out, expected);
     }
-    assert_eq!( dstStk.Size(), 0);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -425,13 +438,13 @@ fn	StackExportImportOps()
 fn	TestConcurrentStackOps()
 {
     // Create a shared destination stack of size 1000
-    let  	dstStash = Arc::new( Stash::< U32>::New( 1000, 0, U32( 0)));
-    let  	mut handles = Buff::NewEmpty();
+    let  	dstStash = Arc::new( Stash::< U32>::Create( 1000, 0, |_| U32( 0)));
+    let  	mut handles = Buff::New();
     for t in 0..10 {
         let  	dstStkClone = dstStash.clone();
         let  	handle = thread::spawn( move || {
             // Create a thread-local source stack
-            let  	srcStash = Stash::< U32>::New( 10, 0, U32( 0));
+            let  	srcStash = Stash::< U32>::Create( 10, 0, |_| U32( 0));
             let  	srcStk = srcStash.Stk();
             for i in 0..10 {
                 let  	v = U32( t * 10 + i);
@@ -448,7 +461,7 @@ fn	TestConcurrentStackOps()
     // Since 10 threads imported 10 elements each, dstStk size must be exactly 100
     assert_eq!( dstStash.Size(), 100);
     // Collect all elements and verify they are exactly 0..100 ( in some order)
-    let  	mut values = Buff::NewEmpty();
+    let  	mut values = Buff::New();
     let  	dstStk = dstStash.Stk();
     let  	mut out = U32( 0);
     while dstStk.Pop( &mut out) {
@@ -530,7 +543,7 @@ fn	TestDoQSort()
 fn	TestStashDynamicPushback()
 {
     // Test with initial size 2
-    let  	mut stash = Stash::< U32>::New( 2, 0, U32( 8));
+    let  	mut stash = Stash::< U32>::Create( 2, 0, |_| U32( 8));
     assert_eq!( stash.Size(), 0);
     assert_eq!( stash.Size() + stash.Stk().SzVoid(), 2);
     // Push first element
@@ -573,7 +586,7 @@ fn	TestStashDynamicPushback()
     assert_eq!( out, 10);
     assert!( !stk.Pop( &mut out));
     // Test with initial size 0
-    let  	mut stash0 = Stash::< U32>::New( 0, 0, U32( 0));
+    let  	mut stash0 = Stash::< U32>::Create( 0, 0, |_| U32( 0));
     assert_eq!( stash0.Size(), 0);
     assert_eq!( stash0.Size() + stash0.Stk().SzVoid(), 0);
     let  	mut v = U32( 100);
@@ -592,7 +605,7 @@ fn	TestStashDynamicPushback()
 fn	TestStashAppend()
 {
     // Test with initial size 2
-    let  	mut stash = Stash::< U32>::New( 2, 0, U32( 0));
+    let  	mut stash = Stash::< U32>::Create( 2, 0, |_| U32( 0));
     // Create an Arr of elements to append
     let  	mut data = [U32( 10), U32( 20), U32( 30)];
     let  	arr = Arr::from( &mut data);

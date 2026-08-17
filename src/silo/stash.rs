@@ -20,10 +20,10 @@ impl< T> Stash< T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	NewEmpty() -> Self
+    pub fn	New() -> Self
     {
         Self {
-            _Buff: Buff::NewEmpty(),
+            _Buff: Buff::New(),
             _Sz: Atm::New( U32( 0)),
         }
     }
@@ -79,7 +79,7 @@ impl< T> Stash< T>
 
     pub fn	BuffOut( &mut self) -> Buff< T>
     {
-        replace( &mut self._Buff, Buff::NewEmpty())
+        replace( &mut self._Buff, Buff::New())
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -110,17 +110,6 @@ impl< T> Stash< T>
 
 impl< T: Copy> Stash< T>
 {
-    pub fn	New< Sz: Into< U32>, SzStk: Into< U32>>(  sz: Sz,
-        szStk: SzStk,
-        def: T,
-    ) -> Self
-    {
-        Self {
-            _Buff: Buff::Create( sz, |_| def),
-            _Sz: Atm::New( szStk.into()),
-        }
-    }
-
     //-----------------------------------------------------------------------------------------------------------------------------
 
     fn	DoGrow( &mut self, fillVal: T)
@@ -272,7 +261,7 @@ macro_rules! Stash {
     );
 
     ($exp:expr; $($tail:tt)+) => ({
-        let  	mut ret = $crate::silo::Stash::NewEmpty();
+        let  	mut ret = $crate::silo::Stash::New();
         $crate::Stash![@__ ret, $exp; $($tail)+];
         ret
     });

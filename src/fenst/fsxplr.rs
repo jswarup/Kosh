@@ -151,8 +151,8 @@ impl BranchXplr for FsBranch
         let  	readDir = fs::read_dir( dirPath)
             .map_err( |e| format!( "Failed to read directory: {}", e))?;
 
-        let  	mut dirs: Buff< Box< dyn Xplr>> = Buff::NewEmpty();
-        let  	mut files: Buff< Box< dyn Xplr>> = Buff::NewEmpty();
+        let  	mut dirs: Buff< Box< dyn Xplr>> = Buff::New();
+        let  	mut files: Buff< Box< dyn Xplr>> = Buff::New();
 
         for entry in readDir {
             let  	entry = match entry {
@@ -182,7 +182,7 @@ impl BranchXplr for FsBranch
         dirs.sort_by( |a, b| a.Name().to_lowercase().cmp( &b.Name().to_lowercase()));
         files.sort_by( |a, b| a.Name().to_lowercase().cmp( &b.Name().to_lowercase()));
 
-        let  	mut result = Buff::NewEmpty();
+        let  	mut result = Buff::New();
         for d in dirs {
             result.Push( d);
         }

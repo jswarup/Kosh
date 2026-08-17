@@ -80,7 +80,7 @@ pub fn	XplrChildren( uri: String) -> Result< Buff< XplrNodeDto>, String>
     let  	guard = registry.read().map_err( |e| e.to_string())?;
     let  	( scheme, root) = guard.OpenRoot( &uri)?;
     let  	children = root.Children()?;
-    let  	mut dtos = Buff::NewEmpty();
+    let  	mut dtos = Buff::New();
 
     for child in children {
         dtos.Push( child.ToDto( &scheme));
@@ -310,7 +310,7 @@ pub fn	XplrProjectPts(
     let  	mut guard = PTS_STATE.lock().map_err( |e| e.to_string())?;
     let  	state = guard.entry( path.clone()).or_insert_with( || {
         let  	dto = kosh::fenst::XplrFetchPtsPoints( GCOMP_SPV).unwrap_or_else( |_| PtsPointsDto {
-            _Points: Buff::NewEmpty(),
+            _Points: Buff::New(),
             _Count: 0,
             _BboxMin: [ 0.0, 0.0, 0.0 ],
             _BboxMax: [ 0.0, 0.0, 0.0 ],
@@ -351,13 +351,13 @@ pub fn	XplrProjectPts(
         ( 0, 4), ( 1, 5), ( 2, 6), ( 3, 7),
     ];
 
-    let  	mut projectedBox = Buff::NewEmpty();
+    let  	mut projectedBox = Buff::New();
     for v in &bboxVerts {
         let  	( px, py, _) = Project3d( v[0], v[1], v[2], angleX, angleY, width, height);
         projectedBox.Push( ( px, py));
     }
 
-    let  	mut box_lines = Buff::NewEmpty();
+    let  	mut box_lines = Buff::New();
     for ( i, j) in &bboxEdges {
         let  	p1 = projectedBox[*i];
         let  	p2 = projectedBox[*j];
@@ -370,7 +370,7 @@ pub fn	XplrProjectPts(
     }
 
     let  	( r, g, b) = ParseHexColor( &color);
-    let  	mut projectedPoints = Buff::NewEmpty();
+    let  	mut projectedPoints = Buff::New();
     for pt in &state._Points {
         let  	( px, py, pz) = Project3d( pt[0], pt[1], pt[2], angleX, angleY, width, height);
         let  	depthFactor = 0.3f32.max( 1.0f32.min( ( 300.0 - pz) / 400.0));

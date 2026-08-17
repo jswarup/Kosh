@@ -320,7 +320,7 @@ impl IComputeDevice for CpuDevice
         let  	threadsZ = dim._Z.AsU32();
 
         // Read all buffers into CPU memory
-        let  	mut rawData: Buff< Buff< u8>> = Buff::NewEmpty();
+        let  	mut rawData: Buff< Buff< u8>> = Buff::New();
         for b in buffers {
             rawData.Push( b.Read()?);
         }

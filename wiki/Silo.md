@@ -49,7 +49,7 @@ classDiagram
     }
     class Buff~T~ {
         -NonNull~T~ _Ptr
-        +NewEmpty() Buff~T~
+        +New() Buff~T~
         +Create(sz, dispenser) Buff~T~
         +Push(val)
         +Pop() Option~T~
@@ -60,6 +60,7 @@ classDiagram
         -NonNull~T~ _Ptr
         -U32 _Size
         +New(ptr, size) Arr
+        +NewEmpty() Arr
         +Ptr() *const T
         +At(k) &'a T
         +MutAt(k) &'a mut T
@@ -77,7 +78,6 @@ classDiagram
     class Stash~T~ {
         -_Buff: Buff~T~
         -_Sz: Atm~U32~
-        +Push(val)
         +Pop(val) bool
         +Stk() Stk
         +Append(arr)
@@ -129,9 +129,8 @@ Transparent wrappers (`#[repr(transparent)]`) providing wrapping arithmetic and 
 
 ### `Buff<T>`
 An owned, growable heap array managed via `std::alloc`:
-- `NewEmpty() -> Self`: Creates a zero-capacity dangling buffer.
+- `New() -> Self`: Creates a zero-capacity dangling buffer.
 - `Create<S, Dispenser>(sz: S, dispenser: Dispenser) -> Self`: Allocates memory and initializes elements with `dispenser(index: U32)`. Protected against unwinding panics via `InitGuard`.
-- `New<S>(sz: S, initialValue: T) -> Self where T: Clone`: Allocates filled buffer.
 - `Push(&mut self, val: T)`: Reallocates and appends `val`.
 - `Pop(&mut self) -> Option<T>`: Removes and drops the last element, shrinking memory if empty.
 - `Resize<Dispenser>(&mut self, newSize: U32, dispenser: Dispenser)`: Resizes in-place using `realloc` with `ResizeGuard` panic safety.
@@ -159,7 +158,7 @@ Lock-free, fixed-capacity stack backed by `Arr<'b, T>` with atomic CAS size poin
 
 ### `Stash<T>`
 Growable stack container encapsulating `_Buff: Buff<T>` and `_Sz: Atm<U32>`:
-- `NewEmpty() -> Self`: Creates empty stash.
+- `New() -> Self`: Creates empty stash.
 - `Create<Sz, SzStk, Dispenser>(sz: Sz, szStk: SzStk, dispenser: Dispenser) -> Self`: Pre-allocates buffer.
 - `Stk(&self) -> Stk<'_, '_, T>`: Obtains a lock-free `Stk` view of active elements.
 - `Push(&mut self, val: T) where T: Copy`: Pushes value, doubling buffer if capacity is exceeded.

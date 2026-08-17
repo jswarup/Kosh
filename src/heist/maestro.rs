@@ -36,11 +36,11 @@ impl< 'a> Maestro< 'a>
             _Index: maestroInd.into(),
             _Atelier: null(),
             _SzProcessed: U32::_0,
-            _JobCache: Stash::< U16>::New( U32( 256), U32::_0, U16::_0),
-            _RunQueue: Stash::< U16>::New( U32( 1024), U32::_0, U16::_0),
+            _JobCache: Stash::< U16>::Create( U32( 256), U32::_0, |_| U16::_0),
+            _RunQueue: Stash::< U16>::Create( U32( 1024), U32::_0, |_| U16::_0),
             _RunQlock: Spinlock::New(),
             _CurSuccId: Atm::New( U16::_0),
-            _TempQueue: Stash::< U16>::New( U32( 64), U32::_0, U16::_0),
+            _TempQueue: Stash::< U16>::Create( U32( 64), U32::_0, |_| U16::_0),
         }
     }
 
@@ -55,7 +55,6 @@ impl< 'a> Maestro< 'a>
 
     pub fn	Atelier( &self) -> &Atelier< 'a>
     {
-        assert!( !self._Atelier.is_null());
         unsafe { &*self._Atelier }
     }
 
@@ -189,7 +188,7 @@ impl< 'a> Maestro< 'a>
 
     pub fn	PostChoreTree< T: crate::heist::choretree::IChoreNode>( &self, node: &T)
     {
-        let  	mut tails = Buff::NewEmpty();
+        let  	mut tails = Buff::New();
         let  	head = node.Post( self, &mut tails);
         let  	succId = self.CurSuccId();
         while let  	Some( tail) = tails.Pop() {

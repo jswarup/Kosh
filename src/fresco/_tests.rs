@@ -11,7 +11,7 @@ use	crate::flux::IFluxExportSource;
 #[test]
 fn	TestExprRepos()
 {
-    let  	mut repos = ExprRepos::NewEmpty();
+    let  	mut repos = ExprRepos::New();
 
     assert_eq!( repos.SzVar(), U32( 0));
     assert_eq!( repos.Size(), U32( 0));
@@ -46,7 +46,7 @@ fn	TestTermTree()
 
     let  	nodeTree = crate::TermTree!( q + x + y *( z + "a" +"b" +"x" +"d"));
 
-    let mut exprRepos = ExprRepos::NewEmpty();
+    let mut exprRepos = ExprRepos::New();
     
     exprRepos.PostTermTree( &nodeTree);
 

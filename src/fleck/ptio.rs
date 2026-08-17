@@ -72,7 +72,7 @@ impl PtsCloud
     pub fn	New() -> Self
     {
         Self {
-            _Points: Buff::NewEmpty(),
+            _Points: Buff::New(),
             _HeaderCount: None,
         }
     }
@@ -82,7 +82,7 @@ impl PtsCloud
     pub fn	WithCapacity( capacity: U32) -> Self
     {
         Self {
-            _Points: Buff::NewEmpty(),
+            _Points: Buff::New(),
             _HeaderCount: Some( capacity),
         }
     }

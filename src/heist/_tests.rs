@@ -42,7 +42,7 @@ fn	BuffBasicAtelierTest()
 fn	TestThreadSharedInteger()
 {
     let  	shared = Arc::new( Mutex::new( 0));
-    let  	mut handles = Buff::NewEmpty();
+    let  	mut handles = Buff::New();
     for i in 0..4 {
         let  	sharedClone = shared.clone();
         let  	handle = thread::spawn( move || {
