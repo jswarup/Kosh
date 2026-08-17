@@ -185,7 +185,7 @@ fn	TestGpuVectorAdd()
     let  	szData = U32( 512);
     let  	buffA = Buff::Create( szData, |i| i.AsU32() as f32);
     let  	buffB = Buff::Create( szData, |i| ( i.AsU32() * 10) as f32);
-    let  	buffOut = Buff::New( szData, 0.0f32);
+    let  	buffOut = Buff::Create( szData, |_| 0.0f32);
     let  	byteLen = szData.AsUsize() * std::mem::size_of::< f32>();
 
     let  	gpuA = device.BufferInit(
@@ -318,7 +318,7 @@ fn	TestGpuCollatz()
 
     let  	szData = U32( 128);
     let  	inputBuff = Buff::Create( szData, |i| i.AsU32() + 1);
-    let  	outputBuff = Buff::New( szData, 0u32);
+    let  	outputBuff = Buff::Create( szData, |_| 0u32);
     let  	byteLen = szData.AsUsize() * std::mem::size_of::< u32>();
 
     let  	gpuIn = device.BufferInit(
@@ -446,7 +446,7 @@ fn	TestRustGpuComputeExample()
 
     let  	szData = U32( 1048576);
     let  	inputBuff = Buff::Create( szData, |i| i.AsU32() + 1);
-    let  	outputBuff = Buff::New( szData, 0u32);
+    let  	outputBuff = Buff::Create( szData, |_| 0u32);
     let  	byteLen = szData.AsUsize() * std::mem::size_of::< u32>();
 
     let  	gpuIn = device.BufferInit(
@@ -604,7 +604,7 @@ fn	TestCpuVectorAdd()
     let  	szData = U32( 512);
     let  	buffA = Buff::Create( szData, |i| i.AsU32() as f32);
     let  	buffB = Buff::Create( szData, |i| ( i.AsU32() * 10) as f32);
-    let  	buffOut = Buff::New( szData, 0.0f32);
+    let  	buffOut = Buff::Create( szData, |_| 0.0f32);
 
     let  	kernel = CpuDevice::VectorAddKernel();
     let  	bufA = cpu.CreateBufferInit( "cpu_vec_a", buffA.CastSlice(), BufferUsage::STORAGE).unwrap();
@@ -638,7 +638,7 @@ fn	TestCpuCollatz()
     let  	cpu = CpuDevice::New();
     let  	szData = U32( 128);
     let  	inputBuff = Buff::Create( szData, |i| i.AsU32() + 1);
-    let  	outputBuff = Buff::New( szData, 0u32);
+    let  	outputBuff = Buff::Create( szData, |_| 0u32);
 
     let  	kernel = CpuDevice::CollatzKernel();
     let  	bufIn = cpu.CreateBufferInit( "cpu_collatz_in", inputBuff.CastSlice(), BufferUsage::STORAGE).unwrap();
@@ -676,7 +676,7 @@ fn	TestCpuPointCloud()
     let  	cpu = CpuDevice::New();
     let  	numPoints = U32( 100);
     let  	numFloats = U32( ( numPoints.AsUsize() * 4) as u32);
-    let  	zeroBuff = Buff::New( numFloats, 0.0f32);
+    let  	zeroBuff = Buff::Create( numFloats, |_| 0.0f32);
 
     let  	kernel = CpuDevice::PointCloudKernel();
     let  	bufOut = cpu.CreateBufferInit( "cpu_pointcloud_out", zeroBuff.CastSlice(), BufferUsage::STORAGE).unwrap();

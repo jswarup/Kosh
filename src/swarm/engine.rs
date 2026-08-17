@@ -297,7 +297,7 @@ impl SwarmEngine
             return Err( SwarmError::ExecutionError( "Input buffer lengths do not match".to_string()));
         }
         let  	sz = a.len();
-        let  	zeroBuff = Buff::New( U32( sz as u32), 0.0f32);
+        let  	zeroBuff = Buff::Create( sz, |_| 0.0f32);
         let  	kernel = self.CompileOp( StandardOp::VectorAdd)?;
         let  	bufA = self.device.CreateBufferInit( "vecadd_a", a.CastSlice(), BufferUsage::STORAGE)?;
         let  	bufB = self.device.CreateBufferInit( "vecadd_b", b.CastSlice(), BufferUsage::STORAGE)?;
@@ -313,7 +313,7 @@ impl SwarmEngine
     pub fn	RunCollatz( &self, input: &[u32]) -> Result< Buff< u32>, SwarmError>
     {
         let  	sz = input.len();
-        let  	zeroBuff = Buff::New( U32( sz as u32), 0u32);
+        let  	zeroBuff = Buff::Create( sz, |_| 0u32);
         let  	kernel = self.CompileOp( StandardOp::Collatz)?;
         let  	bufIn = self.device.CreateBufferInit( "collatz_in", input.CastSlice(), BufferUsage::STORAGE)?;
         let  	bufOut = self.device.CreateBufferInit( "collatz_out", zeroBuff.CastSlice(), BufferUsage::STORAGE)?;
@@ -332,7 +332,7 @@ impl SwarmEngine
     ) -> Result< Buff< [f32; 3]>, SwarmError>
     {
         let  	count = numPoints.AsUsize();
-        let  	zeroFloats = Buff::New( U32( ( count * 4) as u32), 0.0f32);
+        let  	zeroFloats = Buff::Create( ( count * 4) as u32, |_| 0.0f32);
         let  	workgroups = ( numPoints.AsU32() + 63) / 64;
 
         let  	kernel = match ( self.device.Backend(), spirvBytes) {

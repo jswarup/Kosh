@@ -26,7 +26,7 @@ impl CpuBuffer
     {
         CpuBuffer {
             label: label.to_string(),
-            data: Arc::new( RwLock::new( Buff::New( U32( size.0 as u32), 0u8))),
+            data: Arc::new( RwLock::new( Buff::Create( size.0 as u32, |_| 0u8))),
             usage,
         }
     }

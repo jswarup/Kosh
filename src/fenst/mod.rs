@@ -242,7 +242,7 @@ pub fn	XplrFetchPtsPoints( spirvBytes: &[u8]) -> Result< PtsPointsDto, String>
     // Create output buffer: 100 Vec4s (4 floats each = 16 bytes per point)
     let  	vec4Size = std::mem::size_of::< f32>() * 4;
     let  	byteLen = numPointsUsize * vec4Size;
-    let  	zeroBuff = Buff::New( U32( ( byteLen / std::mem::size_of::< f32>()) as u32), 0.0f32);
+    let  	zeroBuff = Buff::Create( ( byteLen / std::mem::size_of::< f32>()) as u32, |_| 0.0f32);
 
     let  	gpuOut = device.BufferInit(
         "pts_pointcloud_out",

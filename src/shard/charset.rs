@@ -263,7 +263,7 @@ impl Charset
     pub fn	ListChars( &self) -> Buff< U8>
     {
         let  	weight = self.Weight();
-        let  	mut list = Buff::New( weight, U8( 0));
+        let  	mut list = Buff::Create( weight, |_| U8( 0));
         let  	mut idx = 0usize;
         for i in 0..Self::SZ {
             let  	mut val = self._Bits[i].0;

@@ -10,7 +10,7 @@ use	std::thread;
 #[test]
 fn	BuffBasicOpsTest()
 {
-    let  	mut buff = Buff::New( 10, 42);
+    let  	mut buff = Buff::Create( 10, |_| 42);
     assert_eq!( buff.len(), 10);
     assert_eq!( buff[0], 42);
     assert_eq!( buff[1], 42);
@@ -49,7 +49,7 @@ fn	BuffFromTest()
     let  	buffFromArr = Buff::from( [100, 200, 300, 400]);
     assert_eq!( buffFromArr.len(), 4);
     assert_eq!( buffFromArr[2], 300);
-    let  	buff1 = Buff::New( 10, ());
+    let  	buff1 = Buff::Create( 10, |_| ());
     assert_eq!( buff1.Size(), 10);
     assert_eq!( buff1[5], ());
     let  	buff2 = Buff::Create( 5, |_| 42);
@@ -65,7 +65,7 @@ fn	BuffFromTest()
 #[test]
 fn	ArrBasicOpsTest()
 {
-    let  	buff = Buff::New( 3, 42);
+    let  	buff = Buff::Create( 3, |_| 42);
     {
         let  	mut arr = buff.Arr();
         assert_eq!( arr.len(), 3);
@@ -467,7 +467,7 @@ fn	TestConcurrentStackOps()
 fn	QSortTest()
 {
     let  	buff = Buff::Create( U32( 256), |_| rand::random::< f64>());
-    //let     buff =  Buff::New( 5, | i| i);
+    //let     buff =  Buff::Create( 5, | i| i);
     let  	arr = buff.Arr();
     arr.USeg().QSort( |i, j| arr.At( i) > arr.At( j), |i, j| {
             arr.Swap( i, j);
@@ -623,7 +623,7 @@ struct NonDefaultStruct
 fn	TestBuffResize()
 {
     // Create a buffer of size 3 initialized with NonDefaultStruct
-    let  	mut buff = Buff::New( 3, NonDefaultStruct { value: 42 });
+    let  	mut buff = Buff::Create( 3, |_| NonDefaultStruct { value: 42 });
     assert_eq!( buff.len(), 3);
     assert_eq!( buff[0].value, 42);
     // Resize using Resize

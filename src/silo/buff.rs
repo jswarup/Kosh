@@ -299,14 +299,6 @@ impl< T> Buff< T>
         }
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	New< S: Into< U32>>( sz: S, initialValue: T) -> Self
-    where
-        T: Clone,
-    { 
-        Buff::Create( sz.into(), |_| initialValue.clone())
-    }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
@@ -705,7 +697,7 @@ macro_rules! Buff {
     ( $elem:expr ; $n:expr ) => {
         {
             let  	count: u32 = ( $n).try_into().expect( "Count must fit in u32");
-            $crate::silo::Buff::New( $crate::silo::U32( count), $elem)
+            $crate::silo::Buff::Create( $crate::silo::U32( count), |_| $elem)
         }
     };
 }

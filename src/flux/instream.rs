@@ -115,7 +115,7 @@ impl<R: Read> BuffStream<R> {
 
         while currSize < required {
             let chunkSize = cmp::max(4096, required - currSize);
-            let mut chunk = Buff::New(U32(chunkSize as u32), 0u8);
+            let mut chunk = Buff::Create( chunkSize, |_| 0u8);
             let readBytes = self._Inner.read(&mut chunk)?;
 
             if readBytes == 0 {
