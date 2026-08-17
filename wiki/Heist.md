@@ -24,7 +24,8 @@ classDiagram
         -_Terminal: U16
         -_Swarm: Option~Arc~SwarmEngine~~
         +New(szMaestro: U32) Atelier
-        +NewWithSwarm(szMaestro, swarm) Atelier
+        +SetSwarm(swarm: SwarmEngine)
+        +Swarm() Option~&SwarmEngine~
         +MainMaestro() &Maestro
         +ConstructJob(maestroIdx, succId, job, docStr) U16
         +SetSucc(jobId: U16, succId: U16)
@@ -153,19 +154,21 @@ flowchart LR
 
 ### `Atelier<'a>`
 Workspace coordinator managing multi-threaded pipeline execution:
-- `New(szMaestro: U32) -> Self`: Initializes workspace with `szMaestro` worker threads and $2^{16}$ pre-allocated job descriptors.
-- `NewWithSwarm(szMaestro: U32, swarm: SwarmEngine) -> Self`: Initializes workspace with bound GPU/CPU compute engine.
+- `New<S: Into<U32>>(szMaestro: S) -> Self`: Initializes workspace with `szMaestro` worker threads and $2^{16}$ pre-allocated job descriptors.
+- `SetSwarm(&mut self, swarm: SwarmEngine)`: Binds GPU/CPU compute engine to workspace.
+- `Swarm(&self) -> Option<&SwarmEngine>`: Returns reference to bound Swarm compute engine if present.
 - `MainMaestro(&self) -> &Maestro<'a>`: Returns reference to maestro 0 for DAG submission.
-- `ConstructJob(&self, maestroIdx: U32, succId: U16, job: WorkPtr<'a>, docStr: &'static str) -> U16`: Allocates a unique `jobId` from `_FreeJobStash` or thread caches and registers its successor.
-- `SetSucc(&self, jobId: U16, succId: U16)`: Sets `_SuccIds[jobId] = succId` and increments `_SzPreds[succId]` atomically.
+- `ConstructJob<M: Into<U32>, S: Into<U16>>(&self, maestroIdx: M, succId: S, job: WorkPtr<'a>, docStr: &'static str) -> U16`: Allocates a unique `jobId` from `_FreeJobStash` or thread caches and registers its successor.
+- `SetSucc<J: Into<U16>, S: Into<U16>>(&self, jobId: J, succId: S)`: Sets `_SuccIds[jobId] = succId` and increments `_SzPreds[succId]` atomically.
 - `DoLaunch(&self)`: Spawns worker threads via `std::thread::scope` and runs the execution loop until all tasks complete.
 
 ### `Maestro<'a>`
 Worker thread executor implementing `IWorker`:
+- `New<I: Into<U32>>(maestroInd: I) -> Self`: Constructs worker instance.
 - `MaestroIndex(&self) -> U32`: Returns assigned worker index.
 - `FromWorker<'w>(worker: &'w DynIWorker<'_>) -> &'w Self`: Safe downcasting helper from dynamic worker.
-- `ConstructJob(&self, succId: U16, job: impl IntoWorkPtr<'a>, docStr: &'static str) -> U16`: Allocates job via Atelier.
-- `EnqueueJob(&self, jobId: U16)`: Pushes job to thread-local `_TempQueue`.
+- `ConstructJob<S: Into<U16>>(&self, succId: S, job: impl IntoWorkPtr<'a>, docStr: &'static str) -> U16`: Allocates job via Atelier.
+- `EnqueueJob<J: Into<U16>>(&self, jobId: J)`: Pushes job to thread-local `_TempQueue`.
 - `FlushTempQueue(&self)`: Flushes temporary queue into thread-safe `_RunQueue` and increments `_SzSchedJob`.
 - `PopJob(&self) -> U16`: Thread-safe pop from `_RunQueue`.
 - `PostChoreTree<T: IChoreNode>(&self, node: &T)`: Recursively traverses and posts a `ChoreTree` into the scheduler.

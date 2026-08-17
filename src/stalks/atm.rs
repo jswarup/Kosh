@@ -83,11 +83,19 @@ pub struct Atm< T: AtomicInt>
 
 impl< T: AtomicInt> Atm< T>
 {
-    /// Creates a new `Atm` with the given initial value.
-    pub fn	New( v: T) -> Self
+    /// Creates a new `Atm` from raw atomic type (useful for static/const initialization).
+    pub const fn	FromAtomic( val: T::AtomicType) -> Self
     {
         Self {
-            _Val: v.IntoAtomic(),
+            _Val: val,
+        }
+    }
+
+    /// Creates a new `Atm` with the given initial value.
+    pub fn	New< K: Into< T>>( v: K) -> Self
+    {
+        Self {
+            _Val: v.into().IntoAtomic(),
         }
     }
     /// Loads the value using the provided ordering.

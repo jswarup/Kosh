@@ -149,16 +149,16 @@ impl ExprRepos
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	AddCreate( &mut self, tok0: U32, tok1: U32) -> U32
+    pub fn	AddCreate< T0: Into< U32>, T1: Into< U32>>( &mut self, tok0: T0, tok1: T1) -> U32
     {
-        self.SumCreate( Arr::from( &[tok0, tok1]), Arr::from( &[] as &[U32]))
+        self.SumCreate( Arr::from( &[tok0.into(), tok1.into()]), Arr::from( &[] as &[U32]))
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	DiffCreate( &mut self, tok0: U32, tok1: U32) -> U32
+    pub fn	DiffCreate< T0: Into< U32>, T1: Into< U32>>( &mut self, tok0: T0, tok1: T1) -> U32
     {
-        self.SumCreate( Arr::from( &[tok0]), Arr::from( &[tok1]))
+        self.SumCreate( Arr::from( &[tok0.into()]), Arr::from( &[tok1.into()]))
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -173,16 +173,16 @@ impl ExprRepos
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	MultCreate( &mut self, tok0: U32, tok1: U32) -> U32
+    pub fn	MultCreate< T0: Into< U32>, T1: Into< U32>>( &mut self, tok0: T0, tok1: T1) -> U32
     {
-        self.ProdCreate( Arr::from( &[tok0, tok1]), Arr::from( &[] as &[U32]))
+        self.ProdCreate( Arr::from( &[tok0.into(), tok1.into()]), Arr::from( &[] as &[U32]))
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	DivCreate( &mut self, tok0: U32, tok1: U32) -> U32
+    pub fn	DivCreate< T0: Into< U32>, T1: Into< U32>>( &mut self, tok0: T0, tok1: T1) -> U32
     {
-        self.ProdCreate( Arr::from( &[tok0]), Arr::from( &[tok1]))
+        self.ProdCreate( Arr::from( &[tok0.into()]), Arr::from( &[tok1.into()]))
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -212,16 +212,16 @@ impl ExprRepos
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	VarNameAt( &self, vInd: U32) -> &str
+    pub fn	VarNameAt< I: Into< U32>>( &self, vInd: I) -> &str
     {
-        self._VarAttribs.Stk().Arr().At( vInd)._Name.as_str()
+        self._VarAttribs.Stk().Arr().At( vInd.into())._Name.as_str()
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	VarAttrAt( &self, vInd: U32) -> &VarAttrib
+    pub fn	VarAttrAt< I: Into< U32>>( &self, vInd: I) -> &VarAttrib
     {
-        self._VarAttribs.Stk().Arr().At( vInd)
+        self._VarAttribs.Stk().Arr().At( vInd.into())
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

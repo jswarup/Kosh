@@ -15,14 +15,14 @@ pub struct Atelier< 'a>
 {
     pub( crate) _SzSchedJob: Atm< U32>,                                 // Count of cumulative jobs in flight
     _Maestros: Buff< Maestro< 'a>>,
-    _SzPreds: Buff< Atm< U16>>,                                        // Count of predessors for job at the jobId
-    _SuccIds: Buff< U16>,
+    _SzPreds: Buff< Atm< U16>>,                                         // Count of predessors for job at the jobId
+    _SuccIds: Buff< U16>,                       
     _FreeJobLock: Spinlock,
-    _FreeJobStash: Stash< U16>,                                        // A Stack of free jobIds
+    _FreeJobStash: Stash< U16>,                                         // A Stack of free jobIds
     _JobBuff: Buff< WorkPtr< 'a>>,
     _JobDocBuff: Buff< &'static str>,
     _Terminal: U16,
-    _Swarm: Option< Arc< SwarmEngine>>,
+    _Swarm: Option< Arc< SwarmEngine>>,                                 // shared heterogeneous GPU/CPU compute runtime instance
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -32,32 +32,23 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	New( szMaestro: U32) -> Atelier< 'a>
+    pub fn	New< S: Into< U32>>( szMaestro: S) -> Atelier< 'a>
     {
         let  	mut atelier = Self {
             _SzSchedJob: Atm::New( U32::_0),
-            _Maestros: Buff::Create( szMaestro, Maestro::New),
+            _Maestros: Buff::Create( szMaestro.into(), Maestro::New),
             _SzPreds: Buff::Create( U32::_16Sz, |_i| Atm::New( U16::_0)),
             _SuccIds: Buff::< U16>::New( U32::_16Sz, U16::_0),
             _FreeJobLock: Spinlock::New(),
-            _FreeJobStash: Stash::< U16>::New( U32::_16Sz, 0, U16( 0)),
+            _FreeJobStash: Stash::< U16>::New( U32::_16Sz, U32::_0, U16::_0),
             _JobBuff: Buff::New( U32::_16Sz, WorkPtr::Null()),
             _JobDocBuff: Buff::New( U32::_16Sz, "Free"),
-            _Terminal: U16( 0),
+            _Terminal: U16::_0,
             _Swarm: None,
         };
         atelier._FreeJobStash.DoIndexSetup();
-        atelier._Terminal = atelier.ConstructJob( U32( 0), U16( 0), WorkPtr::Dummy(), "Terminal");
-        atelier._Maestros.Arr().MutAt( 0).SetCurSuccId( atelier._Terminal);
-        atelier
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	NewWithSwarm( szMaestro: U32, swarm: SwarmEngine) -> Atelier< 'a>
-    {
-        let  	mut atelier = Self::New( szMaestro);
-        atelier._Swarm = Some( Arc::new( swarm));
+        atelier._Terminal = atelier.ConstructJob( U32::_0, U16::_0, WorkPtr::Dummy(), "Terminal");
+        atelier._Maestros.Arr().MutAt( U32::_0).SetCurSuccId( atelier._Terminal);
         atelier
     }
 
@@ -100,16 +91,16 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn  SuccId( &self, jobId: U16) -> U16
+    pub fn	SuccId< J: Into< U16>>( &self, jobId: J) -> U16
     {
-        *self._SuccIds.Arr().At( jobId)
+        *self._SuccIds.Arr().At( jobId.into())
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	SzPred( &self, jobId: U16) -> &Atm< U16>
+    pub fn	SzPred< J: Into< U16>>( &self, jobId: J) -> &Atm< U16>
     {
-        self._SzPreds.Arr().At( jobId)
+        self._SzPreds.Arr().At( jobId.into())
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -162,24 +153,28 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	SetSucc( &self, jobId: U16, succId: U16)
+    pub fn	SetSucc< J: Into< U16>, S: Into< U16>>( &self, jobId: J, succId: S)
     {
-        self._SuccIds.Arr().SetAt( jobId, &succId);
-        self.SzPred( succId).Add( 1);
+        let  	j = jobId.into();
+        let  	s = succId.into();
+        self._SuccIds.Arr().SetAt( j, &s);
+        self.SzPred( s).Add( 1);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ConstructJob( &self, maestroIdx: U32, succId: U16, job: WorkPtr< 'a>, docStr: &'static str) -> U16
+    pub fn	ConstructJob< M: Into< U32>, S: Into< U16>>( &self, maestroIdx: M, succId: S, job: WorkPtr< 'a>, docStr: &'static str) -> U16
     {
-        let  	jobId = self.AllocJob( maestroIdx);
+        let  	mIdx = maestroIdx.into();
+        let  	sId = succId.into();
+        let  	jobId = self.AllocJob( mIdx);
         if jobId == 0 {
             return jobId;
         }
         self._JobBuff.Arr().SetAt( jobId, &job);
         self._JobDocBuff.Arr().SetAt( jobId, &docStr);
-        if succId != 0 {
-             self.SetSucc( jobId, succId);
+        if sId != 0 {
+             self.SetSucc( jobId, sId);
         }
         jobId
     }
@@ -209,13 +204,14 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ExecuteLoop( &self, maestroIdx: U32)
+    pub fn	ExecuteLoop< M: Into< U32>>( &self, maestroIdx: M)
     {
-        let  	maestro = self._Maestros.Arr().MutAt( maestroIdx);
+        let  	mIdx = maestroIdx.into();
+        let  	maestro = self._Maestros.Arr().MutAt( mIdx);
         maestro.SetAtelier( self );
         maestro.FlushTempQueue();
         let  	mut jobId = U16( 0);
-        let  	mut stealSeed = maestroIdx.AsU32();
+        let  	mut stealSeed = mIdx.AsU32();
         while self._SzSchedJob.Load( Ordering::Acquire) != 0 {
             while jobId != 0 {
                 maestro.SetCurSuccId( *self._SuccIds.Arr().At( jobId));
@@ -226,7 +222,7 @@ impl< 'a> Atelier< 'a>
                 self._JobBuff.Arr().SetAt( jobId, &WorkPtr::Null());
                 maestro._SzProcessed += 1;
 
-                let  	_res = self.FreeJob( maestroIdx, jobId);
+                let  	_res = self.FreeJob( mIdx, jobId);
                 let  	succId = maestro.CurSuccId();
                 if succId != U16( 0) {
                     let  	szPred: U16 = self.SzPred( succId).Add( -U16( 1));
@@ -244,7 +240,7 @@ impl< 'a> Atelier< 'a>
             }
             jobId = maestro.PopJob();
             if jobId == 0 {
-                jobId = self.GrabJob( maestroIdx, &mut stealSeed);
+                jobId = self.GrabJob( mIdx, &mut stealSeed);
             }
             if jobId == 0 {
                 spin_loop();
@@ -339,12 +335,12 @@ impl AtelierInfo
         }
     }
 
-    pub fn TraceJobs( atelier: &Atelier< '_>) -> AtelierInfo
+    pub fn	TraceJobs( atelier: &Atelier< '_>) -> AtelierInfo
     {
-        let     docArr = atelier._JobDocBuff.Arr();
-        let     freeDoc = atelier.FreeDocStr();
+        let  	docArr = atelier._JobDocBuff.Arr();
+        let  	freeDoc = atelier.FreeDocStr();
         let  	mut info = AtelierInfo {
-            _HookedStash: Stash::New( U32( 1024), 0, JobInfo::default()),
+            _HookedStash: Stash::New( U32( 1024), U32::_0, JobInfo::default()),
             _JobRefBuff: Buff::Create( U32::_16Sz, |i| if (*docArr.At( i)).as_ptr() == (*freeDoc).as_ptr() {  i.Xplod()[ 0]} else { U16::_X}),
         };
 
@@ -354,14 +350,14 @@ impl AtelierInfo
             Self::FetchConnectedJobs( atelier, runQueue, &mut info._HookedStash);
         });
 
-        let     jobRefs = info._JobRefBuff.Arr();
-        let     jSeg = jobRefs.USeg();
+        let  	jobRefs = info._JobRefBuff.Arr();
+        let  	jSeg = jobRefs.USeg();
         jSeg.QSort( |i, j| *jobRefs.At( i) < *jobRefs.At( j), |i, j| jobRefs.Swap( i, j));
-        let     hookedArr = info._HookedStash.Stk().Arr();
-        let     mut tempStash = Stash::New( U32( 1024), 0, U16::_X);
+        let  	hookedArr = info._HookedStash.Stk().Arr();
+        let  	mut tempStash = Stash::New( U32( 1024), U32::_0, U16::_X);
 
         hookedArr.Traverse( |job| {
-            let     lInd = jSeg.LowerBound( | i| *jobRefs.At( i) < job._JobId);
+            let  	lInd = jSeg.LowerBound( | i| *jobRefs.At( i) < job._JobId);
             if jSeg.IsWithin( lInd) && ( *jobRefs.At( lInd) == job._JobId) {
                 tempStash.Push( lInd.Xplod()[ 0]);
             }
@@ -370,8 +366,8 @@ impl AtelierInfo
 
         jSeg.QSort( |i, j| *jobRefs.At( i) < *jobRefs.At( j), |i, j| jobRefs.Swap( i, j));
 
-        let     lInd = jSeg.LowerBound( | i| *jobRefs.At( i) < U16::_X);
-        jobRefs.RSnip( jobRefs.Size() -lInd);
+        let  	lInd = jSeg.LowerBound( | i| *jobRefs.At( i) < U16::_X);
+        jobRefs.RSnip( jobRefs.Size() - lInd);
         info
     }
 }

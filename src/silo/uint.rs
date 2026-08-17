@@ -92,6 +92,11 @@ macro_rules! ImplUIntTraits {
             {
                 self.0
             }
+            #[inline]
+            pub const fn	IntoAtm( self) -> crate::stalks::Atm< $type>
+            {
+                crate::stalks::Atm::FromAtomic( <$atomic>::new( self.0))
+            }
         }
         
         impl< 'a> From< Arr< 'a, $prim>> for Arr< 'a, $type>

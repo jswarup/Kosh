@@ -73,9 +73,9 @@ pub struct VarExpr
 
 impl VarExpr
 {
-    pub fn	New( varIndex: U32) -> Self
+    pub fn	New< I: Into< U32>>( varIndex: I) -> Self
     {
-        Self { _VarIndex: varIndex }
+        Self { _VarIndex: varIndex.into() }
     }
 
     pub fn	VarIndex( &self) -> U32

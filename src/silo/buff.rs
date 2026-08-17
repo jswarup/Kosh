@@ -165,11 +165,11 @@ impl< T> Buff< T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Resize< Dispenser>( &mut self, newSize: U32, dispenser: Dispenser)
+    pub fn	Resize< S: Into< U32>, Dispenser>( &mut self, newSize: S, dispenser: Dispenser)
     where
         Dispenser: Fn( U32) -> T,
     {
-        let  	newSizeUsize = usize::from( newSize);
+        let  	newSizeUsize = usize::from( newSize.into());
         let  	oldSize = self._Ptr.len();
         if newSizeUsize <= oldSize {
             return;

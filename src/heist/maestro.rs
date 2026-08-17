@@ -30,17 +30,17 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	New( maestroInd: U32) -> Self
+    pub fn	New< I: Into< U32>>( maestroInd: I) -> Self
     {
         Self {
-            _Index: maestroInd,
+            _Index: maestroInd.into(),
             _Atelier: null(),
             _SzProcessed: U32::_0,
-            _JobCache: Stash::<U16>::New( U32( 256), 0, U16( 0)),
-            _RunQueue: Stash::<U16>::New( U32( 1024),0, U16( 0)),
+            _JobCache: Stash::< U16>::New( U32( 256), U32::_0, U16::_0),
+            _RunQueue: Stash::< U16>::New( U32( 1024), U32::_0, U16::_0),
             _RunQlock: Spinlock::New(),
             _CurSuccId: Atm::New( U16::_0),
-            _TempQueue: Stash::<U16>::New( U32( 64),0, U16( 0)),
+            _TempQueue: Stash::< U16>::New( U32( 64), U32::_0, U16::_0),
         }
     }
 
@@ -91,24 +91,24 @@ impl< 'a> Maestro< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ConstructJob( &self, succId: U16, job: impl IntoWorkPtr< 'a>, docStr: &'static str) -> U16
+    pub fn	ConstructJob< S: Into< U16>>( &self, succId: S, job: impl IntoWorkPtr< 'a>, docStr: &'static str) -> U16
     {
-        self.Atelier().ConstructJob( self._Index, succId, job.IntoWorkPtr(), docStr)
+        self.Atelier().ConstructJob( self._Index, succId.into(), job.IntoWorkPtr(), docStr)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	EnqueueJob( &self, jobId: U16)
+    pub fn	EnqueueJob< J: Into< U16>>( &self, jobId: J)
     {
-        let     res = self._TempQueue.Stk().Push( jobId);
+        let     res = self._TempQueue.Stk().Push( jobId.into());
         assert!( res);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ConstructEnqueArr( &self, succId: U16, buff: Buff< U16>, docStr: &'static str) -> U16
+    pub fn	ConstructEnqueArr< S: Into< U16>>( &self, succId: S, buff: Buff< U16>, docStr: &'static str) -> U16
     {
-        self.ConstructJob( succId, move |worker: &DynIWorker< '_>| {
+        self.ConstructJob( succId.into(), move |worker: &DynIWorker< '_>| {
             let  	maestro = Maestro::FromWorker( worker);
             let  	arr = buff.Arr();
             arr.Traverse( |jobId| {

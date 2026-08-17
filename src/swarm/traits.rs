@@ -79,14 +79,14 @@ pub struct WorkgroupDim
 
 impl WorkgroupDim
 {
-    pub fn	New( x: U32, y: U32, z: U32) -> Self
+    pub fn	New< X: Into< U32>, Y: Into< U32>, Z: Into< U32>>( x: X, y: Y, z: Z) -> Self
     {
-        WorkgroupDim { x, y, z }
+        WorkgroupDim { x: x.into(), y: y.into(), z: z.into() }
     }
 
-    pub fn	Linear( x: U32) -> Self
+    pub fn	Linear< X: Into< U32>>( x: X) -> Self
     {
-        WorkgroupDim { x, y: U32( 1), z: U32( 1) }
+        WorkgroupDim { x: x.into(), y: U32( 1), z: U32( 1) }
     }
 
     pub fn	Total( &self) -> U64
