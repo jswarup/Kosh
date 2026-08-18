@@ -16,7 +16,7 @@ pub use	ops::{ StandardOp, SwarmMath };
 pub use	cpu::{ CpuBuffer, CpuDevice, CpuKernel };
 pub use	rustgpu::{ RustGpuBuffer, RustGpuDevice, RustGpuKernel };
 pub use	cudaoxide::{ CudaOxideBuffer, CudaOxideDevice, CudaOxideKernel };
-pub use	engine::{ SwarmBuffer, SwarmDevice, SwarmEngine, SwarmKernel };
+pub use	engine::{ SwarmBuffer, SwarmDevice, SwarmEngine, SwarmCluster, SwarmKernel };
 pub use	gpusop::IGpuOp;
 
 #[cfg( test)]

@@ -657,3 +657,20 @@ fn	TestStashC()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestBuffFromVec()
+{
+    let  	vec = vec![ 10, 20, 30, 40 ];
+    let  	buff = Buff::FromVec( vec);
+    assert_eq!( buff.len(), 4);
+    assert_eq!( buff[0], 10);
+    assert_eq!( buff[3], 40);
+
+    let  	emptyVec: Vec< i32> = Vec::new();
+    let  	emptyBuff = Buff::FromVec( emptyVec);
+    assert_eq!( emptyBuff.len(), 0);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+

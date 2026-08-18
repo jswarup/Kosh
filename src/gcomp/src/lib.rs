@@ -400,3 +400,57 @@ pub fn	scene_fs(
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+/// Tests whether a 3D point (with radius) is inside the 6 frustum planes.
+/// Returns 1 if visible (inside all 6 planes), 0 if culled.
+#[inline( always)]
+pub fn	frustum_cull_elem(
+    idx: usize,
+    in_points: &[f32],
+    frustum_planes: &[f32],
+    out_visible: &mut [u32],
+)
+{
+    let  	base = idx * 3;
+    if base + 2 < in_points.len() && idx < out_visible.len() && frustum_planes.len() >= 24 {
+        let  	x = in_points[base + 0];
+        let  	y = in_points[base + 1];
+        let  	z = in_points[base + 2];
+
+        let  	mut visible = 1u32;
+        let  	mut p = 0;
+        while p < 6 {
+            let  	pBase = p * 4;
+            let  	a = frustum_planes[pBase + 0];
+            let  	b = frustum_planes[pBase + 1];
+            let  	c = frustum_planes[pBase + 2];
+            let  	d = frustum_planes[pBase + 3];
+
+            let  	dist = a * x + b * y + c * z + d;
+            if dist < -0.5 {
+                visible = 0;
+                break;
+            }
+            p += 1;
+        }
+
+        out_visible[idx] = visible;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+/// GPU Compute shader for accelerated camera frustum culling.
+#[spirv( compute( threads( 64)))]
+pub fn	frustum_cull_cs(
+    #[spirv( global_invocation_id)] id: UVec3,
+    #[spirv( storage_buffer, descriptor_set = 0, binding = 0)] in_points: &[f32],
+    #[spirv( storage_buffer, descriptor_set = 0, binding = 1)] frustum_planes: &[f32],
+    #[spirv( storage_buffer, descriptor_set = 0, binding = 2)] out_visible: &mut [u32],
+)
+{
+    frustum_cull_elem( id.x as usize, in_points, frustum_planes, out_visible);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+

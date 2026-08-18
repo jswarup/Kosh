@@ -405,4 +405,31 @@ fn	TestSceneGraphSwarmFullSceneProjection()
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
+#[test]
+fn	TestSceneGraphClusterMultiGpuProjection()
+{
+    use	crate::fenst::SceneGraph;
+    use	crate::silo::Buff;
+    use	crate::swarm::SwarmCluster;
+
+    let  	mut points = Buff::New();
+    for i in 0..100 {
+        let  	f = i as f32;
+        points.Push( [ f, f * 0.5, f * 0.2 ]);
+    }
+
+    let  	scene = SceneGraph::WithPoints( points, [ 0.0, 0.0, 0.0 ], [ 100.0, 50.0, 20.0 ]);
+    let  	cluster = SwarmCluster::Auto();
+
+    let  	res = scene.ProjectSceneCluster( &cluster, 800.0, 600.0, 1.0, 0, 243, 255, None);
+    assert!( res.is_ok());
+
+    let  	frame = res.unwrap();
+    assert_eq!( frame._Points.len(), 100);
+    assert_eq!( frame._BoxLines.len(), 12);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+
 

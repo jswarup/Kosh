@@ -3,7 +3,7 @@
 use	tauri::Manager;
 use	kosh::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, CreateDefaultRegistry, Camera, SceneGraph };
 use	kosh::silo::Buff;
-use	kosh::swarm::SwarmEngine;
+use	kosh::swarm::SwarmCluster;
 use	serde::Serialize;
 use	std::collections::HashMap;
 use	std::sync::Mutex;
@@ -12,8 +12,8 @@ use	std::sync::LazyLock;
 
 static GCOMP_SPV: &[u8] = include_bytes!( env!( "GCOMP_SPV_PATH"));
 
-static SWARM_ENGINE: LazyLock< SwarmEngine> = LazyLock::new( || {
-    SwarmEngine::Auto()
+static SWARM_CLUSTER: LazyLock< SwarmCluster> = LazyLock::new( || {
+    SwarmCluster::Auto()
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -360,8 +360,8 @@ pub fn	XplrProjectPts(
     let  	mut projectedPoints = Buff::New();
     let  	camRef = state._Scene.Camera();
 
-    let  	sceneResult = state._Scene.ProjectSceneSwarm(
-        &SWARM_ENGINE,
+    let  	sceneResult = state._Scene.ProjectSceneCluster(
+        &SWARM_CLUSTER,
         width,
         height,
         dpr,
@@ -447,9 +447,14 @@ pub fn	XplrProjectPts(
     let  	overlay2 = if isParsedFile {
         format!( "Source: {} | Rot: ({:.0}°, {:.0}°)", fileName, camRef._RotX.to_degrees(), camRef._RotY.to_degrees())
     } else {
-        format!( "Swarm {} | Rot: ({:.0}°, {:.0}°)", SWARM_ENGINE.Backend(), camRef._RotX.to_degrees(), camRef._RotY.to_degrees())
+        format!( "Swarm {} [{} dev] | Rot: ({:.0}°, {:.0}°)", SWARM_CLUSTER.Primary().Backend(), SWARM_CLUSTER.DeviceCount(), camRef._RotX.to_degrees(), camRef._RotY.to_degrees())
     };
-    let  	shaderStatus = format!( "Swarm GPU [{}] SceneGraph ({} pts)", SWARM_ENGINE.Backend(), state._Scene._Points.len());
+    let  	shaderStatus = format!( "Swarm GPU [{}] ({} device{}) SceneGraph ({} pts)",
+        SWARM_CLUSTER.Primary().Backend(),
+        SWARM_CLUSTER.DeviceCount(),
+        if SWARM_CLUSTER.DeviceCount() > 1 { "s" } else { "" },
+        state._Scene._Points.len()
+    );
 
     Ok( PtsFrameDto {
         _Points: projectedPoints,

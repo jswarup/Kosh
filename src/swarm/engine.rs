@@ -426,3 +426,110 @@ impl SwarmEngine
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+/// Multi-GPU heterogeneous compute cluster orchestrating sharded parallel dispatches across all hardware adapters.
+pub struct SwarmCluster
+{
+    pub _Primary:    SwarmEngine,
+    pub _Auxiliary:  Buff< SwarmEngine>,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl SwarmCluster
+{
+    /// Automatically discovers all hardware compute adapters and initializes the cluster.
+    pub fn	Auto() -> Self
+    {
+        let  	devices = RustGpuDevice::EnumerateDevices();
+        if !devices.is_empty() {
+            let  	primary = SwarmEngine {
+                _Device: SwarmDevice::RustGpu( devices[0].clone()),
+            };
+            let  	mut aux = Buff::New();
+            for i in 1..devices.len() {
+                aux.Push( SwarmEngine {
+                    _Device: SwarmDevice::RustGpu( devices[i].clone()),
+                });
+            }
+            return SwarmCluster {
+                _Primary:    primary,
+                _Auxiliary:  aux,
+            };
+        }
+
+        let  	fallback = SwarmEngine::Auto();
+        SwarmCluster {
+            _Primary:    fallback,
+            _Auxiliary:  Buff::New(),
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    /// Total number of compute engines available in the cluster.
+    pub fn	DeviceCount( &self) -> usize
+    {
+        1 + self._Auxiliary.len()
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    /// Returns the primary display/viewport compute engine.
+    pub fn	Primary( &self) -> &SwarmEngine
+    {
+        &self._Primary
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    /// Sharded parallel camera transformation across all GPU devices in the cluster.
+    /// For massive point clouds, splits data into K contiguous chunks, dispatches to each GPU
+    /// in parallel, and concatenates the resulting projected points.
+    pub fn	RunCameraTransformSharded(
+        &self,
+        points: &[[f32; 3]],
+        camParams: &[f32; 13],
+        spirvBytes: Option< &[u8]>,
+    ) -> Result< Buff< [f32; 6]>, SwarmError>
+    {
+        let  	totalPoints = points.len();
+        if totalPoints == 0 {
+            return Ok( Buff::New());
+        }
+
+        let  	numDevices = self.DeviceCount();
+        if numDevices <= 1 || totalPoints < 4096 {
+            return self._Primary.RunCameraTransform( points, camParams, spirvBytes);
+        }
+
+        let  	chunkSize = ( totalPoints + numDevices - 1) / numDevices;
+        let  	mut chunks = Buff::New();
+        for i in 0..numDevices {
+            let  	start = i * chunkSize;
+            if start < totalPoints {
+                let  	end = ( start + chunkSize).min( totalPoints);
+                chunks.Push( &points[start..end]);
+            }
+        }
+
+        let  	mut results = Buff::New();
+        for ( i, chunk) in chunks.iter().enumerate() {
+            let  	engine = if i == 0 { &self._Primary } else { &self._Auxiliary[i - 1] };
+            let  	proj = engine.RunCameraTransform( chunk, camParams, spirvBytes)?;
+            results.Push( proj);
+        }
+
+        let  	mut totalProjected = Buff::New();
+        for r in &results {
+            for pt in r {
+                totalProjected.Push( *pt);
+            }
+        }
+
+        Ok( totalProjected)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+

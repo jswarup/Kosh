@@ -372,6 +372,62 @@ impl SceneGraph
             _BoxLines:  boxLines,
         })
     }
+
+    // -----------------------------------------------------------------------------------------------------------------------------
+
+    /// Dispatches point cloud projection across a multi-GPU SwarmCluster.
+    pub fn	ProjectPointsCluster(
+        &self,
+        cluster: &crate::swarm::SwarmCluster,
+        width: f32,
+        height: f32,
+        dpr: f32,
+        r: u8,
+        g: u8,
+        b: u8,
+        spirvBytes: Option< &[u8]>,
+    ) -> Result< Buff< ( f32, f32, f32, f32, String)>, crate::swarm::SwarmError>
+    {
+        let  	camParams = self.CameraParams( width, height);
+        let  	rawProjected = cluster.RunCameraTransformSharded( &self._Points, &camParams, spirvBytes)?;
+
+        let  	mut result = Buff::New();
+        for proj in &rawProjected {
+            let  	px = proj[0];
+            let  	py = proj[1];
+            let  	radius = proj[2] * dpr;
+            let  	coreRadius = proj[3] * dpr;
+            let  	alpha = proj[4];
+            let  	colorStr = format!( "rgba({}, {}, {}, {:.3})", r, g, b, alpha);
+            result.Push( ( px, py, radius, coreRadius, colorStr));
+        }
+
+        Ok( result)
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------------------
+
+    /// Dispatches the complete graphics scene projection across a multi-GPU SwarmCluster for display.
+    pub fn	ProjectSceneCluster(
+        &self,
+        cluster: &crate::swarm::SwarmCluster,
+        width: f32,
+        height: f32,
+        dpr: f32,
+        r: u8,
+        g: u8,
+        b: u8,
+        spirvBytes: Option< &[u8]>,
+    ) -> Result< SceneDisplayFrame, crate::swarm::SwarmError>
+    {
+        let  	points = self.ProjectPointsCluster( cluster, width, height, dpr, r, g, b, spirvBytes)?;
+        let  	boxLines = self.ProjectBoundingBoxSwarm( cluster.Primary(), width, height, spirvBytes)?;
+
+        Ok( SceneDisplayFrame {
+            _Points:    points,
+            _BoxLines:  boxLines,
+        })
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------

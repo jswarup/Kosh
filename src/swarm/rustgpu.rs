@@ -199,6 +199,7 @@ impl IComputeKernel for RustGpuKernel
 //---------------------------------------------------------------------------------------------------------------------------------
 
 /// Rust-GPU compute device wrapping `wgpu` Device & Queue.
+#[derive( Clone)]
 pub struct RustGpuDevice
 {
     _Device: Arc< Device>,
@@ -241,6 +242,32 @@ impl RustGpuDevice
             _Queue: Arc::new( queue),
         })
     }
+
+    pub fn	EnumerateDevices() -> Buff< Self>
+    {
+        let  	instance = Instance::default();
+        let  	adapters = pollster::block_on( instance.enumerate_adapters( wgpu::Backends::all()));
+        let  	mut devices = Buff::New();
+
+        for adapter in adapters {
+            let  	res = pollster::block_on( async {
+                adapter.request_device( &DeviceDescriptor {
+                    label: Some( "KoshRustGpuDevice"),
+                    ..Default::default()
+                }).await
+            });
+            if let Ok( ( device, queue)) = res {
+                devices.Push( RustGpuDevice {
+                    _Device: Arc::new( device),
+                    _Queue:  Arc::new( queue),
+                });
+            }
+        }
+
+        devices
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	FromDeviceQueue( device: Device, queue: Queue) -> Self
     {

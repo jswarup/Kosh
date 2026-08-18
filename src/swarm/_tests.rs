@@ -931,3 +931,63 @@ fn	TestSwarmCameraTransform()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestSwarmClusterSharding()
+{
+    use	crate::swarm::engine::SwarmCluster;
+
+    let  	cluster = SwarmCluster::Auto();
+    assert!( cluster.DeviceCount() >= 1);
+
+    let  	mut points = Buff::New();
+    for i in 0..200 {
+        let  	f = i as f32;
+        points.Push( [ f, f * 2.0, f * 0.5 ]);
+    }
+
+    let  	camParams: [f32; 13] = [
+        0.0, 0.0, 1.0, 0.0, 0.0, 350.0, 250.0, 800.0, 600.0, 0.0, 0.0, 0.0, 1.0,
+    ];
+
+    let  	res = cluster.RunCameraTransformSharded( &points, &camParams, None);
+    assert!( res.is_ok());
+
+    let  	projected = res.unwrap();
+    assert_eq!( projected.len(), 200);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestGcompFrustumCulling()
+{
+    let  	inPoints = [
+        0.0f32, 0.0, 0.0,      // Inside (center)
+        1000.0, 0.0, 0.0,     // Outside (far right)
+        0.0, 1000.0, 0.0,     // Outside (far top)
+    ];
+
+    // 6 simple frustum bounding planes centered at origin with half-extent 100
+    // Right, Left, Top, Bottom, Far, Near
+    let  	planes = [
+        -1.0f32, 0.0, 0.0, 100.0,  // x <= 100
+         1.0, 0.0, 0.0, 100.0,     // x >= -100
+        0.0, -1.0, 0.0, 100.0,     // y <= 100
+        0.0,  1.0, 0.0, 100.0,     // y >= -100
+        0.0, 0.0, -1.0, 100.0,     // z <= 100
+        0.0, 0.0,  1.0, 100.0,     // z >= -100
+    ];
+
+    let  	mut outVisible = [0u32; 3];
+    for i in 0..3 {
+        gcomp::frustum_cull_elem( i, &inPoints, &planes, &mut outVisible);
+    }
+
+    assert_eq!( outVisible[0], 1); // inside
+    assert_eq!( outVisible[1], 0); // culled
+    assert_eq!( outVisible[2], 0); // culled
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+

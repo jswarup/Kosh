@@ -309,6 +309,23 @@ impl< T> Buff< T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    pub fn	FromVec( mut vec: Vec< T>) -> Self
+    {
+        let  	len = vec.len();
+        if len == 0 || size_of::< T>() == 0 {
+            return Buff::New();
+        }
+        vec.shrink_to_fit();
+        let  	ptr = vec.as_mut_ptr();
+        std::mem::forget( vec);
+        unsafe {
+            let  	nonNull = NonNull::new_unchecked( ptr);
+            Buff { _Ptr: NonNull::slice_from_raw_parts( nonNull, len) }
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	Concat( a: Arr< '_, T>, b: Arr< '_, T>) -> Self
     where
         T: Copy,

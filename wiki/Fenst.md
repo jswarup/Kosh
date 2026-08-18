@@ -77,7 +77,7 @@ classDiagram
 
 ---
 
-## 3. Desktop 3D Graphics Scene GPU Display Pipeline
+### 3. Desktop 3D Graphics Scene Multi-GPU Display Pipeline
 
 ```mermaid
 flowchart TD
@@ -89,25 +89,31 @@ flowchart TD
     InitBBox --> RotateState["Update angle_x and angle_y based on speed/interaction"]
     
     CheckState -->|Existing session| RotateState
-    RotateState --> GPUScene["Dispatch ProjectSceneSwarm via SwarmEngine / Rust-GPU"]
-    GPUScene --> GPUPoints["GPU Point Transform (camera_transform_cs / scene_vs)"]
-    GPUScene --> GPUBox["GPU Bounding Box Vertices Transform (RunCameraTransform)"]
+    RotateState --> Cluster["Dispatch ProjectSceneCluster via SwarmCluster (Multi-GPU)"]
+    Cluster --> ShardGPU0["GPU 0 / Primary (Viewport Projection Chunk 0)"]
+    Cluster --> ShardGPU1["GPU 1..N / Aux (Async Projection Chunks 1..N)"]
+    Cluster --> GPUBox["GPU Bounding Box Wireframe (RunCameraTransform)"]
+    
+    ShardGPU0 --> MergeResults["Concatenate Projected Shards"]
+    ShardGPU1 --> MergeResults
     GPUBox --> ConnectBox["Assemble 12 Projected Bounding Box Lines"]
     
     ConnectBox --> AssembleDto["Assemble PtsFrameDto"]
-    GPUPoints --> AssembleDto
+    MergeResults --> AssembleDto
     AssembleDto --> ReturnJSON["Return serializable frame DTO to Frontend for 60+ FPS redraw"]
 ```
 
-### Dedicated GPU Hardware Shader Pipeline (`gcomp`)
-When a dedicated graphics card is present, `gcomp` provides dedicated Rust-GPU SPIR-V graphics stages:
-1. **Vertex Shader (`scene_vs`)**:
+### Multi-GPU Cluster & Dedicated Shaders (`swarm` & `gcomp`)
+1. **Multi-Adapter Discovery (`SwarmCluster`)**:
+   - Enumerates all available hardware adapters (discrete and integrated GPUs) via `RustGpuDevice::EnumerateDevices()`.
+   - Splits massive point cloud datasets into contiguous chunks and projects them concurrently across all GPUs via `RunCameraTransformSharded`.
+2. **GPU Frustum Culling (`frustum_cull_cs`)**:
+   - Compute kernel testing 3D points against 6 camera frustum planes on GPU hardware, skipping off-screen points with zero CPU cost.
+3. **Vertex Shader (`scene_vs`)**:
    - `#[spirv(vertex)]` entrypoint performing 3D camera model-view-projection to NDC coordinates.
    - Computes depth factor, point size (`gl_PointSize`), and vertex color in parallel per vertex.
-2. **Fragment Shader (`scene_fs`)**:
+4. **Fragment Shader (`scene_fs`)**:
    - `#[spirv(fragment)]` entrypoint evaluating point-sprite radial falloff, depth alpha blending, and glowing core.
-3. **Compute Kernel (`camera_transform_cs`)**:
-   - `#[spirv(compute)]` SIMT kernel for unified scene projection across Swarm backends (Rust-GPU, CUDA, CPU fallback).
 
 ---
 
@@ -129,10 +135,11 @@ z_2 &= y \sin(\theta_x) + z_1 \cos(\theta_x) \\
 
 ## 5. Struct & DTO Reference
 
-### Core Scene Types (`fenst::scene`)
+### Core Scene & Swarm Types (`fenst::scene` & `swarm::engine`)
 - `Camera`: Viewport camera (`_PanX`, `_PanY`, `_Zoom`, `_RotX`, `_RotY`, `_Fov`, `_Distance`).
 - `SceneGraph`: Active 3D visualization scene owning camera, points, and bounding box geometry.
 - `SceneDisplayFrame`: GPU-computed 2D graphics scene display payload (`_Points: Buff<(f32, f32, f32, f32, String)>`, `_BoxLines: Buff<((f32, f32), (f32, f32))>`).
+- `SwarmCluster`: Multi-GPU cluster managing primary and auxiliary compute engines (`_Primary`, `_Auxiliary`).
 
 ### DTOs (`fenst::mod.rs` & `fenst::xplr.rs`)
 - `XplrEntry`: Directory entry (`name`, `path`, `is_dir`, `size`, `extension`).
@@ -163,6 +170,5 @@ z_2 &= y \sin(\theta_x) + z_1 \cos(\theta_x) \\
 | `XplrFetchPtsPoints`| `(path: Option<String>) -> Result<PtsPointsDto, String>` | Generates 3D points from `.pts` file or `rust-gpu` compute shader. |
 | `XplrOpenContentWindow`| `(app, path) -> Result<(), String>` | Opens file in separate dedicated webview window. |
 | `XplrOpenPtsGraphicsWindow`| `(app, path) -> Result<(), String>` | Opens dedicated 3D shader window for `.pts` point cloud files. |
-| `XplrProjectPts`  | `(path, width, height, dpr, speed, color, pan_x, pan_y, zoom, rot_x, rot_y, is_interactive) -> Result<PtsFrameDto, String>` | Projects SceneGraph 3D points & bounding box with pan/zoom/rotate on GPU. |
+| `XplrProjectPts`  | `(path, width, height, dpr, speed, color, pan_x, pan_y, zoom, rot_x, rot_y, is_interactive) -> Result<PtsFrameDto, String>` | Projects SceneGraph 3D points & bounding box with pan/zoom/rotate across Multi-GPU cluster. |
 | `XplrResetCamera` | `(path: String) -> Result<Camera, String>` | Resets SceneGraph camera pan, zoom, and rotation to defaults. |
-
