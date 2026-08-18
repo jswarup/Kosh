@@ -6,3 +6,5 @@ tools/__pycache__/*
 scratch/
 ./scratch.*
 rust-gpu-tmp/
+/gen/
+/tauri.conf.json

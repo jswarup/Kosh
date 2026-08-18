@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.kosh.frieze",
   "build": {
-    "frontendDist": "./frontend",
+    "frontendDist": "./resource/frontend",
     "beforeDevCommand": "",
     "beforeBuildCommand": ""
   },
@@ -26,12 +26,18 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": ["main-capability"]
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": []
+    "icon": [
+      "resource/icons/32x32.png",
+      "resource/icons/128x128.png",
+      "resource/icons/icon.ico",
+      "resource/icons/icon.png"
+    ]
   }
 }

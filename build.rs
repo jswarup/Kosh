@@ -16,7 +16,12 @@ fn	main()
 
     println!( "cargo::rustc-env=SYMPH_SPV_PATH={}", modulePath.display());
 
-    tauri_build::build()
+    // Sync tauri.conf.json from resource/ for Tauri build system
+    let  	_ = std::fs::copy( "resource/tauri.conf.json", "tauri.conf.json");
+
+    let  	attrs = tauri_build::Attributes::new()
+        .capabilities_path_pattern( "resource/capabilities/*");
+    tauri_build::try_build( attrs).expect( "Failed to build Tauri app");
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
