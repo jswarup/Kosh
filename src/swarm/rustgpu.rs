@@ -160,6 +160,21 @@ impl RustGpuKernel
         }
     }
 
+    pub fn	FromCached(
+        name: &str,
+        entryPoint: &str,
+        pipeline: Arc< ComputePipeline>,
+        bindGroupLayout: Arc< BindGroupLayout>,
+    ) -> Self
+    {
+        RustGpuKernel {
+            _Name: name.to_string(),
+            _EntryPoint: entryPoint.to_string(),
+            _Pipeline: pipeline,
+            _BindGroupLayout: bindGroupLayout,
+        }
+    }
+
     pub fn	EntryPoint( &self) -> &str
     {
         &self._EntryPoint
@@ -198,12 +213,13 @@ impl IComputeKernel for RustGpuKernel
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Rust-GPU compute device wrapping `wgpu` Device & Queue.
+/// Rust-GPU compute device wrapping `wgpu` Device & Queue with compiled pipeline caching.
 #[derive( Clone)]
 pub struct RustGpuDevice
 {
     _Device: Arc< Device>,
     _Queue:  Arc< Queue>,
+    _Cache:  Arc< std::sync::Mutex< std::collections::HashMap< String, ( Arc< ComputePipeline>, Arc< BindGroupLayout>)>>>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -239,7 +255,8 @@ impl RustGpuDevice
 
         Ok( RustGpuDevice {
             _Device: Arc::new( device),
-            _Queue: Arc::new( queue),
+            _Queue:  Arc::new( queue),
+            _Cache:  Arc::new( std::sync::Mutex::new( std::collections::HashMap::new())),
         })
     }
 
@@ -260,6 +277,7 @@ impl RustGpuDevice
                 devices.Push( RustGpuDevice {
                     _Device: Arc::new( device),
                     _Queue:  Arc::new( queue),
+                    _Cache:  Arc::new( std::sync::Mutex::new( std::collections::HashMap::new())),
                 });
             }
         }
@@ -273,7 +291,8 @@ impl RustGpuDevice
     {
         RustGpuDevice {
             _Device: Arc::new( device),
-            _Queue: Arc::new( queue),
+            _Queue:  Arc::new( queue),
+            _Cache:  Arc::new( std::sync::Mutex::new( std::collections::HashMap::new())),
         }
     }
 
@@ -374,6 +393,18 @@ impl IComputeDevice for RustGpuDevice
         source: KernelSource,
     ) -> Result< Box< dyn IComputeKernel>, SwarmError>
     {
+        let  	cacheKey = format!( "{}:{}", label, entryPoint);
+        if let Ok( guard) = self._Cache.lock() {
+            if let Some( ( cachedPipe, cachedBgl)) = guard.get( &cacheKey) {
+                return Ok( Box::new( RustGpuKernel::FromCached(
+                    label,
+                    entryPoint,
+                    Arc::clone( cachedPipe),
+                    Arc::clone( cachedBgl),
+                )));
+            }
+        }
+
         let  	shaderModule = match source {
             KernelSource::Wgsl( src) => {
                 self._Device.create_shader_module( ShaderModuleDescriptor {
@@ -439,11 +470,18 @@ impl IComputeDevice for RustGpuDevice
             cache: None,
         });
 
-        Ok( Box::new( RustGpuKernel::New(
+        let  	arcPipeline = Arc::new( pipeline);
+        let  	arcBgl = Arc::new( bindGroupLayout);
+
+        if let Ok( mut guard) = self._Cache.lock() {
+            guard.insert( cacheKey, ( Arc::clone( &arcPipeline), Arc::clone( &arcBgl)));
+        }
+
+        Ok( Box::new( RustGpuKernel::FromCached(
             label,
             entryPoint,
-            pipeline,
-            bindGroupLayout,
+            arcPipeline,
+            arcBgl,
         )))
     }
 
