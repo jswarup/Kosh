@@ -1,6 +1,6 @@
 // =================================================================
-// Fenst — Rust-GPU Point Cloud Viewer (.pts files)
-// Hardware-Accelerated WebGL Point-Sprite & SceneGraph Visualization
+// Fenst — Rust-GPU Swarm Multi-GPU Point Cloud Display
+// Pure Swarm Display Pipeline (Zero WebGL — 100% Swarm Compute Backend)
 // =================================================================
 
 (function () {
@@ -9,6 +9,7 @@
 
     const canvas = document.getElementById('pts-canvas');
     if (!canvas) return;
+    const ctx = canvas.getContext('2d', { alpha: false });
 
     const rotSpeedInput = document.getElementById('pts-rot-speed');
     const lineColorInput = document.getElementById('pts-line-color');
@@ -35,233 +36,48 @@
     let lastMouseX = 0;
     let lastMouseY = 0;
     let isInteractive = false;
-    let interactiveTimer = null;
+    let interactiveTimeout = null;
 
-    // Point cloud data
-    let pointPositions = null; // Float32Array
-    let pointCount = 0;
-    let bboxMin = [-20, -20, -20];
-    let bboxMax = [20, 20, 20];
-    let center = [0, 0, 0];
-    let scaleNorm = 1.0;
-    let fileName = filePath.split(/[\\/]/).pop() || 'pointcloud.pts';
+    // Rendering & Frame timing state
+    let isRequestPending = false;
+    let needsRedraw = true;
+    let frameCount = 0;
+    let fps = 60;
+    let fpsTimer = performance.now();
 
-    // WebGL state
-    let gl = null;
-    let pointProgram = null;
-    let lineProgram = null;
-    let pointBuffer = null;
-    let lineBuffer = null;
-    let lineCount = 0;
-    let webglSupported = false;
-
-    // Shaders for WebGL Point Sprites
-    const vsSource = `
-        attribute vec3 a_position;
-        uniform vec2 u_resolution;
-        uniform vec2 u_rotation;
-        uniform vec2 u_pan;
-        uniform float u_zoom;
-        uniform float u_fov;
-        uniform float u_distance;
-        uniform vec3 u_center;
-        uniform float u_scaleNorm;
-        uniform float u_dpr;
-        varying float v_depthFactor;
-
-        void main() {
-            vec3 normPos = (a_position - u_center) * u_scaleNorm;
-            
-            float cosY = cos(u_rotation.y);
-            float sinY = sin(u_rotation.y);
-            float x1 = normPos.x * cosY + normPos.z * sinY;
-            float z1 = -normPos.x * sinY + normPos.z * cosY;
-            
-            float cosX = cos(u_rotation.x);
-            float sinX = sin(u_rotation.x);
-            float y2 = normPos.y * cosX - z1 * sinX;
-            float z2 = normPos.y * sinX + z1 * cosX;
-            
-            float denom = u_distance + z2;
-            float w = max(denom, 0.0001);
-            float scale = (u_fov * u_zoom) / w;
-            
-            float projX = u_resolution.x * 0.5 + u_pan.x + x1 * scale;
-            float projY = u_resolution.y * 0.5 + u_pan.y - y2 * scale;
-            
-            float ndcX = (projX / u_resolution.x) * 2.0 - 1.0;
-            float ndcY = 1.0 - (projY / u_resolution.y) * 2.0;
-            float ndcZ = z2 / 400.0;
-            
-            gl_Position = vec4(ndcX, ndcY, ndcZ, 1.0);
-            
-            float depthFactor = clamp((300.0 - z2) / 400.0, 0.3, 1.0);
-            v_depthFactor = depthFactor;
-            gl_PointSize = (4.0 + depthFactor * 6.0) * u_dpr;
-        }
-    `;
-
-    const fsSource = `
-        precision mediump float;
-        uniform vec4 u_baseColor;
-        varying float v_depthFactor;
-
-        void main() {
-            vec2 delta = gl_PointCoord - vec2(0.5);
-            float distSq = dot(delta, delta);
-            if (distSq > 0.25) {
-                discard;
-            }
-            float dist = sqrt(distSq) * 2.0;
-            float alpha = max(0.0, 1.0 - dist) * (0.4 + v_depthFactor * 0.6);
-            float core = dist < 0.3 ? (1.0 - dist / 0.3) : 0.0;
-            
-            vec3 col = mix(u_baseColor.rgb, vec3(1.0), core * 0.85);
-            gl_FragColor = vec4(col, alpha);
-        }
-    `;
-
-    const lineVsSource = `
-        attribute vec3 a_position;
-        uniform vec2 u_resolution;
-        uniform vec2 u_rotation;
-        uniform vec2 u_pan;
-        uniform float u_zoom;
-        uniform float u_fov;
-        uniform float u_distance;
-        uniform vec3 u_center;
-        uniform float u_scaleNorm;
-
-        void main() {
-            vec3 normPos = (a_position - u_center) * u_scaleNorm;
-            
-            float cosY = cos(u_rotation.y);
-            float sinY = sin(u_rotation.y);
-            float x1 = normPos.x * cosY + normPos.z * sinY;
-            float z1 = -normPos.x * sinY + normPos.z * cosY;
-            
-            float cosX = cos(u_rotation.x);
-            float sinX = sin(u_rotation.x);
-            float y2 = normPos.y * cosX - z1 * sinX;
-            float z2 = normPos.y * sinX + z1 * cosX;
-            
-            float denom = u_distance + z2;
-            float w = max(denom, 0.0001);
-            float scale = (u_fov * u_zoom) / w;
-            
-            float projX = u_resolution.x * 0.5 + u_pan.x + x1 * scale;
-            float projY = u_resolution.y * 0.5 + u_pan.y - y2 * scale;
-            
-            float ndcX = (projX / u_resolution.x) * 2.0 - 1.0;
-            float ndcY = 1.0 - (projY / u_resolution.y) * 2.0;
-            float ndcZ = z2 / 400.0;
-            
-            gl_Position = vec4(ndcX, ndcY, ndcZ, 1.0);
-        }
-    `;
-
-    const lineFsSource = `
-        precision mediump float;
-        uniform vec4 u_lineColor;
-
-        void main() {
-            gl_FragColor = u_lineColor;
-        }
-    `;
-
-    function initWebGL() {
-        gl = canvas.getContext('webgl', { alpha: false, antialias: true, depth: false }) ||
-             canvas.getContext('experimental-webgl');
-        if (!gl) {
-            console.warn('WebGL not supported, falling back to CPU 2D canvas projection');
-            return false;
-        }
-
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // Additive blending for radiant point cloud glow
-
-        pointProgram = createProgram(gl, vsSource, fsSource);
-        lineProgram = createProgram(gl, lineVsSource, lineFsSource);
-
-        return !!(pointProgram && lineProgram);
-    }
-
-    function createShader(gl, type, source) {
-        const shader = gl.createShader(type);
-        gl.shaderSource(shader, source);
-        gl.compileShader(shader);
-        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-            console.error('Shader compilation failed:', gl.getShaderInfoLog(shader));
-            gl.deleteShader(shader);
-            return null;
-        }
-        return shader;
-    }
-
-    function createProgram(gl, vs, fs) {
-        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vs);
-        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fs);
-        if (!vertexShader || !fragmentShader) return null;
-
-        const program = gl.createProgram();
-        gl.attachShader(program, vertexShader);
-        gl.attachShader(program, fragmentShader);
-        gl.linkProgram(program);
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            console.error('Program linking failed:', gl.getProgramInfoLog(program));
-            return null;
-        }
-        return program;
-    }
-
-    function markInteractive() {
+    function setInteractive() {
         isInteractive = true;
-        if (interactiveTimer) clearTimeout(interactiveTimer);
-        interactiveTimer = setTimeout(() => {
-            if (!isDragging) isInteractive = false;
-        }, 500);
+        needsRedraw = true;
+        if (interactiveTimeout) clearTimeout(interactiveTimeout);
+        interactiveTimeout = setTimeout(() => {
+            isInteractive = false;
+            needsRedraw = true;
+        }, 150);
     }
 
-    function updateZoomDisplay() {
-        if (zoomValDisplay) zoomValDisplay.textContent = zoomLevel.toFixed(2) + 'x';
-        if (zoomInput && document.activeElement !== zoomInput) {
-            zoomInput.value = Math.round(zoomLevel * 100);
+    function resizeCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        const displayWidth = Math.round(rect.width * dpr);
+        const displayHeight = Math.round(rect.height * dpr);
+
+        if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+            canvas.width = displayWidth;
+            canvas.height = displayHeight;
+            needsRedraw = true;
         }
     }
 
-    if (zoomInput) {
-        zoomInput.addEventListener('input', () => {
-            zoomLevel = Math.max(0.05, Math.min(50.0, parseFloat(zoomInput.value) / 100.0));
-            updateZoomDisplay();
-            markInteractive();
-        });
-    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
 
-    if (btnResetCam) {
-        btnResetCam.addEventListener('click', async () => {
-            panX = 0.0;
-            panY = 0.0;
-            zoomLevel = 1.0;
-            rotX = 0.4;
-            rotY = 0.6;
-            updateZoomDisplay();
-            markInteractive();
-            try {
-                const { invoke } = window.__TAURI__.core;
-                await invoke('XplrResetCamera', { path: filePath });
-            } catch (err) {}
-        });
-    }
-
-    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-
+    // Mouse & Touch Controls
     canvas.addEventListener('mousedown', (e) => {
         isDragging = true;
-        dragMode = (e.button === 2 || e.shiftKey || e.button === 1) ? 'pan' : 'rotate';
+        dragMode = (e.button === 2 || e.shiftKey) ? 'pan' : 'rotate';
         lastMouseX = e.clientX;
         lastMouseY = e.clientY;
-        canvas.style.cursor = dragMode === 'pan' ? 'move' : 'grabbing';
-        markInteractive();
+        setInteractive();
     });
 
     window.addEventListener('mousemove', (e) => {
@@ -275,228 +91,226 @@
             rotY += dx * 0.008;
             rotX += dy * 0.008;
         } else {
-            panX += dx;
-            panY += dy;
+            panX += dx * (window.devicePixelRatio || 1);
+            panY += dy * (window.devicePixelRatio || 1);
         }
-        markInteractive();
+        setInteractive();
     });
 
     window.addEventListener('mouseup', () => {
-        if (isDragging) {
-            isDragging = false;
-            canvas.style.cursor = 'grab';
-            markInteractive();
-        }
+        isDragging = false;
     });
 
-    canvas.style.cursor = 'grab';
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
     canvas.addEventListener('wheel', (e) => {
         e.preventDefault();
-        const factor = e.deltaY < 0 ? 1.12 : 0.89;
-        zoomLevel = Math.max(0.05, Math.min(50.0, zoomLevel * factor));
-        updateZoomDisplay();
-        markInteractive();
+        const zoomDelta = e.deltaY < 0 ? 1.15 : 0.87;
+        zoomLevel = Math.max(0.05, Math.min(100.0, zoomLevel * zoomDelta));
+        if (zoomInput) zoomInput.value = zoomLevel;
+        if (zoomValDisplay) zoomValDisplay.textContent = zoomLevel.toFixed(2) + 'x';
+        setInteractive();
     }, { passive: false });
 
-    canvas.addEventListener('dblclick', async () => {
-        panX = 0.0;
-        panY = 0.0;
-        zoomLevel = 1.0;
-        rotX = 0.4;
-        rotY = 0.6;
-        updateZoomDisplay();
-        markInteractive();
-    });
-
-    function resizeCanvas() {
-        const dpr = window.devicePixelRatio || 1;
-        const w = canvas.clientWidth || canvas.parentElement?.clientWidth || window.innerWidth || 960;
-        const h = canvas.clientHeight || canvas.parentElement?.clientHeight || (window.innerHeight - 48) || 672;
-        canvas.width = Math.max(w * dpr, 300);
-        canvas.height = Math.max(h * dpr, 300);
-        if (gl) {
-            gl.viewport(0, 0, canvas.width, canvas.height);
-        }
+    if (zoomInput) {
+        zoomInput.addEventListener('input', (e) => {
+            zoomLevel = parseFloat(e.target.value);
+            if (zoomValDisplay) zoomValDisplay.textContent = zoomLevel.toFixed(2) + 'x';
+            setInteractive();
+        });
     }
 
-    window.addEventListener('resize', resizeCanvas);
-
-    function calcNormalization(bMin, bMax) {
-        const cx = (bMin[0] + bMax[0]) * 0.5;
-        const cy = (bMin[1] + bMax[1]) * 0.5;
-        const cz = (bMin[2] + bMax[2]) * 0.5;
-        const dx = bMax[0] - bMin[0];
-        const dy = bMax[1] - bMin[1];
-        const dz = bMax[2] - bMin[2];
-        const maxDim = Math.max(dx, Math.max(dy, dz));
-        const sNorm = maxDim > 1e-4 ? 35.0 / maxDim : 1.0;
-        return { center: [cx, cy, cz], scaleNorm: sNorm };
+    if (btnResetCam) {
+        btnResetCam.addEventListener('click', async () => {
+            try {
+                if (window.__TAURI__ && window.__TAURI__.core) {
+                    await window.__TAURI__.core.invoke('xplr_reset_camera', { path: filePath });
+                }
+            } catch (_) {}
+            panX = 0.0;
+            panY = 0.0;
+            zoomLevel = 1.0;
+            rotX = 0.4;
+            rotY = 0.6;
+            if (zoomInput) zoomInput.value = 1.0;
+            if (zoomValDisplay) zoomValDisplay.textContent = '1.00x';
+            setInteractive();
+        });
     }
 
-    function createBoundingBoxLines(bMin, bMax) {
-        const corners = [
-            bMin[0], bMin[1], bMin[2],
-            bMax[0], bMin[1], bMin[2],
-            bMax[0], bMax[1], bMin[2],
-            bMin[0], bMax[1], bMin[2],
-            bMin[0], bMin[1], bMax[2],
-            bMax[0], bMin[1], bMax[2],
-            bMax[0], bMax[1], bMax[2],
-            bMin[0], bMax[1], bMax[2],
-        ];
-
-        const edges = [
-            0, 1, 1, 2, 2, 3, 3, 0,
-            4, 5, 5, 6, 6, 7, 7, 4,
-            0, 4, 1, 5, 2, 6, 3, 7
-        ];
-
-        const lineVerts = new Float32Array(edges.length * 3);
-        for (let i = 0; i < edges.length; i++) {
-            const idx = edges[i] * 3;
-            lineVerts[i * 3 + 0] = corners[idx + 0];
-            lineVerts[i * 3 + 1] = corners[idx + 1];
-            lineVerts[i * 3 + 2] = corners[idx + 2];
-        }
-        return lineVerts;
-    }
-
+    // Color parsing helper
     function parseHexColor(hex) {
-        let clean = hex.replace('#', '');
-        if (clean.length === 3) {
-            clean = clean.split('').map(c => c + c).join('');
+        const clean = hex.replace('#', '');
+        if (clean.length === 6) {
+            return {
+                r: parseInt(clean.substring(0, 2), 16),
+                g: parseInt(clean.substring(2, 4), 16),
+                b: parseInt(clean.substring(4, 6), 16),
+            };
         }
-        const num = parseInt(clean, 16);
-        return [
-            ((num >> 16) & 255) / 255.0,
-            ((num >> 8) & 255) / 255.0,
-            (num & 255) / 255.0,
-            1.0
-        ];
+        return { r: 0, g: 243, b: 255 };
     }
 
-    async function loadPointCloud() {
-        try {
-            const { invoke } = window.__TAURI__.core;
-            const dto = await invoke('XplrFetchPtsPoints', { path: filePath });
-            
-            const rawPoints = dto.points ?? dto._points ?? [];
-            pointCount = dto.count ?? dto._count ?? rawPoints.length;
-            bboxMin = dto.bbox_min ?? dto._bbox_min ?? [-20, -20, -20];
-            bboxMax = dto.bbox_max ?? dto._bbox_max ?? [20, 20, 20];
+    // Cached draw frame
+    let cachedFrame = null;
 
-            const norm = calcNormalization(bboxMin, bboxMax);
-            center = norm.center;
-            scaleNorm = norm.scaleNorm;
+    async function fetchSwarmFrame() {
+        if (isRequestPending) return;
+        isRequestPending = true;
 
-            pointPositions = new Float32Array(rawPoints.length * 3);
-            for (let i = 0; i < rawPoints.length; i++) {
-                pointPositions[i * 3 + 0] = rawPoints[i][0];
-                pointPositions[i * 3 + 1] = rawPoints[i][1];
-                pointPositions[i * 3 + 2] = rawPoints[i][2];
-            }
-
-            if (titleEl) titleEl.textContent = fileName;
-            if (statPointCount) statPointCount.textContent = pointCount.toLocaleString();
-            if (statBbox) {
-                statBbox.textContent = `[${bboxMin[0].toFixed(1)}, ${bboxMin[1].toFixed(1)}, ${bboxMin[1].toFixed(1)}] → [${bboxMax[0].toFixed(1)}, ${bboxMax[1].toFixed(1)}, ${bboxMax[2].toFixed(1)}]`;
-            }
-            if (statShaderStatus) {
-                statShaderStatus.textContent = webglSupported ? 'WebGL 2.0 / Hardware Rasterizer' : 'Rust-GPU / CPU Engine';
-            }
-
-            if (webglSupported && gl) {
-                pointBuffer = gl.createBuffer();
-                gl.bindBuffer(gl.ARRAY_BUFFER, pointBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, pointPositions, gl.STATIC_DRAW);
-
-                const lineVerts = createBoundingBoxLines(bboxMin, bboxMax);
-                lineCount = lineVerts.length / 3;
-                lineBuffer = gl.createBuffer();
-                gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, lineVerts, gl.STATIC_DRAW);
-            }
-        } catch (err) {
-            console.error('Failed to load point cloud points:', err);
-        }
-    }
-
-    function renderWebGL() {
         const width = canvas.width;
         const height = canvas.height;
         const dpr = window.devicePixelRatio || 1;
         const speed = parseFloat((rotSpeedInput && rotSpeedInput.value) || 30);
+        const color = (lineColorInput && lineColorInput.value) || '#00f3ff';
 
-        if (!isDragging && !isInteractive && speed > 0) {
-            const speedRad = speed / 1000.0;
-            rotY += speedRad;
-            rotX += speedRad * 0.5;
+        try {
+            if (window.__TAURI__ && window.__TAURI__.core) {
+                const frame = await window.__TAURI__.core.invoke('xplr_project_pts', {
+                    path: filePath,
+                    width: width,
+                    height: height,
+                    dpr: dpr,
+                    speed: speed,
+                    color: color,
+                    panX: panX,
+                    panY: panY,
+                    zoom: zoomLevel,
+                    rotX: rotX,
+                    rotY: rotY,
+                    isInteractive: isInteractive || isDragging,
+                });
+                cachedFrame = frame;
+
+                if (titleEl && frame.file_name) titleEl.textContent = frame.file_name;
+                if (statPointCount && frame.count !== undefined) statPointCount.textContent = frame.count.toLocaleString();
+                if (statBbox && frame.bbox_label) statBbox.textContent = frame.bbox_label;
+                if (statShaderStatus && frame.shader_status) statShaderStatus.textContent = frame.shader_status;
+            }
+        } catch (err) {
+            console.error('Swarm frame error:', err);
+        } finally {
+            isRequestPending = false;
         }
+    }
 
-        gl.clearColor(0.043, 0.059, 0.098, 1.0); // #0b0f19
-        gl.clear(gl.COLOR_BUFFER_BIT);
+    function render2D() {
+        const width = canvas.width;
+        const height = canvas.height;
+        const dpr = window.devicePixelRatio || 1;
+
+        // Dark background with subtle radial gradient
+        const bgGrad = ctx.createRadialGradient(
+            width * 0.5, height * 0.5, Math.min(width, height) * 0.1,
+            width * 0.5, height * 0.5, Math.max(width, height) * 0.8
+        );
+        bgGrad.addColorStop(0, '#0d1527');
+        bgGrad.addColorStop(1, '#050811');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, width, height);
+
+        if (!cachedFrame) return;
 
         const baseColor = parseHexColor((lineColorInput && lineColorInput.value) || '#00f3ff');
+        const points = cachedFrame.points || [];
+        const boxLines = cachedFrame.box_lines || [];
 
-        // Render Point Cloud
-        if (pointProgram && pointBuffer && pointCount > 0) {
-            gl.useProgram(pointProgram);
-
-            const aPos = gl.getAttribLocation(pointProgram, 'a_position');
-            gl.bindBuffer(gl.ARRAY_BUFFER, pointBuffer);
-            gl.enableVertexAttribArray(aPos);
-            gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
-
-            gl.uniform2f(gl.getUniformLocation(pointProgram, 'u_resolution'), width, height);
-            gl.uniform2f(gl.getUniformLocation(pointProgram, 'u_rotation'), rotX, rotY);
-            gl.uniform2f(gl.getUniformLocation(pointProgram, 'u_pan'), panX, panY);
-            gl.uniform1f(gl.getUniformLocation(pointProgram, 'u_zoom'), zoomLevel);
-            gl.uniform1f(gl.getUniformLocation(pointProgram, 'u_fov'), 350.0);
-            gl.uniform1f(gl.getUniformLocation(pointProgram, 'u_distance'), 250.0);
-            gl.uniform3f(gl.getUniformLocation(pointProgram, 'u_center'), center[0], center[1], center[2]);
-            gl.uniform1f(gl.getUniformLocation(pointProgram, 'u_scaleNorm'), scaleNorm);
-            gl.uniform1f(gl.getUniformLocation(pointProgram, 'u_dpr'), dpr);
-            gl.uniform4fv(gl.getUniformLocation(pointProgram, 'u_baseColor'), baseColor);
-
-            gl.drawArrays(gl.POINTS, 0, pointCount);
+        // 1. Draw Bounding Box Wireframe (Swarm GPU Projected)
+        if (boxLines.length > 0) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(0, 243, 255, 0.45)';
+            ctx.lineWidth = 1.5 * dpr;
+            ctx.setLineDash([4 * dpr, 4 * dpr]);
+            ctx.beginPath();
+            for (let i = 0; i < boxLines.length; i++) {
+                const line = boxLines[i];
+                ctx.moveTo(line.x1, line.y1);
+                ctx.lineTo(line.x2, line.y2);
+            }
+            ctx.stroke();
+            ctx.restore();
         }
 
-        // Render Bounding Box Lines
-        if (lineProgram && lineBuffer && lineCount > 0) {
-            gl.useProgram(lineProgram);
+        // 2. Draw Point Cloud (Swarm Multi-GPU Projected)
+        const pointCount = points.length;
+        if (pointCount > 0) {
+            // Group into alpha buckets (0.1 to 1.0) for high-efficiency batch draws
+            const BUCKETS = 10;
+            const haloPaths = new Array(BUCKETS);
+            const corePaths = new Array(BUCKETS);
+            for (let b = 0; b < BUCKETS; b++) {
+                haloPaths[b] = new Path2D();
+                corePaths[b] = new Path2D();
+            }
 
-            const aPos = gl.getAttribLocation(lineProgram, 'a_position');
-            gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
-            gl.enableVertexAttribArray(aPos);
-            gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+            for (let i = 0; i < pointCount; i++) {
+                const pt = points[i];
+                const px = pt.x;
+                const py = pt.y;
 
-            gl.uniform2f(gl.getUniformLocation(lineProgram, 'u_resolution'), width, height);
-            gl.uniform2f(gl.getUniformLocation(lineProgram, 'u_rotation'), rotX, rotY);
-            gl.uniform2f(gl.getUniformLocation(lineProgram, 'u_pan'), panX, panY);
-            gl.uniform1f(gl.getUniformLocation(lineProgram, 'u_zoom'), zoomLevel);
-            gl.uniform1f(gl.getUniformLocation(lineProgram, 'u_fov'), 350.0);
-            gl.uniform1f(gl.getUniformLocation(lineProgram, 'u_distance'), 250.0);
-            gl.uniform3f(gl.getUniformLocation(lineProgram, 'u_center'), center[0], center[1], center[2]);
-            gl.uniform1f(gl.getUniformLocation(lineProgram, 'u_scaleNorm'), scaleNorm);
-            gl.uniform4f(gl.getUniformLocation(lineProgram, 'u_lineColor'), 0.0, 0.95, 1.0, 0.25);
+                // Frustum culling check in 2D viewport
+                if (px < -50 || px > width + 50 || py < -50 || py > height + 50) continue;
 
-            gl.drawArrays(gl.LINES, 0, lineCount);
+                const alpha = Math.max(0.05, Math.min(1.0, pt.alpha || 0.8));
+                const bIdx = Math.min(BUCKETS - 1, Math.floor(alpha * BUCKETS));
+
+                const r = pt.radius || (4.0 * dpr);
+                const cr = pt.core_radius || (1.5 * dpr);
+
+                haloPaths[bIdx].moveTo(px + r, py);
+                haloPaths[bIdx].arc(px, py, r, 0, 6.2831853);
+
+                corePaths[bIdx].moveTo(px + cr, py);
+                corePaths[bIdx].arc(px, py, cr, 0, 6.2831853);
+            }
+
+            // Draw outer halos
+            for (let b = 0; b < BUCKETS; b++) {
+                const alphaVal = ((b + 1) / BUCKETS) * 0.45;
+                ctx.fillStyle = `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, ${alphaVal.toFixed(3)})`;
+                ctx.fill(haloPaths[b]);
+            }
+
+            // Draw bright glowing cores
+            for (let b = 0; b < BUCKETS; b++) {
+                const alphaVal = Math.min(1.0, ((b + 1) / BUCKETS) * 0.95);
+                ctx.fillStyle = `rgba(255, 255, 255, ${alphaVal.toFixed(3)})`;
+                ctx.fill(corePaths[b]);
+            }
         }
 
-        requestAnimationFrame(renderLoop);
+        // 3. Draw HUD Overlay
+        ctx.save();
+        ctx.font = `${11 * dpr}px monospace`;
+        ctx.fillStyle = 'rgba(0, 243, 255, 0.85)';
+        if (cachedFrame.overlay_text1) {
+            ctx.fillText(cachedFrame.overlay_text1, 16 * dpr, height - 32 * dpr);
+        }
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.85)';
+        if (cachedFrame.overlay_text2) {
+            ctx.fillText(`${cachedFrame.overlay_text2} | Display: Swarm 2D (${fps} FPS)`, 16 * dpr, height - 16 * dpr);
+        }
+        ctx.restore();
     }
 
-    function renderLoop() {
-        resizeCanvas();
-        if (webglSupported) {
-            renderWebGL();
+    function mainLoop(now) {
+        // Calculate FPS
+        frameCount++;
+        if (now - fpsTimer >= 500) {
+            fps = Math.round((frameCount * 1000) / (now - fpsTimer));
+            frameCount = 0;
+            fpsTimer = now;
         }
+
+        const speed = parseFloat((rotSpeedInput && rotSpeedInput.value) || 30);
+        if (speed > 0 || isInteractive || isDragging || needsRedraw) {
+            fetchSwarmFrame();
+            needsRedraw = false;
+        }
+
+        render2D();
+        requestAnimationFrame(mainLoop);
     }
 
-    webglSupported = initWebGL();
-    resizeCanvas();
-    loadPointCloud().then(() => {
-        requestAnimationFrame(renderLoop);
-    });
+    requestAnimationFrame(mainLoop);
 })();

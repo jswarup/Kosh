@@ -272,6 +272,7 @@ impl SceneGraph
     // -----------------------------------------------------------------------------------------------------------------------------
 
     /// Dispatches point cloud transformation to the Swarm compute framework (GPU/CPU)
+    /// Dispatches point cloud transformation to the Swarm compute framework (GPU/CPU)
     /// and formats the resulting 2D coordinates with depth-scaled radius and alpha.
     pub fn	ProjectPointsSwarm(
         &self,
@@ -279,20 +280,11 @@ impl SceneGraph
         width: f32,
         height: f32,
         dpr: f32,
-        r: u8,
-        g: u8,
-        b: u8,
         spirvBytes: Option< &[u8]>,
-    ) -> Result< Buff< ( f32, f32, f32, f32, String)>, crate::swarm::SwarmError>
+    ) -> Result< Buff< ( f32, f32, f32, f32, f32)>, crate::swarm::SwarmError>
     {
         let  	camParams = self.CameraParams( width, height);
         let  	rawProjected = engine.RunCameraTransform( &self._Points, &camParams, spirvBytes)?;
-
-        let  	mut colorLut = Buff::New();
-        for a in 0..=255 {
-            let  	alphaVal = ( a as f32) / 255.0;
-            colorLut.Push( format!( "rgba({}, {}, {}, {:.3})", r, g, b, alphaVal));
-        }
 
         let  	mut result = Buff::New();
         for proj in &rawProjected {
@@ -301,9 +293,7 @@ impl SceneGraph
             let  	radius = proj[2] * dpr;
             let  	coreRadius = proj[3] * dpr;
             let  	alpha = proj[4];
-            let  	alphaIdx = ( ( alpha * 255.0).clamp( 0.0, 255.0)) as usize;
-            let  	colorStr = colorLut[alphaIdx].clone();
-            result.Push( ( px, py, radius, coreRadius, colorStr));
+            result.Push( ( px, py, radius, coreRadius, alpha));
         }
 
         Ok( result)
@@ -365,13 +355,10 @@ impl SceneGraph
         width: f32,
         height: f32,
         dpr: f32,
-        r: u8,
-        g: u8,
-        b: u8,
         spirvBytes: Option< &[u8]>,
     ) -> Result< SceneDisplayFrame, crate::swarm::SwarmError>
     {
-        let  	points = self.ProjectPointsSwarm( engine, width, height, dpr, r, g, b, spirvBytes)?;
+        let  	points = self.ProjectPointsSwarm( engine, width, height, dpr, spirvBytes)?;
         let  	boxLines = self.ProjectBoundingBoxSwarm( engine, width, height, spirvBytes)?;
 
         Ok( SceneDisplayFrame {
@@ -389,20 +376,11 @@ impl SceneGraph
         width: f32,
         height: f32,
         dpr: f32,
-        r: u8,
-        g: u8,
-        b: u8,
         spirvBytes: Option< &[u8]>,
-    ) -> Result< Buff< ( f32, f32, f32, f32, String)>, crate::swarm::SwarmError>
+    ) -> Result< Buff< ( f32, f32, f32, f32, f32)>, crate::swarm::SwarmError>
     {
         let  	camParams = self.CameraParams( width, height);
         let  	rawProjected = cluster.RunCameraTransformSharded( &self._Points, &camParams, spirvBytes)?;
-
-        let  	mut colorLut = Buff::New();
-        for a in 0..=255 {
-            let  	alphaVal = ( a as f32) / 255.0;
-            colorLut.Push( format!( "rgba({}, {}, {}, {:.3})", r, g, b, alphaVal));
-        }
 
         let  	mut result = Buff::New();
         for proj in &rawProjected {
@@ -411,9 +389,7 @@ impl SceneGraph
             let  	radius = proj[2] * dpr;
             let  	coreRadius = proj[3] * dpr;
             let  	alpha = proj[4];
-            let  	alphaIdx = ( ( alpha * 255.0).clamp( 0.0, 255.0)) as usize;
-            let  	colorStr = colorLut[alphaIdx].clone();
-            result.Push( ( px, py, radius, coreRadius, colorStr));
+            result.Push( ( px, py, radius, coreRadius, alpha));
         }
 
         Ok( result)
@@ -428,13 +404,10 @@ impl SceneGraph
         width: f32,
         height: f32,
         dpr: f32,
-        r: u8,
-        g: u8,
-        b: u8,
         spirvBytes: Option< &[u8]>,
     ) -> Result< SceneDisplayFrame, crate::swarm::SwarmError>
     {
-        let  	points = self.ProjectPointsCluster( cluster, width, height, dpr, r, g, b, spirvBytes)?;
+        let  	points = self.ProjectPointsCluster( cluster, width, height, dpr, spirvBytes)?;
         let  	boxLines = self.ProjectBoundingBoxSwarm( cluster.Primary(), width, height, spirvBytes)?;
 
         Ok( SceneDisplayFrame {
@@ -450,7 +423,7 @@ impl SceneGraph
 #[derive( Clone, Debug)]
 pub struct SceneDisplayFrame
 {
-    pub _Points:    Buff< ( f32, f32, f32, f32, String)>,
+    pub _Points:    Buff< ( f32, f32, f32, f32, f32)>,
     pub _BoxLines:  Buff< ( ( f32, f32), ( f32, f32))>,
 }
 

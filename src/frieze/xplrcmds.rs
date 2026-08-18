@@ -219,7 +219,7 @@ static PTS_STATE: LazyLock< Mutex< HashMap< String, PtsSessionState>>> = LazyLoc
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Serialize, Debug)]
+#[derive( Serialize, Debug, Clone, Copy)]
 pub struct ProjectedPoint
 {
     #[serde( rename = "x")]
@@ -230,8 +230,8 @@ pub struct ProjectedPoint
     pub _Radius:       f32,
     #[serde( rename = "core_radius")]
     pub _CoreRadius:  f32,
-    #[serde( rename = "color")]
-    pub _Color:        String,
+    #[serde( rename = "alpha")]
+    pub _Alpha:        f32,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -272,23 +272,6 @@ pub struct PtsFrameDto
     pub _OverlayText2:  String,
 }
 
-// ---------------------------------------------------------------------------------------------------------------------------------
-
-fn	ParseHexColor( hex: &str) -> ( u8, u8, u8)
-{
-    let  	clean = hex.trim_start_matches( '#');
-    if clean.len() == 6 {
-        let  	r = u8::from_str_radix( &clean[0..2], 16).unwrap_or( 0);
-        let  	g = u8::from_str_radix( &clean[2..4], 16).unwrap_or( 243);
-        let  	b = u8::from_str_radix( &clean[4..6], 16).unwrap_or( 255);
-        ( r, g, b)
-    } else {
-        ( 0, 243, 255)
-    }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------------------
-
 /// Transforms and projects 3D point cloud coordinates and its bounding box to 2D screen coordinates,
 /// applying camera pan, zoom, and rotation state.
 #[tauri::command]
@@ -298,7 +281,7 @@ pub fn	XplrProjectPts(
     height: f32,
     dpr: f32,
     speed: f32,
-    color: String,
+    _color: String,
     pan_x: Option< f32>,
     pan_y: Option< f32>,
     zoom: Option< f32>,
@@ -355,7 +338,6 @@ pub fn	XplrProjectPts(
         cam._RotX += speedRad * 0.5;
     }
 
-    let  	( r, g, b) = ParseHexColor( &color);
     let  	mut box_lines = Buff::New();
     let  	mut projectedPoints = Buff::New();
     let  	camRef = state._Scene.Camera();
@@ -365,9 +347,6 @@ pub fn	XplrProjectPts(
         width,
         height,
         dpr,
-        r,
-        g,
-        b,
         Some( SYMPH_SPV),
     );
 
@@ -386,7 +365,7 @@ pub fn	XplrProjectPts(
                 _Y: pt.1,
                 _Radius: pt.2,
                 _CoreRadius: pt.3,
-                _Color: pt.4.clone(),
+                _Alpha: pt.4,
             });
         }
     } else {
@@ -412,14 +391,12 @@ pub fn	XplrProjectPts(
             let  	alpha = 0.5 + depthFactor * 0.5;
             let  	core_radius = ( 1.0 + depthFactor * 1.5) * dpr;
 
-            let  	colorStr = format!( "rgba({}, {}, {}, {:.3})", r, g, b, alpha);
-
             projectedPoints.Push( ProjectedPoint {
                 _X: px,
                 _Y: py,
                 _Radius: radius,
                 _CoreRadius: core_radius,
-                _Color: colorStr,
+                _Alpha: alpha,
             });
         }
     }

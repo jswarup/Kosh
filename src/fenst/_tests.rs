@@ -341,7 +341,7 @@ fn	TestSceneGraphSwarmProjection()
     let  	scene = SceneGraph::WithPoints( points, [ -10.0, -10.0, -10.0 ], [ 10.0, 10.0, 10.0 ]);
     let  	engine = SwarmEngine::Auto();
 
-    let  	res = scene.ProjectPointsSwarm( &engine, 800.0, 600.0, 1.0, 0, 243, 255, None);
+    let  	res = scene.ProjectPointsSwarm( &engine, 800.0, 600.0, 1.0, None);
     assert!( res.is_ok());
 
     let  	projPoints = res.unwrap();
@@ -395,7 +395,7 @@ fn	TestSceneGraphSwarmFullSceneProjection()
     let  	scene = SceneGraph::WithPoints( points, [ -20.0, -20.0, -20.0 ], [ 20.0, 20.0, 20.0 ]);
     let  	engine = SwarmEngine::Auto();
 
-    let  	res = scene.ProjectSceneSwarm( &engine, 800.0, 600.0, 1.0, 0, 243, 255, None);
+    let  	res = scene.ProjectSceneSwarm( &engine, 800.0, 600.0, 1.0, None);
     assert!( res.is_ok());
 
     let  	frame = res.unwrap();
@@ -421,7 +421,7 @@ fn	TestSceneGraphClusterMultiGpuProjection()
     let  	scene = SceneGraph::WithPoints( points, [ 0.0, 0.0, 0.0 ], [ 100.0, 50.0, 20.0 ]);
     let  	cluster = SwarmCluster::Auto();
 
-    let  	res = scene.ProjectSceneCluster( &cluster, 800.0, 600.0, 1.0, 0, 243, 255, None);
+    let  	res = scene.ProjectSceneCluster( &cluster, 800.0, 600.0, 1.0, None);
     assert!( res.is_ok());
 
     let  	frame = res.unwrap();
