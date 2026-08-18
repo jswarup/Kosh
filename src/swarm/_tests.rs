@@ -689,15 +689,15 @@ fn	TestSwarmEngineAuto()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestSharedGcompKernelParity()
+fn	TestSharedSymphKernelParity()
 {
     use	crate::swarm::traits::BackendKind;
     use	crate::swarm::engine::SwarmEngine;
 
-    // 1. Direct invocation of shared gcomp kernels
+    // 1. Direct invocation of shared symph kernels
     let  	mut testData = Buff![1.0f32, 2.0, 3.0, 4.0];
     for i in 0..testData.len() {
-        gcomp::double_elem( i, &mut testData);
+        symph::double_elem( i, &mut testData);
     }
     assert_eq!( testData, Buff![2.0, 4.0, 6.0, 8.0]);
 
@@ -705,18 +705,18 @@ fn	TestSharedGcompKernelParity()
     let  	b = Buff![1.0f32, 2.0, 3.0];
     let  	mut sumOut = Buff![0.0f32, 0.0, 0.0];
     for i in 0..3 {
-        gcomp::vector_add_elem( i, &a, &b, &mut sumOut);
+        symph::vector_add_elem( i, &a, &b, &mut sumOut);
     }
     assert_eq!( sumOut, Buff![11.0, 22.0, 33.0]);
 
     let  	collatzIn = Buff![6u32, 11, 27];
     let  	mut collatzOut = Buff![0u32, 0, 0];
     for i in 0..3 {
-        gcomp::collatz_elem( i, &collatzIn, &mut collatzOut);
+        symph::collatz_elem( i, &collatzIn, &mut collatzOut);
     }
     assert_eq!( collatzOut, Buff![8, 14, 111]);
 
-    // 2. Cross-backend parity between CPU and Cuda-Oxide running shared gcomp kernels
+    // 2. Cross-backend parity between CPU and Cuda-Oxide running shared symph kernels
     let  	cpuEngine = SwarmEngine::New( BackendKind::Cpu).unwrap();
     let  	cudaEngine = SwarmEngine::New( BackendKind::CudaOxide).unwrap();
 
@@ -746,7 +746,7 @@ fn	TestSharedGcompKernelParity()
     }
     assert_eq!( outVec, Buff![10.0, 20.0, 30.0]);
 
-    println!( "TestSharedGcompKernelParity: CPU, Cuda-Oxide, and gcomp shared kernel parity verified ✓");
+    println!( "TestSharedSymphKernelParity: CPU, Cuda-Oxide, and symph shared kernel parity verified ✓");
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -832,7 +832,7 @@ fn	TestSwarmClusterSharding()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestGcompFrustumCulling()
+fn	TestSymphFrustumCulling()
 {
     let  	inPoints = [
         0.0f32, 0.0, 0.0,      // Inside (center)
@@ -853,7 +853,7 @@ fn	TestGcompFrustumCulling()
 
     let  	mut outVisible = [0u32; 3];
     for i in 0..3 {
-        gcomp::frustum_cull_elem( i, &inPoints, &planes, &mut outVisible);
+        symph::frustum_cull_elem( i, &inPoints, &planes, &mut outVisible);
     }
 
     assert_eq!( outVisible[0], 1); // inside

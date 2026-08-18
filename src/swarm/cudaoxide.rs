@@ -277,7 +277,7 @@ impl IComputeDevice for CudaOxideDevice
                     let  	mut guard = cudaBuf._Data.write().unwrap();
                     let  	floats: &mut [f32] = ( &mut guard[..]).CastSliceMut();
                     for i in 0..totalThreads.min( floats.len()) {
-                        gcomp::double_elem( i, floats);
+                        symph::double_elem( i, floats);
                     }
                 }
             }
@@ -292,7 +292,7 @@ impl IComputeDevice for CudaOxideDevice
                     let  	mut guard = cudaOut._Data.write().unwrap();
                     let  	outFloats: &mut [f32] = ( &mut guard[..]).CastSliceMut();
                     for i in 0..totalThreads.min( outFloats.len()).min( inA.len()).min( inB.len()) {
-                        gcomp::vector_add_elem( i, inA, inB, outFloats);
+                        symph::vector_add_elem( i, inA, inB, outFloats);
                     }
                 }
             }
@@ -305,7 +305,7 @@ impl IComputeDevice for CudaOxideDevice
                     let  	mut guard = cudaOut._Data.write().unwrap();
                     let  	outU32: &mut [u32] = ( &mut guard[..]).CastSliceMut();
                     for i in 0..totalThreads.min( outU32.len()).min( inU32.len()) {
-                        gcomp::collatz_elem( i, inU32, outU32);
+                        symph::collatz_elem( i, inU32, outU32);
                     }
                 }
             }
@@ -315,7 +315,7 @@ impl IComputeDevice for CudaOxideDevice
                     let  	mut guard = buf._Data.write().unwrap();
                     let  	outFloats: &mut [f32] = ( &mut guard[..]).CastSliceMut();
                     for idx in 0..totalThreads {
-                        gcomp::pointcloud_elem( idx, outFloats);
+                        symph::pointcloud_elem( idx, outFloats);
                     }
                 }
             }

@@ -10,7 +10,7 @@ use	std::sync::Mutex;
 use	std::sync::LazyLock;
 
 
-static GCOMP_SPV: &[u8] = include_bytes!( env!( "GCOMP_SPV_PATH"));
+static SYMPH_SPV: &[u8] = include_bytes!( env!( "SYMPH_SPV_PATH"));
 
 static SWARM_CLUSTER: LazyLock< SwarmCluster> = LazyLock::new( || {
     SwarmCluster::Auto()
@@ -130,7 +130,7 @@ pub fn	XplrFetchPtsPoints( path: Option< String>) -> Result< PtsPointsDto, Strin
             return kosh::fenst::XplrParsePtsFile( filePath);
         }
     }
-    kosh::fenst::XplrFetchPtsPoints( GCOMP_SPV)
+    kosh::fenst::XplrFetchPtsPoints( SYMPH_SPV)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -311,7 +311,7 @@ pub fn	XplrProjectPts(
     let  	state = guard.entry( path.clone()).or_insert_with( || {
         let  	dto = if std::path::Path::new( &path).exists() {
             kosh::fenst::XplrParsePtsFile( &path)
-                .or_else( |_| kosh::fenst::XplrFetchPtsPoints( GCOMP_SPV))
+                .or_else( |_| kosh::fenst::XplrFetchPtsPoints( SYMPH_SPV))
                 .unwrap_or_else( |_| PtsPointsDto {
                     _Points: Buff::New(),
                     _Count: 0,
@@ -319,7 +319,7 @@ pub fn	XplrProjectPts(
                     _BboxMax: [ 0.0, 0.0, 0.0 ],
                 })
         } else {
-            kosh::fenst::XplrFetchPtsPoints( GCOMP_SPV).unwrap_or_else( |_| PtsPointsDto {
+            kosh::fenst::XplrFetchPtsPoints( SYMPH_SPV).unwrap_or_else( |_| PtsPointsDto {
                 _Points: Buff::New(),
                 _Count: 0,
                 _BboxMin: [ 0.0, 0.0, 0.0 ],
@@ -368,7 +368,7 @@ pub fn	XplrProjectPts(
         r,
         g,
         b,
-        Some( GCOMP_SPV),
+        Some( SYMPH_SPV),
     );
 
     if let Ok( sceneFrame) = sceneResult {

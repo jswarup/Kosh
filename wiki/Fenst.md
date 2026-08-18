@@ -84,7 +84,7 @@ flowchart TD
     Frontend["Tauri Frontend (WebGL/Canvas/HTML)"] -->|Invokes 'XplrProjectPts'| BackendCmd["fenst-app::xplrcmds::XplrProjectPts"]
     BackendCmd --> CheckState["Lookup or Initialize PtsSessionState (Singleton)"]
     
-    CheckState -->|If initial load| GenPoints["Generate points via GPU Compute Shader (gcomp::pts_pointcloud_cs)"]
+    CheckState -->|If initial load| GenPoints["Generate points via GPU Compute Shader (symph::pts_pointcloud_cs)"]
     GenPoints --> InitBBox["Initialize Bounding Box [-20, -20, -20] to [20, 20, 20]"]
     InitBBox --> RotateState["Update angle_x and angle_y based on speed/interaction"]
     
@@ -103,7 +103,7 @@ flowchart TD
     AssembleDto --> ReturnJSON["Return serializable frame DTO to Frontend for 60+ FPS redraw"]
 ```
 
-### Multi-GPU Cluster & Dedicated Shaders (`swarm` & `gcomp`)
+### Multi-GPU Cluster & Dedicated Shaders (`swarm` & `symph`)
 1. **Multi-Adapter Discovery (`SwarmCluster`)**:
    - Enumerates all available hardware adapters (discrete and integrated GPUs) via `RustGpuDevice::EnumerateDevices()`.
    - Splits massive point cloud datasets into contiguous chunks and projects them concurrently across all GPUs via `RunCameraTransformSharded`.

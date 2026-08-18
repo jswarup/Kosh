@@ -1496,13 +1496,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gcomp"
-version = "0.0.0"
-dependencies = [
- "spirv-std",
-]
-
-[[package]]
 name = "gdk"
 version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2410,12 +2403,12 @@ dependencies = [
  "anyhow",
  "clap",
  "colored",
- "gcomp",
  "paste",
  "pollster",
  "rand 0.10.2",
  "serde",
  "spirv-builder",
+ "symph",
  "tracing",
  "tracing-subscriber",
  "wgpu",
@@ -4263,6 +4256,13 @@ dependencies = [
  "base64 0.21.7",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "symph"
+version = "0.0.0"
+dependencies = [
+ "spirv-std",
 ]
 
 [[package]]

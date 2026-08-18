@@ -29,7 +29,7 @@ graph TD
 
     subgraph Layer2 ["Tier 2: Compute & Core Engines"]
         Swarm["swarm<br/>Heterogeneous GPU/CPU Compute Device Engine"]
-        GComp["gcomp<br/>no_std SPIR-V / SIMT Compute Kernels"]
+        Symph["symph<br/>no_std SPIR-V / SIMT Compute Kernels"]
         Shard["shard<br/>Zero-Box Recursive Descent Grammar Engine"]
         Flux["flux<br/>Stream Buffering & Reflection Serialization"]
     end
@@ -40,7 +40,7 @@ graph TD
     end
 
     FenstApp --> Fenst
-    FenstApp --> GComp
+    FenstApp --> Symph
     Fenst --> Shard
     Fenst --> Fresco
     Fenst --> Flux
@@ -60,7 +60,7 @@ graph TD
     Heist --> Stalks
     Heist --> Silo
 
-    Swarm --> GComp
+    Swarm --> Symph
     Swarm --> Silo
 
     Shard --> Stalks
@@ -83,7 +83,7 @@ graph TD
 - **[`shard`](Shard.md)**: High-performance recursive-descent grammar combinator parsing engine. Built on `IGrammar` and `Parser<'p>`, it parses binary/text inputs with `ShardTree!` DSL without heap allocations. Features a 256-bit bitset character filter (`Charset`), numeric parsers (`UInt`, `Int`, `Hex`, `Real`), repetition/action combinators, and a streaming `JSon` parser.
 - **[`flux`](Flux.md)**: Universal streaming and data conversion layer. Provides input streams (`IStream`, `FixedStream`, `BuffStream`), output streams (`OutStream`, `JsonOutStream`), and a reflection-style visitor import/export framework (`IFluxExportSource`, `IFluxImportSource`, `FieldExp`, `FieldImp`, `ImplFluxSource!`).
 - **[`swarm`](Swarm.md)**: Hardware compute engine abstracting CPU SIMT thread pools, Rust-GPU (`wgpu` executing compiled SPIR-V bytecode), and Cuda-Oxide (CUDA driver / PTX execution). Unified through `SwarmEngine`, `SwarmDevice`, `SwarmBuffer`, and `SwarmKernel`.
-- **[`gcomp`](Swarm.md)**: `#![no_std]` portable compute library containing Wang Hash PRNG, Collatz sequence step calculators, element doubling, vector addition, and 3D point cloud generation. Compiles to standard host CPU functions and SPIR-V compute shaders (`pts_pointcloud_cs`, `double_cs`, `vecadd_cs`, `collatz_cs`).
+- **[`symph`](Swarm.md)**: `#![no_std]` portable compute library containing Wang Hash PRNG, Collatz sequence step calculators, element doubling, vector addition, and 3D point cloud generation. Compiles to standard host CPU functions and SPIR-V compute shaders (`pts_pointcloud_cs`, `camera_transform_cs`, `frustum_cull_cs`, `scene_vs`, `scene_fs`).
 
 ### Tier 3: Domain Subsystems
 - **[`heist`](Heist.md)**: Asynchronous Directed Acyclic Graph (DAG) chore orchestration system. Features `Atelier` (master workspace managing thread execution and job tracking) and `Maestro` (thread worker executing jobs and stealing work). Uses `ChoreTree!` to construct and schedule complex dependency graphs across CPU and GPU backends.

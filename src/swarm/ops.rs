@@ -6,7 +6,7 @@ use	crate::swarm::traits::{ BackendKind, CpuKernelFn, KernelSource };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Standard PRNG and numeric algorithms shared across compute implementations (backed by gcomp).
+/// Standard PRNG and numeric algorithms shared across compute implementations (backed by symph).
 pub struct SwarmMath;
 
 impl SwarmMath
@@ -14,19 +14,19 @@ impl SwarmMath
     #[inline( always)]
     pub fn	WangHash( seed: u32) -> u32
     {
-        gcomp::wang_hash( seed)
+        symph::wang_hash( seed)
     }
 
     #[inline( always)]
     pub fn	HashToFloat( h: u32) -> f32
     {
-        gcomp::hash_to_float( h)
+        symph::hash_to_float( h)
     }
 
     #[inline( always)]
     pub fn	CollatzSteps( n: u32) -> u32
     {
-        gcomp::collatz( n).unwrap_or( u32::MAX)
+        symph::collatz( n).unwrap_or( u32::MAX)
     }
 }
 
@@ -218,7 +218,7 @@ impl StandardOp
                     return;
                 }
                 let  	outBuf: &mut [f32] = outputs[0].CastSliceMut();
-                gcomp::double_elem( gidX.AsUsize(), outBuf);
+                symph::double_elem( gidX.AsUsize(), outBuf);
             }),
             StandardOp::VectorAdd => Arc::new( |inputs, outputs, gidX, _gidY, _gidZ| {
                 if inputs.len() < 2 || outputs.is_empty() {
@@ -227,7 +227,7 @@ impl StandardOp
                 let  	inA: &[f32] = inputs[0].CastSliceFrom();
                 let  	inB: &[f32] = inputs[1].CastSliceFrom();
                 let  	outBuf: &mut [f32] = outputs[0].CastSliceMut();
-                gcomp::vector_add_elem( gidX.AsUsize(), inA, inB, outBuf);
+                symph::vector_add_elem( gidX.AsUsize(), inA, inB, outBuf);
             }),
             StandardOp::Collatz => Arc::new( |inputs, outputs, gidX, _gidY, _gidZ| {
                 if inputs.is_empty() || outputs.is_empty() {
@@ -235,14 +235,14 @@ impl StandardOp
                 }
                 let  	inData: &[u32] = inputs[0].CastSliceFrom();
                 let  	outBuf: &mut [u32] = outputs[0].CastSliceMut();
-                gcomp::collatz_elem( gidX.AsUsize(), inData, outBuf);
+                symph::collatz_elem( gidX.AsUsize(), inData, outBuf);
             }),
             StandardOp::PointCloud => Arc::new( |_inputs, outputs, gidX, _gidY, _gidZ| {
                 if outputs.is_empty() {
                     return;
                 }
                 let  	outBuf: &mut [f32] = outputs[0].CastSliceMut();
-                gcomp::pointcloud_elem( gidX.AsUsize(), outBuf);
+                symph::pointcloud_elem( gidX.AsUsize(), outBuf);
             }),
             StandardOp::CameraTransform => Arc::new( |inputs, outputs, gidX, _gidY, _gidZ| {
                 if inputs.len() < 2 || outputs.is_empty() {
@@ -251,7 +251,7 @@ impl StandardOp
                 let  	inPoints: &[f32] = inputs[0].CastSliceFrom();
                 let  	camParams: &[f32] = inputs[1].CastSliceFrom();
                 let  	outBuf: &mut [f32] = outputs[0].CastSliceMut();
-                gcomp::camera_transform_elem( gidX.AsUsize(), inPoints, camParams, outBuf);
+                symph::camera_transform_elem( gidX.AsUsize(), inPoints, camParams, outBuf);
             }),
         }
     }

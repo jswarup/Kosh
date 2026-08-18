@@ -26,7 +26,7 @@ graph TD
 
     subgraph ComputeLayer ["Heterogeneous SIMT Compute Runtime"]
         Swarm["<b>swarm</b><br/>Unified Hardware Engine<br/>(CPU / Rust-GPU / Cuda-Oxide)"]
-        GComp["<b>gcomp</b><br/>no_std SPIR-V / SIMT Library<br/>Wang Hash, Point Cloud, Collatz"]
+        Symph["<b>symph</b><br/>no_std SPIR-V / SIMT Library<br/>Wang Hash, Point Cloud, Camera Transform"]
     end
 
     subgraph CoreLayer ["Grammar & Serialization Foundations"]
@@ -40,7 +40,7 @@ graph TD
     end
 
     FenstApp --> Fenst
-    FenstApp --> GComp
+    FenstApp --> Symph
     Fenst --> Silo
     Fenst --> Flux
     Fenst --> Swarm
@@ -61,7 +61,7 @@ graph TD
     Heist --> Swarm
 
     Swarm --> Silo
-    Swarm --> GComp
+    Swarm --> Symph
 
     Shard --> Silo
     Shard --> Stalks
@@ -83,7 +83,7 @@ graph TD
 | **`fresco`** | Symbolic algebra expressions and term repositories | `ExprRepos`, `PolyExpr`, `SumExpr`, `ProdExpr`, `PowExpr`, `RealExpr`, `VarExpr`, `VarAttrib`, `Term` | `ITermNode`, `AsTermNode`, `BaseExpr`, `TermTree!` | [Fresco.md](wiki/Fresco.md) |
 | **`flux`** | Dynamic visitor serialization, streaming I/O buffers | `FixedStream<'a>`, `BuffStream<R>`, `OutStream<'a, W>`, `JsonOutStream<W>`, `FieldExp<'a>`, `FieldImp<'a>` | `IStream`, `IFluxExportSource`, `IFluxImportSource`, `ImplFluxSource!` | [Flux.md](wiki/Flux.md) |
 | **`swarm`** | Hardware compute engine across CPU, WebGPU, and CUDA | `SwarmEngine`, `SwarmDevice`, `SwarmBuffer`, `SwarmKernel`, `StandardOp`, `SwarmMath` | `IComputeDevice`, `IComputeBuffer`, `IComputeKernel`, `IGpuOp` | [Swarm.md](wiki/Swarm.md) |
-| **`gcomp`** | `#![no_std]` Rust-GPU SPIR-V compute kernels and algorithms | Pure SIMT functions (`wang_hash`, `collatz`, `pointcloud_elem`, `double_elem`, `vector_add_elem`) | SPIR-V Shaders (`pts_pointcloud_cs`, `double_cs`, `vecadd_cs`, `collatz_cs`) | [Swarm.md](wiki/Swarm.md) |
+| **`symph`** | `#![no_std]` Rust-GPU SPIR-V compute kernels and algorithms | Pure SIMT functions (`wang_hash`, `collatz`, `pointcloud_elem`, `double_elem`, `vector_add_elem`) | SPIR-V Shaders (`pts_pointcloud_cs`, `camera_transform_cs`, `frustum_cull_cs`, `scene_vs`, `scene_fs`) | [Swarm.md](wiki/Swarm.md) |
 | **`heist`** | Asynchronous workflow DAG orchestrator and scheduler | `Atelier<'a>`, `Maestro<'a>`, `Chore`, `ChoreTarget`, `JobInfo`, `AtelierInfo` | `IChoreNode`, `ChoreTree!`, `Chore!`, `CpuChore!`, `GpuAutoChore!` | [Heist.md](wiki/Heist.md) |
 | **`fleck`** | 3D Point Cloud (.pts) parsing and spatial bounding boxes | `PtsPoint`, `Point32`, `RGB`, `PtsCloud`, `PtsShard<'a>` | `ParsePts`, `ParsePtsStream`, `ToDto` | [Fleck.md](wiki/Fleck.md) |
 | **`fenst`** | Virtual data provider framework and explorer backend | `XplrEntry`, `XplrContent`, `XplrLeafInfo`, `FsBranch`, `FsLeaf`, `FrescoBranch`, `ShardBranch`, `XplrRegistry` | `Xplr`, `LeafXplr`, `BranchXplr`, `XplrProvider`, `CreateDefaultRegistry` | [Fenst.md](wiki/Fenst.md) |
@@ -103,7 +103,7 @@ The `silo::uint` module defines custom integer wrappers (`U8`, `U16`, `U32`, `U6
 These types enforce wrapping arithmetic semantics, eliminate implicit casting pitfalls, provide atomic interoperability with `Atm<T>`, and enable zero-copy slice and buffer transformations via `ICastExt` and `ISliceExt`.
 
 ### 3. Portable SIMT Compute (CPU, WebGPU, CUDA)
-Compute algorithms in `gcomp` are implemented once in pure `#![no_std]` Rust:
+Compute algorithms in `symph` are implemented once in pure `#![no_std]` Rust:
 - When running on GPU backends (`RustGpuDevice`), they are compiled to SPIR-V bytecodes via `rust-gpu` and dispatched over WebGPU compute pipelines.
 - When running on CUDA backends (`CudaOxideDevice`), they execute with CUDA driver / PTX headers.
 - When falling back to CPU (`CpuDevice`), they execute across multithreaded SIMT thread pools using 64-element workgroup chunks.
@@ -165,7 +165,7 @@ Explore the full in-depth documentation in the **[wiki/](wiki/Architecture.md)**
 - **[Shard (Grammar & Parser)](wiki/Shard.md)**
 - **[Fresco (Symbolic Algebra)](wiki/Fresco.md)**
 - **[Flux (Streaming & Serialization)](wiki/Flux.md)**
-- **[Swarm & GComp (GPU/CPU Compute)](wiki/Swarm.md)**
+- **[Swarm & Symph (GPU/CPU Compute)](wiki/Swarm.md)**
 - **[Heist (Chore DAG Orchestration)](wiki/Heist.md)**
 - **[Fleck (Point Cloud Parsing)](wiki/Fleck.md)**
 - **[Fenst & Fenst-App (Virtual Explorer & Desktop GUI)](wiki/Fenst.md)**
