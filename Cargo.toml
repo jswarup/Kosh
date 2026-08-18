@@ -28,3 +28,20 @@ opt-level = 3
 [profile.dev.package.rustc_codegen_spirv]
 opt-level = 3
 
+[profile.release]
+opt-level = 1
+lto = "off"
+codegen-units = 256
+debug = false
+
+[profile.release.build-override]
+opt-level = 1
+debug = false
+
+[profile.release.package.rustc_codegen_spirv]
+opt-level = 1
+debug = false
+codegen-units = 1
+
+
+

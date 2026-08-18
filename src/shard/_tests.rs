@@ -376,7 +376,7 @@ fn	TestJsonParsingStruct()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-//#[test]
+#[allow( dead_code)]
 fn	TestStrGrammar()
 {
 	// ---- 1. Match a plain quoted string into a String sink ----------------------------

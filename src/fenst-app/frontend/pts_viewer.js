@@ -260,28 +260,25 @@
             ctx.stroke();
         });
 
-        // Draw point cloud (outer glow)
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 10 * dpr;
-
-        frameData.points.forEach(p => {
+        // Draw point cloud (outer halo)
+        const ptsLen = frameData.points.length;
+        for (let i = 0; i < ptsLen; i++) {
+            const p = frameData.points[i];
             ctx.fillStyle = p.color;
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
             ctx.fill();
-        });
+        }
 
-        // Draw small white core for each point (depth-sorted visual)
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-        frameData.points.forEach(p => {
-            ctx.beginPath();
+        // Draw glowing white cores (depth-sorted visual)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+        ctx.beginPath();
+        for (let i = 0; i < ptsLen; i++) {
+            const p = frameData.points[i];
+            ctx.moveTo(p.x + p.core_radius, p.y);
             ctx.arc(p.x, p.y, p.core_radius, 0, Math.PI * 2);
-            ctx.fill();
-        });
-
-        // Reset shadow
-        ctx.shadowBlur = 0;
+        }
+        ctx.fill();
 
         // Draw HUD overlays
         ctx.fillStyle = 'rgba(226, 232, 240, 0.85)';

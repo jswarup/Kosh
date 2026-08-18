@@ -374,14 +374,14 @@ impl SwarmEngine
             return Ok( Buff::New());
         }
 
-        let  	mut flatPoints = Buff::New();
-        for pt in points {
-            flatPoints.Push( pt[0]);
-            flatPoints.Push( pt[1]);
-            flatPoints.Push( pt[2]);
-        }
+        let  	inBytes: &[u8] = unsafe {
+            std::slice::from_raw_parts(
+                points.as_ptr() as *const u8,
+                numPoints * std::mem::size_of::< [f32; 3]>(),
+            )
+        };
 
-        let  	zeroOutput = Buff::Create( ( numPoints * 6) as u32, |_| 0.0f32);
+        let  	outByteLen = ( numPoints * 6 * std::mem::size_of::< f32>()) as u64;
         let  	workgroups = ( ( numPoints as u32) + 63) / 64;
 
         let  	kernel = match ( self._Device.Backend(), spirvBytes) {
@@ -392,9 +392,9 @@ impl SwarmEngine
             _ => self.CompileOp( StandardOp::CameraTransform)?,
         };
 
-        let  	bufInPoints = self._Device.CreateBufferInit( "in_points", flatPoints.CastSlice(), BufferUsage::STORAGE)?;
+        let  	bufInPoints = self._Device.CreateBufferInit( "in_points", inBytes, BufferUsage::STORAGE)?;
         let  	bufCamParams = self._Device.CreateBufferInit( "cam_params", camParams.CastSlice(), BufferUsage::STORAGE)?;
-        let  	bufOut = self._Device.CreateBufferInit( "out_projected", zeroOutput.CastSlice(), BufferUsage::STORAGE)?;
+        let  	bufOut = self._Device.CreateBuffer( "out_projected", U64( outByteLen), BufferUsage::STORAGE)?;
 
         self._Device.Dispatch(
             kernel.as_ref(),
@@ -405,23 +405,14 @@ impl SwarmEngine
         let  	raw = bufOut.Read()?;
         let  	rawFloats: &[f32] = raw.CastSliceFrom();
 
-        let  	projected = Buff::Create( U32( numPoints as u32), |i| {
-            let  	base = i.AsUsize() * 6;
-            if base + 5 < rawFloats.len() {
-                [
-                    rawFloats[base + 0],
-                    rawFloats[base + 1],
-                    rawFloats[base + 2],
-                    rawFloats[base + 3],
-                    rawFloats[base + 4],
-                    rawFloats[base + 5],
-                ]
-            } else {
-                [0.0f32, 0.0, 0.0, 0.0, 0.0, 0.0]
-            }
-        });
+        let  	projSlice: &[[f32; 6]] = unsafe {
+            std::slice::from_raw_parts(
+                rawFloats.as_ptr() as *const [f32; 6],
+                numPoints.min( rawFloats.len() / 6),
+            )
+        };
 
-        Ok( projected)
+        Ok( Buff::from( projSlice))
     }
 }
 
@@ -485,7 +476,7 @@ impl SwarmCluster
 
     /// Sharded parallel camera transformation across all GPU devices in the cluster.
     /// For massive point clouds, splits data into K contiguous chunks, dispatches to each GPU
-    /// in parallel, and concatenates the resulting projected points.
+    /// concurrently in parallel threads, and concatenates the resulting projected points.
     pub fn	RunCameraTransformSharded(
         &self,
         points: &[[f32; 3]],
@@ -504,27 +495,37 @@ impl SwarmCluster
         }
 
         let  	chunkSize = ( totalPoints + numDevices - 1) / numDevices;
-        let  	mut chunks = Buff::New();
+        let  	mut chunks: Vec< &[[f32; 3]]> = Vec::with_capacity( numDevices);
         for i in 0..numDevices {
             let  	start = i * chunkSize;
             if start < totalPoints {
                 let  	end = ( start + chunkSize).min( totalPoints);
-                chunks.Push( &points[start..end]);
+                chunks.push( &points[start..end]);
             }
         }
 
-        let  	mut results = Buff::New();
-        for ( i, chunk) in chunks.iter().enumerate() {
-            let  	engine = if i == 0 { &self._Primary } else { &self._Auxiliary[i - 1] };
-            let  	proj = engine.RunCameraTransform( chunk, camParams, spirvBytes)?;
-            results.Push( proj);
-        }
+        let  	numChunks = chunks.len();
+        let  	mut results: Vec< Buff< [f32; 6]>> = ( 0..numChunks).map( |_| Buff::New()).collect();
+
+        std::thread::scope( |s| {
+            let  	mut handles = Vec::with_capacity( numChunks);
+            for ( i, chunk) in chunks.into_iter().enumerate() {
+                let  	engine = if i == 0 { &self._Primary } else { &self._Auxiliary[i - 1] };
+                let  	handle = s.spawn( move || {
+                    engine.RunCameraTransform( chunk, camParams, spirvBytes)
+                });
+                handles.push( handle);
+            }
+            for ( i, handle) in handles.into_iter().enumerate() {
+                if let Ok( Ok( res)) = handle.join() {
+                    results[i] = res;
+                }
+            }
+        });
 
         let  	mut totalProjected = Buff::New();
         for r in &results {
-            for pt in r {
-                totalProjected.Push( *pt);
-            }
+            totalProjected.ExtendFromSlice( r);
         }
 
         Ok( totalProjected)

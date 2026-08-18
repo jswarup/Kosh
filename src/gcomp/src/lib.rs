@@ -268,53 +268,7 @@ pub fn	camera_transform_elem(
 // Rust-GPU (SPIR-V) Entrypoints
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[spirv( compute( threads( 64)))]
-pub fn	double_cs(
-    #[spirv( global_invocation_id)] id: UVec3,
-    #[spirv( storage_buffer, descriptor_set = 0, binding = 0)] data: &mut [f32],
-)
-{
-    double_elem( id.x as usize, data);
-}
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[spirv( compute( threads( 64)))]
-pub fn	vecadd_cs(
-    #[spirv( global_invocation_id)] id: UVec3,
-    #[spirv( storage_buffer, descriptor_set = 0, binding = 0)] a: &[f32],
-    #[spirv( storage_buffer, descriptor_set = 0, binding = 1)] b: &[f32],
-    #[spirv( storage_buffer, descriptor_set = 0, binding = 2)] result: &mut [f32],
-)
-{
-    vector_add_elem( id.x as usize, a, b, result);
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[spirv( compute( threads( 64)))]
-pub fn	main_cs(
-    #[spirv( global_invocation_id)] id: UVec3,
-    #[spirv( storage_buffer, descriptor_set = 0, binding = 0)] input: &[u32],
-    #[spirv( storage_buffer, descriptor_set = 0, binding = 1)] output: &mut [u32],
-)
-{
-    collatz_elem( id.x as usize, input, output);
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[spirv( compute( threads( 64)))]
-pub fn	collatz_cs(
-    #[spirv( global_invocation_id)] id: UVec3,
-    #[spirv( storage_buffer, descriptor_set = 0, binding = 0)] input: &[u32],
-    #[spirv( storage_buffer, descriptor_set = 0, binding = 1)] output: &mut [u32],
-)
-{
-    collatz_elem( id.x as usize, input, output);
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
 
 /// Generates pseudo-random 3D point positions in [-20, 20]³ using Wang hash PRNG.
 /// Each thread writes one Vec4(x, y, z, 1.0) to the output storage buffer.

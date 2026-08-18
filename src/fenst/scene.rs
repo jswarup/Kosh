@@ -288,6 +288,12 @@ impl SceneGraph
         let  	camParams = self.CameraParams( width, height);
         let  	rawProjected = engine.RunCameraTransform( &self._Points, &camParams, spirvBytes)?;
 
+        let  	mut colorLut = Buff::New();
+        for a in 0..=255 {
+            let  	alphaVal = ( a as f32) / 255.0;
+            colorLut.Push( format!( "rgba({}, {}, {}, {:.3})", r, g, b, alphaVal));
+        }
+
         let  	mut result = Buff::New();
         for proj in &rawProjected {
             let  	px = proj[0];
@@ -295,7 +301,8 @@ impl SceneGraph
             let  	radius = proj[2] * dpr;
             let  	coreRadius = proj[3] * dpr;
             let  	alpha = proj[4];
-            let  	colorStr = format!( "rgba({}, {}, {}, {:.3})", r, g, b, alpha);
+            let  	alphaIdx = ( ( alpha * 255.0).clamp( 0.0, 255.0)) as usize;
+            let  	colorStr = colorLut[alphaIdx].clone();
             result.Push( ( px, py, radius, coreRadius, colorStr));
         }
 
@@ -391,6 +398,12 @@ impl SceneGraph
         let  	camParams = self.CameraParams( width, height);
         let  	rawProjected = cluster.RunCameraTransformSharded( &self._Points, &camParams, spirvBytes)?;
 
+        let  	mut colorLut = Buff::New();
+        for a in 0..=255 {
+            let  	alphaVal = ( a as f32) / 255.0;
+            colorLut.Push( format!( "rgba({}, {}, {}, {:.3})", r, g, b, alphaVal));
+        }
+
         let  	mut result = Buff::New();
         for proj in &rawProjected {
             let  	px = proj[0];
@@ -398,7 +411,8 @@ impl SceneGraph
             let  	radius = proj[2] * dpr;
             let  	coreRadius = proj[3] * dpr;
             let  	alpha = proj[4];
-            let  	colorStr = format!( "rgba({}, {}, {}, {:.3})", r, g, b, alpha);
+            let  	alphaIdx = ( ( alpha * 255.0).clamp( 0.0, 255.0)) as usize;
+            let  	colorStr = colorLut[alphaIdx].clone();
             result.Push( ( px, py, radius, coreRadius, colorStr));
         }
 
