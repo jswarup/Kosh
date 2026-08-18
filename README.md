@@ -137,20 +137,20 @@ cargo test --release -- --nocapture
 ### Running Kosh CLI
 The Kosh root binary provides a built-in CLI runner and integrated test harness:
 ```powershell
-# Display help and CLI options
-cargo run -- --help
+# Default launch: Opens the Frieze 3D GUI visualizer application
+cargo run
+
+# Run in optimized release mode
+cargo run --release
 
 # Run all internal unit tests via Kosh CLI test harness
-cargo run -- -t
+cargo run -- --test
 
-# Filter specific tests with verbose logging
+# Filter specific tests (e.g. QSort) with verbose logging
 cargo run -- --test QSort --verbose
-```
 
-### Running Desktop GUI (`frieze`)
-```powershell
-cd src/frieze
-cargo tauri dev
+# Run with test output visible
+cargo run -- --test Scene --nocapture
 ```
 
 ---

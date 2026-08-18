@@ -1399,19 +1399,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "frieze"
-version = "0.1.0"
-dependencies = [
- "kosh",
- "rfd",
- "serde",
- "serde_json",
- "spirv-builder",
- "tauri",
- "tauri-build",
-]
-
-[[package]]
 name = "futures-channel"
 version = "0.3.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2406,9 +2393,13 @@ dependencies = [
  "paste",
  "pollster",
  "rand 0.10.2",
+ "rfd",
  "serde",
+ "serde_json",
  "spirv-builder",
  "symph",
+ "tauri",
+ "tauri-build",
  "tracing",
  "tracing-subscriber",
  "wgpu",

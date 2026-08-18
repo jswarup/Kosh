@@ -1,9 +1,11 @@
+//-- build.rs ----------------------------------------------------------------------------------------------------------------------
 #![allow( non_snake_case)]
+
 fn	main()
 {
     // Compile the symph rust-gpu shader crate to SPIR-V at build time.
     // The resulting .spv path is emitted as a cargo env var for include_bytes!.
-    let  	compileResult = spirv_builder::SpirvBuilder::new( "../../src/symph", "spirv-unknown-vulkan1.1")
+    let  	compileResult = spirv_builder::SpirvBuilder::new( "src/symph", "spirv-unknown-vulkan1.1")
         .build()
         .expect( "Failed to compile symph SPIR-V shader");
 
@@ -16,3 +18,5 @@ fn	main()
 
     tauri_build::build()
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 use	std::process::{ Command, Stdio };
 use	anyhow::{ Context, Result };
 use	clap::Parser;
-use	tracing::{ debug, level_filters::LevelFilter };
+use	tracing::level_filters::LevelFilter;
 use	tracing_subscriber::EnvFilter;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -75,8 +75,19 @@ fn	main() -> Result< ()>
     if let  	Some( ref filter) = args._Test {
         return run_tests( filter, args._Nocapture);
     }
-    setup_logging( args._Verbose).context( "Setting up logging framework failed")?; // Initialize logging based on verbosity flag
-    debug!( "Kosh CLI execution finished successfully");
+
+    if args._Verbose {
+        setup_logging( true).context( "Setting up logging framework failed")?;
+    }
+
+    // Workaround for WebKitGTK/WSL graphics issues:
+    unsafe {
+        std::env::set_var( "WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        std::env::set_var( "LIBGL_ALWAYS_SOFTWARE", "1");
+        std::env::set_var( "WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS", "1");
+    }
+
+    kosh::frieze::run();
     Ok( ())
 }
 

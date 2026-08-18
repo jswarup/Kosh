@@ -1,9 +1,9 @@
 //-- xplrcmds.rs ------------------------------------------------------------------------------------------------------------------
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
 use	tauri::Manager;
-use	kosh::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, CreateDefaultRegistry, Camera, SceneGraph };
-use	kosh::silo::Buff;
-use	kosh::swarm::SwarmCluster;
+use	crate::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, CreateDefaultRegistry, Camera, SceneGraph };
+use	crate::silo::Buff;
+use	crate::swarm::SwarmCluster;
 use	serde::Serialize;
 use	std::collections::HashMap;
 use	std::sync::Mutex;
@@ -40,7 +40,7 @@ fn	UrlEncode( input: &str) -> String
 #[tauri::command]
 pub fn	XplrListEntries( path: String) -> Result< Buff< XplrEntry>, String>
 {
-    kosh::fenst::XplrListEntries( path)
+    crate::fenst::XplrListEntries( path)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -49,16 +49,16 @@ pub fn	XplrListEntries( path: String) -> Result< Buff< XplrEntry>, String>
 #[tauri::command]
 pub fn	XplrFetchContent( path: String) -> Result< XplrContent, String>
 {
-    kosh::fenst::XplrFetchContent( path)
+    crate::fenst::XplrFetchContent( path)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Returns metadata about a file or directory.
 #[tauri::command]
-pub fn	XplrLeafInfo( path: String) -> Result< kosh::fenst::XplrLeafInfo, String>
+pub fn	XplrLeafInfo( path: String) -> Result< crate::fenst::XplrLeafInfo, String>
 {
-    kosh::fenst::XplrLeafInfo( path)
+    crate::fenst::XplrLeafInfo( path)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -116,7 +116,7 @@ pub fn	XplrListProviders() -> Result< Buff< String>, String>
 #[tauri::command]
 pub fn	XplrFetchChunk( path: String, offset: u64, size: usize) -> Result< StreamChunkDto, String>
 {
-    kosh::fenst::XplrFetchChunk( path, offset, size)
+    crate::fenst::XplrFetchChunk( path, offset, size)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -127,10 +127,10 @@ pub fn	XplrFetchPtsPoints( path: Option< String>) -> Result< PtsPointsDto, Strin
 {
     if let Some( ref filePath) = path {
         if !filePath.is_empty() && std::path::Path::new( filePath).exists() {
-            return kosh::fenst::XplrParsePtsFile( filePath);
+            return crate::fenst::XplrParsePtsFile( filePath);
         }
     }
-    kosh::fenst::XplrFetchPtsPoints( SYMPH_SPV)
+    crate::fenst::XplrFetchPtsPoints( SYMPH_SPV)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -178,7 +178,7 @@ fn	OpenWindowHelper(
 #[tauri::command]
 pub fn	XplrOpenContentWindow( app: tauri::AppHandle, path: String) -> Result< (), String>
 {
-    if kosh::fenst::IsPtsFile( &path) {
+    if crate::fenst::IsPtsFile( &path) {
         return XplrOpenPtsGraphicsWindow( app, path);
     }
 
@@ -195,7 +195,7 @@ pub fn	XplrOpenPtsGraphicsWindow( app: tauri::AppHandle, path: String) -> Result
         return Err( "File does not exist".to_string());
     }
 
-    if !kosh::fenst::IsPtsFile( &path) {
+    if !crate::fenst::IsPtsFile( &path) {
         return Err( "Not a .pts file".to_string());
     }
 
@@ -310,8 +310,8 @@ pub fn	XplrProjectPts(
     let  	mut guard = PTS_STATE.lock().map_err( |e| e.to_string())?;
     let  	state = guard.entry( path.clone()).or_insert_with( || {
         let  	dto = if std::path::Path::new( &path).exists() {
-            kosh::fenst::XplrParsePtsFile( &path)
-                .or_else( |_| kosh::fenst::XplrFetchPtsPoints( SYMPH_SPV))
+            crate::fenst::XplrParsePtsFile( &path)
+                .or_else( |_| crate::fenst::XplrFetchPtsPoints( SYMPH_SPV))
                 .unwrap_or_else( |_| PtsPointsDto {
                     _Points: Buff::New(),
                     _Count: 0,
@@ -319,7 +319,7 @@ pub fn	XplrProjectPts(
                     _BboxMax: [ 0.0, 0.0, 0.0 ],
                 })
         } else {
-            kosh::fenst::XplrFetchPtsPoints( SYMPH_SPV).unwrap_or_else( |_| PtsPointsDto {
+            crate::fenst::XplrFetchPtsPoints( SYMPH_SPV).unwrap_or_else( |_| PtsPointsDto {
                 _Points: Buff::New(),
                 _Count: 0,
                 _BboxMin: [ 0.0, 0.0, 0.0 ],

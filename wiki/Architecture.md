@@ -92,7 +92,7 @@ graph TD
 
 ### Tier 4: Applications & Desktop Explorer
 - **[`fenst`](Fenst.md)**: Extensible virtual explorer framework. Defines unified tree interfaces (`Xplr`, `LeafXplr`, `BranchXplr`) and pluggable provider registries (`XplrRegistry`) supporting filesystem (`FsProvider`), AST grammars (`ShardProvider`), and symbolic algebra (`FrescoProvider`).
-- **[`frieze`](Fenst.md)**: Desktop GUI application built on Tauri v2. Exposes backend commands (`xplrcmds`), provides multi-window document viewers, and renders a 3D wireframe point cloud visualization using GPU compute shaders.
+- **[`frieze`](Fenst.md)**: Embedded desktop GUI subsystem built on Tauri v2. Merged directly into the root `kosh` binary, it renders interactive 3D point clouds, provides multi-window document views, and handles IPC commands (`xplrcmds`). Launching `cargo run` opens Frieze by default, while `--test` dispatches test execution.
 
 ---
 
