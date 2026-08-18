@@ -52,7 +52,7 @@ fn	build_menu( app: &tauri::App) -> Result< Menu< tauri::Wry>, tauri::Error>
     ])?;
 
     // Help menu
-    let  	about = MenuItem::with_id( app, "about", "About Fenst", true, None::< &str>)?;
+    let  	about = MenuItem::with_id( app, "about", "About Frieze", true, None::< &str>)?;
 
     let  	helpMenu = Submenu::with_items( app, "Help", true, &[
         &about,
@@ -124,7 +124,7 @@ pub fn	run()
             xplrcmds::XplrResetCamera,
         ])
         .run( tauri::generate_context!())
-        .expect( "error while running Fenst application");
+        .expect( "error while running Frieze application");
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------

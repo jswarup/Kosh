@@ -14,7 +14,7 @@
 ```mermaid
 graph TD
     subgraph AppLayer ["Presentation & GUI Layer"]
-        FenstApp["<b>fenst-app</b><br/>Tauri v2 Desktop App<br/>Multi-window & 3D WebGL Canvas"]
+        Frieze["<b>frieze</b><br/>Tauri v2 Desktop App<br/>Multi-window & 3D WebGL Canvas"]
         Fenst["<b>fenst</b><br/>Virtual File Explorer Hub<br/>(file://, expr://, ast://)"]
     end
 
@@ -39,8 +39,8 @@ graph TD
         Silo["<b>silo</b><br/>Memory Buffers (Buff, Arr),<br/>Custom Unsigned Math (U8..U64)"]
     end
 
-    FenstApp --> Fenst
-    FenstApp --> Symph
+    Frieze --> Fenst
+    Frieze --> Symph
     Fenst --> Silo
     Fenst --> Flux
     Fenst --> Swarm
@@ -87,7 +87,7 @@ graph TD
 | **`heist`** | Asynchronous workflow DAG orchestrator and scheduler | `Atelier<'a>`, `Maestro<'a>`, `Chore`, `ChoreTarget`, `JobInfo`, `AtelierInfo` | `IChoreNode`, `ChoreTree!`, `Chore!`, `CpuChore!`, `GpuAutoChore!` | [Heist.md](wiki/Heist.md) |
 | **`fleck`** | 3D Point Cloud (.pts) parsing and spatial bounding boxes | `PtsPoint`, `Point32`, `RGB`, `PtsCloud`, `PtsShard<'a>` | `ParsePts`, `ParsePtsStream`, `ToDto` | [Fleck.md](wiki/Fleck.md) |
 | **`fenst`** | Virtual data provider framework and explorer backend | `XplrEntry`, `XplrContent`, `XplrLeafInfo`, `FsBranch`, `FsLeaf`, `FrescoBranch`, `ShardBranch`, `XplrRegistry` | `Xplr`, `LeafXplr`, `BranchXplr`, `XplrProvider`, `CreateDefaultRegistry` | [Fenst.md](wiki/Fenst.md) |
-| **`fenst-app`** | Tauri desktop GUI application & 3D wireframe visualizer | `PtsSessionState`, `ProjectedPoint`, `ProjectedLine`, `PtsFrameDto`, `xplrcmds` IPC handlers | Tauri Command API, Desktop Menu System, Multi-Windowing | [Fenst.md](wiki/Fenst.md) |
+| **`frieze`** | Tauri desktop GUI application & 3D wireframe visualizer | `PtsSessionState`, `ProjectedPoint`, `ProjectedLine`, `PtsFrameDto`, `xplrcmds` IPC handlers | Tauri Command API, Desktop Menu System, Multi-Windowing | [Fenst.md](wiki/Fenst.md) |
 
 ---
 
@@ -147,9 +147,9 @@ cargo run -- -t
 cargo run -- --test QSort --verbose
 ```
 
-### Running Desktop GUI (`fenst-app`)
+### Running Desktop GUI (`frieze`)
 ```powershell
-cd src/fenst-app
+cd src/frieze
 cargo tauri dev
 ```
 
@@ -168,4 +168,4 @@ Explore the full in-depth documentation in the **[wiki/](wiki/Architecture.md)**
 - **[Swarm & Symph (GPU/CPU Compute)](wiki/Swarm.md)**
 - **[Heist (Chore DAG Orchestration)](wiki/Heist.md)**
 - **[Fleck (Point Cloud Parsing)](wiki/Fleck.md)**
-- **[Fenst & Fenst-App (Virtual Explorer & Desktop GUI)](wiki/Fenst.md)**
+- **[Fenst & Frieze (Virtual Explorer & Desktop GUI)](wiki/Fenst.md)**

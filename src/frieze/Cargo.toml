@@ -1,11 +1,11 @@
 [package]
-name = "fenst-app"
+name = "frieze"
 version = "0.1.0"
 edition = "2024"
 publish = false
 
 [[bin]]
-name = "fenst"
+name = "frieze"
 path = "src/main.rs"
 
 [build-dependencies]

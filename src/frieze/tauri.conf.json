@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Fenst",
+  "productName": "Frieze",
   "version": "0.1.0",
-  "identifier": "com.kosh.fenst",
+  "identifier": "com.kosh.frieze",
   "build": {
     "frontendDist": "./frontend",
     "beforeDevCommand": "",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Fenst",
+        "title": "Frieze",
         "width": 1280,
         "height": 800,
         "resizable": true,

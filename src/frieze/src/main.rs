@@ -17,7 +17,7 @@ fn	main()
         std::env::set_var( "LIBGL_ALWAYS_SOFTWARE", "1");
         std::env::set_var( "WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS", "1");
     }
-    fenst_app::run()
+    frieze::run()
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------

@@ -1313,19 +1313,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fenst-app"
-version = "0.1.0"
-dependencies = [
- "kosh",
- "rfd",
- "serde",
- "serde_json",
- "spirv-builder",
- "tauri",
- "tauri-build",
-]
-
-[[package]]
 name = "field-offset"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1409,6 +1396,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "frieze"
+version = "0.1.0"
+dependencies = [
+ "kosh",
+ "rfd",
+ "serde",
+ "serde_json",
+ "spirv-builder",
+ "tauri",
+ "tauri-build",
 ]
 
 [[package]]

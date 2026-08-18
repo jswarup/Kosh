@@ -17,7 +17,7 @@ The Kosh codebase is structured into four distinct functional tiers:
 ```mermaid
 graph TD
     subgraph Layer4 ["Tier 4: Presentation & Applications"]
-        FenstApp["fenst-app<br/>Desktop GUI App (Tauri v2, Multi-window, 3D Canvas)"]
+        Frieze["frieze<br/>Desktop GUI App (Tauri v2, Multi-window, 3D Canvas)"]
         Fenst["fenst<br/>Virtual File Explorer & Data Provider Hub"]
     end
 
@@ -39,8 +39,8 @@ graph TD
         Silo["silo<br/>Memory Buffers, Slices, Custom Unsigned Numerics"]
     end
 
-    FenstApp --> Fenst
-    FenstApp --> Symph
+    Frieze --> Fenst
+    Frieze --> Symph
     Fenst --> Shard
     Fenst --> Fresco
     Fenst --> Flux
@@ -92,7 +92,7 @@ graph TD
 
 ### Tier 4: Applications & Desktop Explorer
 - **[`fenst`](Fenst.md)**: Extensible virtual explorer framework. Defines unified tree interfaces (`Xplr`, `LeafXplr`, `BranchXplr`) and pluggable provider registries (`XplrRegistry`) supporting filesystem (`FsProvider`), AST grammars (`ShardProvider`), and symbolic algebra (`FrescoProvider`).
-- **[`fenst-app`](Fenst.md)**: Desktop GUI application built on Tauri v2. Exposes backend commands (`xplrcmds`), provides multi-window document viewers, and renders a 3D wireframe point cloud visualization using GPU compute shaders.
+- **[`frieze`](Fenst.md)**: Desktop GUI application built on Tauri v2. Exposes backend commands (`xplrcmds`), provides multi-window document viewers, and renders a 3D wireframe point cloud visualization using GPU compute shaders.
 
 ---
 
