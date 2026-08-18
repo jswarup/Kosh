@@ -272,7 +272,6 @@ impl SceneGraph
     // -----------------------------------------------------------------------------------------------------------------------------
 
     /// Dispatches point cloud transformation to the Swarm compute framework (GPU/CPU)
-    /// Dispatches point cloud transformation to the Swarm compute framework (GPU/CPU)
     /// and formats the resulting 2D coordinates with depth-scaled radius and alpha.
     pub fn	ProjectPointsSwarm(
         &self,

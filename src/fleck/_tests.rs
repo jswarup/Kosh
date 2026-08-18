@@ -196,3 +196,283 @@ fn	TestPtsShardGrammarDirect()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestWaveObjBasicCube()
+{
+    use	crate::fleck::ParseWaveObj;
+
+    let  	objData = r#"
+# Wavefront OBJ Cube
+o Cube
+v 0.0 0.0 0.0
+v 1.0 0.0 0.0
+v 1.0 1.0 0.0
+v 0.0 1.0 0.0
+v 0.0 0.0 1.0
+v 1.0 0.0 1.0
+v 1.0 1.0 1.0
+v 0.0 1.0 1.0
+
+# 6 quad faces
+f 1 2 3 4
+f 5 6 7 8
+f 1 2 6 5
+f 2 3 7 6
+f 3 4 8 7
+f 4 1 5 8
+"#;
+
+    let  	res = ParseWaveObj( objData);
+    assert!( res.is_ok());
+
+    let  	model = res.unwrap();
+    assert_eq!( model.VertexCount().AsUsize(), 8);
+    assert_eq!( model.FaceCount().AsUsize(), 6);
+    assert_eq!( model._Objects.Size().AsUsize(), 1);
+    assert_eq!( model._Objects.Arr().At( U32( 0)), &"Cube".to_string());
+
+    let  	( bMin, bMax) = model.BoundingBox();
+    assert_eq!( bMin, [0.0, 0.0, 0.0]);
+    assert_eq!( bMax, [1.0, 1.0, 1.0]);
+
+    let  	triangles = model.Triangulate();
+    assert_eq!( triangles.Size().AsUsize(), 12); // 6 quads = 12 triangles
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestWaveObjWithNormalsAndTexCoords()
+{
+    use	crate::fleck::ParseWaveObj;
+
+    let  	objData = r#"
+# Vertices, TexCoords, Normals, and Faces with v/vt/vn
+v 0.0 0.0 0.0
+v 1.0 0.0 0.0
+v 0.0 1.0 0.0
+
+vt 0.0 0.0
+vt 1.0 0.0
+vt 0.0 1.0
+
+vn 0.0 0.0 1.0
+
+f 1/1/1 2/2/1 3/3/1
+"#;
+
+    let  	res = ParseWaveObj( objData);
+    assert!( res.is_ok());
+
+    let  	model = res.unwrap();
+    assert_eq!( model.VertexCount().AsUsize(), 3);
+    assert_eq!( model.TexCoordCount().AsUsize(), 3);
+    assert_eq!( model.NormalCount().AsUsize(), 1);
+    assert_eq!( model.FaceCount().AsUsize(), 1);
+
+    let  	facesArr = model._Faces.Arr();
+    let  	face0 = facesArr.At( U32( 0));
+    assert_eq!( face0.Len(), 3);
+
+    let  	v0 = face0._Vertices.Arr().At( U32( 0));
+    assert_eq!( v0._VertexIdx, 1);
+    assert_eq!( v0._TexCoordIdx, Some( 1));
+    assert_eq!( v0._NormalIdx, Some( 1));
+
+    let  	v1 = face0._Vertices.Arr().At( U32( 1));
+    assert_eq!( v1._VertexIdx, 2);
+    assert_eq!( v1._TexCoordIdx, Some( 2));
+    assert_eq!( v1._NormalIdx, Some( 1));
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestWaveObjFaceFormats()
+{
+    use	crate::fleck::ParseWaveObj;
+
+    let  	objData = r#"
+v 0.0 0.0 0.0
+v 1.0 0.0 0.0
+v 0.0 1.0 0.0
+v 1.0 1.0 0.0
+
+vt 0.0 0.0
+vt 1.0 1.0
+
+vn 0.0 0.0 1.0
+
+# v only
+f 1 2 3
+# v/vt
+f 1/1 2/2 3/1
+# v//vn
+f 1//1 2//1 3//1
+# v/vt/vn
+f 1/1/1 2/2/1 4/2/1 3/1/1
+"#;
+
+    let  	model = ParseWaveObj( objData).unwrap();
+    assert_eq!( model.FaceCount().AsUsize(), 4);
+
+    let  	faces = model._Faces.Arr();
+
+    // Face 0: v only
+    let  	f0 = faces.At( U32( 0));
+    assert_eq!( f0._Vertices.Arr().At( U32( 0))._VertexIdx, 1);
+    assert_eq!( f0._Vertices.Arr().At( U32( 0))._TexCoordIdx, None);
+    assert_eq!( f0._Vertices.Arr().At( U32( 0))._NormalIdx, None);
+
+    // Face 1: v/vt
+    let  	f1 = faces.At( U32( 1));
+    assert_eq!( f1._Vertices.Arr().At( U32( 0))._VertexIdx, 1);
+    assert_eq!( f1._Vertices.Arr().At( U32( 0))._TexCoordIdx, Some( 1));
+    assert_eq!( f1._Vertices.Arr().At( U32( 0))._NormalIdx, None);
+
+    // Face 2: v//vn
+    let  	f2 = faces.At( U32( 2));
+    assert_eq!( f2._Vertices.Arr().At( U32( 0))._VertexIdx, 1);
+    assert_eq!( f2._Vertices.Arr().At( U32( 0))._TexCoordIdx, None);
+    assert_eq!( f2._Vertices.Arr().At( U32( 0))._NormalIdx, Some( 1));
+
+    // Face 3: quad v/vt/vn
+    let  	f3 = faces.At( U32( 3));
+    assert_eq!( f3.Len(), 4);
+    assert_eq!( f3._Vertices.Arr().At( U32( 3))._VertexIdx, 3);
+    assert_eq!( f3._Vertices.Arr().At( U32( 3))._TexCoordIdx, Some( 1));
+    assert_eq!( f3._Vertices.Arr().At( U32( 3))._NormalIdx, Some( 1));
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestWaveObjNegativeIndexing()
+{
+    use	crate::fleck::ParseWaveObj;
+
+    let  	objData = r#"
+v 10.0 20.0 30.0
+v 40.0 50.0 60.0
+v 70.0 80.0 90.0
+f -3 -2 -1
+"#;
+
+    let  	model = ParseWaveObj( objData).unwrap();
+    assert_eq!( model.VertexCount().AsUsize(), 3);
+    assert_eq!( model.FaceCount().AsUsize(), 1);
+
+    let  	f0 = model._Faces.Arr().At( U32( 0));
+    assert_eq!( f0._Vertices.Arr().At( U32( 0))._VertexIdx, 1);
+    assert_eq!( f0._Vertices.Arr().At( U32( 1))._VertexIdx, 2);
+    assert_eq!( f0._Vertices.Arr().At( U32( 2))._VertexIdx, 3);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestWaveObjToDtoAndTriangulate()
+{
+    use	crate::fleck::{ ParseWaveObjBytes, ParseWaveObjStream };
+    use	crate::flux::instream::FixedStream;
+
+    let  	objData = b"v 0.0 0.0 0.0\nv 10.0 0.0 0.0\nv 10.0 10.0 0.0\nv 0.0 10.0 0.0\nf 1 2 3 4\n";
+    let  	model = ParseWaveObjBytes( objData).unwrap();
+
+    let  	dto = model.ToDto();
+    assert_eq!( dto._Count, 4);
+    assert_eq!( dto._BboxMin, [0.0, 0.0, 0.0]);
+    assert_eq!( dto._BboxMax, [10.0, 10.0, 0.0]);
+
+    let  	triangles = model.Triangulate();
+    assert_eq!( triangles.Size().AsUsize(), 2);
+
+    let  	mut stream = FixedStream::from( "v 5.0 5.0 5.0\n");
+    let  	streamModel = ParseWaveObjStream( &mut stream).unwrap();
+    assert_eq!( streamModel.VertexCount().AsUsize(), 1);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestWaveObjMetadataAndMaterials()
+{
+    use	crate::fleck::ParseWaveObj;
+
+    let  	objData = r#"
+mtllib materials.mtl
+o MainModel
+g GroupA
+usemtl Metal_Shiny
+v 1.0 2.0 3.0
+v 4.0 5.0 6.0
+v 7.0 8.0 9.0
+f 1 2 3
+"#;
+
+    let  	model = ParseWaveObj( objData).unwrap();
+    assert_eq!( model._MtlLibs.Size().AsUsize(), 1);
+    assert_eq!( model._MtlLibs.Arr().At( U32( 0)), &"materials.mtl".to_string());
+    assert_eq!( model._Objects.Arr().At( U32( 0)), &"MainModel".to_string());
+    assert_eq!( model._Groups.Arr().At( U32( 0)), &"GroupA".to_string());
+    assert_eq!( model._UseMtls.Arr().At( U32( 0)), &"Metal_Shiny".to_string());
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestPt3fBasicOps()
+{
+    use	crate::fleck::Pt3f;
+
+    let  	pt = Pt3f::New( 1.5, 2.5, 3.5);
+    assert_eq!( pt._X, 1.5);
+    assert_eq!( pt._Y, 2.5);
+    assert_eq!( pt._Z, 3.5);
+    assert_eq!( pt.Pos(), [1.5, 2.5, 3.5]);
+
+    let  	defaultPt = Pt3f::default();
+    assert_eq!( defaultPt.Pos(), [0.0, 0.0, 0.0]);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestPt4fBasicOps()
+{
+    use	crate::fleck::Pt4f;
+
+    let  	pt = Pt4f::New( 1.0, 2.0, 3.0);
+    assert_eq!( pt._X, 1.0);
+    assert_eq!( pt._Y, 2.0);
+    assert_eq!( pt._Z, 3.0);
+    assert_eq!( pt._W, 1.0);
+    assert_eq!( pt.Pos(), [1.0, 2.0, 3.0]);
+
+    let  	ptW = Pt4f::WithW( 4.0, 5.0, 6.0, 2.0);
+    assert_eq!( ptW._W, 2.0);
+
+    let  	defaultPt = Pt4f::default();
+    assert_eq!( defaultPt.Pos(), [0.0, 0.0, 0.0]);
+    assert_eq!( defaultPt._W, 0.0);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestDir3fBasicOps()
+{
+    use	crate::fleck::Dir3f;
+
+    let  	dir = Dir3f::New( 0.0, 0.0, 1.0);
+    assert_eq!( dir._X, 0.0);
+    assert_eq!( dir._Y, 0.0);
+    assert_eq!( dir._Z, 1.0);
+    assert_eq!( dir.Vec(), [0.0, 0.0, 1.0]);
+
+    let  	defaultDir = Dir3f::default();
+    assert_eq!( defaultDir.Vec(), [0.0, 0.0, 0.0]);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------

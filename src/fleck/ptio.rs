@@ -3,6 +3,7 @@
 use	std::fmt;
 use	crate::{
     fenst::PtsPointsDto,
+    fleck::Pt3f,
     flux::instream::{ FixedStream, IStream },
     shard::{ IGrammar, Parser, Real, Charset },
     silo::{ Buff, IAccess, U32, U8 },
@@ -10,14 +11,6 @@ use	crate::{
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
-#[derive( Clone, Copy, Debug, PartialEq)]
-pub struct Point32
-{
-    pub _X: f32,
-    pub _Y: f32,
-    pub _Z: f32,
-}
 
 #[derive( Clone, Copy, Debug, PartialEq)]
 pub struct RGB
@@ -31,7 +24,7 @@ pub struct RGB
 #[derive( Clone, Copy, Debug, PartialEq)]
 pub struct PtsPoint
 {
-    pub _Pos:        Point32,
+    pub _Pos:        Pt3f,
     pub _Intensity:  Option< f32>,
     pub _Color:      Option< RGB>,
 }
@@ -43,7 +36,7 @@ impl PtsPoint
     pub fn	New( x: f32, y: f32, z: f32) -> Self
     {
         Self {
-            _Pos: Point32 { _X: x, _Y: y, _Z: z },
+            _Pos: Pt3f::New( x, y, z),
             _Intensity: None,
             _Color: None,
         }
