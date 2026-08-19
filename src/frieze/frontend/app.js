@@ -107,10 +107,10 @@ function normalizeEntry(entry) {
 function normalizeContent(res) {
     if (!res) return { path: '', content: '', size: 0, line_count: 1 };
     return {
-        path: res.path ?? res._path ?? '',
-        content: res.content ?? res._content ?? '',
-        size: res.size ?? res._size ?? 0,
-        line_count: res.line_count ?? res._line_count ?? 1,
+        path: res.path ?? '',
+        content: res.content ?? '',
+        size: res.size ?? 0,
+        line_count: res.line_count ?? 1,
     };
 }
 
@@ -120,10 +120,10 @@ function normalizePtsData(dto) {
         dto = BinaryDecoder.decodePtsPoints(dto);
     }
     return {
-        points: dto.points ?? dto._points ?? [],
-        count: dto.count ?? dto._count ?? 0,
-        bbox_min: dto.bbox_min ?? dto._bbox_min ?? [-20, -20, -20],
-        bbox_max: dto.bbox_max ?? dto._bbox_max ?? [20, 20, 20],
+        points: dto.points ?? [],
+        count: dto.count ?? 0,
+        bbox_min: dto.bbox_min ?? [-20, -20, -20],
+        bbox_max: dto.bbox_max ?? [20, 20, 20],
     };
 }
 
@@ -133,14 +133,14 @@ function normalizeObjData(dto) {
         dto = BinaryDecoder.decodeWaveObj(dto);
     }
     return {
-        points: dto.points ?? dto._points ?? [],
-        triangles: dto.triangles ?? dto._triangles ?? [],
-        edges: dto.edges ?? dto._edges ?? [],
-        normals: dto.normals ?? dto._normals ?? [],
-        vertex_count: dto.vertex_count ?? dto._vertex_count ?? 0,
-        face_count: dto.face_count ?? dto._face_count ?? 0,
-        bbox_min: dto.bbox_min ?? dto._bbox_min ?? [-1, -1, -1],
-        bbox_max: dto.bbox_max ?? dto._bbox_max ?? [1, 1, 1],
+        points: dto.points ?? [],
+        triangles: dto.triangles ?? [],
+        edges: dto.edges ?? [],
+        normals: dto.normals ?? [],
+        vertex_count: dto.vertex_count ?? 0,
+        face_count: dto.face_count ?? 0,
+        bbox_min: dto.bbox_min ?? [-1, -1, -1],
+        bbox_max: dto.bbox_max ?? [1, 1, 1],
     };
 }
 
@@ -476,7 +476,7 @@ function renderFileContent(tabOrContent) {
                         const radius = (2.0 + depthFactor * 2.0) * dpr;
                         ctx.fillStyle = `rgba(192, 132, 252, ${0.55 + depthFactor * 0.45})`;
                         /*
-                        ctx.fillStyle = 
+                        ctx.fillStyle =
 gba(192, 132, 252, );
                         */
                         ctx.beginPath();
@@ -531,7 +531,7 @@ gba(192, 132, 252, );
                         ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
                         /*
 
-                        ctx.fillStyle = 
+                        ctx.fillStyle =
 gb(, , );
                         ctx.beginPath();
                         */

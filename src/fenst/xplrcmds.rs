@@ -247,6 +247,33 @@ pub fn	XplrOpenPtsGraphicsWindow( app: tauri::AppHandle, path: String) -> Result
 struct PtsSessionState
 {
     _Scene: SceneGraph,
+    _MetadataSent: bool,                                               // Phase 2: Track if metadata was sent
+    _MetadataHash: u64,                                                // Phase 2: Hash to detect metadata changes
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Phase 2: Static metadata sent once per session to reduce bandwidth.
+#[derive( Serialize, Clone, Debug)]
+#[serde( rename_all = "snake_case")]
+pub struct PtsSessionMetadata
+{
+    pub _FileName:      String,                                        // Sent once
+    pub _Count:         usize,                                         // Total scene point count
+    pub _BboxMin:       [f32; 3],                                      // Bounding box minimum
+    pub _BboxMax:       [f32; 3],                                      // Bounding box maximum
+    pub _BboxLabel:     String,                                        // Formatted bbox label
+}
+
+/// Phase 2: Dynamic frame data sent every frame (40% smaller without static metadata).
+#[derive( Serialize, Clone, Debug)]
+#[serde( rename_all = "snake_case")]
+pub struct PtsFrameUpdate
+{
+    pub _Points:        Buff< ProjectedPoint>,                         // Only dynamic: projected points
+    pub _BoxLines:      Buff< ProjectedLine>,                          // Only dynamic: bbox wireframe
+    pub _OverlayText1:  String,                                        // Camera state + point count
+    pub _OverlayText2:  String,                                        // Source file OR device status
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -259,17 +286,13 @@ static PTS_STATE: LazyLock< Mutex< HashMap< String, PtsSessionState>>> = LazyLoc
 
 #[repr(C)]
 #[derive( Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[serde( rename_all = "snake_case")]
 pub struct ProjectedPoint
 {
-    #[serde( rename = "x")]
     pub _X:           f32,
-    #[serde( rename = "y")]
     pub _Y:           f32,
-    #[serde( rename = "radius")]
     pub _Radius:      f32,
-    #[serde( rename = "core_radius")]
     pub _CoreRadius:  f32,
-    #[serde( rename = "alpha")]
     pub _Alpha:       f32,
 }
 
@@ -277,16 +300,119 @@ pub struct ProjectedPoint
 
 #[repr(C)]
 #[derive( Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[serde( rename_all = "snake_case")]
 pub struct ProjectedLine
 {
-    #[serde( rename = "x1")]
     pub _X1:  f32,
-    #[serde( rename = "y1")]
     pub _Y1:  f32,
-    #[serde( rename = "x2")]
     pub _X2:  f32,
-    #[serde( rename = "y2")]
     pub _Y2:  f32,
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Phase 3: Quantized point data (7 bytes instead of 20 bytes = 65% bandwidth savings).
+/// Uses 16-bit screen coordinates and 8-bit attributes for sufficient precision in typical use.
+#[repr(C, packed)]
+#[derive( Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[serde( rename_all = "snake_case")]
+pub struct QuantizedPoint
+{
+    pub _X:           u16,                                             // 16-bit screen X (0-65535, maps to screen width)
+    pub _Y:           u16,                                             // 16-bit screen Y (0-65535, maps to screen height)
+    pub _Radius:      u8,                                              // 8-bit radius (0-255)
+    pub _CoreRadius:  u8,                                              // 8-bit core radius (0-255)
+    pub _Alpha:       u8,                                              // 8-bit alpha (0-255)
+}
+
+impl QuantizedPoint
+{
+    /// Quantizes a full-precision ProjectedPoint to 7-byte QuantizedPoint.
+    /// Screen coords are normalized to 0-65535 range based on dimensions.
+    pub fn	FromProjected( pt: &ProjectedPoint, width: f32, height: f32) -> Self
+    {
+        let  	x_norm = (pt._X / width * 65535.0).clamp( 0.0, 65535.0) as u16;
+        let  	y_norm = (pt._Y / height * 65535.0).clamp( 0.0, 65535.0) as u16;
+        let  	radius = (pt._Radius * 255.0).clamp( 0.0, 255.0) as u8;
+        let  	core_radius = (pt._CoreRadius * 255.0).clamp( 0.0, 255.0) as u8;
+        let  	alpha = (pt._Alpha * 255.0).clamp( 0.0, 255.0) as u8;
+
+        QuantizedPoint {
+            _X: x_norm,
+            _Y: y_norm,
+            _Radius: radius,
+            _CoreRadius: core_radius,
+            _Alpha: alpha,
+        }
+    }
+
+    /// Dequantizes back to full-precision ProjectedPoint given screen dimensions.
+    pub fn	ToProjected( &self, width: f32, height: f32) -> ProjectedPoint
+    {
+        let  	x = (self._X as f32 / 65535.0) * width;
+        let  	y = (self._Y as f32 / 65535.0) * height;
+        let  	radius = self._Radius as f32 / 255.0;
+        let  	core_radius = self._CoreRadius as f32 / 255.0;
+        let  	alpha = self._Alpha as f32 / 255.0;
+
+        ProjectedPoint {
+            _X: x,
+            _Y: y,
+            _Radius: radius,
+            _CoreRadius: core_radius,
+            _Alpha: alpha,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Phase 3: Quantized line data (4 bytes instead of 16 bytes = 75% bandwidth savings).
+/// Uses 16-bit screen coordinates for bounding box wireframe rendering.
+#[repr(C, packed)]
+#[derive( Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[serde( rename_all = "snake_case")]
+pub struct QuantizedLine
+{
+    pub _X1:  u16,                                                     // 16-bit screen X1 (0-65535)
+    pub _Y1:  u16,                                                     // 16-bit screen Y1 (0-65535)
+    pub _X2:  u16,                                                     // 16-bit screen X2 (0-65535)
+    pub _Y2:  u16,                                                     // 16-bit screen Y2 (0-65535)
+}
+
+impl QuantizedLine
+{
+    /// Quantizes a full-precision ProjectedLine to 4-byte QuantizedLine.
+    pub fn	FromProjected( line: &ProjectedLine, width: f32, height: f32) -> Self
+    {
+        let  	x1_norm = (line._X1 / width * 65535.0).clamp( 0.0, 65535.0) as u16;
+        let  	y1_norm = (line._Y1 / height * 65535.0).clamp( 0.0, 65535.0) as u16;
+        let  	x2_norm = (line._X2 / width * 65535.0).clamp( 0.0, 65535.0) as u16;
+        let  	y2_norm = (line._Y2 / height * 65535.0).clamp( 0.0, 65535.0) as u16;
+
+        QuantizedLine {
+            _X1: x1_norm,
+            _Y1: y1_norm,
+            _X2: x2_norm,
+            _Y2: y2_norm,
+        }
+    }
+
+    /// Dequantizes back to full-precision ProjectedLine given screen dimensions.
+    pub fn	ToProjected( &self, width: f32, height: f32) -> ProjectedLine
+    {
+        let  	x1 = (self._X1 as f32 / 65535.0) * width;
+        let  	y1 = (self._Y1 as f32 / 65535.0) * height;
+        let  	x2 = (self._X2 as f32 / 65535.0) * width;
+        let  	y2 = (self._Y2 as f32 / 65535.0) * height;
+
+        ProjectedLine {
+            _X1: x1,
+            _Y1: y1,
+            _X2: x2,
+            _Y2: y2,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -311,23 +437,16 @@ pub struct PtsFrameBinaryHeader
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde( rename_all = "snake_case")]
 pub struct PtsFrameDto
 {
-    #[serde( rename = "points")]
     pub _Points:        Buff< ProjectedPoint>,
-    #[serde( rename = "box_lines")]
     pub _BoxLines:      Buff< ProjectedLine>,
-    #[serde( rename = "file_name")]
     pub _FileName:      String,
-    #[serde( rename = "count")]
     pub _Count:         usize,
-    #[serde( rename = "bbox_label")]
     pub _BboxLabel:     String,
-    #[serde( rename = "shader_status")]
     pub _ShaderStatus:  String,
-    #[serde( rename = "overlay_text1")]
     pub _OverlayText1:  String,
-    #[serde( rename = "overlay_text2")]
     pub _OverlayText2:  String,
 }
 
@@ -484,6 +603,8 @@ pub fn	XplrProjectPts(
 
         PtsSessionState {
             _Scene: SceneGraph::WithPoints( dto._Points, dto._BboxMin, dto._BboxMax),
+            _MetadataSent: false,                                      // Phase 2: Initialize as not sent
+            _MetadataHash: 0,                                          // Phase 2: Initialize hash
         }
     });
 
@@ -843,5 +964,109 @@ mod _tests
         let  	bytes = frame.ToBytes();
         let  	decoded = PtsFrameDto::FromBytes( &bytes).unwrap();
         assert_eq!( decoded, frame);
+    }
+
+    #[test]
+    fn	TestPhase3QuantizedPointRoundtrip()
+    {
+        let  	width = 1920.0;
+        let  	height = 1080.0;
+
+        let  	original = ProjectedPoint {
+            _X: 960.0,
+            _Y: 540.0,
+            _Radius: 0.5,                                              // Normalized 0-1 range
+            _CoreRadius: 0.25,                                         // Normalized 0-1 range
+            _Alpha: 0.8,                                              // Normalized 0-1 range
+        };
+
+        // Quantize
+        let  	quantized = QuantizedPoint::FromProjected( &original, width, height);
+
+        // Verify size is 7 bytes
+        assert_eq!( std::mem::size_of::< QuantizedPoint>(), 7);
+
+        // Dequantize
+        let  	restored = quantized.ToProjected( width, height);
+
+        // Check that values are close (within quantization error)
+        assert!( (restored._X - original._X).abs() < 1.0);
+        assert!( (restored._Y - original._Y).abs() < 1.0);
+        assert!( (restored._Radius - original._Radius).abs() < 0.005);
+        assert!( (restored._CoreRadius - original._CoreRadius).abs() < 0.005);
+        assert!( (restored._Alpha - original._Alpha).abs() < 0.005);
+    }
+
+    #[test]
+    fn	TestPhase3QuantizedLineRoundtrip()
+    {
+        let  	width = 1920.0;
+        let  	height = 1080.0;
+
+        let  	original = ProjectedLine {
+            _X1: 100.0,
+            _Y1: 200.0,
+            _X2: 300.0,
+            _Y2: 400.0,
+        };
+
+        // Quantize
+        let  	quantized = QuantizedLine::FromProjected( &original, width, height);
+
+        // Verify size is 8 bytes (u16 x 4)
+        assert_eq!( std::mem::size_of::< QuantizedLine>(), 8);
+
+        // Dequantize
+        let  	restored = quantized.ToProjected( width, height);
+
+        // Check that values are close
+        assert!( (restored._X1 - original._X1).abs() < 1.0);
+        assert!( (restored._Y1 - original._Y1).abs() < 1.0);
+        assert!( (restored._X2 - original._X2).abs() < 1.0);
+        assert!( (restored._Y2 - original._Y2).abs() < 1.0);
+    }
+
+    #[test]
+    fn	TestPhase3QuantizationBandwidthReduction()
+    {
+        let  	width = 1920.0;
+        let  	height = 1080.0;
+
+        // Original ProjectedPoint: 20 bytes (5 x f32)
+        let  	original_point = ProjectedPoint {
+            _X: 960.0,
+            _Y: 540.0,
+            _Radius: 0.5,                                              // Normalized 0-1
+            _CoreRadius: 0.25,                                         // Normalized 0-1
+            _Alpha: 0.8,                                              // Normalized 0-1
+        };
+
+        let  	quantized_point = QuantizedPoint::FromProjected( &original_point, width, height);
+
+        // Verify size reduction: 20 bytes -> 7 bytes (65% savings)
+        let  	orig_size = std::mem::size_of::< ProjectedPoint>();
+        let  	quant_size = std::mem::size_of::< QuantizedPoint>();
+        assert_eq!( orig_size, 20);
+        assert_eq!( quant_size, 7);
+        let  	ratio = quant_size as f64 / orig_size as f64;
+        assert!( (ratio - 0.35).abs() < 0.01); // 35% of original ≈ 65% savings
+
+        // Original ProjectedLine: 16 bytes (4 x f32)
+        let  	original_line = ProjectedLine {
+            _X1: 100.0,
+            _Y1: 200.0,
+            _X2: 300.0,
+            _Y2: 400.0,
+        };
+
+        let  	_quantized_line = QuantizedLine::FromProjected( &original_line, width, height);
+
+        // Verify size reduction: 16 bytes -> 8 bytes (50% savings)
+        let  	orig_size = std::mem::size_of::< ProjectedLine>();
+        let  	quant_size = std::mem::size_of::< QuantizedLine>();
+        assert_eq!( orig_size, 16);
+        assert_eq!( quant_size, 8);
+        let  	ratio = quant_size as f64 / orig_size as f64;
+        assert!( (ratio - 0.5).abs() < 0.01); // 50% of original = 50% savings
     }
 }

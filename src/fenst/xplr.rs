@@ -5,38 +5,28 @@ use	serde::{ Serialize, Deserialize };
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde( rename_all = "snake_case")]
 pub struct XplrNodeDto
 {
-    #[serde( rename = "id")]
     pub _Id:          String,
-    #[serde( rename = "name")]
     pub _Name:        String,
-    #[serde( rename = "is_leaf")]
     pub _IsLeaf:      bool,
-    #[serde( rename = "provider")]
     pub _Provider:    String,
-    #[serde( rename = "size")]
     pub _Size:        u64,
-    #[serde( rename = "extension")]
     pub _Extension:   String,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde( rename_all = "snake_case")]
 pub struct StreamChunkDto
 {
-    #[serde( rename = "path")]
     pub _Path:        String,
-    #[serde( rename = "offset")]
     pub _Offset:      u64,
-    #[serde( rename = "length")]
     pub _Length:      usize,
-    #[serde( rename = "total_size")]
     pub _TotalSize:   u64,
-    #[serde( rename = "is_eof")]
     pub _IsEof:       bool,
-    #[serde( rename = "content")]
     pub _Content:     String,
 }
 
