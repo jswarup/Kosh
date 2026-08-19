@@ -249,6 +249,20 @@ struct PtsSessionState
     _Scene: SceneGraph,
     _MetadataSent: bool,                                               // Phase 2: Track if metadata was sent
     _MetadataHash: u64,                                                // Phase 2: Hash to detect metadata changes
+    _LastFrameKey: Option< PtsFrameKey>,
+}
+
+#[derive( Clone, Copy, PartialEq, Eq)]
+struct PtsFrameKey
+{
+    _Width:  u32,
+    _Height: u32,
+    _Dpr:    u32,
+    _PanX:   u32,
+    _PanY:   u32,
+    _Zoom:   u32,
+    _RotX:   u32,
+    _RotY:   u32,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -563,6 +577,185 @@ impl PtsFrameDto
     }
 }
 
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Phase 2-3 Integration: Quantized frame DTO using QuantizedPoint/Line (65% bandwidth savings).
+/// Uses same binary header format as PtsFrameDto but with smaller quantized types.
+#[derive( Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde( rename_all = "snake_case")]
+pub struct QuantizedPtsFrameDto
+{
+    pub _Points:        Buff< QuantizedPoint>,                         // 7 bytes per point instead of 20
+    pub _BoxLines:      Buff< QuantizedLine>,                          // 8 bytes per line instead of 16
+    pub _FileName:      String,
+    pub _Count:         usize,
+    pub _BboxLabel:     String,
+    pub _ShaderStatus:  String,
+    pub _OverlayText1:  String,
+    pub _OverlayText2:  String,
+}
+
+impl QuantizedPtsFrameDto
+{
+    /// Converts from full-precision PtsFrameDto to quantized version.
+    pub fn	FromPtsFrameDto( frame: &PtsFrameDto, width: f32, height: f32) -> Self
+    {
+        let  	mut quantized_points = Buff::New();
+        for pt in &frame._Points {
+            quantized_points.Push( QuantizedPoint::FromProjected( pt, width, height));
+        }
+
+        let  	mut quantized_lines = Buff::New();
+        for line in &frame._BoxLines {
+            quantized_lines.Push( QuantizedLine::FromProjected( line, width, height));
+        }
+
+        QuantizedPtsFrameDto {
+            _Points:        quantized_points,
+            _BoxLines:      quantized_lines,
+            _FileName:      frame._FileName.clone(),
+            _Count:         frame._Count,
+            _BboxLabel:     frame._BboxLabel.clone(),
+            _ShaderStatus:  frame._ShaderStatus.clone(),
+            _OverlayText1:  frame._OverlayText1.clone(),
+            _OverlayText2:  frame._OverlayText2.clone(),
+        }
+    }
+
+    /// Converts back to full-precision PtsFrameDto for compatibility.
+    pub fn	ToPtsFrameDto( &self, width: f32, height: f32) -> PtsFrameDto
+    {
+        let  	mut points = Buff::New();
+        for qpt in &self._Points {
+            points.Push( qpt.ToProjected( width, height));
+        }
+
+        let  	mut lines = Buff::New();
+        for qline in &self._BoxLines {
+            lines.Push( qline.ToProjected( width, height));
+        }
+
+        PtsFrameDto {
+            _Points:        points,
+            _BoxLines:      lines,
+            _FileName:      self._FileName.clone(),
+            _Count:         self._Count,
+            _BboxLabel:     self._BboxLabel.clone(),
+            _ShaderStatus:  self._ShaderStatus.clone(),
+            _OverlayText1:  self._OverlayText1.clone(),
+            _OverlayText2:  self._OverlayText2.clone(),
+        }
+    }
+
+    /// Serializes quantized frame to binary format (same structure as PtsFrameDto but with smaller types).
+    pub fn	ToBytes( &self) -> Vec< u8>
+    {
+        let  	fileNameBytes = self._FileName.as_bytes();
+        let  	bboxLabelBytes = self._BboxLabel.as_bytes();
+        let  	shaderStatusBytes = self._ShaderStatus.as_bytes();
+        let  	overlay1Bytes = self._OverlayText1.as_bytes();
+        let  	overlay2Bytes = self._OverlayText2.as_bytes();
+
+        let  	header = PtsFrameBinaryHeader {
+            _Magic:          0x4B505451,                               // Magic 'KPTQ' (Kosh PTs Quantized)
+            _Version:        2,                                         // Version 2 = quantized format
+            _PointCount:     self._Points.len() as u32,
+            _LineCount:      self._BoxLines.len() as u32,
+            _TotalPoints:    self._Count as u32,
+            _FileNameLen:    fileNameBytes.len() as u32,
+            _BboxLabelLen:   bboxLabelBytes.len() as u32,
+            _ShaderStatusLen:shaderStatusBytes.len() as u32,
+            _Overlay1Len:    overlay1Bytes.len() as u32,
+            _Overlay2Len:    overlay2Bytes.len() as u32,
+        };
+
+        let  	headerSlice = std::slice::from_ref( &header);
+        let  	headerBytes: &[u8] = headerSlice.CastSlice();
+        let  	pointsBytes: &[u8] = self._Points.CastSlice();
+        let  	linesBytes: &[u8] = self._BoxLines.CastSlice();
+
+        let  	totalLen = headerBytes.len() + pointsBytes.len() + linesBytes.len()
+            + fileNameBytes.len() + bboxLabelBytes.len() + shaderStatusBytes.len()
+            + overlay1Bytes.len() + overlay2Bytes.len();
+        let  	mut out = Vec::with_capacity( totalLen);
+
+        out.extend_from_slice( headerBytes);
+        out.extend_from_slice( pointsBytes);
+        out.extend_from_slice( linesBytes);
+        out.extend_from_slice( fileNameBytes);
+        out.extend_from_slice( bboxLabelBytes);
+        out.extend_from_slice( shaderStatusBytes);
+        out.extend_from_slice( overlay1Bytes);
+        out.extend_from_slice( overlay2Bytes);
+
+        return out;
+    }
+
+    /// Deserializes quantized frame from binary payload.
+    pub fn	FromBytes( bytes: &[u8]) -> Result< Self, String>
+    {
+        let  	headerSz = std::mem::size_of::< PtsFrameBinaryHeader>();
+        if bytes.len() < headerSz {
+            return Err( "QuantizedPtsFrame binary payload too short for header".to_string());
+        }
+
+        let  	headerSlice: &[PtsFrameBinaryHeader] = bytes[..headerSz].CastSliceFrom();
+        let  	header = headerSlice[0];
+
+        if header._Magic != 0x4B505451 {
+            return Err( format!( "Invalid QuantizedPtsFrame magic: 0x{:08X}", header._Magic));
+        }
+
+        let  	mut offset = headerSz;
+
+        let  	pointsByteLen = header._PointCount as usize * std::mem::size_of::< QuantizedPoint>();
+        if bytes.len() < offset + pointsByteLen {
+            return Err( "QuantizedPtsFrame payload truncated in points buffer".to_string());
+        }
+        let  	pointsSlice: &[QuantizedPoint] = bytes[offset..offset + pointsByteLen].CastSliceFrom();
+        let  	points = Buff::from(  pointsSlice);
+        offset += pointsByteLen;
+
+        let  	linesByteLen = header._LineCount as usize * std::mem::size_of::< QuantizedLine>();
+        if bytes.len() < offset + linesByteLen {
+            return Err( "QuantizedPtsFrame payload truncated in lines buffer".to_string());
+        }
+        let  	linesSlice: &[QuantizedLine] = bytes[offset..offset + linesByteLen].CastSliceFrom();
+        let  	lines = Buff::from(  linesSlice);
+        offset += linesByteLen;
+
+        // String table
+        let  	strEnd1 = offset + header._FileNameLen as usize;
+        let  	strEnd2 = strEnd1 + header._BboxLabelLen as usize;
+        let  	strEnd3 = strEnd2 + header._ShaderStatusLen as usize;
+        let  	strEnd4 = strEnd3 + header._Overlay1Len as usize;
+        let  	strEnd5 = strEnd4 + header._Overlay2Len as usize;
+
+        if bytes.len() < strEnd5 {
+            return Err( "QuantizedPtsFrame payload truncated in string table".to_string());
+        }
+
+        let  	fileName = String::from_utf8_lossy( &bytes[offset..strEnd1]).into_owned();
+        let  	bboxLabel = String::from_utf8_lossy( &bytes[strEnd1..strEnd2]).into_owned();
+        let  	shaderStatus = String::from_utf8_lossy( &bytes[strEnd2..strEnd3]).into_owned();
+        let  	overlay1 = String::from_utf8_lossy( &bytes[strEnd3..strEnd4]).into_owned();
+        let  	overlay2 = String::from_utf8_lossy( &bytes[strEnd4..strEnd5]).into_owned();
+
+        return Ok( QuantizedPtsFrameDto {
+            _Points:        points,
+            _BoxLines:      lines,
+            _FileName:      fileName,
+            _Count:         header._TotalPoints as usize,
+            _BboxLabel:     bboxLabel,
+            _ShaderStatus:  shaderStatus,
+            _OverlayText1:  overlay1,
+            _OverlayText2:  overlay2,
+        });
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
 /// Transforms and projects 3D point cloud coordinates and its bounding box to 2D screen coordinates,
 /// applying camera pan, zoom, and rotation state.
 #[tauri::command]
@@ -605,6 +798,7 @@ pub fn	XplrProjectPts(
             _Scene: SceneGraph::WithPoints( dto._Points, dto._BboxMin, dto._BboxMax),
             _MetadataSent: false,                                      // Phase 2: Initialize as not sent
             _MetadataHash: 0,                                          // Phase 2: Initialize hash
+            _LastFrameKey: None,
         }
     });
 
@@ -629,6 +823,20 @@ pub fn	XplrProjectPts(
         let  	speedRad = speed / 1000.0;
         cam._RotY += speedRad;
         cam._RotX += speedRad * 0.5;
+    }
+
+    let   frameKey = PtsFrameKey {
+        _Width: width.to_bits(),
+        _Height: height.to_bits(),
+        _Dpr: dpr.to_bits(),
+        _PanX: cam._PanX.to_bits(),
+        _PanY: cam._PanY.to_bits(),
+        _Zoom: cam._Zoom.to_bits(),
+        _RotX: cam._RotX.to_bits(),
+        _RotY: cam._RotY.to_bits(),
+    };
+    if state._LastFrameKey == Some( frameKey) {
+        return Ok( tauri::ipc::Response::new( Vec::new()));
     }
 
     let  	mut box_lines = Buff::New();
@@ -737,7 +945,10 @@ pub fn	XplrProjectPts(
         _OverlayText2: overlay2,
     };
 
-    let  	bytes = frame.ToBytes();
+    // Phase 2-3 Integration: Use quantized format for 65% bandwidth savings
+    let  	quantized_frame = QuantizedPtsFrameDto::FromPtsFrameDto( &frame, width, height);
+    let  	bytes = quantized_frame.ToBytes();
+    state._LastFrameKey = Some( frameKey);
     return Ok( tauri::ipc::Response::new( bytes));
 }
 
@@ -750,6 +961,7 @@ pub fn	XplrResetCamera( path: String) -> Result< Camera, String>
     let  	mut guard = PTS_STATE.lock().map_err( |e| e.to_string())?;
     if let Some( state) = guard.get_mut( &path) {
         state._Scene.CameraMut().Reset();
+        state._LastFrameKey = None;
         Ok( *state._Scene.Camera())
     } else {
         Ok( Camera::New())
@@ -1031,17 +1243,6 @@ mod _tests
     {
         let  	width = 1920.0;
         let  	height = 1080.0;
-
-        // Original ProjectedPoint: 20 bytes (5 x f32)
-        let  	original_point = ProjectedPoint {
-            _X: 960.0,
-            _Y: 540.0,
-            _Radius: 0.5,                                              // Normalized 0-1
-            _CoreRadius: 0.25,                                         // Normalized 0-1
-            _Alpha: 0.8,                                              // Normalized 0-1
-        };
-
-        let  	quantized_point = QuantizedPoint::FromProjected( &original_point, width, height);
 
         // Verify size reduction: 20 bytes -> 7 bytes (65% savings)
         let  	orig_size = std::mem::size_of::< ProjectedPoint>();

@@ -181,12 +181,14 @@
                     isInteractive: isInteractive || isDragging,
                 });
                 const frame = (typeof BinaryDecoder !== 'undefined') ? BinaryDecoder.decodePtsFrame(rawFrame) : rawFrame;
-                cachedFrame = frame;
+                if (frame) cachedFrame = frame;
 
-                if (titleEl && frame.file_name) titleEl.textContent = frame.file_name;
-                if (statPointCount && frame.count !== undefined) statPointCount.textContent = frame.count.toLocaleString();
-                if (statBbox && frame.bbox_label) statBbox.textContent = frame.bbox_label;
-                if (statShaderStatus && frame.shader_status) statShaderStatus.textContent = frame.shader_status;
+                if (frame) {
+                    if (titleEl && frame.file_name) titleEl.textContent = frame.file_name;
+                    if (statPointCount && frame.count !== undefined) statPointCount.textContent = frame.count.toLocaleString();
+                    if (statBbox && frame.bbox_label) statBbox.textContent = frame.bbox_label;
+                    if (statShaderStatus && frame.shader_status) statShaderStatus.textContent = frame.shader_status;
+                }
             }
         } catch (err) {
             console.error('Swarm frame error:', err);

@@ -96,21 +96,22 @@ function formatSize(bytes) {
 
 function normalizeEntry(entry) {
     if (!entry) return entry;
-    const path = entry.path ?? entry._path ?? '';
-    const name = entry.name ?? entry._name ?? (path.split(/[/\\]/).pop() || '');
-    const is_dir = entry.is_dir !== undefined ? Boolean(entry.is_dir) : (entry._is_dir !== undefined ? Boolean(entry._is_dir) : false);
-    const size = entry.size ?? entry._size ?? 0;
-    const extension = entry.extension ?? entry._extension ?? (name.includes('.') ? name.split('.').pop() : '');
+    const path = entry.path ?? entry._path ?? entry.Path ?? entry._Path ?? '';
+    const name = entry.name ?? entry._name ?? entry.Name ?? entry._Name ?? (path.split(/[/\\]/).pop() || '');
+    const rawIsDir = entry.is_dir ?? entry._is_dir ?? entry.isDir ?? entry._IsDir;
+    const is_dir = rawIsDir === undefined ? false : Boolean(rawIsDir);
+    const size = entry.size ?? entry._size ?? entry.Size ?? entry._Size ?? 0;
+    const extension = entry.extension ?? entry._extension ?? entry.Extension ?? entry._Extension ?? (name.includes('.') ? name.split('.').pop() : '');
     return { path, name, is_dir, size, extension };
 }
 
 function normalizeContent(res) {
     if (!res) return { path: '', content: '', size: 0, line_count: 1 };
     return {
-        path: res.path ?? '',
-        content: res.content ?? '',
-        size: res.size ?? 0,
-        line_count: res.line_count ?? 1,
+        path: res.path ?? res._path ?? res.Path ?? res._Path ?? '',
+        content: res.content ?? res._content ?? res.Content ?? res._Content ?? '',
+        size: res.size ?? res._size ?? res.Size ?? res._Size ?? 0,
+        line_count: res.line_count ?? res._line_count ?? res.lineCount ?? res._LineCount ?? 1,
     };
 }
 
@@ -147,7 +148,10 @@ function normalizeObjData(dto) {
 async function loadDirectory(path) {
     try {
         const rawEntries = await invoke('XplrListEntries', { path });
-        const entries = (rawEntries || []).map(normalizeEntry);
+        const entryList = Array.isArray(rawEntries)
+            ? rawEntries
+            : (rawEntries?.data ?? rawEntries?._data ?? []);
+        const entries = (Array.isArray(entryList) ? entryList : []).map(normalizeEntry);
         return entries;
     } catch (err) {
         console.error('Failed to load directory:', err);

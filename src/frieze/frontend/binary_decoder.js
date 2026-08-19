@@ -20,16 +20,114 @@
         return null;
     }
 
+    // Phase 2-3 Integration: Decode quantized frame format (65% bandwidth savings)
+    function decodePtsFrameQuantized(dv, bytes) {
+        const pointCount = dv.getUint32(8, true);
+        const lineCount = dv.getUint32(12, true);
+        const totalPoints = dv.getUint32(16, true);
+        const fileNameLen = dv.getUint32(20, true);
+        const bboxLabelLen = dv.getUint32(24, true);
+        const shaderStatusLen = dv.getUint32(28, true);
+        const overlay1Len = dv.getUint32(32, true);
+        const overlay2Len = dv.getUint32(36, true);
+
+        let offset = 40;
+
+        // Dequantize points (7 bytes each: u16 x, u16 y, u8 r, u8 cr, u8 a)
+        // Assume screen is 1920x1080 for denormalization (conservative estimate)
+        const screenWidth = window.innerWidth || 1920;
+        const screenHeight = window.innerHeight || 1080;
+
+        const points = new Array(pointCount);
+        const pointsBytes = bytes.subarray(offset, offset + pointCount * 7);
+
+        for (let i = 0; i < pointCount; i++) {
+            const idx = i * 7;
+            // Dequantize: convert u16 (0-65535) back to float screen coords
+            const x_u16 = pointsBytes[idx] | (pointsBytes[idx + 1] << 8);
+            const y_u16 = pointsBytes[idx + 2] | (pointsBytes[idx + 3] << 8);
+            const radius_u8 = pointsBytes[idx + 4];
+            const coreRadius_u8 = pointsBytes[idx + 5];
+            const alpha_u8 = pointsBytes[idx + 6];
+
+            points[i] = {
+                x: (x_u16 / 65535.0) * screenWidth,
+                y: (y_u16 / 65535.0) * screenHeight,
+                radius: radius_u8 / 255.0,
+                core_radius: coreRadius_u8 / 255.0,
+                alpha: alpha_u8 / 255.0
+            };
+        }
+        offset += pointCount * 7;
+
+        // Dequantize lines (8 bytes each: u16 x1, u16 y1, u16 x2, u16 y2)
+        const boxLines = new Array(lineCount);
+        const linesBytes = bytes.subarray(offset, offset + lineCount * 8);
+
+        for (let i = 0; i < lineCount; i++) {
+            const idx = i * 8;
+            const x1_u16 = linesBytes[idx] | (linesBytes[idx + 1] << 8);
+            const y1_u16 = linesBytes[idx + 2] | (linesBytes[idx + 3] << 8);
+            const x2_u16 = linesBytes[idx + 4] | (linesBytes[idx + 5] << 8);
+            const y2_u16 = linesBytes[idx + 6] | (linesBytes[idx + 7] << 8);
+
+            boxLines[i] = {
+                x1: (x1_u16 / 65535.0) * screenWidth,
+                y1: (y1_u16 / 65535.0) * screenHeight,
+                x2: (x2_u16 / 65535.0) * screenWidth,
+                y2: (y2_u16 / 65535.0) * screenHeight
+            };
+        }
+        offset += lineCount * 8;
+
+        // Strings
+        const strBytes = bytes.subarray(offset);
+        let strOffset = 0;
+
+        const fileName = textDecoder.decode(strBytes.subarray(strOffset, strOffset + fileNameLen));
+        strOffset += fileNameLen;
+
+        const bboxLabel = textDecoder.decode(strBytes.subarray(strOffset, strOffset + bboxLabelLen));
+        strOffset += bboxLabelLen;
+
+        const shaderStatus = textDecoder.decode(strBytes.subarray(strOffset, strOffset + shaderStatusLen));
+        strOffset += shaderStatusLen;
+
+        const overlay1 = textDecoder.decode(strBytes.subarray(strOffset, strOffset + overlay1Len));
+        strOffset += overlay1Len;
+
+        const overlay2 = textDecoder.decode(strBytes.subarray(strOffset, strOffset + overlay2Len));
+
+        return {
+            points: points,
+            box_lines: boxLines,
+            file_name: fileName,
+            count: totalPoints,
+            bbox_label: bboxLabel,
+            shader_status: shaderStatus,
+            overlay_text1: overlay1,
+            overlay_text2: overlay2
+        };
+    }
+
     function decodePtsFrame(input) {
         if (!input) return null;
         const bytes = toUint8Array(input);
-        if (!bytes || bytes.byteLength < 40) {
+        if (!bytes || bytes.byteLength === 0) return null;
+        if (bytes.byteLength < 40) {
             // Passthrough if already decoded JSON object
             return input;
         }
 
         const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
         const magic = dv.getUint32(0, true);
+
+        // Check if this is quantized format (Phase 2-3 Integration)
+        if (magic === 0x4B505451) {
+            return decodePtsFrameQuantized(dv, bytes);
+        }
+
+        // Otherwise, handle original non-quantized format
         if (magic !== 0x4B505453) {
             // Not a binary KPTS packet, return as-is
             return input;
