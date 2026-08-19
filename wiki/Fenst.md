@@ -174,3 +174,7 @@ z_2 &= y \sin(\theta_x) + z_1 \cos(\theta_x) \\
 | `XplrOpenPtsGraphicsWindow`| `(app, path) -> Result<(), String>` | Opens dedicated 3D shader window for `.pts` point cloud files. |
 | `XplrProjectPts`  | `(path, width, height, dpr, speed, color, pan_x, pan_y, zoom, rot_x, rot_y, is_interactive) -> Result<PtsFrameDto, String>` | Projects SceneGraph 3D points & bounding box with pan/zoom/rotate across Multi-GPU cluster. |
 | `XplrResetCamera` | `(path: String) -> Result<Camera, String>` | Resets SceneGraph camera pan, zoom, and rotation to defaults. |
+
+### ⚠️ Data Serialization Note
+
+The `XplrProjectPts` command performs real-time serialization of millions of projected points every frame. **This is a critical performance bottleneck.** For optimization recommendations and identified inefficiencies in the frieze↔fenst↔swarm serialization pipeline, see **[Serialization_Optimization.md](Serialization_Optimization.md)**.

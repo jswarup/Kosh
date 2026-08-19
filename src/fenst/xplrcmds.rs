@@ -1,7 +1,7 @@
 ﻿//-- xplrcmds.rs ------------------------------------------------------------------------------------------------------------------
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
 use	tauri::Manager;
-use	crate::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, CreateDefaultRegistry, Camera, SceneGraph };
+use	crate::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, WaveObjMeshDto, CreateDefaultRegistry, Camera, SceneGraph };
 use	crate::silo::{ Buff, ISliceExt };
 use	serde::Deserialize;
 use	crate::swarm::SwarmCluster;

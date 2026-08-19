@@ -95,7 +95,28 @@ graph TD
 
 ---
 
-## 4. Key Architectural Patterns
+## 5. Data Serialization & IPC Optimization
+
+When data flows between the desktop frontend (`frieze`) and heterogeneous compute backend (`swarm`), serialization efficiency is critical for real-time performance.
+
+**Problem**: The `XplrProjectPts` IPC command serializes millions of 3D→2D projected points every 60 FPS frame, creating significant bandwidth pressure. Current implementation lacks:
+- Incremental/delta updates for unchanged geometry
+- Float quantization for screen coordinates
+- Change detection and state hashing
+- Efficient string metadata packing
+
+**Status**: Comprehensive optimization audit completed. See **[Serialization_Optimization.md](Serialization_Optimization.md)** for:
+- Detailed inefficiency analysis with bandwidth measurements
+- 6-phase optimization roadmap (Phase 1-3 provide 65% bandwidth reduction)
+- Implementation guidance for each phase
+- Impact projections (120 MB/s → 18 MB/s average)
+
+**Key Opportunities**:
+1. **Phase 1 (1-2h)**: Remove serde rename overhead (~5% savings)
+2. **Phase 2 (3-4h)**: Separate static/dynamic frame data (~40% savings)
+3. **Phase 3 (2-3h)**: Float quantization 16-bit coordinates (~65% savings)
+
+---
 
 ### Pattern A: Stack-Allocated AST Lifetime Extension
 Rather than wrapping child nodes in `Box<dyn INode>`, AST nodes are declared as concrete generic structs (`UniNode<C, Op>`, `BinNode<L, R, Op>`) via declarative macros (`NodeTree!`, `ShardTree!`, `TermTree!`, `ChoreTree!`).
