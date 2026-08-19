@@ -1,4 +1,4 @@
-// =================================================================
+﻿// =================================================================
 // Fenst — Frontend Application Logic
 // =================================================================
 
@@ -31,6 +31,7 @@ const dom = {
     contentViewer:      document.getElementById('content-viewer'),
     fileContent:        document.getElementById('file-content'),
     tabBar:             document.getElementById('content-tab-bar'),
+    statusBranch:       document.getElementById('status-branch'),
     statusFilePath:     document.getElementById('status-file-path'),
     statusLines:        document.getElementById('status-lines'),
     statusSize:         document.getElementById('status-size'),
@@ -120,6 +121,20 @@ function normalizePtsData(dto) {
         count: dto.count ?? dto._count ?? 0,
         bbox_min: dto.bbox_min ?? dto._bbox_min ?? [-20, -20, -20],
         bbox_max: dto.bbox_max ?? dto._bbox_max ?? [20, 20, 20],
+    };
+}
+
+function normalizeObjData(dto) {
+    if (!dto) return null;
+    return {
+        points: dto.points ?? dto._points ?? [],
+        triangles: dto.triangles ?? dto._triangles ?? [],
+        edges: dto.edges ?? dto._edges ?? [],
+        normals: dto.normals ?? dto._normals ?? [],
+        vertex_count: dto.vertex_count ?? dto._vertex_count ?? 0,
+        face_count: dto.face_count ?? dto._face_count ?? 0,
+        bbox_min: dto.bbox_min ?? dto._bbox_min ?? [-1, -1, -1],
+        bbox_max: dto.bbox_max ?? dto._bbox_max ?? [1, 1, 1],
     };
 }
 
@@ -268,6 +283,280 @@ function renderFileContent(tabOrContent) {
     const path = typeof tabOrContent === 'object' ? (tabOrContent.path || '') : '';
     const content = typeof tabOrContent === 'object' ? (tabOrContent.content || '') : String(tabOrContent);
     const isPts = path.toLowerCase().includes('.pts') || (typeof tabOrContent === 'object' && tabOrContent.isPts);
+    const isObj = path.toLowerCase().includes('.obj') || (typeof tabOrContent === 'object' && tabOrContent.isObj);
+
+    if (isObj) {
+        const objData = typeof tabOrContent === 'object' ? tabOrContent.objData : null;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'obj-embedded-viewer';
+        wrapper.style.cssText = 'width:100%; height:100%; position:relative; background:#0b0f19; overflow:hidden; display:flex; flex-direction:column;';
+
+        const vertCount = objData ? objData.vertex_count : 0;
+        const faceCount = objData ? objData.face_count : 0;
+        const bboxLabel = objData
+            ? `[${objData.bbox_min.map(v => v.toFixed(2)).join(', ')}] → [${objData.bbox_max.map(v => v.toFixed(2)).join(', ')}]`
+            : '—';
+        const fileName = path.split(/[/\\]/).pop() || 'model.obj';
+
+        wrapper.innerHTML = `
+            <div style="height:44px; background:rgba(15,23,42,0.95); border-bottom:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:space-between; padding:0 16px; user-select:none; z-index:10;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="background:linear-gradient(135deg, #a855f7, #3b82f6); color:#fff; font-weight:700; font-size:10px; padding:3px 8px; border-radius:10px; text-transform:uppercase; letter-spacing:0.5px;">Wavefront OBJ</span>
+                    <span style="font-size:13px; font-weight:600; color:#f8fafc;">${fileName}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;" id="obj-mode-bar">
+                    <button class="obj-mode-btn" data-mode="points" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#94a3b8; font-size:11px; font-weight:600; padding:4px 10px; border-radius:6px; cursor:pointer; transition:all 0.2s;">Points</button>
+                    <button class="obj-mode-btn" data-mode="wireframe" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#94a3b8; font-size:11px; font-weight:600; padding:4px 10px; border-radius:6px; cursor:pointer; transition:all 0.2s;">Wireframe</button>
+                    <button class="obj-mode-btn active" data-mode="facets" style="background:linear-gradient(135deg, rgba(168,85,247,0.35), rgba(59,130,246,0.35)); border:1px solid #a855f7; color:#fff; font-size:11px; font-weight:600; padding:4px 10px; border-radius:6px; cursor:pointer; transition:all 0.2s;">Facets</button>
+                    <button class="obj-mode-btn" data-mode="shaded_wire" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#94a3b8; font-size:11px; font-weight:600; padding:4px 10px; border-radius:6px; cursor:pointer; transition:all 0.2s;">Shaded + Wire</button>
+                </div>
+                <span style="font-family:monospace; font-size:12px; color:#c084fc;">${vertCount} Verts | ${faceCount} Faces | BBox: ${bboxLabel}</span>
+            </div>
+            <div style="flex:1; position:relative; width:100%; height:calc(100% - 44px);">
+                <canvas id="main-obj-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; display:block;"></canvas>
+            </div>
+        `;
+        dom.fileContent.appendChild(wrapper);
+
+        setTimeout(() => {
+            const canvas = document.getElementById('main-obj-canvas');
+            if (!canvas || !objData) return;
+            const ctx = canvas.getContext('2d');
+            let currentMode = 'facets';
+            let angleX = 0.3;
+            let angleY = 0.6;
+            let panX = 0.0;
+            let panY = 0.0;
+            let zoom = 1.0;
+            let isDragging = false;
+            let dragMode = 'rotate';
+            let lastMouseX = 0;
+            let lastMouseY = 0;
+            let isInteractive = false;
+            let interactiveTimer = null;
+
+            // Setup mode switcher button handlers
+            const modeBtns = wrapper.querySelectorAll('.obj-mode-btn');
+            modeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modeBtns.forEach(b => {
+                        b.classList.remove('active');
+                        b.style.background = 'rgba(255,255,255,0.06)';
+                        b.style.borderColor = 'rgba(255,255,255,0.12)';
+                        b.style.color = '#94a3b8';
+                    });
+                    btn.classList.add('active');
+                    btn.style.background = 'linear-gradient(135deg, rgba(168,85,247,0.35), rgba(59,130,246,0.35))';
+                    btn.style.borderColor = '#a855f7';
+                    btn.style.color = '#fff';
+                    currentMode = btn.dataset.mode;
+                    markInteractive();
+                });
+            });
+
+            function markInteractive() {
+                isInteractive = true;
+                if (interactiveTimer) clearTimeout(interactiveTimer);
+                interactiveTimer = setTimeout(() => {
+                    if (!isDragging) isInteractive = false;
+                }, 500);
+            }
+
+            canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            canvas.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                dragMode = (e.button === 2 || e.shiftKey || e.button === 1) ? 'pan' : 'rotate';
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                canvas.style.cursor = dragMode === 'pan' ? 'move' : 'grabbing';
+                markInteractive();
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - lastMouseX;
+                const dy = e.clientY - lastMouseY;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+
+                if (dragMode === 'rotate') {
+                    angleY += dx * 0.008;
+                    angleX += dy * 0.008;
+                } else {
+                    panX += dx;
+                    panY += dy;
+                }
+                markInteractive();
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    canvas.style.cursor = 'grab';
+                    markInteractive();
+                }
+            });
+
+            canvas.style.cursor = 'grab';
+
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const factor = e.deltaY < 0 ? 1.12 : 0.89;
+                zoom = Math.max(0.05, Math.min(50.0, zoom * factor));
+                markInteractive();
+            }, { passive: false });
+
+            canvas.addEventListener('dblclick', () => {
+                panX = 0.0;
+                panY = 0.0;
+                zoom = 1.0;
+                angleX = 0.3;
+                angleY = 0.6;
+                markInteractive();
+            });
+
+            const points = objData.points || [];
+            const triangles = objData.triangles || [];
+            const edges = objData.edges || [];
+            const normals = objData.normals || [];
+            const bMin = objData.bbox_min;
+            const bMax = objData.bbox_max;
+
+            const cx = (bMin[0] + bMax[0]) * 0.5;
+            const cy = (bMin[1] + bMax[1]) * 0.5;
+            const cz = (bMin[2] + bMax[2]) * 0.5;
+            const dx = bMax[0] - bMin[0];
+            const dy = bMax[1] - bMin[1];
+            const dz = bMax[2] - bMin[2];
+            const maxDim = Math.max(dx, dy, dz);
+            const scaleNorm = maxDim > 1e-4 ? (35.0 / maxDim) : 1.0;
+
+            function project(x, y, z, width, height) {
+                const cosY = Math.cos(angleY), sinY = Math.sin(angleY);
+                const x1 = x * cosY + z * sinY, z1 = -x * sinY + z * cosY;
+                const cosX = Math.cos(angleX), sinX = Math.sin(angleX);
+                const y2 = y * cosX - z1 * sinX, z2 = y * sinX + z1 * cosX;
+                const scale = (350 * zoom) / (250 + z2);
+                return { x: width / 2 + panX + x1 * scale, y: height / 2 + panY - y2 * scale, z: z2 };
+            }
+
+            function draw() {
+                if (!canvas.parentElement) return;
+                const dpr = window.devicePixelRatio || 1;
+                const w = canvas.clientWidth || canvas.parentElement.clientWidth || 800;
+                const h = canvas.clientHeight || canvas.parentElement.clientHeight || 500;
+                canvas.width = Math.max(w * dpr, 200);
+                canvas.height = Math.max(h * dpr, 200);
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#0b0f19';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Project all normalized vertices
+                const projPoints = points.map(pt => {
+                    const nx = (pt[0] - cx) * scaleNorm;
+                    const ny = (pt[1] - cy) * scaleNorm;
+                    const nz = (pt[2] - cz) * scaleNorm;
+                    return project(nx, ny, nz, canvas.width, canvas.height);
+                });
+
+                if (currentMode === 'points') {
+                    // Mode 1: Point Cloud Rendering
+                    ctx.shadowColor = '#c084fc';
+                    ctx.shadowBlur = 4 * dpr;
+                    projPoints.forEach(p => {
+                        const depthFactor = Math.max(0.3, Math.min(1.0, (300 - p.z) / 400));
+                        const radius = (2.0 + depthFactor * 2.0) * dpr;
+                        ctx.fillStyle = `rgba(192, 132, 252, ${0.55 + depthFactor * 0.45})`;
+                        /*
+                        ctx.fillStyle = gba(192, 132, 252, );
+                        */
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    ctx.shadowBlur = 0;
+                } else if (currentMode === 'wireframe') {
+                    // Mode 2: Pure Wireframe Rendering
+                    ctx.strokeStyle = 'rgba(168, 85, 247, 0.85)';
+                    ctx.lineWidth = 1.0 * dpr;
+                    ctx.beginPath();
+                    edges.forEach(([i, j]) => {
+                        if (i < projPoints.length && j < projPoints.length) {
+                            ctx.moveTo(projPoints[i].x, projPoints[i].y);
+                            ctx.lineTo(projPoints[j].x, projPoints[j].y);
+                        }
+                    });
+                    ctx.stroke();
+                } else if (currentMode === 'facets' || currentMode === 'shaded_wire') {
+                    // Mode 3 & 4: Solid Facet Rendering with Painter's Algorithm Depth Sorting
+                    const triList = [];
+                    for (let tIdx = 0; tIdx < triangles.length; tIdx++) {
+                        const [i0, i1, i2] = triangles[tIdx];
+                        if (i0 < projPoints.length && i1 < projPoints.length && i2 < projPoints.length) {
+                            const p0 = projPoints[i0], p1 = projPoints[i1], p2 = projPoints[i2];
+                            const avgZ = (p0.z + p1.z + p2.z) / 3;
+                            triList.push({ tIdx, p0, p1, p2, avgZ });
+                        }
+                    }
+                    triList.sort((a, b) => b.avgZ - a.avgZ);
+
+                    const lx = 0.577, ly = 0.577, lz = 0.577;
+                    const cosY = Math.cos(angleY), sinY = Math.sin(angleY);
+                    const cosX = Math.cos(angleX), sinX = Math.sin(angleX);
+
+                    triList.forEach(({ tIdx, p0, p1, p2 }) => {
+                        let nx = 0, ny = 1, nz = 0;
+                        if (tIdx < normals.length) {
+                            const n = normals[tIdx];
+                            nx = n[0]; ny = n[1]; nz = n[2];
+                        }
+                        const nx1 = nx * cosY + nz * sinY, nz1 = -nx * sinY + nz * cosY;
+                        const ny2 = ny * cosX - nz1 * sinX, nz2 = ny * sinX + nz1 * cosX;
+
+                        const dot = Math.max(0, nx1 * lx + ny2 * ly + nz2 * lz);
+                        const intensity = 0.22 + 0.78 * dot;
+
+                        const r = Math.floor(70 + 130 * intensity);
+                        const g = Math.floor(40 + 90 * intensity);
+                        const b = Math.floor(120 + 135 * intensity);
+                        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                        /*
+
+                        ctx.fillStyle = gb(, , );
+                        ctx.beginPath();
+                        */
+                        ctx.beginPath();
+                        ctx.moveTo(p0.x, p0.y);
+                        ctx.lineTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.closePath();
+                        ctx.fill();
+
+                        if (currentMode === 'shaded_wire') {
+                            ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+                            ctx.lineWidth = 0.7 * dpr;
+                            ctx.stroke();
+                        }
+                    });
+                }
+
+                // Info overlay
+                ctx.fillStyle = 'rgba(226,232,240,0.8)';
+                ctx.font = `${12 * dpr}px monospace`;
+                ctx.fillText(`Mode: ${currentMode} | ${vertCount} Vertices | ${faceCount} Faces | Zoom: ${zoom.toFixed(2)}x`, 16 * dpr, canvas.height - 16 * dpr);
+
+                if (!isDragging && !isInteractive) {
+                    angleY += 0.015;
+                    angleX += 0.008;
+                }
+                requestAnimationFrame(draw);
+            }
+            requestAnimationFrame(draw);
+        }, 50);
+        return;
+    }
 
     if (isPts) {
         const ptsData = typeof tabOrContent === 'object' ? tabOrContent.ptsData : null;
@@ -584,6 +873,7 @@ async function selectFile(rawEntry, treeItem) {
 
     const ext = (entry.extension || entry.name?.split('.').pop() || entry.path.split('.').pop() || '').toLowerCase();
     const isPts = ext.startsWith('pts') || entry.path.toLowerCase().includes('.pts');
+    const isObj = ext === 'obj' || entry.path.toLowerCase().endsWith('.obj');
 
     // Check if the file is already open in a tab
     const existingTab = state.openTabs.find(tab => tab.path === entry.path);
@@ -595,6 +885,7 @@ async function selectFile(rawEntry, treeItem) {
     try {
         let result = { content: '', line_count: 1, size: 0, path: entry.path };
         let ptsData = null;
+        let objData = null;
 
         if (isPts) {
             try {
@@ -602,6 +893,13 @@ async function selectFile(rawEntry, treeItem) {
                 ptsData = normalizePtsData(rawPts);
             } catch (e) {
                 console.error('GPU point cloud generation / stream parse failed:', e);
+            }
+        } else if (isObj) {
+            try {
+                const rawObj = await invoke('XplrFetchWaveObj', { path: entry.path });
+                objData = normalizeObjData(rawObj);
+            } catch (e) {
+                console.error('Wavefront OBJ parse failed:', e);
             }
         } else {
             const rawContent = await invoke('XplrFetchContent', { path: entry.path });
@@ -617,7 +915,9 @@ async function selectFile(rawEntry, treeItem) {
             line_count: result.line_count,
             size: result.size || entry.size,
             isPts: isPts,
-            ptsData: ptsData
+            ptsData: ptsData,
+            isObj: isObj,
+            objData: objData
         };
 
         if (state.reuseWindow && state.openTabs.length > 0) {
@@ -800,12 +1100,16 @@ function customPrompt(message, defaultValue) {
     });
 }
 
+window.openFolder = openFolder;
 async function openFolder() {
     try {
         const path = await invoke('XplrSelectBranch');
         if (!path) return;
 
         state.rootPath = path;
+        if (dom.statusBranch) {
+            dom.statusBranch.textContent = path.split(/[/\\]/).pop() || path;
+        }
         state.expandedDirs.clear();
         state.selectedTreeItem = null;
 

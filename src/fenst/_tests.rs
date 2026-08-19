@@ -431,5 +431,37 @@ fn	TestSceneGraphClusterMultiGpuProjection()
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
+#[test]
+fn	TestIsObjFile()
+{
+    use	crate::fenst::IsObjFile;
 
+    assert!( IsObjFile( "model.obj"));
+    assert!( IsObjFile( "C:/Models/bunny.OBJ"));
+    assert!( IsObjFile( "mesh.obj"));
+    assert!( !IsObjFile( "pointcloud.pts"));
+    assert!( !IsObjFile( "data.json"));
+}
 
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestParseWaveObjFileStream()
+{
+    use	crate::fenst::XplrParseWaveObjFile;
+
+    let  	blubPath = "workbench/blub/blub_control_mesh.obj";
+    if std::path::Path::new( blubPath).exists() {
+        let  	res = XplrParseWaveObjFile( blubPath);
+        assert!( res.is_ok());
+        let  	dto = res.unwrap();
+        assert!( dto._VertexCount > 0);
+        assert!( dto._FaceCount > 0);
+        assert_eq!( dto._Points.len(), dto._VertexCount);
+        assert!( dto._Triangles.len() > 0);
+        assert!( dto._Edges.len() > 0);
+        assert_eq!( dto._Normals.len(), dto._Triangles.len());
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------

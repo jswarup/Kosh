@@ -1,7 +1,7 @@
-//-- xplrcmds.rs ------------------------------------------------------------------------------------------------------------------
+﻿//-- xplrcmds.rs ------------------------------------------------------------------------------------------------------------------
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
 use	tauri::Manager;
-use	crate::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, CreateDefaultRegistry, Camera, SceneGraph };
+use	crate::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, WaveObjMeshDto, CreateDefaultRegistry, Camera, SceneGraph };
 use	crate::silo::Buff;
 use	crate::swarm::SwarmCluster;
 use	serde::Serialize;
@@ -65,14 +65,14 @@ pub fn	XplrLeafInfo( path: String) -> Result< crate::fenst::XplrLeafInfo, String
 
 /// Shows a native dialog to pick a folder.
 #[tauri::command]
-pub fn	XplrSelectBranch() -> Result< Option< String>, String>
+pub async fn	XplrSelectBranch() -> Result< Option< String>, String>
 {
-    let  	fileDialog = rfd::FileDialog::new()
+    let  	fileDialog = rfd::AsyncFileDialog::new()
         .set_title( "Select Folder to Open");
 
-    let  	folderPath = fileDialog.pick_folder();
+    let  	folderHandle = fileDialog.pick_folder().await;
 
-    Ok( folderPath.map( |p| p.to_string_lossy().into_owned()))
+    Ok( folderHandle.map( |h| h.path().to_string_lossy().into_owned()))
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -131,6 +131,24 @@ pub fn	XplrFetchPtsPoints( path: Option< String>) -> Result< PtsPointsDto, Strin
         }
     }
     crate::fenst::XplrFetchPtsPoints( SYMPH_SPV)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Parses and returns a Wavefront .obj 3D mesh model from the specified file path.
+#[tauri::command]
+pub fn	XplrFetchWaveObj( path: Option< String>) -> Result< WaveObjMeshDto, String>
+{
+    if let Some( ref filePath) = path {
+        if !filePath.is_empty() && std::path::Path::new( filePath).exists() {
+            return crate::fenst::XplrParseWaveObjFile( filePath);
+        }
+    }
+    let  	defaultObj = "workbench/blub/blub_control_mesh.obj";
+    if std::path::Path::new( defaultObj).exists() {
+        return crate::fenst::XplrParseWaveObjFile( defaultObj);
+    }
+    Err( "No valid .obj file path provided".to_string())
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -622,6 +640,23 @@ mod _tests
             let  	dto = res.unwrap();
             assert_eq!( dto._Count, 30571);
             assert_eq!( dto._Points.len(), 30571);
+        }
+    }
+
+    #[test]
+    fn	TestWorkbenchBlubObjParsing()
+    {
+        let  	blubPath = std::path::Path::new( "workbench/blub/blub_control_mesh.obj");
+        if blubPath.exists() {
+            let  	res = XplrFetchWaveObj( Some( "workbench/blub/blub_control_mesh.obj".to_string()));
+            assert!( res.is_ok());
+            let  	dto = res.unwrap();
+            assert!( dto._VertexCount > 0);
+            assert!( dto._FaceCount > 0);
+            assert_eq!( dto._Points.len(), dto._VertexCount);
+            assert!( dto._Triangles.len() > 0);
+            assert!( dto._Edges.len() > 0);
+            assert_eq!( dto._Normals.len(), dto._Triangles.len());
         }
     }
 }

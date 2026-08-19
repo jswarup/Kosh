@@ -1,8 +1,8 @@
-//-- waveobjio.rs ------------------------------------------------------------------------------------------------------------------
+﻿//-- waveobjio.rs ------------------------------------------------------------------------------------------------------------------
 
 use	std::fmt;
 use	crate::{
-    fenst::PtsPointsDto,
+    fenst::{ PtsPointsDto, WaveObjMeshDto },
     fleck::{ Dir3f, WPt2f, WPt3f },
     flux::instream::{ FixedStream, IStream },
     shard::{ IGrammar, Parser, Charset },
@@ -204,6 +204,102 @@ impl WaveObjModel
     //-----------------------------------------------------------------------------------------------------------------------------
 
     /// Triangulates all polygon faces into triangle triples using fan triangulation.
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    /// Converts WaveObjModel to WaveObjMeshDto with vertices, triangulated indices, unique wireframe edges, and face normals.
+    pub fn	ToMeshDto( &self) -> WaveObjMeshDto
+    {
+        let  	( bboxMin, bboxMax) = self.BoundingBox();
+        let  	vertCount = self._Vertices.Size();
+        let  	arr = self._Vertices.Arr();
+        let  	pointsBuff = Buff::Create( vertCount, |i| {
+            let  	v = arr.At( i);
+            [v._X, v._Y, v._Z]
+        });
+
+        let  	mut trianglesBuff: Buff< [u32; 3]> = Buff::New();
+        let  	mut edgeSet = std::collections::HashSet::new();
+        let  	facesArr = self._Faces.Arr();
+        let  	numFaces = self._Faces.Size().AsUsize();
+
+        for fIdx in 0..numFaces {
+            let  	face = facesArr.At( U32( fIdx as u32));
+            let  	faceVertCount = face.Len();
+            if faceVertCount >= 3 {
+                let  	vertsArr = face._Vertices.Arr();
+                let  	v0Raw = vertsArr.At( U32( 0))._VertexIdx;
+                let  	v0 = if v0Raw > 0 { ( v0Raw - 1) as u32 } else { 0 };
+
+                for i in 1..( faceVertCount - 1) {
+                    let  	v1Raw = vertsArr.At( U32( i as u32))._VertexIdx;
+                    let  	v2Raw = vertsArr.At( U32( ( i + 1) as u32))._VertexIdx;
+                    let  	v1 = if v1Raw > 0 { ( v1Raw - 1) as u32 } else { 0 };
+                    let  	v2 = if v2Raw > 0 { ( v2Raw - 1) as u32 } else { 0 };
+                    trianglesBuff.Push( [v0, v1, v2]);
+                }
+
+                // Collect polygon boundary edges for wireframe
+                for i in 0..faceVertCount {
+                    let  	nextI = ( i + 1) % faceVertCount;
+                    let  	eaRaw = vertsArr.At( U32( i as u32))._VertexIdx;
+                    let  	ebRaw = vertsArr.At( U32( nextI as u32))._VertexIdx;
+                    let  	ea = if eaRaw > 0 { ( eaRaw - 1) as u32 } else { 0 };
+                    let  	eb = if ebRaw > 0 { ( ebRaw - 1) as u32 } else { 0 };
+                    let  	edge = if ea < eb { ( ea, eb) } else { ( eb, ea) };
+                    edgeSet.insert( edge);
+                }
+            }
+        }
+
+        let  	mut edgesBuff: Buff< [u32; 2]> = Buff::New();
+        for ( e0, e1) in edgeSet {
+            edgesBuff.Push( [e0, e1]);
+        }
+
+        // Compute per-triangle face normals for lighting
+        let  	triArr = trianglesBuff.Arr();
+        let  	numTriangles = trianglesBuff.Size();
+        let  	normalsBuff = Buff::Create( numTriangles, |i| {
+            let  	tri = triArr.At( i);
+            let  	p0Idx = tri[0] as usize;
+            let  	p1Idx = tri[1] as usize;
+            let  	p2Idx = tri[2] as usize;
+            if p0Idx < vertCount.AsUsize() && p1Idx < vertCount.AsUsize() && p2Idx < vertCount.AsUsize() {
+                let  	p0 = arr.At( U32( p0Idx as u32));
+                let  	p1 = arr.At( U32( p1Idx as u32));
+                let  	p2 = arr.At( U32( p2Idx as u32));
+                let  	ax = p1._X - p0._X;
+                let  	ay = p1._Y - p0._Y;
+                let  	az = p1._Z - p0._Z;
+                let  	bx = p2._X - p0._X;
+                let  	by = p2._Y - p0._Y;
+                let  	bz = p2._Z - p0._Z;
+                let  	nx = ay * bz - az * by;
+                let  	ny = az * bx - ax * bz;
+                let  	nz = ax * by - ay * bx;
+                let  	len = ( nx * nx + ny * ny + nz * nz).sqrt();
+                if len > 1e-6 {
+                    [nx / len, ny / len, nz / len]
+                } else {
+                    [0.0, 1.0, 0.0]
+                }
+            } else {
+                [0.0, 1.0, 0.0]
+            }
+        });
+
+        WaveObjMeshDto {
+            _Points:        pointsBuff,
+            _Triangles:     trianglesBuff,
+            _Edges:         edgesBuff,
+            _Normals:       normalsBuff,
+            _VertexCount:   vertCount.AsUsize(),
+            _FaceCount:     numFaces,
+            _BboxMin:       bboxMin,
+            _BboxMax:       bboxMax,
+        }
+    }
+
     pub fn	Triangulate( &self) -> Buff< [FaceVertex; 3]>
     {
         let  	mut triangles = Buff::New();

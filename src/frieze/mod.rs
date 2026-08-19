@@ -118,6 +118,7 @@ pub fn	run()
             xplrcmds::XplrListProviders,
             xplrcmds::XplrFetchChunk,
             xplrcmds::XplrFetchPtsPoints,
+            xplrcmds::XplrFetchWaveObj,
             xplrcmds::XplrOpenContentWindow,
             xplrcmds::XplrOpenPtsGraphicsWindow,
             xplrcmds::XplrProjectPts,
