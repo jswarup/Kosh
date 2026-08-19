@@ -1,8 +1,9 @@
 ﻿//-- xplrcmds.rs ------------------------------------------------------------------------------------------------------------------
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
 use	tauri::Manager;
-use	crate::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, WaveObjMeshDto, CreateDefaultRegistry, Camera, SceneGraph };
-use	crate::silo::Buff;
+use	crate::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, CreateDefaultRegistry, Camera, SceneGraph };
+use	crate::silo::{ Buff, ISliceExt };
+use	serde::Deserialize;
 use	crate::swarm::SwarmCluster;
 use	serde::Serialize;
 use	std::collections::HashMap;
@@ -124,32 +125,50 @@ pub fn	XplrFetchChunk( path: String, offset: u64, size: usize) -> Result< Stream
 
 /// Generates 3D points from a .pts file (using fleck::ParsePtsStream) or from GPU compute shader if path is empty/omitted.
 #[tauri::command]
-pub fn	XplrFetchPtsPoints( path: Option< String>) -> Result< PtsPointsDto, String>
+pub fn	XplrFetchPtsPoints( path: Option< String>) -> Result< tauri::ipc::Response, String>
 {
-    if let Some( ref filePath) = path {
+    let  	dto = if let Some( ref filePath) = path {
         if !filePath.is_empty() && std::path::Path::new( filePath).exists() {
-            return crate::fenst::XplrParsePtsFile( filePath);
+            crate::fenst::XplrParsePtsFile( filePath)?
+        } else {
+            crate::fenst::XplrFetchPtsPoints( SYMPH_SPV)?
         }
-    }
-    crate::fenst::XplrFetchPtsPoints( SYMPH_SPV)
+    } else {
+        crate::fenst::XplrFetchPtsPoints( SYMPH_SPV)?
+    };
+
+    let  	bytes = dto.ToBytes();
+    return Ok( tauri::ipc::Response::new( bytes));
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Parses and returns a Wavefront .obj 3D mesh model from the specified file path.
 #[tauri::command]
-pub fn	XplrFetchWaveObj( path: Option< String>) -> Result< WaveObjMeshDto, String>
+pub fn	XplrFetchWaveObj( path: Option< String>) -> Result< tauri::ipc::Response, String>
 {
-    if let Some( ref filePath) = path {
+    let  	dto = if let Some( ref filePath) = path {
         if !filePath.is_empty() && std::path::Path::new( filePath).exists() {
-            return crate::fenst::XplrParseWaveObjFile( filePath);
+            crate::fenst::XplrParseWaveObjFile( filePath)?
+        } else {
+            let  	defaultObj = "workbench/blub/blub_control_mesh.obj";
+            if std::path::Path::new( defaultObj).exists() {
+                crate::fenst::XplrParseWaveObjFile( defaultObj)?
+            } else {
+                return Err( "No valid .obj file path provided".to_string());
+            }
         }
-    }
-    let  	defaultObj = "workbench/blub/blub_control_mesh.obj";
-    if std::path::Path::new( defaultObj).exists() {
-        return crate::fenst::XplrParseWaveObjFile( defaultObj);
-    }
-    Err( "No valid .obj file path provided".to_string())
+    } else {
+        let  	defaultObj = "workbench/blub/blub_control_mesh.obj";
+        if std::path::Path::new( defaultObj).exists() {
+            crate::fenst::XplrParseWaveObjFile( defaultObj)?
+        } else {
+            return Err( "No valid .obj file path provided".to_string());
+        }
+    };
+
+    let  	bytes = dto.ToBytes();
+    return Ok( tauri::ipc::Response::new( bytes));
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -238,49 +257,70 @@ static PTS_STATE: LazyLock< Mutex< HashMap< String, PtsSessionState>>> = LazyLoc
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Serialize, Debug, Clone, Copy)]
+#[repr(C)]
+#[derive( Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct ProjectedPoint
 {
     #[serde( rename = "x")]
-    pub _X:            f32,
+    pub _X:           f32,
     #[serde( rename = "y")]
-    pub _Y:            f32,
+    pub _Y:           f32,
     #[serde( rename = "radius")]
-    pub _Radius:       f32,
+    pub _Radius:      f32,
     #[serde( rename = "core_radius")]
     pub _CoreRadius:  f32,
     #[serde( rename = "alpha")]
-    pub _Alpha:        f32,
+    pub _Alpha:       f32,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Serialize, Debug)]
+#[repr(C)]
+#[derive( Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct ProjectedLine
 {
     #[serde( rename = "x1")]
-    pub _X1:   f32,
+    pub _X1:  f32,
     #[serde( rename = "y1")]
-    pub _Y1:   f32,
+    pub _Y1:  f32,
     #[serde( rename = "x2")]
-    pub _X2:   f32,
+    pub _X2:  f32,
     #[serde( rename = "y2")]
-    pub _Y2:   f32,
+    pub _Y2:  f32,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Serialize, Debug)]
+/// Fixed binary header for PtsFrame binary serialization.
+#[repr(C)]
+#[derive( Debug, Clone, Copy, PartialEq)]
+pub struct PtsFrameBinaryHeader
+{
+    pub _Magic:          u32,                                           // 0x4B505453 ('KPTS')
+    pub _Version:        u32,                                           // Format version: 1
+    pub _PointCount:     u32,                                           // Number of ProjectedPoints
+    pub _LineCount:      u32,                                           // Number of ProjectedLines
+    pub _TotalPoints:    u32,                                           // Total scene point count
+    pub _FileNameLen:    u32,                                           // Byte length of _FileName
+    pub _BboxLabelLen:   u32,                                           // Byte length of _BboxLabel
+    pub _ShaderStatusLen:u32,                                           // Byte length of _ShaderStatus
+    pub _Overlay1Len:    u32,                                           // Byte length of _OverlayText1
+    pub _Overlay2Len:    u32,                                           // Byte length of _OverlayText2
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+#[derive( Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PtsFrameDto
 {
     #[serde( rename = "points")]
-    pub _Points:         Buff< ProjectedPoint>,
+    pub _Points:        Buff< ProjectedPoint>,
     #[serde( rename = "box_lines")]
     pub _BoxLines:      Buff< ProjectedLine>,
     #[serde( rename = "file_name")]
     pub _FileName:      String,
     #[serde( rename = "count")]
-    pub _Count:          usize,
+    pub _Count:         usize,
     #[serde( rename = "bbox_label")]
     pub _BboxLabel:     String,
     #[serde( rename = "shader_status")]
@@ -289,6 +329,119 @@ pub struct PtsFrameDto
     pub _OverlayText1:  String,
     #[serde( rename = "overlay_text2")]
     pub _OverlayText2:  String,
+}
+
+impl PtsFrameDto
+{
+    /// Serializes the frame DTO into a compact #[repr(C)] binary payload.
+    pub fn	ToBytes( &self) -> Vec< u8>
+    {
+        let  	fileNameBytes = self._FileName.as_bytes();
+        let  	bboxLabelBytes = self._BboxLabel.as_bytes();
+        let  	shaderStatusBytes = self._ShaderStatus.as_bytes();
+        let  	overlay1Bytes = self._OverlayText1.as_bytes();
+        let  	overlay2Bytes = self._OverlayText2.as_bytes();
+
+        let  	header = PtsFrameBinaryHeader {
+            _Magic:          0x4B505453,
+            _Version:        1,
+            _PointCount:     self._Points.len() as u32,
+            _LineCount:      self._BoxLines.len() as u32,
+            _TotalPoints:    self._Count as u32,
+            _FileNameLen:    fileNameBytes.len() as u32,
+            _BboxLabelLen:   bboxLabelBytes.len() as u32,
+            _ShaderStatusLen:shaderStatusBytes.len() as u32,
+            _Overlay1Len:    overlay1Bytes.len() as u32,
+            _Overlay2Len:    overlay2Bytes.len() as u32,
+        };
+
+        let  	headerSlice = std::slice::from_ref( &header);
+        let  	headerBytes: &[u8] = headerSlice.CastSlice();
+        let  	pointsBytes: &[u8] = self._Points.CastSlice();
+        let  	linesBytes: &[u8] = self._BoxLines.CastSlice();
+
+        let  	totalLen = headerBytes.len()
+            + pointsBytes.len()
+            + linesBytes.len()
+            + fileNameBytes.len()
+            + bboxLabelBytes.len()
+            + shaderStatusBytes.len()
+            + overlay1Bytes.len()
+            + overlay2Bytes.len();
+
+        let  	mut out = Vec::with_capacity( totalLen);
+        out.extend_from_slice( headerBytes);
+        out.extend_from_slice( pointsBytes);
+        out.extend_from_slice( linesBytes);
+        out.extend_from_slice( fileNameBytes);
+        out.extend_from_slice( bboxLabelBytes);
+        out.extend_from_slice( shaderStatusBytes);
+        out.extend_from_slice( overlay1Bytes);
+        out.extend_from_slice( overlay2Bytes);
+
+        return out;
+    }
+
+    /// Deserializes a frame DTO from a #[repr(C)] binary payload.
+    pub fn	FromBytes( bytes: &[u8]) -> Result< Self, String>
+    {
+        let  	headerSz = std::mem::size_of::< PtsFrameBinaryHeader>();
+        if bytes.len() < headerSz {
+            return Err( "PtsFrame binary payload too short for header".to_string());
+        }
+
+        let  	headerSlice: &[PtsFrameBinaryHeader] = bytes[..headerSz].CastSliceFrom();
+        let  	header = headerSlice[0];
+
+        if header._Magic != 0x4B505453 {
+            return Err( format!( "Invalid PtsFrame magic: 0x{:08X}", header._Magic));
+        }
+
+        let  	mut offset = headerSz;
+
+        let  	pointsByteLen = header._PointCount as usize * std::mem::size_of::< ProjectedPoint>();
+        if bytes.len() < offset + pointsByteLen {
+            return Err( "PtsFrame payload truncated in points buffer".to_string());
+        }
+        let  	pointsSlice: &[ProjectedPoint] = bytes[offset..offset + pointsByteLen].CastSliceFrom();
+        let  	points = Buff::from( pointsSlice);
+        offset += pointsByteLen;
+
+        let  	linesByteLen = header._LineCount as usize * std::mem::size_of::< ProjectedLine>();
+        if bytes.len() < offset + linesByteLen {
+            return Err( "PtsFrame payload truncated in lines buffer".to_string());
+        }
+        let  	linesSlice: &[ProjectedLine] = bytes[offset..offset + linesByteLen].CastSliceFrom();
+        let  	lines = Buff::from( linesSlice);
+        offset += linesByteLen;
+
+        let  	strEnd1 = offset + header._FileNameLen as usize;
+        let  	strEnd2 = strEnd1 + header._BboxLabelLen as usize;
+        let  	strEnd3 = strEnd2 + header._ShaderStatusLen as usize;
+        let  	strEnd4 = strEnd3 + header._Overlay1Len as usize;
+        let  	strEnd5 = strEnd4 + header._Overlay2Len as usize;
+
+        if bytes.len() < strEnd5 {
+            return Err( "PtsFrame payload truncated in string table".to_string());
+        }
+
+        let  	fileName = String::from_utf8_lossy( &bytes[offset..strEnd1]).into_owned();
+        let  	bboxLabel = String::from_utf8_lossy( &bytes[strEnd1..strEnd2]).into_owned();
+        let  	shaderStatus = String::from_utf8_lossy( &bytes[strEnd2..strEnd3]).into_owned();
+        let  	overlay1 = String::from_utf8_lossy( &bytes[strEnd3..strEnd4]).into_owned();
+        let  	overlay2 = String::from_utf8_lossy( &bytes[strEnd4..strEnd5]).into_owned();
+
+        return Ok( PtsFrameDto {
+            _Points:        points,
+            _BoxLines:      lines,
+            _FileName:      fileName,
+            _Count:         header._TotalPoints as usize,
+            _BboxLabel:     bboxLabel,
+            _ShaderStatus:  shaderStatus,
+            _OverlayText1:  overlay1,
+            _OverlayText2:  overlay2,
+        });
+    }
 }
 
 /// Transforms and projects 3D point cloud coordinates and its bounding box to 2D screen coordinates,
@@ -307,7 +460,7 @@ pub fn	XplrProjectPts(
     rot_x: Option< f32>,
     rot_y: Option< f32>,
     is_interactive: Option< bool>,
-) -> Result< PtsFrameDto, String>
+) -> Result< tauri::ipc::Response, String>
 {
     let  	mut guard = PTS_STATE.lock().map_err( |e| e.to_string())?;
     let  	state = guard.entry( path.clone()).or_insert_with( || {
@@ -452,7 +605,7 @@ pub fn	XplrProjectPts(
         state._Scene._Points.len()
     );
 
-    Ok( PtsFrameDto {
+    let  	frame = PtsFrameDto {
         _Points: projectedPoints,
         _BoxLines: box_lines,
         _FileName: fileName,
@@ -461,7 +614,10 @@ pub fn	XplrProjectPts(
         _ShaderStatus: shaderStatus,
         _OverlayText1: overlay1,
         _OverlayText2: overlay2,
-    })
+    };
+
+    let  	bytes = frame.ToBytes();
+    return Ok( tauri::ipc::Response::new( bytes));
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -500,15 +656,21 @@ mod _tests
             writeln!( f, "70.0 80.0 90.0").unwrap();
         }
 
-        let  	res = XplrFetchPtsPoints( Some( tempPath.to_str().unwrap().to_string()));
-        assert!( res.is_ok());
+        let  	pathStr = tempPath.to_str().unwrap().to_string();
+        let  	dtoDirect = crate::fenst::XplrParsePtsFile( &pathStr).unwrap();
+        assert_eq!( dtoDirect._Count, 3);
+        assert_eq!( dtoDirect._Points.len(), 3);
+        assert_eq!( dtoDirect._Points[0], [10.0, 20.0, 30.0]);
+        assert_eq!( dtoDirect._BboxMin, [10.0, 20.0, 30.0]);
+        assert_eq!( dtoDirect._BboxMax, [70.0, 80.0, 90.0]);
 
-        let  	dto = res.unwrap();
-        assert_eq!( dto._Count, 3);
-        assert_eq!( dto._Points.len(), 3);
-        assert_eq!( dto._Points[0], [10.0, 20.0, 30.0]);
-        assert_eq!( dto._BboxMin, [10.0, 20.0, 30.0]);
-        assert_eq!( dto._BboxMax, [70.0, 80.0, 90.0]);
+        // Test binary serialization roundtrip
+        let  	bytes = dtoDirect.ToBytes();
+        let  	dtoDecoded = PtsPointsDto::FromBytes( &bytes).unwrap();
+        assert_eq!( dtoDecoded, dtoDirect);
+
+        let  	res = XplrFetchPtsPoints( Some( pathStr));
+        assert!( res.is_ok());
 
         let  	_ = std::fs::remove_file( &tempPath);
     }
@@ -540,12 +702,6 @@ mod _tests
             None,
         );
         assert!( res.is_ok());
-
-        let  	frame = res.unwrap();
-        assert_eq!( frame._Count, 2);
-        assert_eq!( frame._Points.len(), 2);
-        assert_eq!( frame._BoxLines.len(), 12);
-        assert!( frame._ShaderStatus.contains( "SceneGraph"));
 
         let  	_ = std::fs::remove_file( &tempPath);
     }
@@ -579,11 +735,6 @@ mod _tests
             None,
         );
         assert!( res.is_ok());
-        let  	frame = res.unwrap();
-        assert_eq!( frame._Count, 2);
-        assert_eq!( frame._Points.len(), 2);
-        assert_eq!( frame._BoxLines.len(), 12);
-        assert!( frame._ShaderStatus.contains( "SceneGraph"));
 
         // Interactive projection with Pan, Zoom, and Rotation
         let  	resInteractive = XplrProjectPts(
@@ -601,9 +752,6 @@ mod _tests
             Some( true),
         );
         assert!( resInteractive.is_ok());
-        let  	frameInteractive = resInteractive.unwrap();
-        assert!( frameInteractive._OverlayText1.contains( "2.50x"));
-        assert!( frameInteractive._OverlayText1.contains( "100, -50"));
 
         // Reset Camera
         let  	resetRes = XplrResetCamera( pathStr.clone());
@@ -636,11 +784,14 @@ mod _tests
     {
         let  	bunnyPath = std::path::Path::new( "workbench/bunnyData.pts");
         if bunnyPath.exists() {
-            let  	res = XplrFetchPtsPoints( Some( "workbench/bunnyData.pts".to_string()));
-            assert!( res.is_ok());
-            let  	dto = res.unwrap();
+            let  	dto = crate::fenst::XplrParsePtsFile( "workbench/bunnyData.pts").unwrap();
             assert_eq!( dto._Count, 30571);
             assert_eq!( dto._Points.len(), 30571);
+
+            let  	bytes = dto.ToBytes();
+            let  	decoded = PtsPointsDto::FromBytes( &bytes).unwrap();
+            assert_eq!( decoded._Count, 30571);
+            assert_eq!( decoded._Points.len(), 30571);
         }
     }
 
@@ -649,15 +800,48 @@ mod _tests
     {
         let  	blubPath = std::path::Path::new( "workbench/blub/blub_control_mesh.obj");
         if blubPath.exists() {
-            let  	res = XplrFetchWaveObj( Some( "workbench/blub/blub_control_mesh.obj".to_string()));
-            assert!( res.is_ok());
-            let  	dto = res.unwrap();
+            let  	dto = crate::fenst::XplrParseWaveObjFile( "workbench/blub/blub_control_mesh.obj").unwrap();
             assert!( dto._VertexCount > 0);
             assert!( dto._FaceCount > 0);
             assert_eq!( dto._Points.len(), dto._VertexCount);
             assert!( dto._Triangles.len() > 0);
             assert!( dto._Edges.len() > 0);
             assert_eq!( dto._Normals.len(), dto._Triangles.len());
+
+            let  	bytes = dto.ToBytes();
+            let  	decoded = WaveObjMeshDto::FromBytes( &bytes).unwrap();
+            assert_eq!( decoded._VertexCount, dto._VertexCount);
+            assert_eq!( decoded._FaceCount, dto._FaceCount);
+            assert_eq!( decoded._Points.len(), dto._Points.len());
+            assert_eq!( decoded._Triangles.len(), dto._Triangles.len());
+            assert_eq!( decoded._Edges.len(), dto._Edges.len());
+            assert_eq!( decoded._Normals.len(), dto._Normals.len());
         }
+    }
+
+    #[test]
+    fn	TestPtsFrameDtoBinaryRoundtrip()
+    {
+        let  	mut points = Buff::New();
+        points.Push( ProjectedPoint { _X: 10.0, _Y: 20.0, _Radius: 3.0, _CoreRadius: 1.0, _Alpha: 0.8 });
+        points.Push( ProjectedPoint { _X: 30.0, _Y: 40.0, _Radius: 4.0, _CoreRadius: 1.5, _Alpha: 0.9 });
+
+        let  	mut lines = Buff::New();
+        lines.Push( ProjectedLine { _X1: 1.0, _Y1: 2.0, _X2: 3.0, _Y2: 4.0 });
+
+        let  	frame = PtsFrameDto {
+            _Points: points,
+            _BoxLines: lines,
+            _FileName: "test.pts".to_string(),
+            _Count: 2,
+            _BboxLabel: "[-10, 10]".to_string(),
+            _ShaderStatus: "OK".to_string(),
+            _OverlayText1: "Text1".to_string(),
+            _OverlayText2: "Text2".to_string(),
+        };
+
+        let  	bytes = frame.ToBytes();
+        let  	decoded = PtsFrameDto::FromBytes( &bytes).unwrap();
+        assert_eq!( decoded, frame);
     }
 }

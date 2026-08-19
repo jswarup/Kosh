@@ -166,7 +166,7 @@
 
         try {
             if (window.__TAURI__ && window.__TAURI__.core) {
-                const frame = await window.__TAURI__.core.invoke('xplr_project_pts', {
+                const rawFrame = await window.__TAURI__.core.invoke('xplr_project_pts', {
                     path: filePath,
                     width: width,
                     height: height,
@@ -180,6 +180,7 @@
                     rotY: rotY,
                     isInteractive: isInteractive || isDragging,
                 });
+                const frame = (typeof BinaryDecoder !== 'undefined') ? BinaryDecoder.decodePtsFrame(rawFrame) : rawFrame;
                 cachedFrame = frame;
 
                 if (titleEl && frame.file_name) titleEl.textContent = frame.file_name;

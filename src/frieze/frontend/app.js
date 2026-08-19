@@ -116,6 +116,9 @@ function normalizeContent(res) {
 
 function normalizePtsData(dto) {
     if (!dto) return null;
+    if (typeof BinaryDecoder !== 'undefined') {
+        dto = BinaryDecoder.decodePtsPoints(dto);
+    }
     return {
         points: dto.points ?? dto._points ?? [],
         count: dto.count ?? dto._count ?? 0,
@@ -126,6 +129,9 @@ function normalizePtsData(dto) {
 
 function normalizeObjData(dto) {
     if (!dto) return null;
+    if (typeof BinaryDecoder !== 'undefined') {
+        dto = BinaryDecoder.decodeWaveObj(dto);
+    }
     return {
         points: dto.points ?? dto._points ?? [],
         triangles: dto.triangles ?? dto._triangles ?? [],
@@ -470,7 +476,8 @@ function renderFileContent(tabOrContent) {
                         const radius = (2.0 + depthFactor * 2.0) * dpr;
                         ctx.fillStyle = `rgba(192, 132, 252, ${0.55 + depthFactor * 0.45})`;
                         /*
-                        ctx.fillStyle = gba(192, 132, 252, );
+                        ctx.fillStyle = 
+gba(192, 132, 252, );
                         */
                         ctx.beginPath();
                         ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
@@ -524,7 +531,8 @@ function renderFileContent(tabOrContent) {
                         ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
                         /*
 
-                        ctx.fillStyle = gb(, , );
+                        ctx.fillStyle = 
+gb(, , );
                         ctx.beginPath();
                         */
                         ctx.beginPath();

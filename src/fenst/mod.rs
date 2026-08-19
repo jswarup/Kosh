@@ -249,8 +249,42 @@ pub fn	IsObjFile( path: &str) -> bool
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
+/// Fixed binary header for PtsPoints binary serialization.
+#[repr(C)]
+#[derive( Debug, Clone, Copy, PartialEq)]
+pub struct PtsPointsBinaryHeader
+{
+    pub _Magic:       u32,                                              // 0x50545350 ('PTSP')
+    pub _Version:     u32,                                              // Format version: 1
+    pub _PointCount:  u32,                                              // Number of 3D points
+    pub _Reserved:    u32,                                              // 8-byte alignment padding
+    pub _BboxMin:     [f32; 3],                                         // Bounding box minimum
+    pub _BboxMax:     [f32; 3],                                         // Bounding box maximum
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Fixed binary header for WaveObjMesh binary serialization.
+#[repr(C)]
+#[derive( Debug, Clone, Copy, PartialEq)]
+pub struct WaveObjMeshBinaryHeader
+{
+    pub _Magic:         u32,                                            // 0x4D455348 ('MESH')
+    pub _Version:       u32,                                            // Format version: 1
+    pub _VertexCount:   u32,                                            // Number of vertex points
+    pub _FaceCount:     u32,                                            // Number of faces
+    pub _TriangleCount: u32,                                            // Number of triangles
+    pub _EdgeCount:     u32,                                            // Number of wireframe edges
+    pub _NormalCount:   u32,                                            // Number of normal vectors
+    pub _Reserved:      u32,                                            // 8-byte alignment padding
+    pub _BboxMin:       [f32; 3],                                       // Bounding box minimum
+    pub _BboxMax:       [f32; 3],                                       // Bounding box maximum
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
 /// DTO for 3D polygonal mesh data parsed from a Wavefront .obj file.
-#[derive( Serialize, Debug, Clone)]
+#[derive( Serialize, Debug, Clone, PartialEq)]
 pub struct WaveObjMeshDto
 {
     #[serde( rename = "points")]
@@ -271,10 +305,109 @@ pub struct WaveObjMeshDto
     pub _BboxMax:       [f32; 3],
 }
 
+impl WaveObjMeshDto
+{
+    /// Serializes the mesh DTO into a compact #[repr(C)] binary payload.
+    pub fn	ToBytes( &self) -> Vec< u8>
+    {
+        let  	header = WaveObjMeshBinaryHeader {
+            _Magic:         0x4D455348,
+            _Version:       1,
+            _VertexCount:   self._Points.len() as u32,
+            _FaceCount:     self._FaceCount as u32,
+            _TriangleCount: self._Triangles.len() as u32,
+            _EdgeCount:     self._Edges.len() as u32,
+            _NormalCount:   self._Normals.len() as u32,
+            _Reserved:      0,
+            _BboxMin:       self._BboxMin,
+            _BboxMax:       self._BboxMax,
+        };
+
+        let  	headerSlice = std::slice::from_ref( &header);
+        let  	headerBytes: &[u8] = headerSlice.CastSlice();
+
+        let  	pointsBytes: &[u8] = self._Points.CastSlice();
+        let  	trianglesBytes: &[u8] = self._Triangles.CastSlice();
+        let  	edgesBytes: &[u8] = self._Edges.CastSlice();
+        let  	normalsBytes: &[u8] = self._Normals.CastSlice();
+
+        let  	totalLen = headerBytes.len() + pointsBytes.len() + trianglesBytes.len() + edgesBytes.len() + normalsBytes.len();
+        let  	mut out = Vec::with_capacity( totalLen);
+
+        out.extend_from_slice( headerBytes);
+        out.extend_from_slice( pointsBytes);
+        out.extend_from_slice( trianglesBytes);
+        out.extend_from_slice( edgesBytes);
+        out.extend_from_slice( normalsBytes);
+
+        return out;
+    }
+
+    /// Deserializes a mesh DTO from a #[repr(C)] binary payload.
+    pub fn	FromBytes( bytes: &[u8]) -> Result< Self, String>
+    {
+        let  	headerSz = std::mem::size_of::< WaveObjMeshBinaryHeader>();
+        if bytes.len() < headerSz {
+            return Err( "WaveObjMesh binary payload too short for header".to_string());
+        }
+
+        let  	headerSlice: &[WaveObjMeshBinaryHeader] = bytes[..headerSz].CastSliceFrom();
+        let  	header = headerSlice[0];
+
+        if header._Magic != 0x4D455348 {
+            return Err( format!( "Invalid WaveObjMesh magic: 0x{:08X}", header._Magic));
+        }
+
+        let  	mut offset = headerSz;
+
+        let  	pointsByteLen = header._VertexCount as usize * std::mem::size_of::< [f32; 3]>();
+        if bytes.len() < offset + pointsByteLen {
+            return Err( "WaveObjMesh payload truncated in points buffer".to_string());
+        }
+        let  	pointsSlice: &[[f32; 3]] = bytes[offset..offset + pointsByteLen].CastSliceFrom();
+        let  	points = Buff::from(  pointsSlice);
+        offset += pointsByteLen;
+
+        let  	trianglesByteLen = header._TriangleCount as usize * std::mem::size_of::< [u32; 3]>();
+        if bytes.len() < offset + trianglesByteLen {
+            return Err( "WaveObjMesh payload truncated in triangles buffer".to_string());
+        }
+        let  	trianglesSlice: &[[u32; 3]] = bytes[offset..offset + trianglesByteLen].CastSliceFrom();
+        let  	triangles = Buff::from(  trianglesSlice);
+        offset += trianglesByteLen;
+
+        let  	edgesByteLen = header._EdgeCount as usize * std::mem::size_of::< [u32; 2]>();
+        if bytes.len() < offset + edgesByteLen {
+            return Err( "WaveObjMesh payload truncated in edges buffer".to_string());
+        }
+        let  	edgesSlice: &[[u32; 2]] = bytes[offset..offset + edgesByteLen].CastSliceFrom();
+        let  	edges = Buff::from(  edgesSlice);
+        offset += edgesByteLen;
+
+        let  	normalsByteLen = header._NormalCount as usize * std::mem::size_of::< [f32; 3]>();
+        if bytes.len() < offset + normalsByteLen {
+            return Err( "WaveObjMesh payload truncated in normals buffer".to_string());
+        }
+        let  	normalsSlice: &[[f32; 3]] = bytes[offset..offset + normalsByteLen].CastSliceFrom();
+        let  	normals = Buff::from(  normalsSlice);
+
+        return Ok( WaveObjMeshDto {
+            _Points:        points,
+            _Triangles:     triangles,
+            _Edges:         edges,
+            _Normals:       normals,
+            _VertexCount:   header._VertexCount as usize,
+            _FaceCount:     header._FaceCount as usize,
+            _BboxMin:       header._BboxMin,
+            _BboxMax:       header._BboxMax,
+        });
+    }
+}
+
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// DTO for 3D point cloud data generated by the GPU compute shader.
-#[derive( Serialize, Debug)]
+#[derive( Serialize, Debug, Clone, PartialEq)]
 pub struct PtsPointsDto
 {
     #[serde( rename = "points")]
@@ -285,6 +418,63 @@ pub struct PtsPointsDto
     pub _BboxMin:    [f32; 3],
     #[serde( rename = "bbox_max")]
     pub _BboxMax:    [f32; 3],
+}
+
+impl PtsPointsDto
+{
+    /// Serializes the point cloud DTO into a compact #[repr(C)] binary payload.
+    pub fn	ToBytes( &self) -> Vec< u8>
+    {
+        let  	header = PtsPointsBinaryHeader {
+            _Magic:       0x50545350,
+            _Version:     1,
+            _PointCount:  self._Points.len() as u32,
+            _Reserved:    0,
+            _BboxMin:     self._BboxMin,
+            _BboxMax:     self._BboxMax,
+        };
+
+        let  	headerSlice = std::slice::from_ref( &header);
+        let  	headerBytes: &[u8] = headerSlice.CastSlice();
+        let  	pointsBytes: &[u8] = self._Points.CastSlice();
+
+        let  	mut out = Vec::with_capacity( headerBytes.len() + pointsBytes.len());
+        out.extend_from_slice( headerBytes);
+        out.extend_from_slice( pointsBytes);
+
+        return out;
+    }
+
+    /// Deserializes a point cloud DTO from a #[repr(C)] binary payload.
+    pub fn	FromBytes( bytes: &[u8]) -> Result< Self, String>
+    {
+        let  	headerSz = std::mem::size_of::< PtsPointsBinaryHeader>();
+        if bytes.len() < headerSz {
+            return Err( "PtsPoints binary payload too short for header".to_string());
+        }
+
+        let  	headerSlice: &[PtsPointsBinaryHeader] = bytes[..headerSz].CastSliceFrom();
+        let  	header = headerSlice[0];
+
+        if header._Magic != 0x50545350 {
+            return Err( format!( "Invalid PtsPoints magic: 0x{:08X}", header._Magic));
+        }
+
+        let  	pointsByteLen = header._PointCount as usize * std::mem::size_of::< [f32; 3]>();
+        if bytes.len() < headerSz + pointsByteLen {
+            return Err( "PtsPoints payload truncated in points buffer".to_string());
+        }
+
+        let  	pointsSlice: &[[f32; 3]] = bytes[headerSz..headerSz + pointsByteLen].CastSliceFrom();
+        let  	points = Buff::from(  pointsSlice);
+
+        return Ok( PtsPointsDto {
+            _Points:     points,
+            _Count:      header._PointCount as usize,
+            _BboxMin:    header._BboxMin,
+            _BboxMax:    header._BboxMax,
+        });
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
