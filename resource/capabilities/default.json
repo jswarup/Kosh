@@ -1,5 +1,5 @@
 {
-  "$schema": "../gen/schemas/desktop-schema.json",
+  "$schema": "../../out/gen/schemas/desktop-schema.json",
   "identifier": "main-capability",
   "description": "Capability for application windows",
   "windows": ["*"],

@@ -347,7 +347,7 @@ pub fn	XplrProjectPts(
         width,
         height,
         dpr,
-        Some( SYMPH_SPV),
+        None,
     );
 
     if let Ok( sceneFrame) = sceneResult {

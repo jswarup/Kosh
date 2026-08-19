@@ -31,7 +31,8 @@ fn	TestJsonOutStream()
         jsonStream.KeyField( "prices", FieldExp::FluxSource( &arr));
     }
 
-    fs::write( "a.json", output).unwrap();
+    let  	_ = fs::create_dir_all( "out/gen");
+    fs::write( "out/gen/a.json", output).unwrap();
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

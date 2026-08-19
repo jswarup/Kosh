@@ -7,4 +7,5 @@ scratch/
 ./scratch.*
 rust-gpu-tmp/
 /gen/
+/out/
 /tauri.conf.json
