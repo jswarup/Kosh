@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.kosh.fenst",
   "build": {
-    "frontendDist": "./resource/frontend",
+    "frontendDist": "./src/frieze/frontend",
     "beforeDevCommand": "",
     "beforeBuildCommand": ""
   },
@@ -34,10 +34,10 @@
     "active": true,
     "targets": "all",
     "icon": [
-      "resource/icons/32x32.png",
-      "resource/icons/128x128.png",
-      "resource/icons/icon.ico",
-      "resource/icons/icon.png"
+      "src/frieze/icons/32x32.png",
+      "src/frieze/icons/128x128.png",
+      "src/frieze/icons/icon.ico",
+      "src/frieze/icons/icon.png"
     ]
   }
 }
