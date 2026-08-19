@@ -3,46 +3,12 @@
 use	std::fmt;
 use	crate::{
     fenst::PtsPointsDto,
-    fleck::{ Dir3f, Pt4f },
+    fleck::{ Dir3f, WPt2f, WPt3f },
     flux::instream::{ FixedStream, IStream },
     shard::{ IGrammar, Parser, Charset },
     silo::{ Buff, IAccess, U32, U8 },
     ShardTree,
 };
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-/// Represents a texture coordinate (u, v, w) in parameter space.
-#[derive( Clone, Copy, Debug, PartialEq)]
-pub struct TexCoord
-{
-    pub _U: f32,
-    pub _V: f32,
-    pub _W: f32,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl TexCoord
-{
-    pub fn	New( u: f32, v: f32) -> Self
-    {
-        Self {
-            _U: u,
-            _V: v,
-            _W: 0.0,
-        }
-    }
-
-    pub fn	WithW( u: f32, v: f32, w: f32) -> Self
-    {
-        Self {
-            _U: u,
-            _V: v,
-            _W: w,
-        }
-    }
-}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -138,8 +104,8 @@ impl Face
 #[derive( Clone)]
 pub struct WaveObjModel
 {
-    pub _Vertices:    Buff< Pt4f>,
-    pub _TexCoords:   Buff< TexCoord>,
+    pub _Vertices:    Buff< WPt3f>,
+    pub _TexCoords:   Buff< WPt2f>,
     pub _Normals:     Buff< Dir3f>,
     pub _Faces:       Buff< Face>,
     pub _Objects:     Buff< String>,
@@ -357,16 +323,16 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
                             let  	nums: Vec< f32> = tokens.filter_map( |t| t.parse::< f32>().ok()).collect();
                             if nums.len() >= 3 {
                                 let  	w = if nums.len() >= 4 { nums[3] } else { 1.0 };
-                                model._Vertices.Push( Pt4f::WithW( nums[0], nums[1], nums[2], w));
+                                model._Vertices.Push( WPt3f::WithW( nums[0], nums[1], nums[2], w));
                             }
                         }
                         "vt" => {
                             let  	nums: Vec< f32> = tokens.filter_map( |t| t.parse::< f32>().ok()).collect();
                             if nums.len() >= 2 {
                                 let  	w = if nums.len() >= 3 { nums[2] } else { 0.0 };
-                                model._TexCoords.Push( TexCoord::WithW( nums[0], nums[1], w));
+                                model._TexCoords.Push( WPt2f::WithW( nums[0], nums[1], w));
                             } else if nums.len() == 1 {
-                                model._TexCoords.Push( TexCoord::New( nums[0], 0.0));
+                                model._TexCoords.Push( WPt2f::New( nums[0], 0.0));
                             }
                         }
                         "vn" => {

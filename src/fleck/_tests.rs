@@ -439,23 +439,43 @@ fn	TestPt3fBasicOps()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
-fn	TestPt4fBasicOps()
+fn	TestWPt3fBasicOps()
 {
-    use	crate::fleck::Pt4f;
+    use	crate::fleck::WPt3f;
 
-    let  	pt = Pt4f::New( 1.0, 2.0, 3.0);
+    let  	pt = WPt3f::New( 1.0, 2.0, 3.0);
     assert_eq!( pt._X, 1.0);
     assert_eq!( pt._Y, 2.0);
     assert_eq!( pt._Z, 3.0);
     assert_eq!( pt._W, 1.0);
     assert_eq!( pt.Pos(), [1.0, 2.0, 3.0]);
 
-    let  	ptW = Pt4f::WithW( 4.0, 5.0, 6.0, 2.0);
+    let  	ptW = WPt3f::WithW( 4.0, 5.0, 6.0, 2.0);
     assert_eq!( ptW._W, 2.0);
 
-    let  	defaultPt = Pt4f::default();
+    let  	defaultPt = WPt3f::default();
     assert_eq!( defaultPt.Pos(), [0.0, 0.0, 0.0]);
     assert_eq!( defaultPt._W, 0.0);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestWPt2fBasicOps()
+{
+    use	crate::fleck::WPt2f;
+
+    let  	pt = WPt2f::New( 0.25, 0.75);
+    assert_eq!( pt._U, 0.25);
+    assert_eq!( pt._V, 0.75);
+    assert_eq!( pt._W, 0.0);
+    assert_eq!( pt.Pos(), [0.25, 0.75]);
+
+    let  	ptW = WPt2f::WithW( 0.1, 0.2, 0.3);
+    assert_eq!( ptW._W, 0.3);
+
+    let  	defaultPt = WPt2f::default();
+    assert_eq!( defaultPt.Pos(), [0.0, 0.0]);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -473,6 +493,292 @@ fn	TestDir3fBasicOps()
 
     let  	defaultDir = Dir3f::default();
     assert_eq!( defaultDir.Vec(), [0.0, 0.0, 0.0]);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestVexBasicConstructorsAndAccessors()
+{
+    use	crate::fleck::vex::{ Vex2f, Vex3d, Vex3f, Vex3i, Vex4f };
+
+    let  	v2 = Vex2f::New2( 3.0, 4.0);
+    assert_eq!( v2.X(), 3.0);
+    assert_eq!( v2.Y(), 4.0);
+    assert_eq!( v2._Data, [3.0, 4.0]);
+
+    let  	mut v3 = Vex3f::New3( 1.0, 2.0, 3.0);
+    assert_eq!( v3.X(), 1.0);
+    assert_eq!( v3.Y(), 2.0);
+    assert_eq!( v3.Z(), 3.0);
+    v3.SetX( 10.0);
+    v3.SetY( 20.0);
+    v3.SetZ( 30.0);
+    assert_eq!( v3.AsArray(), &[10.0, 20.0, 30.0]);
+
+    let  	v4 = Vex4f::New4( 1.0, 2.0, 3.0, 4.0);
+    assert_eq!( v4.W(), 4.0);
+
+    let  	splat = Vex3f::Splat( 5.0);
+    assert_eq!( splat._Data, [5.0, 5.0, 5.0]);
+
+    let  	mapped = v2.Map( |c| c * 2.0);
+    assert_eq!( mapped._Data, [6.0, 8.0]);
+
+    let  	zipped = v2.ZipMap( &mapped, |a, b| a + b);
+    assert_eq!( zipped._Data, [9.0, 12.0]);
+
+    let  	vInt = Vex3i::New3( 10, -20, 30);
+    assert_eq!( vInt.X(), 10);
+    assert_eq!( vInt.Y(), -20);
+    assert_eq!( vInt.Z(), 30);
+
+    let  	vDouble = Vex3d::New3( 1.5, 2.5, 3.5);
+    assert_eq!( vDouble.X(), 1.5);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestVexByValueAndByRefOperators()
+{
+    use	crate::fleck::vex::Vex3f;
+
+    let  	a = Vex3f::New3( 1.0, 2.0, 3.0);
+    let  	b = Vex3f::New3( 4.0, 5.0, 6.0);
+
+    // Val + Val
+    let  	sumValVal = a + b;
+    assert_eq!( sumValVal._Data, [5.0, 7.0, 9.0]);
+
+    // Ref + Ref
+    let  	sumRefRef = &a + &b;
+    assert_eq!( sumRefRef._Data, [5.0, 7.0, 9.0]);
+
+    // Ref + Val
+    let  	sumRefVal = &a + b;
+    assert_eq!( sumRefVal._Data, [5.0, 7.0, 9.0]);
+
+    // Val + Ref
+    let  	sumValRef = a + &b;
+    assert_eq!( sumValRef._Data, [5.0, 7.0, 9.0]);
+
+    // Subtraction
+    let  	diffRefRef = &b - &a;
+    assert_eq!( diffRefRef._Data, [3.0, 3.0, 3.0]);
+    let  	diffValVal = b - a;
+    assert_eq!( diffValVal._Data, [3.0, 3.0, 3.0]);
+
+    // Negation
+    let  	negVal = -a;
+    assert_eq!( negVal._Data, [-1.0, -2.0, -3.0]);
+    let  	negRef = -&a;
+    assert_eq!( negRef._Data, [-1.0, -2.0, -3.0]);
+
+    // Hadamard Multiplication
+    let  	hadamard = &a * &b;
+    assert_eq!( hadamard._Data, [4.0, 10.0, 18.0]);
+
+    // Component-wise Division
+    let  	quotient = &b / &a;
+    assert_eq!( quotient._Data, [4.0, 2.5, 2.0]);
+
+    // Compound Assignments
+    let  	mut acc = a;
+    acc += &b;
+    assert_eq!( acc._Data, [5.0, 7.0, 9.0]);
+    acc -= &b;
+    assert_eq!( acc._Data, [1.0, 2.0, 3.0]);
+    acc *= &b;
+    assert_eq!( acc._Data, [4.0, 10.0, 18.0]);
+    acc /= &b;
+    assert_eq!( acc._Data, [1.0, 2.0, 3.0]);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestVexScalarArithmetic()
+{
+    use	crate::fleck::vex::{ Vex3d, Vex3f, Vex3i };
+
+    let  	vf = Vex3f::New3( 2.0, 3.0, 4.0);
+    let  	sf = 2.5f32;
+
+    // Vector * Scalar
+    assert_eq!( ( vf * sf)._Data, [5.0, 7.5, 10.0]);
+    assert_eq!( ( &vf * sf)._Data, [5.0, 7.5, 10.0]);
+    assert_eq!( ( &vf * &sf)._Data, [5.0, 7.5, 10.0]);
+    assert_eq!( ( vf * &sf)._Data, [5.0, 7.5, 10.0]);
+
+    // Scalar * Vector
+    assert_eq!( ( sf * vf)._Data, [5.0, 7.5, 10.0]);
+    assert_eq!( ( &sf * &vf)._Data, [5.0, 7.5, 10.0]);
+    assert_eq!( ( &sf * vf)._Data, [5.0, 7.5, 10.0]);
+    assert_eq!( ( sf * &vf)._Data, [5.0, 7.5, 10.0]);
+
+    // Vector / Scalar
+    assert_eq!( ( vf / 2.0f32)._Data, [1.0, 1.5, 2.0]);
+    assert_eq!( ( &vf / 2.0f32)._Data, [1.0, 1.5, 2.0]);
+    assert_eq!( ( &vf / &2.0f32)._Data, [1.0, 1.5, 2.0]);
+
+    // Compound Scalar Assignments
+    let  	mut mutV = vf;
+    mutV *= 2.0f32;
+    assert_eq!( mutV._Data, [4.0, 6.0, 8.0]);
+    mutV /= 2.0f32;
+    assert_eq!( mutV._Data, [2.0, 3.0, 4.0]);
+
+    // Integer Scalar Multiplication
+    let  	vi = Vex3i::New3( 1, -2, 3);
+    assert_eq!( ( vi * 3i32)._Data, [3, -6, 9]);
+    assert_eq!( ( 3i32 * vi)._Data, [3, -6, 9]);
+
+    // Double Scalar Multiplication
+    let  	vd = Vex3d::New3( 1.0, 2.0, 3.0);
+    assert_eq!( ( vd * 0.5f64)._Data, [0.5, 1.0, 1.5]);
+    assert_eq!( ( 0.5f64 * vd)._Data, [0.5, 1.0, 1.5]);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestVexVectorSpaceAndInnerProduct()
+{
+    use	crate::fleck::vex::{ Cross, Dot, ICrossProduct, IInnerProductSpace, IVectorSpace, Lerp, Vex3f };
+
+    let  	zero = Vex3f::Zero();
+    assert!( zero.IsZero());
+
+    let  	u = Vex3f::New3( 1.0, 0.0, 0.0);
+    let  	v = Vex3f::New3( 0.0, 1.0, 0.0);
+    assert!( !u.IsZero());
+
+    // Dot product
+    assert_eq!( u.Dot( &v), 0.0);
+    assert_eq!( Dot( &u, &v), 0.0);
+
+    let  	w = Vex3f::New3( 3.0, 4.0, 0.0);
+    assert_eq!( w.MagnitudeSquared(), 25.0);
+    assert_eq!( w.Magnitude(), 5.0);
+
+    // Normalization
+    let  	normW = w.Normalized().unwrap();
+    assert_eq!( normW._Data, [0.6, 0.8, 0.0]);
+    assert_eq!( normW.Magnitude(), 1.0);
+
+    // Distance
+    let  	p1 = Vex3f::New3( 1.0, 2.0, 3.0);
+    let  	p2 = Vex3f::New3( 4.0, 6.0, 3.0);
+    assert_eq!( p1.DistanceSquared( &p2), 25.0);
+    assert_eq!( p1.Distance( &p2), 5.0);
+
+    // Angle
+    let  	angleRad = u.Angle( &v);
+    let  	piOver2 = std::f32::consts::FRAC_PI_2;
+    assert!( ( angleRad - piOver2).abs() < 1e-5);
+
+    // Projection and Rejection
+    let  	vecA = Vex3f::New3( 3.0, 3.0, 0.0);
+    let  	vecB = Vex3f::New3( 5.0, 0.0, 0.0);
+    let  	proj = vecA.Project( &vecB).unwrap();
+    assert_eq!( proj._Data, [3.0, 0.0, 0.0]);
+
+    let  	reject = vecA.Reject( &vecB).unwrap();
+    assert_eq!( reject._Data, [0.0, 3.0, 0.0]);
+
+    // Reflection (ray hitting a horizontal surface facing up)
+    let  	inRay = Vex3f::New3( 1.0, -1.0, 0.0);
+    let  	normal = Vex3f::New3( 0.0, 1.0, 0.0);
+    let  	reflected = inRay.Reflect( &normal);
+    assert_eq!( reflected._Data, [1.0, 1.0, 0.0]);
+
+    // Linear Interpolation (Lerp)
+    let  	start = Vex3f::New3( 0.0, 0.0, 0.0);
+    let  	end = Vex3f::New3( 10.0, 20.0, 30.0);
+    let  	mid = start.Lerp( &end, 0.5);
+    assert_eq!( mid._Data, [5.0, 10.0, 15.0]);
+    assert_eq!( Lerp( &start, &end, 0.5)._Data, [5.0, 10.0, 15.0]);
+
+    // Cross Product
+    let  	cross = u.Cross( &v);
+    assert_eq!( cross._Data, [0.0, 0.0, 1.0]);
+    assert_eq!( Cross( &u, &v)._Data, [0.0, 0.0, 1.0]);
+
+    // Orthogonality of cross product
+    let  	aRnd = Vex3f::New3( 2.5, -3.1, 4.2);
+    let  	bRnd = Vex3f::New3( 1.1, 7.8, -0.9);
+    let  	cRnd = aRnd.Cross( &bRnd);
+    assert!( cRnd.Dot( &aRnd).abs() < 1e-4);
+    assert!( cRnd.Dot( &bRnd).abs() < 1e-4);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestVexIndexingAndConversionInterop()
+{
+    use	crate::fleck::{ Dir3f, Pt3f, WPt2f, WPt3f };
+    use	crate::fleck::vex::{ Vex2f, Vex3f, Vex4f };
+    use	crate::silo::{ U32, U64 };
+
+    let  	mut v = Vex3f::New3( 10.0, 20.0, 30.0);
+
+    // Indexing
+    assert_eq!( v[0], 10.0);
+    assert_eq!( v[1], 20.0);
+    assert_eq!( v[2], 30.0);
+
+    v[U32( 1)] = 99.0;
+    assert_eq!( v[1], 99.0);
+
+    v[U64( 2)] = 123.0;
+    assert_eq!( v[2], 123.0);
+
+    // From / Into tuples
+    let  	v2: Vex2f = ( 1.0, 2.0).into();
+    assert_eq!( v2._Data, [1.0, 2.0]);
+
+    let  	v3: Vex3f = ( 1.0, 2.0, 3.0).into();
+    assert_eq!( v3._Data, [1.0, 2.0, 3.0]);
+
+    let  	v4: Vex4f = ( 1.0, 2.0, 3.0, 4.0).into();
+    assert_eq!( v4._Data, [1.0, 2.0, 3.0, 4.0]);
+
+    // Iterators
+    let  	collected: Vec< f32> = v.into_iter().collect();
+    assert_eq!( collected, vec![10.0, 99.0, 123.0]);
+
+    // Pt3f Interop
+    let  	pt = Pt3f::New( 1.0, 2.0, 3.0);
+    let  	vPt: Vex3f = pt.into();
+    assert_eq!( vPt._Data, [1.0, 2.0, 3.0]);
+    let  	backPt: Pt3f = vPt.into();
+    assert_eq!( backPt, pt);
+
+    // Dir3f Interop
+    let  	dir = Dir3f::New( 0.0, 1.0, 0.0);
+    let  	vDir: Vex3f = dir.into();
+    assert_eq!( vDir._Data, [0.0, 1.0, 0.0]);
+    let  	backDir: Dir3f = vDir.into();
+    assert_eq!( backDir, dir);
+
+    // WPt3f Interop
+    let  	wpt3 = WPt3f::WithW( 1.0, 2.0, 3.0, 0.5);
+    let  	vWpt3: Vex4f = wpt3.into();
+    assert_eq!( vWpt3._Data, [1.0, 2.0, 3.0, 0.5]);
+    let  	backWpt3: WPt3f = vWpt3.into();
+    assert_eq!( backWpt3, wpt3);
+
+    // WPt2f Interop
+    let  	wpt2 = WPt2f::New( 4.0, 5.0);
+    let  	vWpt2: Vex2f = wpt2.into();
+    assert_eq!( vWpt2._Data, [4.0, 5.0]);
+    let  	backWpt2: WPt2f = vWpt2.into();
+    assert_eq!( backWpt2, wpt2);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
