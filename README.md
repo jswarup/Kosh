@@ -84,6 +84,7 @@ graph TD
 | **`heist`** | Asynchronous workflow DAG orchestrator and scheduler | `Atelier<'a>`, `Maestro<'a>`, `Chore`, `ChoreTarget`, `JobInfo`, `AtelierInfo` | `IChoreNode`, `ChoreTree!`, `Chore!`, `CpuChore!`, `GpuAutoChore!` | [Heist.md](wiki/Heist.md) |
 | **`fleck`** | 3D Point Cloud (.pts) parsing and spatial bounding boxes | `PtsPoint`, `Point32`, `RGB`, `PtsCloud`, `PtsShard<'a>` | `ParsePts`, `ParsePtsStream`, `ToDto` | [Fleck.md](wiki/Fleck.md) |
 | **`fenst`** | Virtual data provider framework, Tauri desktop explorer, and 3D visualizer | `XplrEntry`, `XplrContent`, `XplrLeafInfo`, `FsBranch`, `FsLeaf`, `FrescoBranch`, `ShardBranch`, `XplrRegistry`, `PtsSessionState`, `PtsFrameDto` | `Xplr`, `LeafXplr`, `BranchXplr`, `XplrProvider`, `CreateDefaultRegistry`, Tauri command API | [Fenst.md](wiki/Fenst.md) |
+| **`frieze`** | Tauri frontend assets, application icons, and GUI configuration | HTML/JavaScript/CSS files, PNG/ICO icons, capability manifests | N/A (static assets & config) | [Frieze.md](wiki/Frieze.md) |
 
 ---
 

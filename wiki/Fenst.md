@@ -9,6 +9,8 @@ The `fenst` module provides Kosh with an **extensible virtual explorer, Tauri de
 4. **Desktop GUI Application**: Tauri v2 desktop shell with native menus, multi-windowing, and IPC command handlers (`fenst::xplrcmds`).
 5. **Interactive 3D Point Cloud Visualizer**: Real-time perspective projection (`Project3d`), rotating wireframe bounding box, and GPU-computed point rendering.
 
+> **Note**: Frontend assets, icons, and Tauri configuration for the desktop GUI are located in the [`frieze`](Frieze.md) module (`src/frieze/`).
+
 ---
 
 ## 2. Architecture & Class Diagram
@@ -83,21 +85,21 @@ classDiagram
 flowchart TD
     Frontend["Tauri Frontend (WebGL/Canvas/HTML)"] -->|Invokes 'XplrProjectPts'| BackendCmd["fenst::xplrcmds::XplrProjectPts"]
     BackendCmd --> CheckState["Lookup or Initialize PtsSessionState (Singleton)"]
-    
+
     CheckState -->|If initial load| GenPoints["Generate points via GPU Compute Shader (symph::pts_pointcloud_cs)"]
     GenPoints --> InitBBox["Initialize Bounding Box [-20, -20, -20] to [20, 20, 20]"]
     InitBBox --> RotateState["Update angle_x and angle_y based on speed/interaction"]
-    
+
     CheckState -->|Existing session| RotateState
     RotateState --> Cluster["Dispatch ProjectSceneCluster via SwarmCluster (Multi-GPU)"]
     Cluster --> ShardGPU0["GPU 0 / Primary (Viewport Projection Chunk 0)"]
     Cluster --> ShardGPU1["GPU 1..N / Aux (Async Projection Chunks 1..N)"]
     Cluster --> GPUBox["GPU Bounding Box Wireframe (RunCameraTransform)"]
-    
+
     ShardGPU0 --> MergeResults["Concatenate Projected Shards"]
     ShardGPU1 --> MergeResults
     GPUBox --> ConnectBox["Assemble 12 Projected Bounding Box Lines"]
-    
+
     ConnectBox --> AssembleDto["Assemble PtsFrameDto"]
     MergeResults --> AssembleDto
     AssembleDto --> ReturnJSON["Return serializable frame DTO to Frontend for 60+ FPS redraw"]

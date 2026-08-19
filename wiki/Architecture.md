@@ -18,6 +18,7 @@ The Kosh codebase is structured into four distinct functional tiers:
 graph TD
     subgraph Layer4 ["Tier 4: Presentation & Applications"]
         Fenst["fenst<br/>Tauri Desktop Explorer, Visualizer & Data Provider Hub"]
+        Frieze["frieze<br/>Frontend Assets, Icons & Tauri Configuration"]
     end
 
     subgraph Layer3 ["Tier 3: Domain Subsystems"]
@@ -43,6 +44,7 @@ graph TD
     Fenst --> Flux
     Fenst --> Swarm
     Fenst --> Silo
+    Fenst --> Frieze
 
     Fleck --> Shard
     Fleck --> Flux
@@ -89,6 +91,7 @@ graph TD
 
 ### Tier 4: Applications & Desktop Explorer
 - **[`fenst`](Fenst.md)**: Extensible virtual explorer and embedded Tauri desktop GUI subsystem. It defines unified tree interfaces (`Xplr`, `LeafXplr`, `BranchXplr`), pluggable provider registries (`XplrRegistry`) supporting filesystem (`FsProvider`), AST grammars (`ShardProvider`), and symbolic algebra (`FrescoProvider`), plus 3D point-cloud windows and IPC commands (`xplrcmds`). Launching `cargo run` opens Fenst by default, while `--test` dispatches test execution.
+- **[`frieze`](Frieze.md)**: Frontend resources, icons, and Tauri application configuration. Contains HTML/JavaScript/CSS UI assets, multi-resolution platform icons, Tauri capability manifests, and `tauri.conf.json` metadata. Built into the desktop application bundle during `cargo build`.
 
 ---
 
