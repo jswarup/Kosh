@@ -65,9 +65,10 @@ pub fn	XplrLeafInfo( path: String) -> Result< crate::fenst::XplrLeafInfo, String
 
 /// Shows a native dialog to pick a folder.
 #[tauri::command]
-pub async fn	XplrSelectBranch() -> Result< Option< String>, String>
+pub async fn	XplrSelectBranch( window: tauri::Window) -> Result< Option< String>, String>
 {
     let  	fileDialog = rfd::AsyncFileDialog::new()
+        .set_parent( &window)
         .set_title( "Select Folder to Open");
 
     let  	folderHandle = fileDialog.pick_folder().await;
