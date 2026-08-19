@@ -1,11 +1,11 @@
-//-- vex.rs ----------------------------------------------------------------------------------------------------------------------
+﻿//-- vex.rs ----------------------------------------------------------------------------------------------------------------------
 
 use	std::fmt;
 use	std::ops::{
     Add, AddAssign, Deref, DerefMut, Div, DivAssign, Index, IndexMut, Mul,
     MulAssign, Neg, Sub, SubAssign,
 };
-use	crate::silo::{ U32, U64 };
+use	crate::silo::{ Buff, U8, U16, U32, U64 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -42,155 +42,147 @@ pub trait IScalar:
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IScalar for f32
-{
-    const ZERO: Self = 0.0;
-    const ONE: Self = 1.0;
+macro_rules! ImplScalar {
+    ( float: $( $t:ty ),* ) => {
+        $(
+            impl IScalar for $t
+            {
+                const ZERO: Self = 0.0;
+                const ONE: Self = 1.0;
 
-    fn	Sqrt( self) -> Self
-    {
-        self.sqrt()
-    }
+                #[inline]
+                fn	Sqrt( self) -> Self
+                {
+                    self.sqrt()
+                }
 
-    fn	Abs( self) -> Self
-    {
-        self.abs()
-    }
+                #[inline]
+                fn	Abs( self) -> Self
+                {
+                    self.abs()
+                }
 
-    fn	Cos( self) -> Self
-    {
-        self.cos()
-    }
+                #[inline]
+                fn	Cos( self) -> Self
+                {
+                    self.cos()
+                }
 
-    fn	Sin( self) -> Self
-    {
-        self.sin()
-    }
+                #[inline]
+                fn	Sin( self) -> Self
+                {
+                    self.sin()
+                }
 
-    fn	FromF32( val: f32) -> Self
-    {
-        val
-    }
+                #[inline]
+                fn	FromF32( val: f32) -> Self
+                {
+                    val as $t
+                }
 
-    fn	ToF64( self) -> f64
-    {
-        self as f64
-    }
+                #[inline]
+                fn	ToF64( self) -> f64
+                {
+                    self as f64
+                }
+            }
+        )*
+    };
+    ( int: $( $t:ty ),* ) => {
+        $(
+            impl IScalar for $t
+            {
+                const ZERO: Self = 0;
+                const ONE: Self = 1;
+
+                #[inline]
+                fn	Sqrt( self) -> Self
+                {
+                    ( ( self as f64).sqrt()) as $t
+                }
+
+                #[inline]
+                fn	Abs( self) -> Self
+                {
+                    self.abs()
+                }
+
+                #[inline]
+                fn	Cos( self) -> Self
+                {
+                    ( ( self as f64).cos()) as $t
+                }
+
+                #[inline]
+                fn	Sin( self) -> Self
+                {
+                    ( ( self as f64).sin()) as $t
+                }
+
+                #[inline]
+                fn	FromF32( val: f32) -> Self
+                {
+                    val as $t
+                }
+
+                #[inline]
+                fn	ToF64( self) -> f64
+                {
+                    self as f64
+                }
+            }
+        )*
+    };
+    ( uint: $( $t:ident ),* ) => {
+        $(
+            impl IScalar for $t
+            {
+                const ZERO: Self = $t::_0;
+                const ONE: Self = $t::_1;
+
+                #[inline]
+                fn	Sqrt( self) -> Self
+                {
+                    $t( ( ( self.0 as f64).sqrt()) as _)
+                }
+
+                #[inline]
+                fn	Abs( self) -> Self
+                {
+                    self
+                }
+
+                #[inline]
+                fn	Cos( self) -> Self
+                {
+                    $t( ( ( self.0 as f64).cos()) as _)
+                }
+
+                #[inline]
+                fn	Sin( self) -> Self
+                {
+                    $t( ( ( self.0 as f64).sin()) as _)
+                }
+
+                #[inline]
+                fn	FromF32( val: f32) -> Self
+                {
+                    $t( val as _)
+                }
+
+                #[inline]
+                fn	ToF64( self) -> f64
+                {
+                    self.0 as f64
+                }
+            }
+        )*
+    };
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IScalar for f64
-{
-    const ZERO: Self = 0.0;
-    const ONE: Self = 1.0;
-
-    fn	Sqrt( self) -> Self
-    {
-        self.sqrt()
-    }
-
-    fn	Abs( self) -> Self
-    {
-        self.abs()
-    }
-
-    fn	Cos( self) -> Self
-    {
-        self.cos()
-    }
-
-    fn	Sin( self) -> Self
-    {
-        self.sin()
-    }
-
-    fn	FromF32( val: f32) -> Self
-    {
-        val as f64
-    }
-
-    fn	ToF64( self) -> f64
-    {
-        self
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IScalar for i32
-{
-    const ZERO: Self = 0;
-    const ONE: Self = 1;
-
-    fn	Sqrt( self) -> Self
-    {
-        ( ( self as f64).sqrt()) as i32
-    }
-
-    fn	Abs( self) -> Self
-    {
-        self.abs()
-    }
-
-    fn	Cos( self) -> Self
-    {
-        ( ( self as f64).cos()) as i32
-    }
-
-    fn	Sin( self) -> Self
-    {
-        ( ( self as f64).sin()) as i32
-    }
-
-    fn	FromF32( val: f32) -> Self
-    {
-        val as i32
-    }
-
-    fn	ToF64( self) -> f64
-    {
-        self as f64
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IScalar for i64
-{
-    const ZERO: Self = 0;
-    const ONE: Self = 1;
-
-    fn	Sqrt( self) -> Self
-    {
-        ( ( self as f64).sqrt()) as i64
-    }
-
-    fn	Abs( self) -> Self
-    {
-        self.abs()
-    }
-
-    fn	Cos( self) -> Self
-    {
-        ( ( self as f64).cos()) as i64
-    }
-
-    fn	Sin( self) -> Self
-    {
-        ( ( self as f64).sin()) as i64
-    }
-
-    fn	FromF32( val: f32) -> Self
-    {
-        val as i64
-    }
-
-    fn	ToF64( self) -> f64
-    {
-        self as f64
-    }
-}
+ImplScalar!( float: f32, f64);
+ImplScalar!( int: i8, i16, i32, i64, isize);
+ImplScalar!( uint: U8, U16, U32, U64);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -210,7 +202,7 @@ pub trait IVectorSpace:
 {
     type Scalar: IScalar;
 
-    fn	Dim() -> usize;
+    fn	Dim( &self) -> usize;
 
     fn	Zero() -> Self;
 
@@ -507,7 +499,7 @@ impl< T: IScalar, const N: usize> IVectorSpace for Vex< T, N>
 {
     type Scalar = T;
 
-    fn	Dim() -> usize
+    fn	Dim( &self) -> usize
     {
         N
     }
@@ -1336,6 +1328,619 @@ impl< 'a, T, const N: usize> IntoIterator for &'a mut Vex< T, N>
     fn	into_iter( self) -> Self::IntoIter
     {
         self._Data.iter_mut()
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T: IScalar> IVectorSpace for Buff< T>
+{
+    type Scalar = T;
+
+    fn	Dim( &self) -> usize
+    {
+        self.len()
+    }
+
+    fn	Zero() -> Self
+    {
+        Buff::New()
+    }
+
+    fn	IsZero( &self) -> bool
+    {
+        let  	mut idx = 0;
+        while idx < self.len() {
+            if self[idx] != T::ZERO {
+                return false;
+            }
+            idx += 1;
+        }
+        return true;
+    }
+
+    fn	Scale( &self, s: Self::Scalar) -> Self
+    {
+        self * s
+    }
+
+    fn	ScaleAssign( &mut self, s: Self::Scalar)
+    {
+        *self *= s;
+    }
+
+    fn	Lerp( &self, other: &Self, t: Self::Scalar) -> Self
+    {
+        assert_eq!( self.len(), other.len(), "Dimension mismatch in Buff Lerp");
+        let  	oneMinusT = T::ONE - t;
+        let  	mut result = Buff::Create( self.len() as u32, |_| T::ZERO);
+        let  	mut idx = 0;
+        while idx < self.len() {
+            result[idx] = self[idx] * oneMinusT + other[idx] * t;
+            idx += 1;
+        }
+        return result;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T: IScalar> IInnerProductSpace for Buff< T>
+{
+    fn	Dot( &self, rhs: &Self) -> Self::Scalar
+    {
+        assert_eq!( self.len(), rhs.len(), "Dimension mismatch in Buff Dot product");
+        let  	mut sum = T::ZERO;
+        let  	mut idx = 0;
+        while idx < self.len() {
+            sum += self[idx] * rhs[idx];
+            idx += 1;
+        }
+        return sum;
+    }
+
+    fn	MagnitudeSquared( &self) -> Self::Scalar
+    {
+        self.Dot( self)
+    }
+
+    fn	Magnitude( &self) -> Self::Scalar
+    {
+        self.MagnitudeSquared().Sqrt()
+    }
+
+    fn	Normalized( &self) -> Option< Self>
+    {
+        let  	mag = self.Magnitude();
+        if mag == T::ZERO {
+            return None;
+        }
+        return Some( self / mag);
+    }
+
+    fn	DistanceSquared( &self, other: &Self) -> Self::Scalar
+    {
+        ( self - other).MagnitudeSquared()
+    }
+
+    fn	Distance( &self, other: &Self) -> Self::Scalar
+    {
+        ( self - other).Magnitude()
+    }
+
+    fn	Angle( &self, other: &Self) -> Self::Scalar
+    {
+        let  	denom = self.Magnitude() * other.Magnitude();
+        if denom == T::ZERO {
+            return T::ZERO;
+        }
+        let  	cosTheta = self.Dot( other) / denom;
+        let  	clampedCos = if cosTheta > T::ONE {
+            T::ONE
+        } else if cosTheta < -T::ONE {
+            -T::ONE
+        } else {
+            cosTheta
+        };
+        let  	rad = ( clampedCos.ToF64()).acos();
+        return T::FromF32( rad as f32);
+    }
+
+    fn	Project( &self, onto: &Self) -> Option< Self>
+    {
+        let  	ontoMagSq = onto.MagnitudeSquared();
+        if ontoMagSq == T::ZERO {
+            return None;
+        }
+        let  	scaleFactor = self.Dot( onto) / ontoMagSq;
+        return Some( onto * scaleFactor);
+    }
+
+    fn	Reject( &self, from: &Self) -> Option< Self>
+    {
+        let  	proj = self.Project( from)?;
+        return Some( self - &proj);
+    }
+
+    fn	Reflect( &self, normal: &Self) -> Self
+    {
+        let  	scale = T::FromF32( 2.0) * self.Dot( normal);
+        return self - &( normal * scale);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T: IScalar> Buff< T>
+{
+    pub fn	ZeroVec( dim: usize) -> Self
+    {
+        Buff::Create( dim as u32, |_| T::ZERO)
+    }
+
+    pub fn	Splat( val: T, dim: usize) -> Self
+    {
+        Buff::Create( dim as u32, |_| val)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+// Operator Overloads: Buff<T> + Buff<T>
+
+impl< T: IScalar> Add< Buff< T>> for Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	add( self, rhs: Buff< T>) -> Self::Output
+    {
+        &self + &rhs
+    }
+}
+
+impl< 'a, 'b, T: IScalar> Add< &'b Buff< T>> for &'a Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	add( self, rhs: &'b Buff< T>) -> Self::Output
+    {
+        assert_eq!( self.len(), rhs.len(), "Dimension mismatch in Buff addition");
+        let  	mut result = Buff::Create( self.len() as u32, |_| T::ZERO);
+        let  	mut idx = 0;
+        while idx < self.len() {
+            result[idx] = self[idx] + rhs[idx];
+            idx += 1;
+        }
+        return result;
+    }
+}
+
+impl< 'a, T: IScalar> Add< Buff< T>> for &'a Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	add( self, rhs: Buff< T>) -> Self::Output
+    {
+        self + &rhs
+    }
+}
+
+impl< 'b, T: IScalar> Add< &'b Buff< T>> for Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	add( self, rhs: &'b Buff< T>) -> Self::Output
+    {
+        &self + rhs
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+// Operator Overloads: Buff<T> - Buff<T>
+
+impl< T: IScalar> Sub< Buff< T>> for Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	sub( self, rhs: Buff< T>) -> Self::Output
+    {
+        &self - &rhs
+    }
+}
+
+impl< 'a, 'b, T: IScalar> Sub< &'b Buff< T>> for &'a Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	sub( self, rhs: &'b Buff< T>) -> Self::Output
+    {
+        assert_eq!( self.len(), rhs.len(), "Dimension mismatch in Buff subtraction");
+        let  	mut result = Buff::Create( self.len() as u32, |_| T::ZERO);
+        let  	mut idx = 0;
+        while idx < self.len() {
+            result[idx] = self[idx] - rhs[idx];
+            idx += 1;
+        }
+        return result;
+    }
+}
+
+impl< 'a, T: IScalar> Sub< Buff< T>> for &'a Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	sub( self, rhs: Buff< T>) -> Self::Output
+    {
+        self - &rhs
+    }
+}
+
+impl< 'b, T: IScalar> Sub< &'b Buff< T>> for Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	sub( self, rhs: &'b Buff< T>) -> Self::Output
+    {
+        &self - rhs
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+// Operator Overloads: -Buff<T>
+
+impl< T: IScalar> Neg for Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	neg( self) -> Self::Output
+    {
+        -&self
+    }
+}
+
+impl< 'a, T: IScalar> Neg for &'a Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	neg( self) -> Self::Output
+    {
+        let  	mut result = Buff::Create( self.len() as u32, |_| T::ZERO);
+        let  	mut idx = 0;
+        while idx < self.len() {
+            result[idx] = -self[idx];
+            idx += 1;
+        }
+        return result;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+// Operator Overloads: Buff<T> * Buff<T> (Hadamard element-wise multiplication)
+
+impl< T: IScalar> Mul< Buff< T>> for Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	mul( self, rhs: Buff< T>) -> Self::Output
+    {
+        &self * &rhs
+    }
+}
+
+impl< 'a, 'b, T: IScalar> Mul< &'b Buff< T>> for &'a Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	mul( self, rhs: &'b Buff< T>) -> Self::Output
+    {
+        assert_eq!( self.len(), rhs.len(), "Dimension mismatch in Buff Hadamard multiplication");
+        let  	mut result = Buff::Create( self.len() as u32, |_| T::ZERO);
+        let  	mut idx = 0;
+        while idx < self.len() {
+            result[idx] = self[idx] * rhs[idx];
+            idx += 1;
+        }
+        return result;
+    }
+}
+
+impl< 'a, T: IScalar> Mul< Buff< T>> for &'a Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	mul( self, rhs: Buff< T>) -> Self::Output
+    {
+        self * &rhs
+    }
+}
+
+impl< 'b, T: IScalar> Mul< &'b Buff< T>> for Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	mul( self, rhs: &'b Buff< T>) -> Self::Output
+    {
+        &self * rhs
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+// Operator Overloads: Buff<T> / Buff<T> (Hadamard element-wise division)
+
+impl< T: IScalar> Div< Buff< T>> for Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	div( self, rhs: Buff< T>) -> Self::Output
+    {
+        &self / &rhs
+    }
+}
+
+impl< 'a, 'b, T: IScalar> Div< &'b Buff< T>> for &'a Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	div( self, rhs: &'b Buff< T>) -> Self::Output
+    {
+        assert_eq!( self.len(), rhs.len(), "Dimension mismatch in Buff Hadamard division");
+        let  	mut result = Buff::Create( self.len() as u32, |_| T::ZERO);
+        let  	mut idx = 0;
+        while idx < self.len() {
+            result[idx] = self[idx] / rhs[idx];
+            idx += 1;
+        }
+        return result;
+    }
+}
+
+impl< 'a, T: IScalar> Div< Buff< T>> for &'a Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	div( self, rhs: Buff< T>) -> Self::Output
+    {
+        self / &rhs
+    }
+}
+
+impl< 'b, T: IScalar> Div< &'b Buff< T>> for Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	div( self, rhs: &'b Buff< T>) -> Self::Output
+    {
+        &self / rhs
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+// In-place Assignment Operators: Buff<T> +=, -=, *=, /= Buff<T>
+
+impl< T: IScalar> AddAssign< Buff< T>> for Buff< T>
+{
+    fn	add_assign( &mut self, rhs: Buff< T>)
+    {
+        *self += &rhs;
+    }
+}
+
+impl< 'a, T: IScalar> AddAssign< &'a Buff< T>> for Buff< T>
+{
+    fn	add_assign( &mut self, rhs: &'a Buff< T>)
+    {
+        assert_eq!( self.len(), rhs.len(), "Dimension mismatch in Buff AddAssign");
+        let  	mut idx = 0;
+        while idx < self.len() {
+            self[idx] += rhs[idx];
+            idx += 1;
+        }
+    }
+}
+
+impl< T: IScalar> SubAssign< Buff< T>> for Buff< T>
+{
+    fn	sub_assign( &mut self, rhs: Buff< T>)
+    {
+        *self -= &rhs;
+    }
+}
+
+impl< 'a, T: IScalar> SubAssign< &'a Buff< T>> for Buff< T>
+{
+    fn	sub_assign( &mut self, rhs: &'a Buff< T>)
+    {
+        assert_eq!( self.len(), rhs.len(), "Dimension mismatch in Buff SubAssign");
+        let  	mut idx = 0;
+        while idx < self.len() {
+            self[idx] -= rhs[idx];
+            idx += 1;
+        }
+    }
+}
+
+impl< T: IScalar> MulAssign< Buff< T>> for Buff< T>
+{
+    fn	mul_assign( &mut self, rhs: Buff< T>)
+    {
+        *self *= &rhs;
+    }
+}
+
+impl< 'a, T: IScalar> MulAssign< &'a Buff< T>> for Buff< T>
+{
+    fn	mul_assign( &mut self, rhs: &'a Buff< T>)
+    {
+        assert_eq!( self.len(), rhs.len(), "Dimension mismatch in Buff MulAssign");
+        let  	mut idx = 0;
+        while idx < self.len() {
+            self[idx] *= rhs[idx];
+            idx += 1;
+        }
+    }
+}
+
+impl< T: IScalar> DivAssign< Buff< T>> for Buff< T>
+{
+    fn	div_assign( &mut self, rhs: Buff< T>)
+    {
+        *self /= &rhs;
+    }
+}
+
+impl< 'a, T: IScalar> DivAssign< &'a Buff< T>> for Buff< T>
+{
+    fn	div_assign( &mut self, rhs: &'a Buff< T>)
+    {
+        assert_eq!( self.len(), rhs.len(), "Dimension mismatch in Buff DivAssign");
+        let  	mut idx = 0;
+        while idx < self.len() {
+            self[idx] /= rhs[idx];
+            idx += 1;
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+// Scalar Scaling Operators: Buff<T> * T, Buff<T> / T
+
+impl< T: IScalar> Mul< T> for Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	mul( self, rhs: T) -> Self::Output
+    {
+        &self * rhs
+    }
+}
+
+impl< 'a, T: IScalar> Mul< T> for &'a Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	mul( self, rhs: T) -> Self::Output
+    {
+        let  	mut result = Buff::Create( self.len() as u32, |_| T::ZERO);
+        let  	mut idx = 0;
+        while idx < self.len() {
+            result[idx] = self[idx] * rhs;
+            idx += 1;
+        }
+        return result;
+    }
+}
+
+impl< 'a, 'b, T: IScalar> Mul< &'b T> for &'a Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	mul( self, rhs: &'b T) -> Self::Output
+    {
+        self * *rhs
+    }
+}
+
+impl< 'b, T: IScalar> Mul< &'b T> for Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	mul( self, rhs: &'b T) -> Self::Output
+    {
+        &self * *rhs
+    }
+}
+
+impl< T: IScalar> Div< T> for Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	div( self, rhs: T) -> Self::Output
+    {
+        &self / rhs
+    }
+}
+
+impl< 'a, T: IScalar> Div< T> for &'a Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	div( self, rhs: T) -> Self::Output
+    {
+        let  	mut result = Buff::Create( self.len() as u32, |_| T::ZERO);
+        let  	mut idx = 0;
+        while idx < self.len() {
+            result[idx] = self[idx] / rhs;
+            idx += 1;
+        }
+        return result;
+    }
+}
+
+impl< 'a, 'b, T: IScalar> Div< &'b T> for &'a Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	div( self, rhs: &'b T) -> Self::Output
+    {
+        self / *rhs
+    }
+}
+
+impl< 'b, T: IScalar> Div< &'b T> for Buff< T>
+{
+    type Output = Buff< T>;
+
+    fn	div( self, rhs: &'b T) -> Self::Output
+    {
+        &self / *rhs
+    }
+}
+
+impl< T: IScalar> MulAssign< T> for Buff< T>
+{
+    fn	mul_assign( &mut self, rhs: T)
+    {
+        let  	mut idx = 0;
+        while idx < self.len() {
+            self[idx] *= rhs;
+            idx += 1;
+        }
+    }
+}
+
+impl< 'a, T: IScalar> MulAssign< &'a T> for Buff< T>
+{
+    fn	mul_assign( &mut self, rhs: &'a T)
+    {
+        *self *= *rhs;
+    }
+}
+
+impl< T: IScalar> DivAssign< T> for Buff< T>
+{
+    fn	div_assign( &mut self, rhs: T)
+    {
+        let  	mut idx = 0;
+        while idx < self.len() {
+            self[idx] /= rhs;
+            idx += 1;
+        }
+    }
+}
+
+impl< 'a, T: IScalar> DivAssign< &'a T> for Buff< T>
+{
+    fn	div_assign( &mut self, rhs: &'a T)
+    {
+        *self /= *rhs;
     }
 }
 

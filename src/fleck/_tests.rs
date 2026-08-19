@@ -1,4 +1,4 @@
-//-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
+﻿//-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 
 use	crate::{
     fleck::ptio::{ ParsePts, ParsePtsBytes, ParsePtsStream, PtsCloud, PtsShard },
@@ -779,6 +779,159 @@ fn	TestVexIndexingAndConversionInterop()
     assert_eq!( vWpt2._Data, [4.0, 5.0]);
     let  	backWpt2: WPt2f = vWpt2.into();
     assert_eq!( backWpt2, wpt2);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestVexWithUIntScalarTypes()
+{
+    use	crate::fleck::vex::{ Dot, IScalar, Vex };
+    use	crate::silo::{ U16, U32, U64, U8 };
+
+    // Test IScalar methods on UInt types
+    assert_eq!( U32::ZERO, U32( 0));
+    assert_eq!( U32::ONE, U32( 1));
+    assert_eq!( U32( 16).Sqrt(), U32( 4));
+    assert_eq!( U32( 42).Abs(), U32( 42));
+    assert_eq!( U32::FromF32( 12.75), U32( 12));
+    assert_eq!( U32( 100).ToF64(), 100.0);
+
+    // Test Vex< U32, 3> construction and algebra
+    let  	v1 = Vex::< U32, 3>::New( [ U32( 10), U32( 20), U32( 30) ]);
+    let  	v2 = Vex::< U32, 3>::New( [ U32( 1), U32( 2), U32( 3) ]);
+
+    let  	sum = v1 + v2;
+    assert_eq!( sum._Data, [ U32( 11), U32( 22), U32( 33) ]);
+
+    let  	diff = v1 - v2;
+    assert_eq!( diff._Data, [ U32( 9), U32( 18), U32( 27) ]);
+
+    let  	scaled = v1 * U32( 2);
+    assert_eq!( scaled._Data, [ U32( 20), U32( 40), U32( 60) ]);
+
+    let  	dot = Dot( &v1, &v2);
+    assert_eq!( dot, U32( 10 * 1 + 20 * 2 + 30 * 3));
+
+    // Test Vex< U8, 4>
+    let  	vU8_1 = Vex::< U8, 4>::New( [ U8( 10), U8( 20), U8( 30), U8( 40) ]);
+    let  	vU8_2 = Vex::< U8, 4>::New( [ U8( 5), U8( 10), U8( 15), U8( 20) ]);
+    let  	sumU8 = vU8_1 + vU8_2;
+    assert_eq!( sumU8._Data, [ U8( 15), U8( 30), U8( 45), U8( 60) ]);
+
+    // Test Vex< U16, 2>
+    let  	vU16_1 = Vex::< U16, 2>::New( [ U16( 300), U16( 400) ]);
+    let  	vU16_2 = Vex::< U16, 2>::New( [ U16( 100), U16( 200) ]);
+    let  	diffU16 = vU16_1 - vU16_2;
+    assert_eq!( diffU16._Data, [ U16( 200), U16( 200) ]);
+
+    // Test Vex< U64, 2>
+    let  	vU64_1 = Vex::< U64, 2>::New( [ U64( 100), U64( 200) ]);
+    let  	vU64_2 = Vex::< U64, 2>::New( [ U64( 50), U64( 25) ]);
+    let  	dotU64 = Dot( &vU64_1, &vU64_2);
+    assert_eq!( dotU64, U64( 100 * 50 + 200 * 25));
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestBuffVectorSpaceAndInnerProduct()
+{
+    use	crate::fleck::vex::{ IInnerProductSpace, IVectorSpace };
+    use	crate::silo::{ Buff, U32, U8 };
+
+    // 1. Float Vector Space (4D Euclidean space)
+    let  	b1 = Buff![ 1.0f32, 2.0, 3.0, 4.0 ];
+    let  	b2 = Buff![ 5.0f32, 6.0, 7.0, 8.0 ];
+
+    assert_eq!( b1.Dim(), 4);
+    assert!( !b1.IsZero());
+    assert!( Buff::< f32>::Zero().IsZero());
+
+    // Addition & Subtraction
+    let  	sum = &b1 + &b2;
+    assert_eq!( sum, Buff![ 6.0f32, 8.0, 10.0, 12.0 ]);
+
+    let  	diff = &b2 - &b1;
+    assert_eq!( diff, Buff![ 4.0f32, 4.0, 4.0, 4.0 ]);
+
+    // Negation
+    let  	negB1 = -&b1;
+    assert_eq!( negB1, Buff![ -1.0f32, -2.0, -3.0, -4.0 ]);
+
+    // Scalar multiplication & division
+    let  	scaled = &b1 * 2.0f32;
+    assert_eq!( scaled, Buff![ 2.0f32, 4.0, 6.0, 8.0 ]);
+
+    let  	divScaled = &scaled / 2.0f32;
+    assert_eq!( divScaled, b1);
+
+    // In-place operators
+    let  	mut bMut = b1.clone();
+    bMut += &b2;
+    assert_eq!( bMut, Buff![ 6.0f32, 8.0, 10.0, 12.0 ]);
+    bMut *= 0.5f32;
+    assert_eq!( bMut, Buff![ 3.0f32, 4.0, 5.0, 6.0 ]);
+
+    // Inner product (Dot product)
+    // 1*5 + 2*6 + 3*7 + 4*8 = 5 + 12 + 21 + 32 = 70
+    let  	dot = b1.Dot( &b2);
+    assert_eq!( dot, 70.0f32);
+
+    // Magnitude & Normalization (3D: 3, 4, 0 -> mag = 5)
+    let  	b3d = Buff![ 3.0f32, 4.0, 0.0 ];
+    assert_eq!( b3d.MagnitudeSquared(), 25.0f32);
+    assert_eq!( b3d.Magnitude(), 5.0f32);
+
+    let  	norm = b3d.Normalized().unwrap();
+    assert_eq!( norm, Buff![ 0.6f32, 0.8, 0.0 ]);
+    assert!( ( norm.Magnitude() - 1.0f32).abs() < 1e-6);
+
+    // Distance
+    let  	ptA = Buff![ 0.0f32, 0.0, 0.0 ];
+    let  	ptB = Buff![ 0.0f32, 3.0, 4.0 ];
+    assert_eq!( ptA.Distance( &ptB), 5.0f32);
+    assert_eq!( ptA.DistanceSquared( &ptB), 25.0f32);
+
+    // Lerp
+    let  	lerpRes = b1.Lerp( &b2, 0.5f32);
+    assert_eq!( lerpRes, Buff![ 3.0f32, 4.0, 5.0, 6.0 ]);
+
+    // Projection & Rejection
+    let  	u = Buff![ 1.0f32, 0.0, 0.0 ];
+    let  	v = Buff![ 3.0f32, 4.0, 0.0 ];
+    let  	proj = v.Project( &u).unwrap();
+    assert_eq!( proj, Buff![ 3.0f32, 0.0, 0.0 ]);
+
+    let  	rej = v.Reject( &u).unwrap();
+    assert_eq!( rej, Buff![ 0.0f32, 4.0, 0.0 ]);
+
+    // Reflection: (3, 4) reflected across normal (0, 1) -> (3, -4)
+    let  	normY = Buff![ 0.0f32, 1.0, 0.0 ];
+    let  	refl = v.Reflect( &normY);
+    assert_eq!( refl, Buff![ 3.0f32, -4.0, 0.0 ]);
+
+    // 2. Custom UInt Vector Space (5D space with U32)
+    let  	vUInt1 = Buff![ U32( 10), U32( 20), U32( 30), U32( 40), U32( 50) ];
+    let  	vUInt2 = Buff![ U32( 1), U32( 2), U32( 3), U32( 4), U32( 5) ];
+
+    let  	sumUInt = &vUInt1 + &vUInt2;
+    assert_eq!( sumUInt, Buff![ U32( 11), U32( 22), U32( 33), U32( 44), U32( 55) ]);
+
+    let  	scaledUInt = &vUInt1 * U32( 3);
+    assert_eq!( scaledUInt, Buff![ U32( 30), U32( 60), U32( 90), U32( 120), U32( 150) ]);
+
+    // Dot product: 10*1 + 20*2 + 30*3 + 40*4 + 50*5 = 10 + 40 + 90 + 160 + 250 = 550
+    let  	dotUInt = vUInt1.Dot( &vUInt2);
+    assert_eq!( dotUInt, U32( 550));
+
+    // ZeroVec & Splat
+    let  	zeroBuff = Buff::< U8>::ZeroVec( 8);
+    assert_eq!( zeroBuff.len(), 8);
+    assert!( zeroBuff.IsZero());
+
+    let  	splatBuff = Buff::< U8>::Splat( U8( 255), 4);
+    assert_eq!( splatBuff, Buff![ U8( 255), U8( 255), U8( 255), U8( 255) ]);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
