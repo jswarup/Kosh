@@ -1,12 +1,12 @@
-# Module Reference: `fenst` & `frieze`
+# Module Reference: `fenst`
 
 ## 1. Overview & Purpose
 
-The `fenst` (core library) and `frieze` (Tauri desktop application) modules provide Kosh with an **extensible virtual explorer, document viewer, and GPU-accelerated 3D point cloud visualizer**. Key features include:
+The `fenst` module provides Kosh with an **extensible virtual explorer, Tauri desktop document viewer, and GPU-accelerated 3D point cloud visualizer**. Key features include:
 1. **Virtual Explorer Abstraction (`Xplr`, `LeafXplr`, `BranchXplr`)**: Uniform node interface across filesystems, AST grammar trees, and symbolic expressions.
 2. **Provider Registry (`XplrRegistry`)**: URL scheme-based provider routing (`file://`, `expr://`, `ast://`).
 3. **High-Performance Content Streaming**: Windowed chunk reading (`XplrFetchChunk`) and safe size-guarded file readers (`XplrFetchContent`).
-4. **Desktop GUI Application (`frieze`)**: Tauri v2 desktop shell with native menus, multi-windowing, and IPC command handlers (`xplrcmds`).
+4. **Desktop GUI Application**: Tauri v2 desktop shell with native menus, multi-windowing, and IPC command handlers (`fenst::xplrcmds`).
 5. **Interactive 3D Point Cloud Visualizer**: Real-time perspective projection (`Project3d`), rotating wireframe bounding box, and GPU-computed point rendering.
 
 ---
@@ -81,7 +81,7 @@ classDiagram
 
 ```mermaid
 flowchart TD
-    Frontend["Tauri Frontend (WebGL/Canvas/HTML)"] -->|Invokes 'XplrProjectPts'| BackendCmd["frieze::xplrcmds::XplrProjectPts"]
+    Frontend["Tauri Frontend (WebGL/Canvas/HTML)"] -->|Invokes 'XplrProjectPts'| BackendCmd["fenst::xplrcmds::XplrProjectPts"]
     BackendCmd --> CheckState["Lookup or Initialize PtsSessionState (Singleton)"]
     
     CheckState -->|If initial load| GenPoints["Generate points via GPU Compute Shader (symph::pts_pointcloud_cs)"]
@@ -149,7 +149,7 @@ z_2 &= y \sin(\theta_x) + z_1 \cos(\theta_x) \\
 - `StreamChunkDto`: Chunk slice (`path`, `offset`, `length`, `total_size`, `is_eof`, `content`).
 - `PtsPointsDto`: Raw point cloud data (`points: Buff<[f32; 3]>`, `count`, `bbox_min`, `bbox_max`).
 
-### GUI Frame DTOs (`frieze::xplrcmds.rs`)
+### GUI Frame DTOs (`fenst::xplrcmds.rs`)
 - `ProjectedPoint`: 2D projected point (`x`, `y`, `radius`, `core_radius`, `color`).
 - `ProjectedLine`: 2D projected line segment (`x1`, `y1`, `x2`, `y2`).
 - `PtsFrameDto`: Complete frame payload containing points, wireframe lines, status text, and bounding box labels.

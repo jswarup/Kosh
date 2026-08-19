@@ -1,6 +1,6 @@
-//-- lib.rs -----------------------------------------------------------------------------------------------------------------------
+//-- app.rs -----------------------------------------------------------------------------------------------------------------
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
-pub mod xplrcmds;
+use	super::xplrcmds;
 
 use	tauri::Manager;
 use	tauri::menu::{ Menu, MenuItem, PredefinedMenuItem, Submenu };
@@ -52,7 +52,7 @@ fn	build_menu( app: &tauri::App) -> Result< Menu< tauri::Wry>, tauri::Error>
     ])?;
 
     // Help menu
-    let  	about = MenuItem::with_id( app, "about", "About Frieze", true, None::< &str>)?;
+    let  	about = MenuItem::with_id( app, "about", "About Fenst", true, None::< &str>)?;
 
     let  	helpMenu = Submenu::with_items( app, "Help", true, &[
         &about,
@@ -71,7 +71,7 @@ fn	build_menu( app: &tauri::App) -> Result< Menu< tauri::Wry>, tauri::Error>
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Run the Tauri application.
+/// Run the Fenst Tauri application.
 pub fn	run()
 {
     tauri::Builder::default()
@@ -125,7 +125,7 @@ pub fn	run()
             xplrcmds::XplrResetCamera,
         ])
         .run( tauri::generate_context!())
-        .expect( "error while running Frieze application");
+    .expect( "error while running Fenst application");
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------

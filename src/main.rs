@@ -87,7 +87,7 @@ fn	main() -> Result< ()>
         std::env::set_var( "WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS", "1");
     }
 
-    kosh::frieze::run();
+    kosh::fenst::run();
     Ok( ())
 }
 

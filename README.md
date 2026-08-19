@@ -14,8 +14,7 @@
 ```mermaid
 graph TD
     subgraph AppLayer ["Presentation & GUI Layer"]
-        Frieze["<b>frieze</b><br/>Tauri v2 Desktop App<br/>Multi-window & 3D WebGL Canvas"]
-        Fenst["<b>fenst</b><br/>Virtual File Explorer Hub<br/>(file://, expr://, ast://)"]
+        Fenst["<b>fenst</b><br/>Tauri v2 Desktop Explorer & Visualizer<br/>(file://, expr://, ast://)"]
     end
 
     subgraph DomainLayer ["Domain Engines & File Formats"]
@@ -39,8 +38,6 @@ graph TD
         Silo["<b>silo</b><br/>Memory Buffers (Buff, Arr),<br/>Custom Unsigned Math (U8..U64)"]
     end
 
-    Frieze --> Fenst
-    Frieze --> Symph
     Fenst --> Silo
     Fenst --> Flux
     Fenst --> Swarm
@@ -86,8 +83,7 @@ graph TD
 | **`symph`** | `#![no_std]` Rust-GPU SPIR-V compute kernels and algorithms | Pure SIMT functions (`wang_hash`, `collatz`, `pointcloud_elem`, `double_elem`, `vector_add_elem`) | SPIR-V Shaders (`pts_pointcloud_cs`, `camera_transform_cs`, `frustum_cull_cs`, `scene_vs`, `scene_fs`) | [Swarm.md](wiki/Swarm.md) |
 | **`heist`** | Asynchronous workflow DAG orchestrator and scheduler | `Atelier<'a>`, `Maestro<'a>`, `Chore`, `ChoreTarget`, `JobInfo`, `AtelierInfo` | `IChoreNode`, `ChoreTree!`, `Chore!`, `CpuChore!`, `GpuAutoChore!` | [Heist.md](wiki/Heist.md) |
 | **`fleck`** | 3D Point Cloud (.pts) parsing and spatial bounding boxes | `PtsPoint`, `Point32`, `RGB`, `PtsCloud`, `PtsShard<'a>` | `ParsePts`, `ParsePtsStream`, `ToDto` | [Fleck.md](wiki/Fleck.md) |
-| **`fenst`** | Virtual data provider framework and explorer backend | `XplrEntry`, `XplrContent`, `XplrLeafInfo`, `FsBranch`, `FsLeaf`, `FrescoBranch`, `ShardBranch`, `XplrRegistry` | `Xplr`, `LeafXplr`, `BranchXplr`, `XplrProvider`, `CreateDefaultRegistry` | [Fenst.md](wiki/Fenst.md) |
-| **`frieze`** | Tauri desktop GUI application & 3D wireframe visualizer | `PtsSessionState`, `ProjectedPoint`, `ProjectedLine`, `PtsFrameDto`, `xplrcmds` IPC handlers | Tauri Command API, Desktop Menu System, Multi-Windowing | [Fenst.md](wiki/Fenst.md) |
+| **`fenst`** | Virtual data provider framework, Tauri desktop explorer, and 3D visualizer | `XplrEntry`, `XplrContent`, `XplrLeafInfo`, `FsBranch`, `FsLeaf`, `FrescoBranch`, `ShardBranch`, `XplrRegistry`, `PtsSessionState`, `PtsFrameDto` | `Xplr`, `LeafXplr`, `BranchXplr`, `XplrProvider`, `CreateDefaultRegistry`, Tauri command API | [Fenst.md](wiki/Fenst.md) |
 
 ---
 
@@ -137,7 +133,7 @@ cargo test --release -- --nocapture
 ### Running Kosh CLI
 The Kosh root binary provides a built-in CLI runner and integrated test harness:
 ```powershell
-# Default launch: Opens the Frieze 3D GUI visualizer application
+# Default launch: Opens the Fenst desktop explorer and 3D visualizer
 cargo run
 
 # Run in optimized release mode
@@ -168,4 +164,4 @@ Explore the full in-depth documentation in the **[wiki/](wiki/Architecture.md)**
 - **[Swarm & Symph (GPU/CPU Compute)](wiki/Swarm.md)**
 - **[Heist (Chore DAG Orchestration)](wiki/Heist.md)**
 - **[Fleck (Point Cloud Parsing)](wiki/Fleck.md)**
-- **[Fenst & Frieze (Virtual Explorer & Desktop GUI)](wiki/Fenst.md)**
+- **[Fenst (Virtual Explorer & Desktop GUI)](wiki/Fenst.md)**

@@ -17,8 +17,7 @@ The Kosh codebase is structured into four distinct functional tiers:
 ```mermaid
 graph TD
     subgraph Layer4 ["Tier 4: Presentation & Applications"]
-        Frieze["frieze<br/>Desktop GUI App (Tauri v2, Multi-window, 3D Canvas)"]
-        Fenst["fenst<br/>Virtual File Explorer & Data Provider Hub"]
+        Fenst["fenst<br/>Tauri Desktop Explorer, Visualizer & Data Provider Hub"]
     end
 
     subgraph Layer3 ["Tier 3: Domain Subsystems"]
@@ -39,8 +38,6 @@ graph TD
         Silo["silo<br/>Memory Buffers, Slices, Custom Unsigned Numerics"]
     end
 
-    Frieze --> Fenst
-    Frieze --> Symph
     Fenst --> Shard
     Fenst --> Fresco
     Fenst --> Flux
@@ -91,8 +88,7 @@ graph TD
 - **[`fleck`](Fleck.md)**: High-throughput 3D point cloud processing. Parses ASCII and binary `.pts` files into `PtsCloud` using custom `Shard` grammars (`PtsShard`), computing bounding boxes, intensity, and RGB color channels.
 
 ### Tier 4: Applications & Desktop Explorer
-- **[`fenst`](Fenst.md)**: Extensible virtual explorer framework. Defines unified tree interfaces (`Xplr`, `LeafXplr`, `BranchXplr`) and pluggable provider registries (`XplrRegistry`) supporting filesystem (`FsProvider`), AST grammars (`ShardProvider`), and symbolic algebra (`FrescoProvider`).
-- **[`frieze`](Fenst.md)**: Embedded desktop GUI subsystem built on Tauri v2. Merged directly into the root `kosh` binary, it renders interactive 3D point clouds, provides multi-window document views, and handles IPC commands (`xplrcmds`). Launching `cargo run` opens Frieze by default, while `--test` dispatches test execution.
+- **[`fenst`](Fenst.md)**: Extensible virtual explorer and embedded Tauri desktop GUI subsystem. It defines unified tree interfaces (`Xplr`, `LeafXplr`, `BranchXplr`), pluggable provider registries (`XplrRegistry`) supporting filesystem (`FsProvider`), AST grammars (`ShardProvider`), and symbolic algebra (`FrescoProvider`), plus 3D point-cloud windows and IPC commands (`xplrcmds`). Launching `cargo run` opens Fenst by default, while `--test` dispatches test execution.
 
 ---
 
