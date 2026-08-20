@@ -1,11 +1,11 @@
-﻿//-- styew/app.rs -------------------------------------------------------------------------------------------------------------------
+﻿//-- frieze/app.rs -------------------------------------------------------------------------------------------------------------------
 use	egui::{ Ui, Color32, RichText, Frame, Margin, Panel, Vec2 };
-use	crate::styew::state::AppState;
-use	crate::styew::tab_bar::RenderTabBar;
-use	crate::styew::explorer::RenderExplorer;
-use	crate::styew::pts_view::RenderPtsView;
-use	crate::styew::obj_view::RenderObjView;
-use	crate::styew::fresco_view::RenderFrescoView;
+use	crate::frieze::state::AppState;
+use	crate::frieze::tab_bar::RenderTabBar;
+use	crate::frieze::explorer::RenderExplorer;
+use	crate::frieze::pts_view::RenderPtsView;
+use	crate::frieze::obj_view::RenderObjView;
+use	crate::frieze::fresco_view::RenderFrescoView;
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 

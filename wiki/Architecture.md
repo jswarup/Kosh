@@ -17,7 +17,7 @@ The Kosh codebase is structured into four distinct functional tiers:
 ```mermaid
 graph TD
     subgraph Layer4 ["Tier 4: Presentation & Applications"]
-        Styew["styew<br/>Native eframe / egui Desktop Workspace"]
+        Frieze["frieze<br/>Native eframe / egui Desktop Workspace"]
         Fenst["fenst<br/>Secondary Tauri Explorer, Visualizer & Data Provider Hub"]
         Aura["aura<br/>Frontend Assets, Icons & Tauri Configuration"]
     end
@@ -40,9 +40,9 @@ graph TD
         Silo["silo<br/>Memory Buffers, Slices, Custom Unsigned Numerics"]
     end
 
-    Styew --> Fleck
-    Styew --> Fresco
-    Styew --> Silo
+    Frieze --> Fleck
+    Frieze --> Fresco
+    Frieze --> Silo
     Fenst --> Shard
     Fenst --> Fresco
     Fenst --> Flux
@@ -94,7 +94,7 @@ graph TD
 - **[`fleck`](Fleck.md)**: High-throughput 3D point cloud processing. Parses ASCII and binary `.pts` files into `PtsCloud` using custom `Shard` grammars (`PtsShard`), computing bounding boxes, intensity, and RGB color channels.
 
 ### Tier 4: Applications & Desktop Explorer
-- **[`styew`](Styew.md)**: Primary native desktop workspace built with `eframe` and `egui`. It provides explorer, point-cloud, OBJ, and symbolic-expression views and is launched by `cargo run`.
+- **[`frieze`](Frieze.md)**: Primary native desktop workspace built with `eframe` and `egui`. It provides explorer, point-cloud, OBJ, and symbolic-expression views and is launched by `cargo run`.
 - **[`fenst`](Fenst.md)**: Secondary Tauri desktop GUI subsystem. It defines unified tree interfaces (`Xplr`, `LeafXplr`, `BranchXplr`), pluggable provider registries (`XplrRegistry`) supporting filesystem (`FsProvider`), AST grammars (`ShardProvider`), and symbolic algebra (`FrescoProvider`), plus 3D point-cloud windows and IPC commands (`xplrcmds`). Launch it with `cargo run -- --aura`; `--test` dispatches test execution.
 - **[`aura`](Aura.md)**: Frontend resources, icons, and Tauri application configuration. Contains HTML/JavaScript/CSS UI assets, multi-resolution platform icons, Tauri capability manifests, and `tauri.conf.json` metadata. Built into the desktop application bundle during `cargo build`.
 

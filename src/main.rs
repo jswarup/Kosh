@@ -94,8 +94,8 @@ fn	main() -> Result< ()>
         return Ok( ());
     }
 
-    // Default primary: 100% Native Pure-Rust Styew (eframe + egui + wgpu)
-    if let  	Err( e) = kosh::styew::run() {
+    // Default primary: 100% Native Pure-Rust Frieze (eframe + egui + wgpu)
+    if let  	Err( e) = kosh::frieze::run() {
         eprintln!( "Error launching Kosh native window: {:?}", e);
     }
 

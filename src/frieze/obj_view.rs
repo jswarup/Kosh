@@ -1,8 +1,8 @@
-﻿//-- styew/obj_view.rs --------------------------------------------------------------------------------------------------------------
+﻿//-- frieze/obj_view.rs --------------------------------------------------------------------------------------------------------------
 use	std::path::Path;
 use	egui::{ Ui, Color32, Pos2, Stroke, Sense, RichText, Vec2, Shape };
 use	egui::epaint::Mesh;
-use	crate::styew::state::{ CameraState, ObjRenderMode };
+use	crate::frieze::state::{ CameraState, ObjRenderMode };
 use	crate::fenst::XplrParseWaveObjFile;
 
 // ---------------------------------------------------------------------------------------------------------------------------------

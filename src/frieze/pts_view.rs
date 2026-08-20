@@ -1,7 +1,7 @@
-﻿//-- styew/pts_view.rs --------------------------------------------------------------------------------------------------------------
+﻿//-- frieze/pts_view.rs --------------------------------------------------------------------------------------------------------------
 use	std::path::Path;
 use	egui::{ Ui, Color32, Pos2, Stroke, Sense, RichText, Vec2 };
-use	crate::styew::state::CameraState;
+use	crate::frieze::state::CameraState;
 use	crate::fenst::XplrParsePtsFile;
 use	crate::silo::{ Buff, U32 };
 

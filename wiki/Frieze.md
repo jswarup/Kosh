@@ -1,8 +1,8 @@
-# Module Reference: `styew`
+# Module Reference: `frieze`
 
 ## Overview
 
-`styew` is Kosh's primary native desktop application. It is built with `eframe` and `egui`, with `wgpu` available through the workspace dependencies. The root binary launches it by default:
+`frieze` is Kosh's primary native desktop application. It is built with `eframe` and `egui`, with `wgpu` available through the workspace dependencies. The root binary launches it by default:
 
 ```powershell
 cargo run
@@ -12,7 +12,7 @@ The window is titled **Kosh — Native 3D GPU Workspace** and starts with a pref
 
 ## Scope
 
-The module lives in `src/styew/` and is composed of the following application surfaces:
+The module lives in `src/frieze/` and is composed of the following application surfaces:
 
 | Source file | Responsibility |
 | :--- | :--- |
@@ -31,7 +31,7 @@ The module lives in `src/styew/` and is composed of the following application su
 
 | Command | Behavior |
 | :--- | :--- |
-| `cargo run` | Launches the primary native `styew` workspace. |
+| `cargo run` | Launches the primary native `frieze` workspace. |
 | `cargo run -- --aura` | Launches the secondary Tauri-based `fenst` application. |
 | `cargo run -- --test [FILTER]` | Runs the Cargo test suite, optionally filtered by name. |
 
@@ -39,4 +39,4 @@ The `--verbose` flag enables debug-level tracing before application startup. The
 
 ## Relationship to Other Frontends
 
-`styew` is the native application layer. [`fenst`](Fenst.md) provides the separate Tauri explorer and its provider/IPC interfaces, while [`aura`](Aura.md) contains the Tauri frontend assets and configuration. These are distinct launch paths rather than interchangeable UI implementations.
+`frieze` is the native application layer. [`fenst`](Fenst.md) provides the separate Tauri explorer and its provider/IPC interfaces, while [`aura`](Aura.md) contains the Tauri frontend assets and configuration. These are distinct launch paths rather than interchangeable UI implementations.

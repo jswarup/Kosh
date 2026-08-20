@@ -2,7 +2,7 @@
 
 ## 1. Overview & Purpose
 
-The `fenst` module provides Kosh with a **secondary Tauri desktop explorer, document viewer, and 3D point-cloud visualizer**. The default desktop application is the native [`styew`](Styew.md) workspace; launch Fenst explicitly with `cargo run -- --aura`. Key features include:
+The `fenst` module provides Kosh with a **secondary Tauri desktop explorer, document viewer, and 3D point-cloud visualizer**. The default desktop application is the native [`frieze`](Frieze.md) workspace; launch Fenst explicitly with `cargo run -- --aura`. Key features include:
 1. **Virtual Explorer Abstraction (`Xplr`, `LeafXplr`, `BranchXplr`)**: Uniform node interface across filesystems, AST grammar trees, and symbolic expressions.
 2. **Provider Registry (`XplrRegistry`)**: URL scheme-based provider routing (`file://`, `expr://`, `ast://`).
 3. **High-Performance Content Streaming**: Windowed chunk reading (`XplrFetchChunk`) and safe size-guarded file readers (`XplrFetchContent`).
@@ -11,7 +11,7 @@ The `fenst` module provides Kosh with a **secondary Tauri desktop explorer, docu
 
 > **Note**: Frontend assets, icons, and Tauri configuration for the desktop GUI are located in the [`aura`](Aura.md) module (`src/aura/`).
 
-> **Launch mode**: `cargo run` launches `styew`; `cargo run -- --aura` launches this Tauri application.
+> **Launch mode**: `cargo run` launches `frieze`; `cargo run -- --aura` launches this Tauri application.
 
 ---
 
