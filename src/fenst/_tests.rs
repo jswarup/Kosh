@@ -309,9 +309,7 @@ fn	TestSceneGraph()
     use	crate::fenst::SceneGraph;
     use	crate::silo::Buff;
 
-    let  	mut points = Buff::New();
-    points.Push( [ -10.0, -10.0, -10.0 ]);
-    points.Push( [ 10.0, 10.0, 10.0 ]);
+    let  	points = Buff![ [ -10.0, -10.0, -10.0 ], [ 10.0, 10.0, 10.0 ] ];
 
     let  	mut scene = SceneGraph::WithPoints( points, [ -10.0, -10.0, -10.0 ], [ 10.0, 10.0, 10.0 ]);
     assert_eq!( scene._Points.len(), 2);
@@ -334,9 +332,7 @@ fn	TestSceneGraphSwarmProjection()
     use	crate::silo::Buff;
     use	crate::swarm::SwarmEngine;
 
-    let  	mut points = Buff::New();
-    points.Push( [ 0.0, 0.0, 0.0 ]);
-    points.Push( [ 5.0, 5.0, 5.0 ]);
+    let  	points = Buff![ [ 0.0, 0.0, 0.0 ], [ 5.0, 5.0, 5.0 ] ];
 
     let  	scene = SceneGraph::WithPoints( points, [ -10.0, -10.0, -10.0 ], [ 10.0, 10.0, 10.0 ]);
     let  	engine = SwarmEngine::Auto();
@@ -388,9 +384,7 @@ fn	TestSceneGraphSwarmFullSceneProjection()
     use	crate::silo::Buff;
     use	crate::swarm::SwarmEngine;
 
-    let  	mut points = Buff::New();
-    points.Push( [ 0.0, 0.0, 0.0 ]);
-    points.Push( [ 10.0, 10.0, 10.0 ]);
+    let  	points = Buff![ [ 0.0, 0.0, 0.0 ], [ 10.0, 10.0, 10.0 ] ];
 
     let  	scene = SceneGraph::WithPoints( points, [ -20.0, -20.0, -20.0 ], [ 20.0, 20.0, 20.0 ]);
     let  	engine = SwarmEngine::Auto();
@@ -412,11 +406,10 @@ fn	TestSceneGraphClusterMultiGpuProjection()
     use	crate::silo::Buff;
     use	crate::swarm::SwarmCluster;
 
-    let  	mut points = Buff::New();
-    for i in 0..100 {
-        let  	f = i as f32;
-        points.Push( [ f, f * 0.5, f * 0.2 ]);
-    }
+    let  	points = Buff::Create( crate::silo::U32( 100), |i| {
+        let  	f = i.AsU32() as f32;
+        [ f, f * 0.5, f * 0.2 ]
+    });
 
     let  	scene = SceneGraph::WithPoints( points, [ 0.0, 0.0, 0.0 ], [ 100.0, 50.0, 20.0 ]);
     let  	cluster = SwarmCluster::Auto();

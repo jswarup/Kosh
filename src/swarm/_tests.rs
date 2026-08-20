@@ -812,11 +812,10 @@ fn	TestSwarmClusterSharding()
     let  	cluster = SwarmCluster::Auto();
     assert!( cluster.DeviceCount() >= 1);
 
-    let  	mut points = Buff::New();
-    for i in 0..200 {
-        let  	f = i as f32;
-        points.Push( [ f, f * 2.0, f * 0.5 ]);
-    }
+    let  	points = Buff::Create( crate::silo::U32( 200), |i| {
+        let  	f = i.AsU32() as f32;
+        [ f, f * 2.0, f * 0.5 ]
+    });
 
     let  	camParams: [f32; 13] = [
         0.0, 0.0, 1.0, 0.0, 0.0, 350.0, 250.0, 800.0, 600.0, 0.0, 0.0, 0.0, 1.0,

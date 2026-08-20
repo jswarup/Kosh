@@ -1,4 +1,4 @@
-//-- buff.rs ----------------------------------------------------------------------------------------------------------------------
+﻿//-- buff.rs ----------------------------------------------------------------------------------------------------------------------
 use	std::{ alloc::realloc, fmt, marker::PhantomData, mem::{ forget, size_of, swap }, ptr::{ copy_nonoverlapping, drop_in_place, read, slice_from_raw_parts_mut, write } };
 use	crate::silo::{ Arr, IAccess, IArr, U32 };
 use	std::alloc::{ Layout, alloc, dealloc, handle_alloc_error };
@@ -87,6 +87,7 @@ impl< T> Buff< T>
             _Ptr: NonNull::slice_from_raw_parts( NonNull::dangling(), 0),
         }
     }
+    #[deprecated( note = "Buff::Push causes O(N^2) linear reallocations. Use Stash::WithCapacity and Stash::PushX / Stash::Push instead." )]
     pub fn	Push( &mut self, val: T)
     {
         let  	oldSize = self._Ptr.len();
@@ -116,6 +117,7 @@ impl< T> Buff< T>
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
+    #[deprecated( note = "Buff::Pop is deprecated. Use Stash::Pop instead." )]
     pub fn	Pop( &mut self) -> Option< T>
     {
         let  	oldSize = self._Ptr.len();
@@ -161,6 +163,40 @@ impl< T> Buff< T>
     pub fn	Size( &self) -> U32
     {
         U32( self._Ptr.len() as u32)
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	Truncate< S: Into< U32>>( &mut self, newSize: S)
+    {
+        let  	newSizeUsize = usize::from( newSize.into());
+        let  	oldSize = self._Ptr.len();
+        if newSizeUsize >= oldSize {
+            return;
+        }
+        if newSizeUsize == 0 {
+            *self = Buff::New();
+            return;
+        }
+        let  	isZst = size_of::< T>() == 0;
+        if isZst {
+            self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), newSizeUsize);
+            return;
+        }
+        unsafe {
+            for i in newSizeUsize..oldSize {
+                drop_in_place( self._Ptr.cast::< T>().as_ptr().add( i));
+            }
+            let  	oldLayout = Layout::array::< T>( oldSize).unwrap();
+            let  	newLayout = Layout::array::< T>( newSizeUsize).unwrap();
+            let  	rawPtr = realloc( self._Ptr.cast::< u8>().as_ptr(), oldLayout, newLayout.size());
+            if rawPtr.is_null() {
+                handle_alloc_error( newLayout);
+            }
+            let  	rawPtrT = rawPtr as *mut T;
+            let  	nonNullPtr = NonNull::new_unchecked( rawPtrT);
+            self._Ptr = NonNull::slice_from_raw_parts( nonNullPtr, newSizeUsize);
+        }
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -449,11 +485,11 @@ impl< T: Clone> From< &[T]> for Buff< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T: Clone, const N: usize> From< [T; N]> for Buff< T>
+impl< T, const N: usize> From< [T; N]> for Buff< T>
 {
     fn	from( arr: [T; N]) -> Self
     {
-        Self::from( &arr[..])
+        Buff::FromVec( Vec::from( arr))
     }
 }
 
@@ -701,12 +737,11 @@ impl< 'a, T> IntoIterator for &'a mut Buff< T>
 
 #[macro_export]
 macro_rules! Buff {
+    () => {
+        $crate::silo::Buff::New()
+    };
     ( $( $x:expr ),* ) => {
-        {
-            let  	mut temp = $crate::silo::Buff::New();
-            $( temp.Push( $x); )*
-            temp
-        }
+        $crate::silo::Buff::from( [ $( $x ),* ] )
     };
     ( $( $x:expr ),+ , ) => {
         $crate::Buff![ $( $x ),* ]

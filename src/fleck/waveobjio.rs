@@ -1,24 +1,35 @@
 ﻿//-- waveobjio.rs ------------------------------------------------------------------------------------------------------------------
-
 use	std::fmt;
 use	crate::{
     fenst::{ PtsPointsDto, WaveObjMeshDto },
     fleck::{ Dir3f, WPt2f, WPt3f },
     flux::instream::{ FixedStream, IStream },
     shard::{ IGrammar, Parser, Charset },
-    silo::{ Buff, IAccess, U32, U8 },
+    silo::{ Buff, Stash, IAccess, U32, U8 },
     ShardTree,
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Represents a single vertex reference within a polygonal face: v/vt/vn.
-#[derive( Clone, Copy, Debug, PartialEq)]
+/// Represents an index reference into vertex, texture coordinate, and normal buffers for a polygon face.
+#[derive( Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FaceVertex
 {
     pub _VertexIdx:   i32,
     pub _TexCoordIdx: Option< i32>,
     pub _NormalIdx:   Option< i32>,
+}
+
+impl Default for FaceVertex
+{
+    fn	default() -> Self
+    {
+        Self {
+            _VertexIdx:   0,
+            _TexCoordIdx: None,
+            _NormalIdx:   None,
+        }
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -34,7 +45,7 @@ impl FaceVertex
         }
     }
 
-    pub fn	WithTex( vertexIdx: i32, texCoordIdx: i32) -> Self
+    pub fn	WithTexCoord( vertexIdx: i32, texCoordIdx: i32) -> Self
     {
         Self {
             _VertexIdx:   vertexIdx,
@@ -71,6 +82,14 @@ pub struct Face
     pub _Vertices: Buff< FaceVertex>,
 }
 
+impl Default for Face
+{
+    fn	default() -> Self
+    {
+        Self::New()
+    }
+}
+
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl Face
@@ -84,7 +103,13 @@ impl Face
 
     pub fn	Push( &mut self, vert: FaceVertex)
     {
-        self._Vertices.Push( vert);
+        let  	mut stash = Stash::WithCapacity( self._Vertices.Size() + U32( 1));
+        let  	arr = self._Vertices.Arr();
+        for i in 0..self._Vertices.Size().AsUsize() {
+            stash.Push( *arr.At( U32( i as u32)));
+        }
+        stash.Push( vert);
+        self._Vertices = stash.IntoBuff();
     }
 
     pub fn	Len( &self) -> usize
@@ -112,6 +137,16 @@ pub struct WaveObjModel
     pub _Groups:      Buff< String>,
     pub _MtlLibs:     Buff< String>,
     pub _UseMtls:     Buff< String>,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl Default for WaveObjModel
+{
+    fn	default() -> Self
+    {
+        Self::New()
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -203,9 +238,6 @@ impl WaveObjModel
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    /// Triangulates all polygon faces into triangle triples using fan triangulation.
-    //-----------------------------------------------------------------------------------------------------------------------------
-
     /// Converts WaveObjModel to WaveObjMeshDto with vertices, triangulated indices, unique wireframe edges, and face normals.
     pub fn	ToMeshDto( &self) -> WaveObjMeshDto
     {
@@ -217,10 +249,10 @@ impl WaveObjModel
             [v._X, v._Y, v._Z]
         });
 
-        let  	mut trianglesBuff: Buff< [u32; 3]> = Buff::New();
+        let  	numFaces = self._Faces.Size().AsUsize();
+        let  	mut trianglesStash = Stash::< [u32; 3]>::WithCapacity( U32( (numFaces * 2).max( 16) as u32));
         let  	mut edgeSet = std::collections::HashSet::new();
         let  	facesArr = self._Faces.Arr();
-        let  	numFaces = self._Faces.Size().AsUsize();
 
         for fIdx in 0..numFaces {
             let  	face = facesArr.At( U32( fIdx as u32));
@@ -235,7 +267,7 @@ impl WaveObjModel
                     let  	v2Raw = vertsArr.At( U32( ( i + 1) as u32))._VertexIdx;
                     let  	v1 = if v1Raw > 0 { ( v1Raw - 1) as u32 } else { 0 };
                     let  	v2 = if v2Raw > 0 { ( v2Raw - 1) as u32 } else { 0 };
-                    trianglesBuff.Push( [v0, v1, v2]);
+                    trianglesStash.Push( [v0, v1, v2]);
                 }
 
                 // Collect polygon boundary edges for wireframe
@@ -251,10 +283,13 @@ impl WaveObjModel
             }
         }
 
-        let  	mut edgesBuff: Buff< [u32; 2]> = Buff::New();
+        let  	trianglesBuff = trianglesStash.IntoBuff();
+
+        let  	mut edgesStash = Stash::< [u32; 2]>::WithCapacity( U32( edgeSet.len().max( 16) as u32));
         for ( e0, e1) in edgeSet {
-            edgesBuff.Push( [e0, e1]);
+            edgesStash.Push( [e0, e1]);
         }
+        let  	edgesBuff = edgesStash.IntoBuff();
 
         // Compute per-triangle face normals for lighting
         let  	triArr = trianglesBuff.Arr();
@@ -268,15 +303,15 @@ impl WaveObjModel
                 let  	p0 = arr.At( U32( p0Idx as u32));
                 let  	p1 = arr.At( U32( p1Idx as u32));
                 let  	p2 = arr.At( U32( p2Idx as u32));
-                let  	ax = p1._X - p0._X;
-                let  	ay = p1._Y - p0._Y;
-                let  	az = p1._Z - p0._Z;
-                let  	bx = p2._X - p0._X;
-                let  	by = p2._Y - p0._Y;
-                let  	bz = p2._Z - p0._Z;
-                let  	nx = ay * bz - az * by;
-                let  	ny = az * bx - ax * bz;
-                let  	nz = ax * by - ay * bx;
+                let  	ux = p1._X - p0._X;
+                let  	uy = p1._Y - p0._Y;
+                let  	uz = p1._Z - p0._Z;
+                let  	vx = p2._X - p0._X;
+                let  	vy = p2._Y - p0._Y;
+                let  	vz = p2._Z - p0._Z;
+                let  	nx = uy * vz - uz * vy;
+                let  	ny = uz * vx - ux * vz;
+                let  	nz = ux * vy - uy * vx;
                 let  	len = ( nx * nx + ny * ny + nz * nz).sqrt();
                 if len > 1e-6 {
                     [nx / len, ny / len, nz / len]
@@ -302,9 +337,10 @@ impl WaveObjModel
 
     pub fn	Triangulate( &self) -> Buff< [FaceVertex; 3]>
     {
-        let  	mut triangles = Buff::New();
+        let  	numFaces = self._Faces.Size().AsUsize();
+        let  	mut trianglesStash = Stash::< [FaceVertex; 3]>::WithCapacity( U32( (numFaces * 2).max( 16) as u32));
         let  	facesArr = self._Faces.Arr();
-        for fIdx in 0..self._Faces.Size().AsUsize() {
+        for fIdx in 0..numFaces {
             let  	face = facesArr.At( U32( fIdx as u32));
             let  	vertCount = face.Len();
             if vertCount >= 3 {
@@ -313,11 +349,11 @@ impl WaveObjModel
                 for i in 1..( vertCount - 1) {
                     let  	v1 = *vertsArr.At( U32( i as u32));
                     let  	v2 = *vertsArr.At( U32( ( i + 1) as u32));
-                    triangles.Push( [v0, v1, v2]);
+                    trianglesStash.Push( [v0, v1, v2]);
                 }
             }
         }
-        triangles
+        trianglesStash.IntoBuff()
     }
 }
 
@@ -365,7 +401,7 @@ fn	ParseFaceVertexToken( token: &str, numVerts: usize, numTex: usize, numNorm: u
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Shard grammar struct that parses a Wavefront .obj stream into a `WaveObjModel`.
+/// Shard grammar struct that parses a Wavefront .obj stream into a WaveObjModel using Stash.
 pub struct WaveObjShard< 'a>
 {
     pub _Model: &'a mut WaveObjModel,
@@ -379,6 +415,19 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
     {
         let  	modelPtr = self._Model as *const WaveObjModel as *mut WaveObjModel;
         let  	model = unsafe { &mut *modelPtr };
+
+        let  	streamSz = parser.InStream().Size().AsUsize();
+        let  	estVerts = (streamSz / 40).max( 128) as u32;
+        let  	estFaces = (streamSz / 50).max( 128) as u32;
+
+        let  	mut verticesStash = Stash::< WPt3f>::WithCapacity( U32( estVerts));
+        let  	mut texCoordsStash = Stash::< WPt2f>::WithCapacity( U32( (estVerts / 2).max( 64)));
+        let  	mut normalsStash = Stash::< Dir3f>::WithCapacity( U32( (estVerts / 2).max( 64)));
+        let  	mut facesStash = Stash::< Face>::WithCapacity( U32( estFaces));
+        let  	mut objectsStash = Stash::< String>::New();
+        let  	mut groupsStash = Stash::< String>::New();
+        let  	mut mtlLibsStash = Stash::< String>::New();
+        let  	mut useMtlsStash = Stash::< String>::New();
 
         let  	mut m = parser.CurrMark();
         let  	nlGrammar = ShardTree!( ( ?'\r' < '\n' ) | '\r' );
@@ -419,56 +468,56 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
                             let  	nums: Vec< f32> = tokens.filter_map( |t| t.parse::< f32>().ok()).collect();
                             if nums.len() >= 3 {
                                 let  	w = if nums.len() >= 4 { nums[3] } else { 1.0 };
-                                model._Vertices.Push( WPt3f::WithW( nums[0], nums[1], nums[2], w));
+                                verticesStash.Push( WPt3f::WithW( nums[0], nums[1], nums[2], w));
                             }
                         }
                         "vt" => {
                             let  	nums: Vec< f32> = tokens.filter_map( |t| t.parse::< f32>().ok()).collect();
                             if nums.len() >= 2 {
                                 let  	w = if nums.len() >= 3 { nums[2] } else { 0.0 };
-                                model._TexCoords.Push( WPt2f::WithW( nums[0], nums[1], w));
+                                texCoordsStash.Push( WPt2f::WithW( nums[0], nums[1], w));
                             } else if nums.len() == 1 {
-                                model._TexCoords.Push( WPt2f::New( nums[0], 0.0));
+                                texCoordsStash.Push( WPt2f::New( nums[0], 0.0));
                             }
                         }
                         "vn" => {
                             let  	nums: Vec< f32> = tokens.filter_map( |t| t.parse::< f32>().ok()).collect();
                             if nums.len() >= 3 {
-                                model._Normals.Push( Dir3f::New( nums[0], nums[1], nums[2]));
+                                normalsStash.Push( Dir3f::New( nums[0], nums[1], nums[2]));
                             }
                         }
                         "f" => {
-                            let  	numV = model._Vertices.Size().AsUsize();
-                            let  	numT = model._TexCoords.Size().AsUsize();
-                            let  	numN = model._Normals.Size().AsUsize();
-                            let  	mut face = Face::New();
+                            let  	numV = verticesStash.Size().AsUsize();
+                            let  	numT = texCoordsStash.Size().AsUsize();
+                            let  	numN = normalsStash.Size().AsUsize();
+                            let  	mut faceVerts = Stash::< FaceVertex>::WithCapacity( U32( 4));
                             for token in tokens {
                                 if let Some( fv) = ParseFaceVertexToken( token, numV, numT, numN) {
-                                    face.Push( fv);
+                                    faceVerts.Push( fv);
                                 }
                             }
-                            if !face.IsEmpty() {
-                                model._Faces.Push( face);
+                            if faceVerts.Size() > U32( 0) {
+                                facesStash.PushVal( Face { _Vertices: faceVerts.IntoBuff() });
                             }
                         }
                         "o" => {
                             if let Some( name) = tokens.next() {
-                                model._Objects.Push( name.to_string());
+                                objectsStash.PushVal( name.to_string());
                             }
                         }
                         "g" => {
                             if let Some( name) = tokens.next() {
-                                model._Groups.Push( name.to_string());
+                                groupsStash.PushVal( name.to_string());
                             }
                         }
                         "mtllib" => {
                             if let Some( name) = tokens.next() {
-                                model._MtlLibs.Push( name.to_string());
+                                mtlLibsStash.PushVal( name.to_string());
                             }
                         }
                         "usemtl" => {
                             if let Some( name) = tokens.next() {
-                                model._UseMtls.Push( name.to_string());
+                                useMtlsStash.PushVal( name.to_string());
                             }
                         }
                         _ => {}
@@ -482,6 +531,15 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
             }
         }
 
+        model._Vertices = verticesStash.IntoBuff();
+        model._TexCoords = texCoordsStash.IntoBuff();
+        model._Normals = normalsStash.IntoBuff();
+        model._Faces = facesStash.IntoBuff();
+        model._Objects = objectsStash.IntoBuff();
+        model._Groups = groupsStash.IntoBuff();
+        model._MtlLibs = mtlLibsStash.IntoBuff();
+        model._UseMtls = useMtlsStash.IntoBuff();
+
         parser.SetCurrMark( m);
         true
     }
@@ -489,7 +547,7 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Parses a Wavefront .obj 3D model from a string slice.
+/// Parses a Wavefront .obj file from a string slice.
 pub fn	ParseWaveObj( input: &str) -> Result< WaveObjModel, String>
 {
     let  	mut stream = FixedStream::from( input);
@@ -498,7 +556,7 @@ pub fn	ParseWaveObj( input: &str) -> Result< WaveObjModel, String>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Parses a Wavefront .obj 3D model from a raw byte slice.
+/// Parses a Wavefront .obj file from a raw byte slice.
 pub fn	ParseWaveObjBytes( bytes: &[u8]) -> Result< WaveObjModel, String>
 {
     let  	s = std::str::from_utf8( bytes).map_err( |e| e.to_string())?;
@@ -507,7 +565,7 @@ pub fn	ParseWaveObjBytes( bytes: &[u8]) -> Result< WaveObjModel, String>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Parses a Wavefront .obj 3D model from an input stream.
+/// Parses a Wavefront .obj file from an input stream.
 pub fn	ParseWaveObjStream( stream: &mut dyn IStream) -> Result< WaveObjModel, String>
 {
     let  	mut model = WaveObjModel::New();
@@ -517,7 +575,7 @@ pub fn	ParseWaveObjStream( stream: &mut dyn IStream) -> Result< WaveObjModel, St
     if res.is_some() {
         Ok( model)
     } else {
-        Err( "Failed to parse Wavefront OBJ stream".to_string())
+        Err( "Failed to parse Wavefront .obj stream".to_string())
     }
 }
 
@@ -532,6 +590,8 @@ impl fmt::Debug for WaveObjModel
             .field( "tex_coords", &self.TexCoordCount().AsUsize())
             .field( "normals", &self.NormalCount().AsUsize())
             .field( "faces", &self.FaceCount().AsUsize())
+            .field( "objects", &self._Objects.Size().AsUsize())
+            .field( "groups", &self._Groups.Size().AsUsize())
             .finish()
     }
 }
@@ -542,7 +602,7 @@ impl fmt::Display for WaveObjModel
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
-        write!( f, "WaveObjModel({} verts, {} faces)", self.VertexCount(), self.FaceCount())
+        write!( f, "WaveObjModel(v: {}, f: {}, n: {})", self.VertexCount(), self.FaceCount(), self.NormalCount())
     }
 }
 

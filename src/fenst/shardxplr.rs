@@ -139,17 +139,22 @@ impl BranchXplr for ShardBranch
 {
     fn	Children( &self) -> Result< Buff< Box< dyn Xplr>>, String>
     {
-        let  	mut res: Buff< Box< dyn Xplr>> = Buff::New();
-        for child in &self._Children {
+        let  	children = Buff::Create( self._Children.Size(), |i| {
+            let  	child = &self._Children[i.AsUsize()];
             if child.IsLeaf() {
                 if let  	Some( leaf) = child.AsLeaf() {
-                    res.Push( Box::new( ShardLeaf::New( child.Name().to_string(), child.Path().to_string(), leaf.Size().to_string())));
+                    let  	leafBox: Box< dyn Xplr> = Box::new( ShardLeaf::New( child.Name().to_string(), child.Path().to_string(), leaf.Size().to_string()));
+                    leafBox
+                } else {
+                    let  	branchBox: Box< dyn Xplr> = Box::new( ShardBranch::New( child.Name().to_string(), child.Path().to_string(), Buff::New()));
+                    branchBox
                 }
             } else {
-                res.Push( Box::new( ShardBranch::New( child.Name().to_string(), child.Path().to_string(), Buff::New())));
+                let  	branchBox: Box< dyn Xplr> = Box::new( ShardBranch::New( child.Name().to_string(), child.Path().to_string(), Buff::New()));
+                branchBox
             }
-        }
-        Ok( res)
+        });
+        Ok( children)
     }
 
     fn	ChildCount( &self) -> Result< U32, String>

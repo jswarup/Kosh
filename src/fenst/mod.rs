@@ -62,21 +62,20 @@ pub fn	XplrListEntries( path: String) -> Result< Buff< XplrEntry>, String>
 {
     let  	branch = FsBranch::New( path);
     let  	children = branch.Children()?;
-    let  	mut entries: Buff< XplrEntry> = Buff::New();
-
-    for child in children {
+    let  	entries = Buff::Create( children.Size(), |i| {
+        let  	child = &children[i.AsUsize()];
         let  	isDir = !child.IsLeaf();
         let  	size = child.AsLeaf().map( |l| l.Size()).unwrap_or( 0);
         let  	extension = child.AsLeaf().map( |l| l.Extension().to_string()).unwrap_or_default();
 
-        entries.Push( XplrEntry {
+        XplrEntry {
             _Name:       child.Name().to_string(),
             _Path:       child.Path().to_string(),
             _IsDir:      isDir,
             _Size:       size,
             _Extension:  extension,
-        });
-    }
+        }
+    });
 
     Ok( entries)
 }

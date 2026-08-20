@@ -1,33 +1,38 @@
 ﻿//-- styew/fresco_view.rs -----------------------------------------------------------------------------------------------------------
-use	egui::{ Ui, Color32, RichText, Frame, Stroke, Margin };
+use	egui::{ Ui, Color32, RichText, Frame, Stroke, Margin, Vec2 };
 use	crate::fresco::ExprRepos;
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Viewport for inspecting Fresco symbolic AST expressions and function graphs.
+/// Viewport for inspecting Fresco symbolic AST expressions matching Frieze's layout.
 pub fn	RenderFrescoView( ui: &mut Ui, uri: &str)
 {
     ui.vertical( |ui| {
-        // Header
+        // Top Header
         ui.horizontal( |ui| {
-            ui.label( RichText::new( "ƒ FRESCO SYMBOLIC ENGINE").strong().size( 14.0).color( Color32::from_rgb( 59, 130, 246)));
-            ui.label( RichText::new( uri).size( 11.0).color( Color32::from_rgb( 100, 116, 139)));
+            ui.spacing_mut().item_spacing = Vec2::new( 8.0, 0.0);
+            ui.label( RichText::new( "ƒ FRESCO").color( Color32::from_rgb( 137, 220, 235)).strong().size( 10.5));
+            ui.label( RichText::new( "Symbolic Expression Repository").strong().size( 13.0).color( Color32::from_rgb( 205, 214, 244)));
+            ui.label( RichText::new( uri).size( 11.5).color( Color32::from_rgb( 108, 112, 134)));
         });
 
+        ui.add_space( 2.0);
         ui.separator();
 
         egui::ScrollArea::vertical()
             .auto_shrink( [false, false])
             .show( ui, |ui| {
+                ui.add_space( 6.0);
+
                 Frame::new()
-                    .fill( Color32::from_rgb( 17, 24, 39))
-                    .stroke( Stroke::new( 1.0, Color32::from_rgba_premultiplied( 255, 255, 255, 15)))
+                    .fill( Color32::from_rgb( 24, 24, 37))
+                    .stroke( Stroke::new( 1.0, Color32::from_rgb( 49, 50, 68)))
                     .corner_radius( 6)
-                    .inner_margin( Margin::same( 16))
+                    .inner_margin( Margin::same( 14))
                     .show( ui, |ui| {
-                        ui.label( RichText::new( "Algebraic Term Structure & AST Representation").strong().size( 13.0).color( Color32::from_rgb( 96, 165, 250)));
-                        ui.add_space( 6.0);
-                        ui.label( RichText::new( "Expressions in Fresco (PolyExpr, VarExpr, RealExpr, TermTree) are evaluated symbolically and can be evaluated on CPU SIMD or Swarm GPU compute kernels.").size( 12.0).color( Color32::from_rgb( 148, 163, 184)));
+                        ui.label( RichText::new( "Algebraic Term Structure & AST Representation").strong().size( 13.0).color( Color32::from_rgb( 137, 180, 250)));
+                        ui.add_space( 4.0);
+                        ui.label( RichText::new( "Fresco AST terms (PolyExpr, VarExpr, RealExpr, TermTree) are evaluated symbolically in Rust memory and can be sampled on GPU/SIMD compute kernels.").size( 12.0).color( Color32::from_rgb( 166, 173, 200)));
                     });
 
                 ui.add_space( 12.0);
@@ -42,20 +47,20 @@ pub fn	RenderFrescoView( ui: &mut Ui, uri: &str)
 
                 for (title, formula, meta) in expressions {
                     Frame::new()
-                        .fill( Color32::from_rgba_premultiplied( 15, 23, 42, 200))
-                        .stroke( Stroke::new( 1.0, Color32::from_rgba_premultiplied( 59, 130, 246, 50)))
+                        .fill( Color32::from_rgb( 30, 30, 46))
+                        .stroke( Stroke::new( 1.0, Color32::from_rgba_premultiplied( 137, 180, 250, 35)))
                         .corner_radius( 6)
                         .inner_margin( Margin::same( 12))
                         .show( ui, |ui| {
                             ui.horizontal( |ui| {
-                                ui.label( RichText::new( title).strong().size( 12.0).color( Color32::WHITE));
+                                ui.label( RichText::new( title).strong().size( 12.5).color( Color32::from_rgb( 205, 214, 244)));
                                 ui.with_layout( egui::Layout::right_to_left( egui::Align::Center), |ui| {
-                                    ui.label( RichText::new( meta).size( 10.0).color( Color32::from_rgb( 100, 116, 139)));
+                                    ui.label( RichText::new( meta).size( 10.5).color( Color32::from_rgb( 108, 112, 134)));
                                 });
                             });
 
                             ui.add_space( 4.0);
-                            ui.label( RichText::new( formula).monospace().size( 13.0).color( Color32::from_rgb( 0, 243, 255)));
+                            ui.label( RichText::new( formula).monospace().size( 12.5).color( Color32::from_rgb( 137, 220, 235)));
                         });
 
                     ui.add_space( 8.0);

@@ -1,12 +1,11 @@
-//-- ptsio.rs -----------------------------------------------------------------------------------------------------------------------
-
+﻿//-- ptio.rs -----------------------------------------------------------------------------------------------------------------------
 use	std::fmt;
 use	crate::{
     fenst::PtsPointsDto,
     fleck::Pt3f,
     flux::instream::{ FixedStream, IStream },
     shard::{ IGrammar, Parser, Real, Charset },
-    silo::{ Buff, IAccess, U32, U8 },
+    silo::{ Buff, Stash, IAccess, U32, U8 },
     ShardTree,
 };
 
@@ -20,13 +19,39 @@ pub struct RGB
     pub _B: U8,
 }
 
-/// Represents a single 3D point in a .pts point cloud with optional intensity and RGB color.
+impl Default for RGB
+{
+    fn	default() -> Self
+    {
+        Self {
+            _R: U8( 0),
+            _G: U8( 0),
+            _B: U8( 0),
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+/// Represents a single point in a .pts point cloud with optional intensity and RGB color.
 #[derive( Clone, Copy, Debug, PartialEq)]
 pub struct PtsPoint
 {
-    pub _Pos:        Pt3f,
-    pub _Intensity:  Option< f32>,
-    pub _Color:      Option< RGB>,
+    pub _Pos:       Pt3f,
+    pub _Intensity: Option< f32>,
+    pub _Color:     Option< RGB>,
+}
+
+impl Default for PtsPoint
+{
+    fn	default() -> Self
+    {
+        Self {
+            _Pos: Pt3f::default(),
+            _Intensity: None,
+            _Color: None,
+        }
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -42,20 +67,52 @@ impl PtsPoint
         }
     }
 
-    pub fn	Pos( &self) -> [f32; 3]
+    pub fn	WithIntensity( x: f32, y: f32, z: f32, intensity: f32) -> Self
     {
-        [self._Pos._X, self._Pos._Y, self._Pos._Z]
+        Self {
+            _Pos: Pt3f::New( x, y, z),
+            _Intensity: Some( intensity),
+            _Color: None,
+        }
+    }
+
+    pub fn	WithColor( x: f32, y: f32, z: f32, color: RGB) -> Self
+    {
+        Self {
+            _Pos: Pt3f::New( x, y, z),
+            _Intensity: None,
+            _Color: Some( color),
+        }
+    }
+
+    pub fn	WithIntensityAndColor( x: f32, y: f32, z: f32, intensity: f32, color: RGB) -> Self
+    {
+        Self {
+            _Pos: Pt3f::New( x, y, z),
+            _Intensity: Some( intensity),
+            _Color: Some( color),
+        }
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Represents a parsed .pts point cloud dataset.
-#[derive( Clone)]
+/// Represents an in-memory collection of point cloud points.
+#[derive( Clone, PartialEq)]
 pub struct PtsCloud
 {
-    pub _Points:        Buff< PtsPoint>,
-    pub _HeaderCount:   Option< U32>,
+    pub _Points:      Buff< PtsPoint>,
+    pub _HeaderCount: Option< U32>,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl Default for PtsCloud
+{
+    fn	default() -> Self
+    {
+        Self::New()
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -75,7 +132,7 @@ impl PtsCloud
     pub fn	WithCapacity( capacity: U32) -> Self
     {
         Self {
-            _Points: Buff::New(),
+            _Points: Buff::Create( capacity, |_| PtsPoint::default()),
             _HeaderCount: Some( capacity),
         }
     }
@@ -84,7 +141,13 @@ impl PtsCloud
 
     pub fn	Push( &mut self, point: PtsPoint)
     {
-        self._Points.Push( point);
+        let  	mut stash = Stash::WithCapacity( self._Points.Size() + U32( 1));
+        let  	arr = self._Points.Arr();
+        for i in 0..self._Points.Size().AsUsize() {
+            stash.Push( *arr.At( U32( i as u32)));
+        }
+        stash.Push( point);
+        self._Points = stash.IntoBuff();
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -110,27 +173,28 @@ impl PtsCloud
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	BoundingBox( &self) -> ( [f32; 3], [f32; 3])
+    pub fn	BoundingBox( &self) -> ([f32; 3], [f32; 3])
     {
         if self._Points.IsEmpty() {
-            return ( [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]);
+            return ( [0.0, 0.0, 0.0], [0.0, 0.0, 0.0] );
         }
+        let  	mut minX = f32::MAX;
+        let  	mut minY = f32::MAX;
+        let  	mut minZ = f32::MAX;
+        let  	mut maxX = f32::MIN;
+        let  	mut maxY = f32::MIN;
+        let  	mut maxZ = f32::MIN;
+
         let  	arr = self._Points.Arr();
-        let  	first = arr.At( U32( 0));
-        let  	mut minX = first._Pos._X;
-        let  	mut minY = first._Pos._Y;
-        let  	mut minZ = first._Pos._Z;
-        let  	mut maxX = first._Pos._X;
-        let  	mut maxY = first._Pos._Y;
-        let  	mut maxZ = first._Pos._Z;
-        for i in 1..self._Points.Size().AsUsize() {
+        let  	sz = self._Points.Size().AsUsize();
+        for i in 0..sz {
             let  	pt = arr.At( U32( i as u32));
-            if pt._Pos._X < minX { minX = pt._Pos._X; }
-            if pt._Pos._Y < minY { minY = pt._Pos._Y; }
-            if pt._Pos._Z < minZ { minZ = pt._Pos._Z; }
-            if pt._Pos._X > maxX { maxX = pt._Pos._X; }
-            if pt._Pos._Y > maxY { maxY = pt._Pos._Y; }
-            if pt._Pos._Z > maxZ { maxZ = pt._Pos._Z; }
+            minX = minX.min( pt._Pos._X);
+            minY = minY.min( pt._Pos._Y);
+            minZ = minZ.min( pt._Pos._Z);
+            maxX = maxX.max( pt._Pos._X);
+            maxY = maxY.max( pt._Pos._Y);
+            maxZ = maxZ.max( pt._Pos._Z);
         }
         ( [minX, minY, minZ], [maxX, maxY, maxZ])
     }
@@ -157,7 +221,7 @@ impl PtsCloud
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Shard grammar struct that parses a .pts point cloud into a `PtsCloud` target.
+/// Shard grammar struct that parses a .pts point cloud into a PtsCloud target using Stash with initial capacity estimate.
 pub struct PtsShard< 'a>
 {
     pub _Cloud: &'a mut PtsCloud,
@@ -171,6 +235,12 @@ impl< 'a> IGrammar for PtsShard< 'a>
     {
         let  	cloudPtr = self._Cloud as *const PtsCloud as *mut PtsCloud;
         let  	cloud = unsafe { &mut *cloudPtr };
+
+        let  	estimatedCap = cloud._HeaderCount.unwrap_or_else( || {
+            let  	streamSz = parser.InStream().Size().AsUsize();
+            U32( (streamSz / 32).max( 128) as u32)
+        });
+        let  	mut pointsStash = Stash::< PtsPoint>::WithCapacity( estimatedCap);
 
         let  	mut m = parser.CurrMark();
         let  	numGrammar = ShardTree!( Real  );
@@ -274,7 +344,7 @@ impl< 'a> IGrammar for PtsShard< 'a>
                 } else {
                     PtsPoint::New( lineNums[0], lineNums[1], lineNums[2])
                 };
-                cloud.Push( pt);
+                pointsStash.Push( pt);
             }
 
             // Advance past newline
@@ -283,6 +353,7 @@ impl< 'a> IGrammar for PtsShard< 'a>
             }
         }
 
+        cloud._Points = pointsStash.IntoBuff();
         parser.SetCurrMark( m);
         true
     }

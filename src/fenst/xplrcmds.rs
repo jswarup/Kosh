@@ -87,12 +87,9 @@ pub fn	XplrChildren( uri: String) -> Result< Buff< XplrNodeDto>, String>
     let  	guard = registry.read().map_err( |e| e.to_string())?;
     let  	( scheme, root) = guard.OpenRoot( &uri)?;
     let  	children = root.Children()?;
-    let  	mut dtos = Buff::New();
-
-    for child in children {
-        dtos.Push( child.ToDto( &scheme));
-    }
-
+    let  	dtos = Buff::Create( children.Size(), |i| {
+        children[i.AsUsize()].ToDto( &scheme)
+    });
     Ok( dtos)
 }
 
@@ -105,10 +102,9 @@ pub fn	XplrListProviders() -> Result< Buff< String>, String>
     let  	registry = CreateDefaultRegistry();
     let  	guard = registry.read().map_err( |e| e.to_string())?;
     let  	schemes = guard.Schemes();
-    let  	mut buff = Buff::New();
-    for s in schemes {
-        buff.Push( s);
-    }
+    let  	buff = Buff::Create( crate::silo::U32( schemes.len() as u32), |i| {
+        schemes[i.AsUsize()].clone()
+    });
     Ok( buff)
 }
 
@@ -600,15 +596,13 @@ impl QuantizedPtsFrameDto
     /// Converts from full-precision PtsFrameDto to quantized version.
     pub fn	FromPtsFrameDto( frame: &PtsFrameDto, width: f32, height: f32) -> Self
     {
-        let  	mut quantized_points = Buff::New();
-        for pt in &frame._Points {
-            quantized_points.Push( QuantizedPoint::FromProjected( pt, width, height));
-        }
+        let  	quantized_points = Buff::Create( frame._Points.Size(), |i| {
+            QuantizedPoint::FromProjected( &frame._Points[i.AsUsize()], width, height)
+        });
 
-        let  	mut quantized_lines = Buff::New();
-        for line in &frame._BoxLines {
-            quantized_lines.Push( QuantizedLine::FromProjected( line, width, height));
-        }
+        let  	quantized_lines = Buff::Create( frame._BoxLines.Size(), |i| {
+            QuantizedLine::FromProjected( &frame._BoxLines[i.AsUsize()], width, height)
+        });
 
         QuantizedPtsFrameDto {
             _Points:        quantized_points,
@@ -625,15 +619,13 @@ impl QuantizedPtsFrameDto
     /// Converts back to full-precision PtsFrameDto for compatibility.
     pub fn	ToPtsFrameDto( &self, width: f32, height: f32) -> PtsFrameDto
     {
-        let  	mut points = Buff::New();
-        for qpt in &self._Points {
-            points.Push( qpt.ToProjected( width, height));
-        }
+        let  	points = Buff::Create( self._Points.Size(), |i| {
+            self._Points[i.AsUsize()].ToProjected( width, height)
+        });
 
-        let  	mut lines = Buff::New();
-        for qline in &self._BoxLines {
-            lines.Push( qline.ToProjected( width, height));
-        }
+        let  	lines = Buff::Create( self._BoxLines.Size(), |i| {
+            self._BoxLines[i.AsUsize()].ToProjected( width, height)
+        });
 
         PtsFrameDto {
             _Points:        points,
@@ -839,8 +831,6 @@ pub fn	XplrProjectPts(
         return Ok( tauri::ipc::Response::new( Vec::new()));
     }
 
-    let  	mut box_lines = Buff::New();
-    let  	mut projectedPoints = Buff::New();
     let  	camRef = state._Scene.Camera();
 
     let  	sceneResult = state._Scene.ProjectSceneCluster(
@@ -851,38 +841,43 @@ pub fn	XplrProjectPts(
         None,
     );
 
-    if let Ok( sceneFrame) = sceneResult {
-        for line in &sceneFrame._BoxLines {
-            box_lines.Push( ProjectedLine {
+    let  	( box_lines, projectedPoints ) = if let Ok( sceneFrame) = sceneResult {
+        let  	lines = Buff::Create( sceneFrame._BoxLines.Size(), |i| {
+            let  	line = &sceneFrame._BoxLines[i.AsUsize()];
+            ProjectedLine {
                 _X1: line.0.0,
                 _Y1: line.0.1,
                 _X2: line.1.0,
                 _Y2: line.1.1,
-            });
-        }
-        for pt in &sceneFrame._Points {
-            projectedPoints.Push( ProjectedPoint {
+            }
+        });
+        let  	pts = Buff::Create( sceneFrame._Points.Size(), |i| {
+            let  	pt = &sceneFrame._Points[i.AsUsize()];
+            ProjectedPoint {
                 _X: pt.0,
                 _Y: pt.1,
                 _Radius: pt.2,
                 _CoreRadius: pt.3,
                 _Alpha: pt.4,
-            });
-        }
+            }
+        });
+        ( lines, pts )
     } else {
         // High performance CPU fallback if Swarm device is uninitialized
         let  	( center, scaleNorm) = state._Scene.CalcNormalization();
         let  	bboxLines = state._Scene.ProjectBoundingBox( width, height);
-        for ( p1, p2) in &bboxLines {
-            box_lines.Push( ProjectedLine {
+        let  	lines = Buff::Create( bboxLines.Size(), |i| {
+            let  	( p1, p2) = &bboxLines[i.AsUsize()];
+            ProjectedLine {
                 _X1: p1.0,
                 _Y1: p1.1,
                 _X2: p2.0,
                 _Y2: p2.1,
-            });
-        }
+            }
+        });
 
-        for pt in &state._Scene._Points {
+        let  	pts = Buff::Create( state._Scene._Points.Size(), |i| {
+            let  	pt = &state._Scene._Points[i.AsUsize()];
             let  	nx = ( pt[0] - center[0]) * scaleNorm;
             let  	ny = ( pt[1] - center[1]) * scaleNorm;
             let  	nz = ( pt[2] - center[2]) * scaleNorm;
@@ -892,15 +887,16 @@ pub fn	XplrProjectPts(
             let  	alpha = 0.5 + depthFactor * 0.5;
             let  	core_radius = ( 1.0 + depthFactor * 1.5) * dpr;
 
-            projectedPoints.Push( ProjectedPoint {
+            ProjectedPoint {
                 _X: px,
                 _Y: py,
                 _Radius: radius,
                 _CoreRadius: core_radius,
                 _Alpha: alpha,
-            });
-        }
-    }
+            }
+        });
+        ( lines, pts )
+    };
 
     let  	fileName = std::path::Path::new( &path)
         .file_name()
@@ -1155,12 +1151,14 @@ mod _tests
     #[test]
     fn	TestPtsFrameDtoBinaryRoundtrip()
     {
-        let  	mut points = Buff::New();
-        points.Push( ProjectedPoint { _X: 10.0, _Y: 20.0, _Radius: 3.0, _CoreRadius: 1.0, _Alpha: 0.8 });
-        points.Push( ProjectedPoint { _X: 30.0, _Y: 40.0, _Radius: 4.0, _CoreRadius: 1.5, _Alpha: 0.9 });
+        let  	points = Buff![
+            ProjectedPoint { _X: 10.0, _Y: 20.0, _Radius: 3.0, _CoreRadius: 1.0, _Alpha: 0.8 },
+            ProjectedPoint { _X: 30.0, _Y: 40.0, _Radius: 4.0, _CoreRadius: 1.5, _Alpha: 0.9 }
+        ];
 
-        let  	mut lines = Buff::New();
-        lines.Push( ProjectedLine { _X1: 1.0, _Y1: 2.0, _X2: 3.0, _Y2: 4.0 });
+        let  	lines = Buff![
+            ProjectedLine { _X1: 1.0, _Y1: 2.0, _X2: 3.0, _Y2: 4.0 }
+        ];
 
         let  	frame = PtsFrameDto {
             _Points: points,

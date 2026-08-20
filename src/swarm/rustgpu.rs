@@ -1,4 +1,4 @@
-//-- swarm/rustgpu.rs ----------------------------------------------------------------------------------------------------------------
+﻿//-- swarm/rustgpu.rs ----------------------------------------------------------------------------------------------------------------
 
 use	std::sync::mpsc;
 use	std::sync::Arc;
@@ -264,7 +264,7 @@ impl RustGpuDevice
     {
         let  	instance = Instance::default();
         let  	adapters = pollster::block_on( instance.enumerate_adapters( wgpu::Backends::all()));
-        let  	mut devices = Buff::New();
+        let  	mut devicesVec = Vec::with_capacity( adapters.len().max( 1));
 
         for adapter in adapters {
             let  	res = pollster::block_on( async {
@@ -274,7 +274,7 @@ impl RustGpuDevice
                 }).await
             });
             if let Ok( ( device, queue)) = res {
-                devices.Push( RustGpuDevice {
+                devicesVec.push( RustGpuDevice {
                     _Device: Arc::new( device),
                     _Queue:  Arc::new( queue),
                     _Cache:  Arc::new( std::sync::Mutex::new( std::collections::HashMap::new())),
@@ -282,7 +282,7 @@ impl RustGpuDevice
             }
         }
 
-        devices
+        Buff::from_iter( devicesVec)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

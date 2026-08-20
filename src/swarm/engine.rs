@@ -1,4 +1,4 @@
-//-- swarm/engine.rs ----------------------------------------------------------------------------------------------------------------
+﻿//-- swarm/engine.rs ----------------------------------------------------------------------------------------------------------------
 
 use	crate::silo::{ Buff, ISliceExt, U32, U64 };
 use	crate::swarm::cpu::{ CpuBuffer, CpuDevice, CpuKernel };
@@ -437,12 +437,10 @@ impl SwarmCluster
             let  	primary = SwarmEngine {
                 _Device: SwarmDevice::RustGpu( devices[0].clone()),
             };
-            let  	mut aux = Buff::New();
-            for i in 1..devices.len() {
-                aux.Push( SwarmEngine {
-                    _Device: SwarmDevice::RustGpu( devices[i].clone()),
-                });
-            }
+            let  	aux: Buff< SwarmEngine> = devices[1..]
+                .iter()
+                .map( |d| SwarmEngine { _Device: SwarmDevice::RustGpu( d.clone()) })
+                .collect();
             return SwarmCluster {
                 _Primary:    primary,
                 _Auxiliary:  aux,

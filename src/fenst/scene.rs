@@ -1,5 +1,5 @@
-//-- scene.rs ---------------------------------------------------------------------------------------------------------------------
-use	crate::silo::Buff;
+﻿//-- scene.rs ---------------------------------------------------------------------------------------------------------------------
+use	crate::silo::{ Buff, Stash, U32 };
 use	serde::{ Serialize, Deserialize };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -149,6 +149,16 @@ pub struct SceneGraph
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
+impl Default for SceneGraph
+{
+    fn	default() -> Self
+    {
+        Self::New()
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
 impl SceneGraph
 {
     pub fn	New() -> Self
@@ -206,6 +216,32 @@ impl SceneGraph
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
+    /// Projects all points in the scene to 2D screen coordinates with depth-scaled radius and alpha.
+    pub fn	ProjectPoints( &self, width: f32, height: f32, dpr: f32) -> Buff< ( f32, f32, f32, f32, f32)>
+    {
+        let  	( center, scaleNorm) = self.CalcNormalization();
+        let  	mut resultStash = Stash::WithCapacity( U32( self._Points.len() as u32));
+
+        for pt in &self._Points {
+            let  	nx = ( pt[0] - center[0]) * scaleNorm;
+            let  	ny = ( pt[1] - center[1]) * scaleNorm;
+            let  	nz = ( pt[2] - center[2]) * scaleNorm;
+
+            let  	( px, py, z2) = self._Camera.Project( nx, ny, nz, width, height);
+
+            let  	depthFactor = ( ( 300.0 - z2) / 400.0).clamp( 0.3, 1.0);
+            let  	radius = ( 2.5 + depthFactor * 2.5) * dpr;
+            let  	coreRadius = ( 1.0 + depthFactor * 1.0) * dpr;
+            let  	alpha = 0.5 + depthFactor * 0.5;
+
+            resultStash.Push( ( px, py, radius, coreRadius, alpha));
+        }
+
+        resultStash.IntoBuff()
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------------------
+
     /// Projects the 12 edges of the bounding box wireframe to 2D line segments.
     pub fn	ProjectBoundingBox( &self, width: f32, height: f32) -> Buff< ( ( f32, f32), ( f32, f32))>
     {
@@ -230,20 +266,20 @@ impl SceneGraph
             ( 0, 4), ( 1, 5), ( 2, 6), ( 3, 7),
         ];
 
-        let  	mut projectedVerts = Buff::New();
-        for v in &verts {
+        let  	mut projectedVerts = [ ( 0.0f32, 0.0f32); 8 ];
+        for ( idx, v) in verts.iter().enumerate() {
             let  	( px, py, _) = self._Camera.Project( v[0], v[1], v[2], width, height);
-            projectedVerts.Push( ( px, py));
+            projectedVerts[idx] = ( px, py);
         }
 
-        let  	mut lines = Buff::New();
+        let  	mut linesStash = Stash::WithCapacity( U32( 12));
         for ( i, j) in &edges {
             let  	p1 = projectedVerts[*i];
             let  	p2 = projectedVerts[*j];
-            lines.Push( ( p1, p2));
+            linesStash.Push( ( p1, p2));
         }
 
-        lines
+        linesStash.IntoBuff()
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------
@@ -285,17 +321,17 @@ impl SceneGraph
         let  	camParams = self.CameraParams( width, height);
         let  	rawProjected = engine.RunCameraTransform( &self._Points, &camParams, spirvBytes)?;
 
-        let  	mut result = Buff::New();
+        let  	mut resultStash = Stash::WithCapacity( U32( rawProjected.len() as u32));
         for proj in &rawProjected {
             let  	px = proj[0];
             let  	py = proj[1];
             let  	radius = proj[2] * dpr;
             let  	coreRadius = proj[3] * dpr;
             let  	alpha = proj[4];
-            result.Push( ( px, py, radius, coreRadius, alpha));
+            resultStash.Push( ( px, py, radius, coreRadius, alpha));
         }
 
-        Ok( result)
+        Ok( resultStash.IntoBuff())
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------
@@ -332,16 +368,16 @@ impl SceneGraph
             ( 0, 4), ( 1, 5), ( 2, 6), ( 3, 7),
         ];
 
-        let  	mut lines = Buff::New();
+        let  	mut linesStash = Stash::WithCapacity( U32( 12));
         if rawProjected.len() >= 8 {
             for ( i, j) in &edges {
                 let  	p1 = ( rawProjected[*i][0], rawProjected[*i][1]);
                 let  	p2 = ( rawProjected[*j][0], rawProjected[*j][1]);
-                lines.Push( ( p1, p2));
+                linesStash.Push( ( p1, p2));
             }
         }
 
-        Ok( lines)
+        Ok( linesStash.IntoBuff())
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------
@@ -381,22 +417,22 @@ impl SceneGraph
         let  	camParams = self.CameraParams( width, height);
         let  	rawProjected = cluster.RunCameraTransformSharded( &self._Points, &camParams, spirvBytes)?;
 
-        let  	mut result = Buff::New();
+        let  	mut resultStash = Stash::WithCapacity( U32( rawProjected.len() as u32));
         for proj in &rawProjected {
             let  	px = proj[0];
             let  	py = proj[1];
             let  	radius = proj[2] * dpr;
             let  	coreRadius = proj[3] * dpr;
             let  	alpha = proj[4];
-            result.Push( ( px, py, radius, coreRadius, alpha));
+            resultStash.Push( ( px, py, radius, coreRadius, alpha));
         }
 
-        Ok( result)
+        Ok( resultStash.IntoBuff())
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
-    /// Dispatches the complete graphics scene projection across a multi-GPU SwarmCluster for display.
+    /// Dispatches full scene projection across a multi-GPU SwarmCluster.
     pub fn	ProjectSceneCluster(
         &self,
         cluster: &crate::swarm::SwarmCluster,
@@ -407,7 +443,8 @@ impl SceneGraph
     ) -> Result< SceneDisplayFrame, crate::swarm::SwarmError>
     {
         let  	points = self.ProjectPointsCluster( cluster, width, height, dpr, spirvBytes)?;
-        let  	boxLines = self.ProjectBoundingBoxSwarm( cluster.Primary(), width, height, spirvBytes)?;
+        let  	engine = cluster.Primary();
+        let  	boxLines = self.ProjectBoundingBoxSwarm( engine, width, height, spirvBytes)?;
 
         Ok( SceneDisplayFrame {
             _Points:    points,
@@ -418,7 +455,7 @@ impl SceneGraph
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Complete projected 2D display frame for the graphics scene (points and bounding box wireframe).
+/// Frame output containing projected 2D points and bounding box line segments ready for Canvas rendering.
 #[derive( Clone, Debug)]
 pub struct SceneDisplayFrame
 {
@@ -427,4 +464,3 @@ pub struct SceneDisplayFrame
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
-

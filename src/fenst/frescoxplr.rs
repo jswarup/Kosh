@@ -145,16 +145,21 @@ impl BranchXplr for FrescoBranch
 {
     fn	Children( &self) -> Result< Buff< Box< dyn Xplr>>, String>
     {
-        let  	mut children: Buff< Box< dyn Xplr>> = Buff::New();
-        for entry in &self._Entries {
+        let  	children = Buff::Create( self._Entries.Size(), |i| {
+            let  	entry = &self._Entries[i.AsUsize()];
             if entry.IsLeaf() {
                 if let  	Some( leaf) = entry.AsLeaf() {
-                    children.Push( Box::new( FrescoLeaf::New( entry.Name().to_string(), entry.Path().to_string(), leaf.Size().to_string())));
+                    let  	leafBox: Box< dyn Xplr> = Box::new( FrescoLeaf::New( entry.Name().to_string(), entry.Path().to_string(), leaf.Size().to_string()));
+                    leafBox
+                } else {
+                    let  	branchBox: Box< dyn Xplr> = Box::new( FrescoBranch::New( entry.Name().to_string(), entry.Path().to_string(), Buff::New()));
+                    branchBox
                 }
             } else {
-                children.Push( Box::new( FrescoBranch::New( entry.Name().to_string(), entry.Path().to_string(), Buff::New())));
+                let  	branchBox: Box< dyn Xplr> = Box::new( FrescoBranch::New( entry.Name().to_string(), entry.Path().to_string(), Buff::New()));
+                branchBox
             }
-        }
+        });
         Ok( children)
     }
 

@@ -1,7 +1,7 @@
-//-- swarm/cpu.rs --------------------------------------------------------------------------------------------------------------------
+﻿//-- swarm/cpu.rs --------------------------------------------------------------------------------------------------------------------
 
 use	std::sync::{ Arc, RwLock };
-use	crate::silo::{ Buff, U32, U64 };
+use	crate::silo::{ Buff, Stash, U32, U64 };
 use	crate::swarm::ops::StandardOp;
 use	crate::swarm::traits::{
     BackendKind, BufferUsage, CpuKernelFn, IComputeBuffer, IComputeDevice,
@@ -320,10 +320,11 @@ impl IComputeDevice for CpuDevice
         let  	threadsZ = dim._Z.AsU32();
 
         // Read all buffers into CPU memory
-        let  	mut rawData: Buff< Buff< u8>> = Buff::New();
+        let  	mut rawDataStash: Stash< Buff< u8>> = Stash::WithCapacity( U32( buffers.len() as u32));
         for b in buffers {
-            rawData.Push( b.Read()?);
+            rawDataStash.PushVal( b.Read()?);
         }
+        let  	rawData = rawDataStash.IntoBuff();
 
         // Determine input and output buffers: if only 1 buffer, treat as read_write (input & output)
         let  	( inputSlices, mut outputVectors) = if rawData.len() == 1 {
