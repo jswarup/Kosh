@@ -391,8 +391,8 @@ function renderFileContent(tabOrContent) {
                 lastMouseY = e.clientY;
 
                 if (dragMode === 'rotate') {
-                    angleY += dx * 0.008;
-                    angleX += dy * 0.008;
+                    angleY -= dx * 0.008;
+                    angleX -= dy * 0.008;
                 } else {
                     panX += dx;
                     panY += dy;
@@ -440,7 +440,7 @@ function renderFileContent(tabOrContent) {
             const dy = bMax[1] - bMin[1];
             const dz = bMax[2] - bMin[2];
             const maxDim = Math.max(dx, dy, dz);
-            const scaleNorm = maxDim > 1e-4 ? (35.0 / maxDim) : 1.0;
+            const scaleNorm = maxDim > 1e-4 ? (240.0 / maxDim) : 1.0;
 
             function project(x, y, z, width, height) {
                 const cosY = Math.cos(angleY), sinY = Math.sin(angleY);
@@ -636,8 +636,8 @@ gb(, , );
                 lastMouseY = e.clientY;
 
                 if (dragMode === 'rotate') {
-                    angleY += dx * 0.008;
-                    angleX += dy * 0.008;
+                    angleY -= dx * 0.008;
+                    angleX -= dy * 0.008;
                 } else {
                     panX += dx;
                     panY += dy;
@@ -682,7 +682,7 @@ gb(, , );
             const dy = bMax[1] - bMin[1];
             const dz = bMax[2] - bMin[2];
             const maxDim = Math.max(dx, dy, dz);
-            const scaleNorm = maxDim > 1e-4 ? (35.0 / maxDim) : 1.0;
+            const scaleNorm = maxDim > 1e-4 ? (240.0 / maxDim) : 1.0;
 
             // Bounding box vertices normalized and centered
             const bboxVerts = [

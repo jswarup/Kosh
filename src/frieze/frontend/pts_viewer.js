@@ -88,8 +88,8 @@
         lastMouseY = e.clientY;
 
         if (dragMode === 'rotate') {
-            rotY += dx * 0.008;
-            rotX += dy * 0.008;
+            rotY -= dx * 0.008;
+            rotX -= dy * 0.008;
         } else {
             panX += dx * (window.devicePixelRatio || 1);
             panY += dy * (window.devicePixelRatio || 1);

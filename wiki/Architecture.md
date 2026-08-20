@@ -95,6 +95,25 @@ graph TD
 
 ---
 
+## 4. Graphics Ownership Rule
+
+Frieze is intentionally a thin presentation layer. It forwards user input to Fenst, receives compact IPC display frames, and paints already-projected primitives through Canvas 2D. Frieze must not parse geometry, own camera state, calculate transforms or projection, cull, shade, depth-sort, or create WebGL/WebGPU contexts.
+
+Fenst owns graphics sessions, asset loading, camera updates, frame packing, and IPC. It delegates graphics computation and render preparation to Swarm, which dispatches the corresponding Symph kernel across GPU or CPU-SIMT backends. CPU fallback is permitted only within that Fenst → Swarm → Symph path.
+
+```mermaid
+flowchart LR
+    Input["Frieze input"] --> Fenst["Fenst session + IPC"]
+    Fenst --> Swarm["Swarm dispatch"]
+    Swarm --> Symph["Symph graphics kernels"]
+    Symph --> Swarm
+    Swarm --> Fenst
+    Fenst --> Frame["Compact projected frame"]
+    Frame --> Frieze["Frieze Canvas 2D presentation"]
+```
+
+---
+
 ## 5. Data Serialization & IPC Optimization
 
 When data flows between the desktop frontend (`frieze`) and heterogeneous compute backend (`swarm`), serialization efficiency is critical for real-time performance.

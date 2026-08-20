@@ -11,3 +11,7 @@
 ## Implementation Plan Policy
 - **Heap Usage Commentary**: As a strict project policy, EVERY implementation plan MUST include a dedicated section commenting on the anticipated heap usage and allocation impact of the proposed changes.
 
+## Graphics Ownership Rule
+- **Frieze Is Presentation Only**: `frieze` is a thin presentation layer. It may manage DOM state, forward input, decode IPC frames, and paint backend-projected primitives through Canvas 2D. It MUST NOT parse geometry, calculate camera transforms, project vertices, cull, shade, sort geometry, or create WebGL/WebGPU contexts.
+- **Fenst Orchestrates Graphics**: `fenst` owns graphics sessions, asset loading, camera state, frame serialization, and IPC. All graphics computation and render preparation MUST be delegated through `swarm` to `symph` kernels, with a CPU fallback only inside that backend pipeline.
+

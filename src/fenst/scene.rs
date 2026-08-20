@@ -199,7 +199,7 @@ impl SceneGraph
         let  	dy = self._BboxMax[1] - self._BboxMin[1];
         let  	dz = self._BboxMax[2] - self._BboxMin[2];
         let  	maxDim = dx.max( dy).max( dz);
-        let  	scaleNorm = if maxDim > 1e-4 { 35.0 / maxDim } else { 1.0 };
+        let  	scaleNorm = if maxDim > 1e-4 { 240.0 / maxDim } else { 1.0 };
 
         ( [ cx, cy, cz ], scaleNorm)
     }

@@ -18,7 +18,7 @@ src/frieze/
 │   ├── index.html              # Main application UI shell
 │   ├── app.js                  # Primary JavaScript application logic
 │   ├── pts_viewer.html         # 3D point cloud visualization viewport
-│   ├── pts_viewer.js           # WebGL/Canvas rendering & interaction
+│   ├── pts_viewer.js           # Canvas 2D presentation & input forwarding
 │   └── styles.css              # Unified styling for all views
 ├── icons/
 │   ├── 32x32.png               # Taskbar/small window icon
@@ -52,11 +52,11 @@ Dedicated viewport for **3D point cloud visualization**. Contains a full-screen 
 - Wireframe bounding box display
 
 ### 3.4 `pts_viewer.js`
-WebGL/Canvas rendering engine implementing:
-- **Point Cloud Rendering**: GPU-accelerated rendering of millions of points using `pts_pointcloud_cs` compute shader.
-- **Bounding Box Wireframe**: Draws 12 lines defining the 3D axis-aligned bounding box of loaded point data.
-- **Camera Interaction**: Responds to mouse events and computes perspective projection matrices.
-- **Real-Time Update**: Calls Tauri `XplrProjectPts` command at 60+ FPS to fetch updated projected frame data.
+Canvas 2D presentation and input forwarding implementing:
+- **Point Cloud Presentation**: Paints compact, already-projected point and line primitives supplied by Fenst.
+- **Camera Interaction**: Collects pointer and wheel input, then forwards camera updates through Tauri IPC.
+- **Real-Time Update**: Calls Tauri `XplrProjectPts` to fetch Swarm/Symph-projected frame data.
+- **Ownership Boundary**: Does not parse geometry, compute perspective matrices, project vertices, or create WebGL/WebGPU contexts.
 
 ### 3.5 `styles.css`
 Unified CSS stylesheet covering:
@@ -64,7 +64,7 @@ Unified CSS stylesheet covering:
 - Dark/light theme support
 - Typography and spacing conventions
 - Modal dialogs and context menus
-- WebGL canvas styling and fullscreen modes
+- Canvas presentation styling and fullscreen modes
 
 ---
 
@@ -146,7 +146,11 @@ This ensures:
 
 ---
 
-## 8. Related Modules
+## 8. Graphics Ownership
+
+Frieze is deliberately limited to input forwarding, UI state, IPC frame decoding, and Canvas 2D presentation. Graphics sessions, camera state, geometry processing, projection, culling, shading, and frame generation belong to Fenst, which routes computation through Swarm and Symph. Browser-side WebGL/WebGPU contexts and browser-side 3D math are prohibited.
+
+## 9. Related Modules
 
 - **[`fenst`](Fenst.md)**: Backend module providing IPC command handlers that the frieze frontend invokes.
 - **[`symph`](Swarm.md)**: Compute shaders used for 3D point cloud rendering in `pts_viewer.js`.
@@ -154,7 +158,7 @@ This ensures:
 
 ---
 
-## 9. Development & Customization
+## 10. Development & Customization
 
 ### Modifying Frontend UI
 - Edit `src/frieze/frontend/{index.html, app.js, styles.css}` directly.

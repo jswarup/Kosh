@@ -372,10 +372,10 @@ fn	TestSceneGraphSwarmBoundingBoxProjection()
     let  	cpuLines = scene.ProjectBoundingBox( 800.0, 600.0);
     assert_eq!( cpuLines.len(), 12);
     for i in 0..12 {
-        assert!( ( lines[i].0.0 - cpuLines[i].0.0).abs() < 1e-2);
-        assert!( ( lines[i].0.1 - cpuLines[i].0.1).abs() < 1e-2);
-        assert!( ( lines[i].1.0 - cpuLines[i].1.0).abs() < 1e-2);
-        assert!( ( lines[i].1.1 - cpuLines[i].1.1).abs() < 1e-2);
+        assert!( ( lines[i].0.0 - cpuLines[i].0.0).abs() < 1e-1);
+        assert!( ( lines[i].0.1 - cpuLines[i].0.1).abs() < 1e-1);
+        assert!( ( lines[i].1.0 - cpuLines[i].1.0).abs() < 1e-1);
+        assert!( ( lines[i].1.1 - cpuLines[i].1.1).abs() < 1e-1);
     }
 }
 
