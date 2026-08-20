@@ -1,4 +1,4 @@
-//-- main.rs ----------------------------------------------------------------------------------------------------------------------
+﻿//-- main.rs ----------------------------------------------------------------------------------------------------------------------
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
 use	std::process::{ Command, Stdio };
 use	anyhow::{ Context, Result };
@@ -8,7 +8,7 @@ use	tracing_subscriber::EnvFilter;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Kosh:
+/// Kosh: Native 3D GPU & Symbolic Computing Workspace
 #[derive( Parser, Debug)]
 #[command( author, version, about, long_about = None)]
 struct Args
@@ -22,6 +22,9 @@ struct Args
     /// Enable output prints from tests (nocapture)
     #[arg( short = 'g', long = "nocapture")]
     _Nocapture: bool,
+    /// Launch secondary legacy Tauri/Frieze frontend
+    #[arg( long = "frieze")]
+    _Frieze: bool,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -71,7 +74,7 @@ fn	run_tests( filter: &str, nocapture: bool) -> Result< ()>
 
 fn	main() -> Result< ()>
 {
-    let  	args = Args::parse();                                      // Parse command line arguments
+    let  	args = Args::parse();
     if let  	Some( ref filter) = args._Test {
         return run_tests( filter, args._Nocapture);
     }
@@ -80,14 +83,22 @@ fn	main() -> Result< ()>
         setup_logging( true).context( "Setting up logging framework failed")?;
     }
 
-    // Workaround for WebKitGTK/WSL graphics issues:
-    unsafe {
-        std::env::set_var( "WEBKIT_DISABLE_DMABUF_RENDERER", "1");
-        std::env::set_var( "LIBGL_ALWAYS_SOFTWARE", "1");
-        std::env::set_var( "WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS", "1");
+    // Check if secondary/legacy Frieze frontend was requested
+    if args._Frieze {
+        unsafe {
+            std::env::set_var( "WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+            std::env::set_var( "LIBGL_ALWAYS_SOFTWARE", "1");
+            std::env::set_var( "WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS", "1");
+        }
+        kosh::fenst::run();
+        return Ok( ());
     }
 
-    kosh::fenst::run();
+    // Default primary: 100% Native Pure-Rust Styew (eframe + egui + wgpu)
+    if let  	Err( e) = kosh::styew::run() {
+        eprintln!( "Error launching Kosh native window: {:?}", e);
+    }
+
     Ok( ())
 }
 

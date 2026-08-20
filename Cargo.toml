@@ -20,6 +20,8 @@ pollster = "0.4"
 rfd = "0.15"
 tauri = { version = "2", features = [] }
 symph = { path = "src/symph" }
+egui = "0.36.1"
+eframe = "0.36.1"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
