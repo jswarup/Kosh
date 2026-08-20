@@ -4,7 +4,7 @@ use	crate::fresco::ExprRepos;
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Viewport for inspecting Fresco symbolic AST expressions matching Frieze's layout.
+/// Viewport for inspecting Fresco symbolic AST expressions matching Aura's layout.
 pub fn	RenderFrescoView( ui: &mut Ui, uri: &str)
 {
     ui.vertical( |ui| {

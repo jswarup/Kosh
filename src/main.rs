@@ -22,9 +22,9 @@ struct Args
     /// Enable output prints from tests (nocapture)
     #[arg( short = 'g', long = "nocapture")]
     _Nocapture: bool,
-    /// Launch secondary legacy Tauri/Frieze frontend
-    #[arg( long = "frieze")]
-    _Frieze: bool,
+    /// Launch secondary legacy Tauri/Aura frontend
+    #[arg( long = "aura")]
+    _Aura: bool,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -83,8 +83,8 @@ fn	main() -> Result< ()>
         setup_logging( true).context( "Setting up logging framework failed")?;
     }
 
-    // Check if secondary/legacy Frieze frontend was requested
-    if args._Frieze {
+    // Check if secondary/legacy Aura frontend was requested
+    if args._Aura {
         unsafe {
             std::env::set_var( "WEBKIT_DISABLE_DMABUF_RENDERER", "1");
             std::env::set_var( "LIBGL_ALWAYS_SOFTWARE", "1");

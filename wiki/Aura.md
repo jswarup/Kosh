@@ -1,8 +1,8 @@
-# Module Reference: `frieze`
+# Module Reference: `aura`
 
 ## 1. Overview & Purpose
 
-The `frieze` module contains **Tauri desktop application resources and frontend assets** for the Kosh GUI. It houses:
+The `aura` module contains **Tauri desktop application resources and frontend assets** for the Kosh GUI. It houses:
 1. **Frontend Assets**: HTML, JavaScript, and CSS files comprising the Tauri desktop UI shell.
 2. **Application Icons**: Multi-resolution icon files for platform branding and taskbar/window decoration.
 3. **Tauri Capabilities**: Security permission manifests defining fine-grained feature access for the desktop application.
@@ -13,7 +13,7 @@ The `frieze` module contains **Tauri desktop application resources and frontend 
 ## 2. Directory Structure
 
 ```
-src/frieze/
+src/aura/
 ├── frontend/
 │   ├── index.html              # Main application UI shell
 │   ├── app.js                  # Primary JavaScript application logic
@@ -32,7 +32,7 @@ src/frieze/
 
 ---
 
-## 3. Frontend (`frieze/frontend/`)
+## 3. Frontend (`aura/frontend/`)
 
 ### 3.1 `index.html`
 Entry point for the Tauri desktop application UI. Defines the root HTML structure, loads `app.js`, and provides the DOM container for the virtual explorer sidebar and dynamic content views.
@@ -68,7 +68,7 @@ Unified CSS stylesheet covering:
 
 ---
 
-## 4. Application Icons (`frieze/icons/`)
+## 4. Application Icons (`aura/icons/`)
 
 The `icons/` directory stores multi-resolution platform icons used in:
 - **Windows (.ico)**: Embedded in executable, used by Windows shell.
@@ -78,7 +78,7 @@ The Tauri build process (`build.rs`) bundles these icons as application metadata
 
 ---
 
-## 5. Tauri Capabilities (`frieze/capabilities/`)
+## 5. Tauri Capabilities (`aura/capabilities/`)
 
 ### 5.1 `default.json`
 Defines the security capability set for Tauri commands. Specifies which backend Rust functions (`fenst::xplrcmds`) are exposed to the frontend JavaScript layer, along with their allowed permissions:
@@ -91,14 +91,14 @@ Defines the security capability set for Tauri commands. Specifies which backend 
 
 ---
 
-## 6. Tauri Configuration (`frieze/tauri.conf.json`)
+## 6. Tauri Configuration (`aura/tauri.conf.json`)
 
 ```json
 {
   "productName": "Fenst",
   "identifier": "com.kosh.fenst",
   "build": {
-    "frontendDist": "./src/frieze/frontend",
+    "frontendDist": "./src/aura/frontend",
     "beforeDevCommand": "",
     "beforeBuildCommand": ""
   },
@@ -106,10 +106,10 @@ Defines the security capability set for Tauri commands. Specifies which backend 
     "active": true,
     "targets": "all",
     "icon": [
-      "src/frieze/icons/32x32.png",
-      "src/frieze/icons/128x128.png",
-      "src/frieze/icons/icon.ico",
-      "src/frieze/icons/icon.png"
+      "src/aura/icons/32x32.png",
+      "src/aura/icons/128x128.png",
+      "src/aura/icons/icon.ico",
+      "src/aura/icons/icon.png"
     ]
   }
 }
@@ -118,7 +118,7 @@ Defines the security capability set for Tauri commands. Specifies which backend 
 ### Key Configuration Fields
 - **`productName`**: Application display name ("Fenst").
 - **`identifier`**: Unique bundle identifier for macOS/Linux (`com.kosh.fenst`).
-- **`frontendDist`**: Relative path to frontend assets (now `./src/frieze/frontend`).
+- **`frontendDist`**: Relative path to frontend assets (now `./src/aura/frontend`).
 - **`bundle.targets`**: All platforms (Windows, macOS, Linux).
 - **`bundle.icon`**: Array of icon paths for installer and application metadata.
 
@@ -128,31 +128,31 @@ The `build.rs` script copies this configuration to the project root during compi
 
 ## 7. Build Integration
 
-The `build.rs` script integrates frieze resources into the Kosh build pipeline:
+The `build.rs` script integrates aura resources into the Kosh build pipeline:
 
 ```rust
-// Copy tauri.conf.json from src/frieze/ for Tauri build system
-let _ = std::fs::copy("src/frieze/tauri.conf.json", "tauri.conf.json");
+// Copy tauri.conf.json from src/aura/ for Tauri build system
+let _ = std::fs::copy("src/aura/tauri.conf.json", "tauri.conf.json");
 
 let attrs = tauri_build::Attributes::new()
-    .capabilities_path_pattern("src/frieze/capabilities/*");
+    .capabilities_path_pattern("src/aura/capabilities/*");
 tauri_build::try_build(attrs).expect("Failed to build Tauri app");
 ```
 
 This ensures:
-1. Tauri reads application metadata from the frieze configuration
-2. Security capabilities are loaded from the frieze manifest
+1. Tauri reads application metadata from the aura configuration
+2. Security capabilities are loaded from the aura manifest
 3. Frontend assets are bundled for desktop distribution
 
 ---
 
 ## 8. Graphics Ownership
 
-Frieze is deliberately limited to input forwarding, UI state, IPC frame decoding, and Canvas 2D presentation. Graphics sessions, camera state, geometry processing, projection, culling, shading, and frame generation belong to Fenst, which routes computation through Swarm and Symph. Browser-side WebGL/WebGPU contexts and browser-side 3D math are prohibited.
+Aura is deliberately limited to input forwarding, UI state, IPC frame decoding, and Canvas 2D presentation. Graphics sessions, camera state, geometry processing, projection, culling, shading, and frame generation belong to Fenst, which routes computation through Swarm and Symph. Browser-side WebGL/WebGPU contexts and browser-side 3D math are prohibited.
 
 ## 9. Related Modules
 
-- **[`fenst`](Fenst.md)**: Backend module providing IPC command handlers that the frieze frontend invokes.
+- **[`fenst`](Fenst.md)**: Backend module providing IPC command handlers that the aura frontend invokes.
 - **[`symph`](Swarm.md)**: Compute shaders used for 3D point cloud rendering in `pts_viewer.js`.
 - **[`swarm`](Swarm.md)**: GPU device abstractions coordinating multi-GPU rendering for `XplrProjectPts`.
 
@@ -161,17 +161,17 @@ Frieze is deliberately limited to input forwarding, UI state, IPC frame decoding
 ## 10. Development & Customization
 
 ### Modifying Frontend UI
-- Edit `src/frieze/frontend/{index.html, app.js, styles.css}` directly.
+- Edit `src/aura/frontend/{index.html, app.js, styles.css}` directly.
 - Changes are reflected on `cargo run` (development mode) without rebuild.
 
 ### Updating Icons
-- Replace PNG/ICO files in `src/frieze/icons/`.
+- Replace PNG/ICO files in `src/aura/icons/`.
 - Rebuild with `cargo build` to rebundle icons.
 
 ### Extending Security Capabilities
-- Add new capability grants in `src/frieze/capabilities/default.json`.
+- Add new capability grants in `src/aura/capabilities/default.json`.
 - Expose corresponding backend command handlers in `fenst::xplrcmds`.
 
 ### Modifying Application Metadata
-- Edit `src/frieze/tauri.conf.json` directly.
+- Edit `src/aura/tauri.conf.json` directly.
 - Changes are synced to `tauri.conf.json` (root) during `build.rs` execution.

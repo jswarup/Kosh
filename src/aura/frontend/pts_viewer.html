@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fenst — Point Cloud Viewer</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #0b0f19;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pts-header {
+      height: 48px;
+      min-height: 48px;
+      background: rgba(15, 23, 42, 0.95);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 10;
+    }
+
+    .pts-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .pts-badge {
+      background: linear-gradient(135deg, #00f3ff, #0077ff);
+      color: #000;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .pts-filename {
+      font-size: 14px;
+      font-weight: 600;
+      color: #f8fafc;
+    }
+
+    .pts-main {
+      flex: 1;
+      width: 100%;
+      height: calc(100vh - 48px);
+      position: relative;
+      overflow: hidden;
+      display: block;
+    }
+
+    #pts-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .pts-sidebar {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 260px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      z-index: 5;
+    }
+
+    .pts-panel-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #94a3b8;
+      margin-bottom: 12px;
+    }
+
+    .pts-stat-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 8px;
+      color: #cbd5e1;
+    }
+
+    .pts-stat-val {
+      font-family: monospace;
+      font-weight: 600;
+      color: #00f3ff;
+    }
+
+    .pts-control-group {
+      margin-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 12px;
+    }
+
+    .pts-label {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="pts-header">
+    <div class="pts-title-group">
+      <span class="pts-badge">Rust-GPU</span>
+      <span class="pts-filename" id="pts-filename-txt">Loading .pts file...</span>
+    </div>
+    <div class="pts-stat-val" id="pts-shader-status">Shader: Loading...</div>
+  </div>
+
+  <div class="pts-main">
+    <canvas id="pts-canvas"></canvas>
+
+    <div class="pts-sidebar">
+      <div class="pts-panel-title">Point Cloud Metadata</div>
+      <div class="pts-stat-row">
+        <span>Point Count:</span>
+        <span class="pts-stat-val" id="pts-stat-count">Loading...</span>
+      </div>
+      <div class="pts-stat-row">
+        <span>Bounding Box:</span>
+        <span class="pts-stat-val" id="pts-stat-bbox">[-20, -20, -20] → [20, 20, 20]</span>
+      </div>
+      <div class="pts-stat-row">
+        <span>Shader Entry:</span>
+        <span class="pts-stat-val">pts_pointcloud_cs</span>
+      </div>
+      <div class="pts-stat-row">
+        <span>Backend:</span>
+        <span class="pts-stat-val">Rust-GPU / SPIR-V</span>
+      </div>
+
+      <div class="pts-control-group">
+        <label class="pts-label" for="pts-rot-speed">Rotation Speed</label>
+        <input type="range" id="pts-rot-speed" min="0" max="100" value="30" />
+      </div>
+      <div class="pts-control-group">
+        <label class="pts-label" for="pts-zoom">Camera Zoom (<span id="pts-zoom-val">1.0x</span>)</label>
+        <input type="range" id="pts-zoom" min="10" max="500" value="100" />
+      </div>
+      <div class="pts-control-group">
+        <label class="pts-label" for="pts-line-color">Point Color</label>
+        <input type="color" id="pts-line-color" value="#00f3ff" style="width:100%; height:32px; background:none; border:none; cursor:pointer;" />
+      </div>
+      <div class="pts-control-group">
+        <button id="pts-btn-reset-cam" style="width:100%; padding:8px 12px; background:rgba(0,243,255,0.15); border:1px solid #00f3ff; color:#00f3ff; border-radius:4px; font-weight:600; cursor:pointer; font-size:12px; transition:all 0.2s;">Reset Camera View</button>
+      </div>
+      <div style="margin-top:16px; font-size:11px; color:#64748b; line-height:1.5;">
+        <div><b>Controls:</b></div>
+        <div>• Left Drag: Rotate</div>
+        <div>• Right / Shift Drag: Pan</div>
+        <div>• Wheel: Zoom In/Out</div>
+        <div>• Double-Click: Reset</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="binary_decoder.js"></script>
+  <script src="pts_viewer.js"></script>
+</body>
+</html>

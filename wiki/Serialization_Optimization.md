@@ -1,5 +1,5 @@
 # Data Serialization Optimization & Audit
-## Frieze ↔ Fenst ↔ Swarm+Symph Pipeline
+## Aura ↔ Fenst ↔ Swarm+Symph Pipeline
 
 ---
 
@@ -7,7 +7,7 @@
 
 ```mermaid
 flowchart TD
-    subgraph Frieze["Frieze (Frontend)"]
+    subgraph Aura["Aura (Frontend)"]
         FE["pts_viewer.js<br/>Canvas Rendering<br/>Mouse Events"]
     end
 
@@ -522,6 +522,6 @@ pub struct BinaryFrameHeader {
 
 - **File**: [src/fenst/xplrcmds.rs](src/fenst/xplrcmds.rs) - IPC command handlers
 - **File**: [src/fenst/mod.rs](src/fenst/mod.rs) - DTO definitions
-- **File**: [src/frieze/frontend/pts_viewer.js](src/frieze/frontend/pts_viewer.js) - Frontend rendering
+- **File**: [src/aura/frontend/pts_viewer.js](src/aura/frontend/pts_viewer.js) - Frontend rendering
 - **Wiki**: [Fenst.md](wiki/Fenst.md) - Architecture overview
 - **Wiki**: [Swarm.md](wiki/Swarm.md) - Compute pipeline

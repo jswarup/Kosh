@@ -1,0 +1,16 @@
+{
+  "$schema": "../../out/gen/schemas/desktop-schema.json",
+  "identifier": "main-capability",
+  "description": "Capability for application windows",
+  "windows": ["*"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-title",
+    "core:window:allow-create",
+    "core:webview:allow-create-webview-window"
+  ]
+}

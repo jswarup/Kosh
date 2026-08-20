@@ -19,7 +19,7 @@ graph TD
     subgraph Layer4 ["Tier 4: Presentation & Applications"]
         Styew["styew<br/>Native eframe / egui Desktop Workspace"]
         Fenst["fenst<br/>Secondary Tauri Explorer, Visualizer & Data Provider Hub"]
-        Frieze["frieze<br/>Frontend Assets, Icons & Tauri Configuration"]
+        Aura["aura<br/>Frontend Assets, Icons & Tauri Configuration"]
     end
 
     subgraph Layer3 ["Tier 3: Domain Subsystems"]
@@ -48,7 +48,7 @@ graph TD
     Fenst --> Flux
     Fenst --> Swarm
     Fenst --> Silo
-    Fenst --> Frieze
+    Fenst --> Aura
 
     Fleck --> Shard
     Fleck --> Flux
@@ -95,33 +95,33 @@ graph TD
 
 ### Tier 4: Applications & Desktop Explorer
 - **[`styew`](Styew.md)**: Primary native desktop workspace built with `eframe` and `egui`. It provides explorer, point-cloud, OBJ, and symbolic-expression views and is launched by `cargo run`.
-- **[`fenst`](Fenst.md)**: Secondary Tauri desktop GUI subsystem. It defines unified tree interfaces (`Xplr`, `LeafXplr`, `BranchXplr`), pluggable provider registries (`XplrRegistry`) supporting filesystem (`FsProvider`), AST grammars (`ShardProvider`), and symbolic algebra (`FrescoProvider`), plus 3D point-cloud windows and IPC commands (`xplrcmds`). Launch it with `cargo run -- --frieze`; `--test` dispatches test execution.
-- **[`frieze`](Frieze.md)**: Frontend resources, icons, and Tauri application configuration. Contains HTML/JavaScript/CSS UI assets, multi-resolution platform icons, Tauri capability manifests, and `tauri.conf.json` metadata. Built into the desktop application bundle during `cargo build`.
+- **[`fenst`](Fenst.md)**: Secondary Tauri desktop GUI subsystem. It defines unified tree interfaces (`Xplr`, `LeafXplr`, `BranchXplr`), pluggable provider registries (`XplrRegistry`) supporting filesystem (`FsProvider`), AST grammars (`ShardProvider`), and symbolic algebra (`FrescoProvider`), plus 3D point-cloud windows and IPC commands (`xplrcmds`). Launch it with `cargo run -- --aura`; `--test` dispatches test execution.
+- **[`aura`](Aura.md)**: Frontend resources, icons, and Tauri application configuration. Contains HTML/JavaScript/CSS UI assets, multi-resolution platform icons, Tauri capability manifests, and `tauri.conf.json` metadata. Built into the desktop application bundle during `cargo build`.
 
 ---
 
 ## 4. Graphics Ownership Rule
 
-Frieze is intentionally a thin presentation layer. It forwards user input to Fenst, receives compact IPC display frames, and paints already-projected primitives through Canvas 2D. Frieze must not parse geometry, own camera state, calculate transforms or projection, cull, shade, depth-sort, or create WebGL/WebGPU contexts.
+Aura is intentionally a thin presentation layer. It forwards user input to Fenst, receives compact IPC display frames, and paints already-projected primitives through Canvas 2D. Aura must not parse geometry, own camera state, calculate transforms or projection, cull, shade, depth-sort, or create WebGL/WebGPU contexts.
 
 Fenst owns graphics sessions, asset loading, camera updates, frame packing, and IPC. It delegates graphics computation and render preparation to Swarm, which dispatches the corresponding Symph kernel across GPU or CPU-SIMT backends. CPU fallback is permitted only within that Fenst → Swarm → Symph path.
 
 ```mermaid
 flowchart LR
-    Input["Frieze input"] --> Fenst["Fenst session + IPC"]
+    Input["Aura input"] --> Fenst["Fenst session + IPC"]
     Fenst --> Swarm["Swarm dispatch"]
     Swarm --> Symph["Symph graphics kernels"]
     Symph --> Swarm
     Swarm --> Fenst
     Fenst --> Frame["Compact projected frame"]
-    Frame --> Frieze["Frieze Canvas 2D presentation"]
+    Frame --> Aura["Aura Canvas 2D presentation"]
 ```
 
 ---
 
 ## 5. Data Serialization & IPC Optimization
 
-When data flows between the desktop frontend (`frieze`) and heterogeneous compute backend (`swarm`), serialization efficiency is critical for real-time performance.
+When data flows between the desktop frontend (`aura`) and heterogeneous compute backend (`swarm`), serialization efficiency is critical for real-time performance.
 
 **Problem**: The `XplrProjectPts` IPC command serializes millions of 3D→2D projected points every 60 FPS frame, creating significant bandwidth pressure. Current implementation lacks:
 - Incremental/delta updates for unchanged geometry

@@ -89,7 +89,7 @@ graph TD
 | **`fleck`** | 3D Point Cloud (.pts) parsing and spatial bounding boxes | `PtsPoint`, `Point32`, `RGB`, `PtsCloud`, `PtsShard<'a>` | `ParsePts`, `ParsePtsStream`, `ToDto` | [Fleck.md](wiki/Fleck.md) |
 | **`fenst`** | Virtual data provider framework, Tauri desktop explorer, and 3D visualizer | `XplrEntry`, `XplrContent`, `XplrLeafInfo`, `FsBranch`, `FsLeaf`, `FrescoBranch`, `ShardBranch`, `XplrRegistry`, `PtsSessionState`, `PtsFrameDto` | `Xplr`, `LeafXplr`, `BranchXplr`, `XplrProvider`, `CreateDefaultRegistry`, Tauri command API | [Fenst.md](wiki/Fenst.md) |
 | **`styew`** | Primary native desktop workspace built with `eframe`, `egui`, and `wgpu` | `KoshApp`, application state, tab views | `run()` | [Styew.md](wiki/Styew.md) |
-| **`frieze`** | Tauri frontend assets, application icons, and GUI configuration | HTML/JavaScript/CSS files, PNG/ICO icons, capability manifests | N/A (static assets & config) | [Frieze.md](wiki/Frieze.md) |
+| **`aura`** | Tauri frontend assets, application icons, and GUI configuration | HTML/JavaScript/CSS files, PNG/ICO icons, capability manifests | N/A (static assets & config) | [Aura.md](wiki/Aura.md) |
 
 ---
 
@@ -137,7 +137,7 @@ cargo test --release -- --nocapture
 ```
 
 ### Running Kosh Applications
-The root binary launches the native `styew` workspace by default. `fenst` and its `frieze` assets remain available as the secondary Tauri frontend:
+The root binary launches the native `styew` workspace by default. `fenst` and its `aura` assets remain available as the secondary Tauri frontend:
 ```powershell
 # Default launch: native eframe/egui/wgpu workspace
 cargo run
@@ -146,7 +146,7 @@ cargo run
 cargo run --release
 
 # Launch the secondary Tauri explorer
-cargo run -- --frieze
+cargo run -- --aura
 ```
 
 ### Running Tests
@@ -183,5 +183,5 @@ Explore the full in-depth documentation in the **[wiki/](wiki/Architecture.md)**
 - **[Fleck (Point Cloud Parsing)](wiki/Fleck.md)**
 - **[Fenst (Virtual Explorer & Desktop GUI)](wiki/Fenst.md)**
 - **[Styew (Native Desktop Workspace)](wiki/Styew.md)**
-- **[Frieze (Tauri Frontend Assets)](wiki/Frieze.md)**
+- **[Aura (Tauri Frontend Assets)](wiki/Aura.md)**
 - **[Serialization Optimization Notes](wiki/Serialization_Optimization.md)**

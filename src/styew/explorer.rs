@@ -6,7 +6,7 @@ use	crate::fresco::ExprRepos;
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Renders the sidebar file and Fresco explorer tree matching Frieze's layout.
+/// Renders the sidebar file and Fresco explorer tree matching Aura's layout.
 pub fn	RenderExplorer( ui: &mut Ui, state: &mut AppState)
 {
     ui.vertical( |ui| {

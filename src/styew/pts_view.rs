@@ -57,7 +57,7 @@ pub fn	RenderPtsView( ui: &mut Ui, path: &Path, camera: &mut CameraState)
 
     let  	bboxLabel = format!( "[{:.2}, {:.2}, {:.2}]  [{:.2}, {:.2}, {:.2}]", minX, minY, minZ, maxX, maxY, maxZ);
 
-    // Top HUD Bar matching Frieze
+    // Top HUD Bar matching Aura
     ui.horizontal( |ui| {
         ui.spacing_mut().item_spacing = Vec2::new( 10.0, 0.0);
         ui.label( RichText::new( "POINT CLOUD").color( Color32::from_rgb( 137, 180, 250)).strong().size( 10.5));
@@ -104,7 +104,7 @@ pub fn	RenderPtsView( ui: &mut Ui, path: &Path, camera: &mut CameraState)
         camera._Zoom = camera._Zoom.clamp( 0.05, 50.0);
     }
 
-    // Clear background (#0b0f19 matching Frieze canvas)
+    // Clear background (#0b0f19 matching Aura canvas)
     painter.rect_filled( rect, 0.0, Color32::from_rgb( 11, 15, 25));
 
     let  	center = rect.center();
@@ -163,7 +163,7 @@ pub fn	RenderPtsView( ui: &mut Ui, path: &Path, camera: &mut CameraState)
         }
     }
 
-    // 3. HUD Overlay matching Frieze
+    // 3. HUD Overlay matching Aura
     let  	hudText = format!( "{} Points | Zoom: {:.2}x | Pan: ({:.0}, {:.0})", pointCount, camera._Zoom, camera._PanX, camera._PanY);
     painter.text(
         rect.left_bottom() + Vec2::new( 16.0, -16.0),

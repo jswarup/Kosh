@@ -32,11 +32,11 @@ The module lives in `src/styew/` and is composed of the following application su
 | Command | Behavior |
 | :--- | :--- |
 | `cargo run` | Launches the primary native `styew` workspace. |
-| `cargo run -- --frieze` | Launches the secondary Tauri-based `fenst` application. |
+| `cargo run -- --aura` | Launches the secondary Tauri-based `fenst` application. |
 | `cargo run -- --test [FILTER]` | Runs the Cargo test suite, optionally filtered by name. |
 
 The `--verbose` flag enables debug-level tracing before application startup. The `--nocapture` flag is used with `--test` to expose test output.
 
 ## Relationship to Other Frontends
 
-`styew` is the native application layer. [`fenst`](Fenst.md) provides the separate Tauri explorer and its provider/IPC interfaces, while [`frieze`](Frieze.md) contains the Tauri frontend assets and configuration. These are distinct launch paths rather than interchangeable UI implementations.
+`styew` is the native application layer. [`fenst`](Fenst.md) provides the separate Tauri explorer and its provider/IPC interfaces, while [`aura`](Aura.md) contains the Tauri frontend assets and configuration. These are distinct launch paths rather than interchangeable UI implementations.

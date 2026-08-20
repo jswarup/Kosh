@@ -44,11 +44,11 @@ fn	main()
 
     println!( "cargo::rustc-env=SYMPH_SPV_PATH={}", modulePath.display());
 
-    // Sync tauri.conf.json from src/frieze/ for Tauri build system
-    let  	_ = std::fs::copy( "src/frieze/tauri.conf.json", "tauri.conf.json");
+    // Sync tauri.conf.json from src/aura/ for Tauri build system
+    let  	_ = std::fs::copy( "src/aura/tauri.conf.json", "tauri.conf.json");
 
     let  	attrs = tauri_build::Attributes::new()
-        .capabilities_path_pattern( "src/frieze/capabilities/*");
+        .capabilities_path_pattern( "src/aura/capabilities/*");
     tauri_build::try_build( attrs).expect( "Failed to build Tauri app");
 
     // Relocate generated schemas to out/gen and clean root
