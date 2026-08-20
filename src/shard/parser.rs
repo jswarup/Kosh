@@ -43,8 +43,9 @@ impl<'p> Parser<'p>
         self._Markers.Push( mark);
         let  	matched = grammar.Match( self);
         let  	completedMark = self.CurrMark();
+        
         let  	mut marker = U32( 0);
-        assert!( self._Markers.Pop( &mut marker), "missing parse marker");
+        assert!( self._Markers.Stk().Pop( &mut marker), "missing parse marker");
         if matched {
             if !self._Markers.Stk().Arr().IsEmpty() {
                 self.SetCurrMark( completedMark);

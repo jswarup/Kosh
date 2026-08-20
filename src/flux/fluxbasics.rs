@@ -366,7 +366,7 @@ where
         *field = FieldImp::Arr( Box::new( move |item| {
             let  	buff = ptr.MutRef();
             if idx >= buff._Ptr.len() {
-                buff.Push( T::default());
+                panic!( "Buff cannot grow during import! Use Stash instead.");
             }
             let  	elem = buff._Ptr.as_ptr().cast::< T>().MutRefAt( idx);
             *item = FieldImp::FluxSource( elem);
@@ -377,3 +377,48 @@ where
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+
+impl< T> IFluxExportSource for crate::silo::Stash< T>
+where
+    T: IFluxExportSource,
+{
+    fn	FetchFieldExp< 'b>( &'b self, field: &mut FieldExp< 'b>)
+    {
+        let  	mut idx = 0usize;
+        let  	ptr = self as *const Self;
+        *field = FieldExp::Arr( Box::new( move |item| {
+            let  	stash = ptr.Ref();
+            if idx < stash.Size().AsUsize() {
+                let  	elem = &stash.Slice()[idx];
+                *item = FieldExp::FluxSource( elem);
+                idx += 1;
+                true
+            } else {
+                false
+            }
+        }));
+    }
+}
+
+impl< T> IFluxImportSource for crate::silo::Stash< T>
+where
+    T: IFluxImportSource + Default,
+{
+    fn	FetchFieldImp< 'b>( &'b mut self, field: &mut FieldImp< 'b>)
+    {
+        let  	mut idx = 0usize;
+        let  	ptr = self as *mut Self;
+        *field = FieldImp::Arr( Box::new( move |item| {
+            let  	stash = ptr.MutRef();
+            if idx >= stash.Size().AsUsize() {
+                let mut v = T::default();
+                stash.PushX(&mut v);
+            }
+            let  	elem = unsafe { &mut *(stash.SliceMut().as_mut_ptr().add(idx)) };
+            *item = FieldImp::FluxSource( elem);
+            idx += 1;
+            true
+        }));
+    }
+}

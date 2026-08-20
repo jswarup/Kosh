@@ -142,7 +142,7 @@ impl< 'a> Maestro< 'a>
                 self.EnqueRunJob( &mut jobId);
             }
         });
-        self._TempQueue.Clear();
+        self._TempQueue.ClearConcurrent();
     }
 
 
@@ -188,7 +188,7 @@ impl< 'a> Maestro< 'a>
 
     pub fn	PostChoreTree< T: crate::heist::choretree::IChoreNode>( &self, node: &T)
     {
-        let  	mut tails = Buff::New();
+        let  	mut tails = crate::silo::Stash::New();
         let  	head = node.Post( self, &mut tails);
         let  	succId = self.CurSuccId();
         while let  	Some( tail) = tails.Pop() {

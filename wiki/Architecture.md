@@ -17,7 +17,8 @@ The Kosh codebase is structured into four distinct functional tiers:
 ```mermaid
 graph TD
     subgraph Layer4 ["Tier 4: Presentation & Applications"]
-        Fenst["fenst<br/>Tauri Desktop Explorer, Visualizer & Data Provider Hub"]
+        Styew["styew<br/>Native eframe / egui Desktop Workspace"]
+        Fenst["fenst<br/>Secondary Tauri Explorer, Visualizer & Data Provider Hub"]
         Frieze["frieze<br/>Frontend Assets, Icons & Tauri Configuration"]
     end
 
@@ -39,6 +40,9 @@ graph TD
         Silo["silo<br/>Memory Buffers, Slices, Custom Unsigned Numerics"]
     end
 
+    Styew --> Fleck
+    Styew --> Fresco
+    Styew --> Silo
     Fenst --> Shard
     Fenst --> Fresco
     Fenst --> Flux
@@ -82,7 +86,7 @@ graph TD
 - **[`shard`](Shard.md)**: High-performance recursive-descent grammar combinator parsing engine. Built on `IGrammar` and `Parser<'p>`, it parses binary/text inputs with `ShardTree!` DSL without heap allocations. Features a 256-bit bitset character filter (`Charset`), numeric parsers (`UInt`, `Int`, `Hex`, `Real`), repetition/action combinators, and a streaming `JSon` parser.
 - **[`flux`](Flux.md)**: Universal streaming and data conversion layer. Provides input streams (`IStream`, `FixedStream`, `BuffStream`), output streams (`OutStream`, `JsonOutStream`), and a reflection-style visitor import/export framework (`IFluxExportSource`, `IFluxImportSource`, `FieldExp`, `FieldImp`, `ImplFluxSource!`).
 - **[`swarm`](Swarm.md)**: Hardware compute engine abstracting CPU SIMT thread pools, Rust-GPU (`wgpu` executing compiled SPIR-V bytecode), and Cuda-Oxide (CUDA driver / PTX execution). Unified through `SwarmEngine`, `SwarmDevice`, `SwarmBuffer`, and `SwarmKernel`.
-- **[`symph`](Swarm.md)**: `#![no_std]` portable compute library containing Wang Hash PRNG, Collatz sequence step calculators, element doubling, vector addition, and 3D point cloud generation. Compiles to standard host CPU functions and SPIR-V compute shaders (`pts_pointcloud_cs`, `camera_transform_cs`, `frustum_cull_cs`, `scene_vs`, `scene_fs`).
+- **[`symph`](Swarm.md)**: Portable compute library containing Wang Hash PRNG, Collatz sequence step calculators, element doubling, vector addition, and 3D point cloud generation. It is `#![no_std]` for SPIR-V builds and uses the standard library for host builds; its shaders include `pts_pointcloud_cs`, `camera_transform_cs`, `frustum_cull_cs`, `scene_vs`, and `scene_fs`.
 
 ### Tier 3: Domain Subsystems
 - **[`heist`](Heist.md)**: Asynchronous Directed Acyclic Graph (DAG) chore orchestration system. Features `Atelier` (master workspace managing thread execution and job tracking) and `Maestro` (thread worker executing jobs and stealing work). Uses `ChoreTree!` to construct and schedule complex dependency graphs across CPU and GPU backends.
@@ -90,7 +94,8 @@ graph TD
 - **[`fleck`](Fleck.md)**: High-throughput 3D point cloud processing. Parses ASCII and binary `.pts` files into `PtsCloud` using custom `Shard` grammars (`PtsShard`), computing bounding boxes, intensity, and RGB color channels.
 
 ### Tier 4: Applications & Desktop Explorer
-- **[`fenst`](Fenst.md)**: Extensible virtual explorer and embedded Tauri desktop GUI subsystem. It defines unified tree interfaces (`Xplr`, `LeafXplr`, `BranchXplr`), pluggable provider registries (`XplrRegistry`) supporting filesystem (`FsProvider`), AST grammars (`ShardProvider`), and symbolic algebra (`FrescoProvider`), plus 3D point-cloud windows and IPC commands (`xplrcmds`). Launching `cargo run` opens Fenst by default, while `--test` dispatches test execution.
+- **[`styew`](Styew.md)**: Primary native desktop workspace built with `eframe` and `egui`. It provides explorer, point-cloud, OBJ, and symbolic-expression views and is launched by `cargo run`.
+- **[`fenst`](Fenst.md)**: Secondary Tauri desktop GUI subsystem. It defines unified tree interfaces (`Xplr`, `LeafXplr`, `BranchXplr`), pluggable provider registries (`XplrRegistry`) supporting filesystem (`FsProvider`), AST grammars (`ShardProvider`), and symbolic algebra (`FrescoProvider`), plus 3D point-cloud windows and IPC commands (`xplrcmds`). Launch it with `cargo run -- --frieze`; `--test` dispatches test execution.
 - **[`frieze`](Frieze.md)**: Frontend resources, icons, and Tauri application configuration. Contains HTML/JavaScript/CSS UI assets, multi-resolution platform icons, Tauri capability manifests, and `tauri.conf.json` metadata. Built into the desktop application bundle during `cargo build`.
 
 ---

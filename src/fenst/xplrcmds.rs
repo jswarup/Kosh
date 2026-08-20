@@ -1,7 +1,7 @@
 ﻿//-- xplrcmds.rs ------------------------------------------------------------------------------------------------------------------
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
 use	tauri::Manager;
-use	crate::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, WaveObjMeshDto, CreateDefaultRegistry, Camera, SceneGraph };
+use	crate::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, CreateDefaultRegistry, Camera, SceneGraph };
 use	crate::silo::{ Buff, ISliceExt };
 use	serde::Deserialize;
 use	crate::swarm::SwarmCluster;
@@ -828,7 +828,7 @@ pub fn	XplrProjectPts(
         _RotY: cam._RotY.to_bits(),
     };
     if state._LastFrameKey == Some( frameKey) {
-        return Ok( tauri::ipc::Response::new( Vec::new()));
+        return Ok( tauri::ipc::Response::new( String::new()));
     }
 
     let  	camRef = state._Scene.Camera();
@@ -970,6 +970,7 @@ pub fn	XplrResetCamera( path: String) -> Result< Camera, String>
 mod _tests
 {
     use	super::*;
+    use	crate::fenst::WaveObjMeshDto;
     use	std::fs::File;
     use	std::io::Write;
 

@@ -70,8 +70,8 @@ impl< 'a> JSon< 'a>
             }
         }
 
-        let mut temp = FieldImp::Null;
-        self._ImpStash.Pop( &mut temp);
+        let  	mut temp = FieldImp::Null;
+        self._ImpStash.Stk().Pop( &mut temp);
         
         true
     }
@@ -114,8 +114,8 @@ impl< 'a> JSon< 'a>
             let elemShard = ShardTree!( ( Str | "true" | "false" | "null" | Real )[ elemValue] | ( |p: &mut Parser| self.MatchValue( p) ) );
             let res = p.ParseGrammar( &elemShard, p.CurrMark());
 
-            let mut temp = FieldImp::Null;
-            self._ImpStash.Pop( &mut temp);
+            let  	mut temp = FieldImp::Null;
+            self._ImpStash.Stk().Pop( &mut temp);
             res.is_some()
         };
 

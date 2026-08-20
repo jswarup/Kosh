@@ -87,69 +87,11 @@ impl< T> Buff< T>
             _Ptr: NonNull::slice_from_raw_parts( NonNull::dangling(), 0),
         }
     }
-    #[deprecated( note = "Buff::Push causes O(N^2) linear reallocations. Use Stash::WithCapacity and Stash::PushX / Stash::Push instead." )]
-    pub fn	Push( &mut self, val: T)
-    {
-        let  	oldSize = self._Ptr.len();
-        let  	newSize = oldSize + 1;
-        let  	isZst = size_of::< T>() == 0;
-        if isZst {
-            self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), newSize);
-            return;
-        }
-        unsafe {
-            let  	oldLayout = Layout::array::< T>( oldSize).unwrap();
-            let  	newLayout = Layout::array::< T>( newSize).unwrap();
-            let  	rawPtr = if oldSize == 0 {
-                alloc( newLayout)
-            } else {
-                realloc( self._Ptr.cast::< u8>().as_ptr(), oldLayout, newLayout.size())
-            };
-            if rawPtr.is_null() {
-                handle_alloc_error( newLayout);
-            }
-            let  	rawPtrT = rawPtr as *mut T;
-            write( rawPtrT.add( oldSize), val);
-            let  	nonNullPtr = NonNull::new_unchecked( rawPtrT);
-            self._Ptr = NonNull::slice_from_raw_parts( nonNullPtr, newSize);
-        }
-    }
+
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-    #[deprecated( note = "Buff::Pop is deprecated. Use Stash::Pop instead." )]
-    pub fn	Pop( &mut self) -> Option< T>
-    {
-        let  	oldSize = self._Ptr.len();
-        if oldSize == 0 {
-            return None;
-        }
-        let  	newSize = oldSize - 1;
-        let  	isZst = size_of::< T>() == 0;
-        if isZst {
-            self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), newSize);
-            return Some( unsafe { read( NonNull::<T>::dangling().as_ptr()) });
-        }
-        unsafe {
-            let  	rawPtrT = self._Ptr.as_ptr() as *mut T;
-            let  	val = read( rawPtrT.add( newSize));
-            if newSize == 0 {
-                let  	layout = Layout::array::< T>( oldSize).unwrap();
-                dealloc( rawPtrT as *mut u8, layout);
-                self._Ptr = NonNull::slice_from_raw_parts( NonNull::dangling(), 0);
-            } else {
-                let  	oldLayout = Layout::array::< T>( oldSize).unwrap();
-                let  	newLayout = Layout::array::< T>( newSize).unwrap();
-                let  	rawPtr = realloc( rawPtrT as *mut u8, oldLayout, newLayout.size());
-                if rawPtr.is_null() {
-                    handle_alloc_error( newLayout);
-                }
-                let  	nonNullPtr = NonNull::new_unchecked( rawPtr as *mut T);
-                self._Ptr = NonNull::slice_from_raw_parts( nonNullPtr, newSize);
-            }
-            Some( val)
-        }
-    }
+
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
@@ -345,20 +287,7 @@ impl< T> Buff< T>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	FromVec( mut vec: Vec< T>) -> Self
-    {
-        let  	len = vec.len();
-        if len == 0 || size_of::< T>() == 0 {
-            return Buff::New();
-        }
-        vec.shrink_to_fit();
-        let  	ptr = vec.as_mut_ptr();
-        std::mem::forget( vec);
-        unsafe {
-            let  	nonNull = NonNull::new_unchecked( ptr);
-            Buff { _Ptr: NonNull::slice_from_raw_parts( nonNull, len) }
-        }
-    }
+
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
@@ -489,7 +418,11 @@ impl< T, const N: usize> From< [T; N]> for Buff< T>
 {
     fn	from( arr: [T; N]) -> Self
     {
-        Buff::FromVec( Vec::from( arr))
+        let  	mut stash = crate::silo::Stash::WithCapacity( N as u32);
+        for item in IntoIterator::into_iter( arr) {
+            stash.Push( item);
+        }
+        stash.IntoBuff()
     }
 }
 
@@ -616,11 +549,11 @@ impl< T> FromIterator< T> for Buff< T>
     fn	from_iter< I: IntoIterator< Item = T>>( iter: I) -> Self
     {
         let  	iterator = iter.into_iter();
-        let  	mut buff = Buff::New();
+        let  	mut stash = crate::silo::Stash::New();
         for item in iterator {
-            buff.Push( item);
+            stash.Push( item);
         }
-        buff
+        stash.IntoBuff()
     }
 }
 
@@ -644,12 +577,34 @@ impl< 'de, T: serde::Deserialize< 'de>> serde::Deserialize< 'de> for Buff< T>
     where
         D: serde::Deserializer< 'de>,
     {
-        let  	vec = Vec::< T>::deserialize( deserializer)?;
-        let  	mut buff = Buff::New();
-        for item in vec {
-            buff.Push( item);
+        struct BuffVisitor< T> {
+            marker: std::marker::PhantomData< fn() -> Buff< T>>,
         }
-        Ok( buff)
+        impl< 'de, T: serde::Deserialize< 'de>> serde::de::Visitor< 'de> for BuffVisitor< T> {
+            type Value = Buff< T>;
+
+            fn	expecting( &self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str( "a sequence")
+            }
+
+            fn	visit_seq< A>( self, mut seq: A) -> Result< Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess< 'de>,
+            {
+                let  	mut stash = if let Some( size) = seq.size_hint() {
+                    crate::silo::Stash::WithCapacity( size as u32)
+                } else {
+                    crate::silo::Stash::New()
+                };
+
+                while let Some( value) = seq.next_element()? {
+                    stash.Push( value);
+                }
+
+                Ok( stash.IntoBuff())
+            }
+        }
+        deserializer.deserialize_seq( BuffVisitor { marker: std::marker::PhantomData })
     }
 }
 

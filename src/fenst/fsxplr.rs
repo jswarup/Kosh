@@ -151,8 +151,8 @@ impl BranchXplr for FsBranch
         let  	readDir = fs::read_dir( dirPath)
             .map_err( |e| format!( "Failed to read directory: {}", e))?;
 
-        let  	mut dirs: Vec< Box< dyn Xplr>> = Vec::new();
-        let  	mut files: Vec< Box< dyn Xplr>> = Vec::new();
+        let  	mut dirs: crate::silo::Stash< Box< dyn Xplr>> = crate::silo::Stash::New();
+        let  	mut files: crate::silo::Stash< Box< dyn Xplr>> = crate::silo::Stash::New();
 
         for entry in readDir {
             let  	entry = match entry {
@@ -173,17 +173,18 @@ impl BranchXplr for FsBranch
 
             let  	pathStr = filePath.to_string_lossy().into_owned();
             if metadata.is_dir() {
-                dirs.push( Box::new( FsBranch::New( pathStr)));
+                dirs.Push( Box::new( FsBranch::New( pathStr)));
             } else {
-                files.push( Box::new( FsLeaf::New( pathStr)));
+                files.Push( Box::new( FsLeaf::New( pathStr)));
             }
         }
 
         dirs.sort_by( |a, b| a.Name().to_lowercase().cmp( &b.Name().to_lowercase()));
         files.sort_by( |a, b| a.Name().to_lowercase().cmp( &b.Name().to_lowercase()));
 
-        let  	combined: Vec< Box< dyn Xplr>> = dirs.into_iter().chain( files.into_iter()).collect();
-        Ok( Buff::FromVec( combined))
+        dirs.AppendStash( files);
+        let  	combined = dirs;
+        Ok( combined.IntoBuff())
     }
 
     fn	ChildCount( &self) -> Result< U32, String>

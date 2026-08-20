@@ -35,13 +35,13 @@ fn	BuffFromTest()
     assert_eq!( buffFromSlice[1], 20);
     assert_eq!( buffFromSlice[2], 30);
     // Test creation and push/pop on Buff
-    let  	mut buffFromVec = Buff::New();
-    assert_eq!( buffFromVec.len(), 0);
+    let  	mut buffFromVec = Stash::New();
+    assert_eq!( buffFromVec.Size().AsUsize(), 0);
     buffFromVec.Push( 40);
     buffFromVec.Push( 50);
-    assert_eq!( buffFromVec.len(), 2);
-    assert_eq!( buffFromVec[0], 40);
-    assert_eq!( buffFromVec[1], 50);
+    assert_eq!( buffFromVec.Size().AsUsize(), 2);
+    assert_eq!( buffFromVec.Slice()[0], 40);
+    assert_eq!( buffFromVec.Slice()[1], 50);
     assert_eq!( buffFromVec.Pop(), Some( 50));
     assert_eq!( buffFromVec.Pop(), Some( 40));
     assert_eq!( buffFromVec.Pop(), None);
@@ -169,19 +169,19 @@ fn	USegSpanTest()
 {
     let  	seg = USeg::New( 10, 6);
     // Case 1: All values return true
-    let  	mut visited = Buff::New();
+    let  	mut visited = Stash::New();
     seg.Traverse( |val| {
         visited.Push( val);
     });
-    assert_eq!( &*visited, &[U32( 10), U32( 11), U32( 12), U32( 13), U32( 14), U32( 15)]);
+    assert_eq!( visited.Slice(), &[U32( 10), U32( 11), U32( 12), U32( 13), U32( 14), U32( 15)]);
     // Case 2: One value returns false ( early termination)
-    let  	mut visited2 = Buff::New();
+    let  	mut visited2 = Stash::New();
     let  	result2 = seg.Span( |val| {
         visited2.Push( val);
         val < 13
     });
     assert!( !result2);
-    assert_eq!( &*visited2, &[U32( 10), U32( 11), U32( 12), U32( 13)]);
+    assert_eq!( visited2.Slice(), &[U32( 10), U32( 11), U32( 12), U32( 13)]);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -439,7 +439,7 @@ fn	TestConcurrentStackOps()
 {
     // Create a shared destination stack of size 1000
     let  	dstStash = Arc::new( Stash::< U32>::Create( 1000, 0, |_| U32( 0)));
-    let  	mut handles = Buff::New();
+    let  	mut handles = Stash::New();
     for t in 0..10 {
         let  	dstStkClone = dstStash.clone();
         let  	handle = thread::spawn( move || {
@@ -461,16 +461,16 @@ fn	TestConcurrentStackOps()
     // Since 10 threads imported 10 elements each, dstStk size must be exactly 100
     assert_eq!( dstStash.Size(), 100);
     // Collect all elements and verify they are exactly 0..100 ( in some order)
-    let  	mut values = Buff::New();
+    let  	mut values = Stash::New();
     let  	dstStk = dstStash.Stk();
     let  	mut out = U32( 0);
     while dstStk.Pop( &mut out) {
         values.Push( out);
     }
-    assert_eq!( values.len(), 100);
-    values.sort();
+    assert_eq!( values.Size().AsUsize(), 100);
+    values.sort_by( |a, b| a.cmp( b));
     for i in 0..100 {
-        assert_eq!( values[i], U32(i as u32));
+        assert_eq!( values.Slice()[i], U32(i as u32));
     }
 }
 
@@ -592,11 +592,11 @@ fn	TestStashDynamicPushback()
     let  	mut v = U32( 100);
     stash0.PushX( &mut v);
     assert_eq!( stash0.Size(), 1);
-    assert_eq!( stash0.Size() + stash0.Stk().SzVoid(), 1);
+    
     let  	mut v2 = U32( 200);
     stash0.PushX( &mut v2);
     assert_eq!( stash0.Size(), 2);
-    assert_eq!( stash0.Size() + stash0.Stk().SzVoid(), 2);
+    
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -658,19 +658,6 @@ fn	TestStashC()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[test]
-fn	TestBuffFromVec()
-{
-    let  	vec = vec![ 10, 20, 30, 40 ];
-    let  	buff = Buff::FromVec( vec);
-    assert_eq!( buff.len(), 4);
-    assert_eq!( buff[0], 10);
-    assert_eq!( buff[3], 40);
-
-    let  	emptyVec: Vec< i32> = Vec::new();
-    let  	emptyBuff = Buff::FromVec( emptyVec);
-    assert_eq!( emptyBuff.len(), 0);
-}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 

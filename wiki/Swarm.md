@@ -5,7 +5,7 @@
 The `swarm` and `symph` subsystems provide Kosh with a **unified, cross-platform heterogeneous compute platform**. Key capabilities include:
 1. **Hardware Abstraction Layer (`swarm::traits`)**: Common traits (`IComputeDevice`, `IComputeBuffer`, `IComputeKernel`) unifying CPU multithreading, Rust-GPU (WebGPU/Vulkan), and Cuda-Oxide (CUDA driver/PTX).
 2. **Enum-Dispatched Compute (`SwarmEngine`, `SwarmDevice`, `SwarmBuffer`, `SwarmKernel`)**: Eliminates dynamic virtual table lookup on critical dispatch loops.
-3. **Pure Rust SPIR-V Shaders (`symph`)**: A `#![no_std]` crate containing mathematical PRNGs, Collatz step counters, and SIMT kernel functions compiled simultaneously for CPU execution and SPIR-V bytecodes via `rust-gpu`.
+3. **Pure Rust SPIR-V Shaders (`symph`)**: A portable crate that uses `#![no_std]` for SPIR-V builds and the standard library for host builds. It contains mathematical PRNGs, Collatz step counters, and SIMT kernel functions compiled for CPU execution and SPIR-V bytecodes via `rust-gpu`.
 4. **Standard Compute Library (`StandardOp`)**: Out-of-the-box operations for vector doubling, vector addition, Collatz sequence generation, and 3D point cloud synthesis.
 
 ---
@@ -97,19 +97,19 @@ flowchart TD
     Detect -- WebGPU Available --> RustGpu["RustGpuDevice (wgpu / SPIR-V)"]
     Detect -- CUDA Driver Available --> CudaOxide["CudaOxideDevice (CUDA / PTX)"]
     Detect -- Fallback --> Cpu["CpuDevice (Multithreaded SIMT)"]
-    
+
     RustGpu --> CompileOp["engine.CompileOp(op)"]
     CudaOxide --> CompileOp
     Cpu --> CompileOp
 
     CompileOp --> CreateBuffers["engine.CreateBufferInit(...)"]
     CreateBuffers --> Dispatch["engine.Dispatch(kernel, buffers, WorkgroupDim)"]
-    
+
     Dispatch --> ExecBranch{"Active Backend?"}
     ExecBranch -- RustGpu --> WgpuPass["Encode compute pass -> wgpu::Queue.submit"]
     ExecBranch -- CudaOxide --> CudaLaunch["Execute PTX / symph element loop"]
     ExecBranch -- Cpu --> CpuLoop["Iterate 3D grid -> execute CpuKernelFn"]
-    
+
     WgpuPass --> Readback["buffer.Read() -> CastSliceFrom()"]
     CudaLaunch --> Readback
     CpuLoop --> Readback

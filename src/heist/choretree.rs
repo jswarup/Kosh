@@ -2,7 +2,7 @@
 
 use	std::fmt;
 use	crate::{
-    silo::{ Buff, U16 },
+    silo::{ U16 },
     stalks::{ BinNode, BinOp, DynIWorker, INode, IntoWorkPtr, IWork },
     swarm::BackendKind,
 };
@@ -223,14 +223,14 @@ macro_rules! ChoreTree {
 
 pub trait IChoreNode: INode
 {
-    fn	Post( &self, maestro: &crate::heist::Maestro, tails: &mut Buff< U16>) -> U16;
+    fn	Post( &self, maestro: &crate::heist::Maestro, tails: &mut crate::silo::Stash< U16>) -> U16;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl< T: IChoreNode + ?Sized> IChoreNode for &T
 {
-    fn	Post( &self, maestro: &crate::heist::Maestro, tails: &mut Buff< U16>) -> U16
+    fn	Post( &self, maestro: &crate::heist::Maestro, tails: &mut crate::silo::Stash< U16>) -> U16
     {
         ( **self).Post( maestro, tails)
     }
@@ -240,7 +240,7 @@ impl< T: IChoreNode + ?Sized> IChoreNode for &T
 
 impl IChoreNode for Chore
 {
-    fn	Post( &self, maestro: &crate::heist::Maestro, tails: &mut Buff< U16>) -> U16
+    fn	Post( &self, maestro: &crate::heist::Maestro, tails: &mut crate::silo::Stash< U16>) -> U16
     {
         let  	jobId = maestro.ConstructJob( U16::_0, IntoWorkPtr::IntoWorkPtr( *self), self._DocStr);
         tails.Push( jobId);
@@ -255,12 +255,12 @@ where
     L: IChoreNode,
     R: IChoreNode,
 {
-    fn	Post( &self, maestro: &crate::heist::Maestro, tails: &mut Buff< U16>) -> U16
+    fn	Post( &self, maestro: &crate::heist::Maestro, tails: &mut crate::silo::Stash< U16>) -> U16
     {
         match self._Op {
             BinOp::Bor => {
-                let  	mut leftTails = Buff::New();
-                let  	mut rightTails = Buff::New();
+                let  	mut leftTails = crate::silo::Stash::New();
+                let  	mut rightTails = crate::silo::Stash::New();
                 let  	headL = self._Left.Post( maestro, &mut leftTails);
                 let  	headR = self._Right.Post( maestro, &mut rightTails);
                 while let  	Some( t) = leftTails.Pop() {
@@ -269,14 +269,14 @@ where
                 while let  	Some( t) = rightTails.Pop() {
                     tails.Push( t);
                 }
-                let  	mut heads = Buff::New();
+                let  	mut heads = crate::silo::Stash::New();
                 heads.Push( headL);
                 heads.Push( headR);
-                let  	enqId = maestro.ConstructEnqueArr( U16( 0), heads, "EnqPar");
+                let  	enqId = maestro.ConstructEnqueArr( U16( 0), heads.IntoBuff(), "EnqPar");
                 enqId
             }
             BinOp::Less => {
-                let  	mut leftTails = Buff::New();
+                let  	mut leftTails = crate::silo::Stash::New();
                 let  	headL = self._Left.Post( maestro, &mut leftTails);
                 let  	headR = self._Right.Post( maestro, tails);
                 while let  	Some( leftTail) = leftTails.Pop() {
