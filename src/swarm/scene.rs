@@ -1,5 +1,6 @@
 ﻿//-- scene.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ Buff, Stash, U32 };
+use	crate::swarm::{ SwarmEngine, SwarmCluster, SwarmError };
 use	serde::{ Serialize, Deserialize };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -94,6 +95,31 @@ impl Camera
     }
 
     /// Resets camera to default perspective view and pan offset.
+    /// Calculates 4x4 View-Projection matrix for GPU vertex shaders.
+    pub fn	CalcViewProjMatrix( &self, width: f32, height: f32) -> [f32; 16]
+    {
+        let  	aspect = if height > 0.0 { width / height } else { 1.0 };
+        let  	cosX = self._RotX.cos();
+        let  	sinX = self._RotX.sin();
+        let  	cosY = self._RotY.cos();
+        let  	sinY = self._RotY.sin();
+
+        let  	scale = self._Zoom * 0.005;
+        let  	sx = scale / aspect;
+        let  	sy = scale;
+        let  	sz = scale * 0.1;
+
+        let  	tx = self._PanX / ( width * 0.5 + 1.0);
+        let  	ty = -self._PanY / ( height * 0.5 + 1.0);
+
+        [
+            cosY * sx,  sinX * sinY * sy, -cosX * sinY * sz,  0.0,
+            0.0,        cosX * sy,        sinX * sz,         0.0,
+            sinY * sx, -sinX * cosY * sy,  cosX * cosY * sz,  0.0,
+            tx,         ty,               0.5,               1.0,
+        ]
+    }
+
     pub fn	Reset( &mut self)
     {
         self._PanX = 0.0;
@@ -311,12 +337,12 @@ impl SceneGraph
     /// and formats the resulting 2D coordinates with depth-scaled radius and alpha.
     pub fn	ProjectPointsSwarm(
         &self,
-        engine: &crate::swarm::SwarmEngine,
+        engine: &SwarmEngine,
         width: f32,
         height: f32,
         dpr: f32,
         spirvBytes: Option< &[u8]>,
-    ) -> Result< Buff< ( f32, f32, f32, f32, f32)>, crate::swarm::SwarmError>
+    ) -> Result< Buff< ( f32, f32, f32, f32, f32)>, SwarmError>
     {
         let  	camParams = self.CameraParams( width, height);
         let  	rawProjected = engine.RunCameraTransform( &self._Points, &camParams, spirvBytes)?;
@@ -340,11 +366,11 @@ impl SceneGraph
     /// and connects the projected vertices into 12 line segments.
     pub fn	ProjectBoundingBoxSwarm(
         &self,
-        engine: &crate::swarm::SwarmEngine,
+        engine: &SwarmEngine,
         width: f32,
         height: f32,
         spirvBytes: Option< &[u8]>,
-    ) -> Result< Buff< ( ( f32, f32), ( f32, f32))>, crate::swarm::SwarmError>
+    ) -> Result< Buff< ( ( f32, f32), ( f32, f32))>, SwarmError>
     {
         let  	bMin = self._BboxMin;
         let  	bMax = self._BboxMax;
@@ -386,12 +412,12 @@ impl SceneGraph
     /// to the Swarm compute GPU engine for display.
     pub fn	ProjectSceneSwarm(
         &self,
-        engine: &crate::swarm::SwarmEngine,
+        engine: &SwarmEngine,
         width: f32,
         height: f32,
         dpr: f32,
         spirvBytes: Option< &[u8]>,
-    ) -> Result< SceneDisplayFrame, crate::swarm::SwarmError>
+    ) -> Result< SceneDisplayFrame, SwarmError>
     {
         let  	points = self.ProjectPointsSwarm( engine, width, height, dpr, spirvBytes)?;
         let  	boxLines = self.ProjectBoundingBoxSwarm( engine, width, height, spirvBytes)?;
@@ -407,12 +433,12 @@ impl SceneGraph
     /// Dispatches point cloud projection across a multi-GPU SwarmCluster.
     pub fn	ProjectPointsCluster(
         &self,
-        cluster: &crate::swarm::SwarmCluster,
+        cluster: &SwarmCluster,
         width: f32,
         height: f32,
         dpr: f32,
         spirvBytes: Option< &[u8]>,
-    ) -> Result< Buff< ( f32, f32, f32, f32, f32)>, crate::swarm::SwarmError>
+    ) -> Result< Buff< ( f32, f32, f32, f32, f32)>, SwarmError>
     {
         let  	camParams = self.CameraParams( width, height);
         let  	rawProjected = cluster.RunCameraTransformSharded( &self._Points, &camParams, spirvBytes)?;
@@ -435,12 +461,12 @@ impl SceneGraph
     /// Dispatches full scene projection across a multi-GPU SwarmCluster.
     pub fn	ProjectSceneCluster(
         &self,
-        cluster: &crate::swarm::SwarmCluster,
+        cluster: &SwarmCluster,
         width: f32,
         height: f32,
         dpr: f32,
         spirvBytes: Option< &[u8]>,
-    ) -> Result< SceneDisplayFrame, crate::swarm::SwarmError>
+    ) -> Result< SceneDisplayFrame, SwarmError>
     {
         let  	points = self.ProjectPointsCluster( cluster, width, height, dpr, spirvBytes)?;
         let  	engine = cluster.Primary();

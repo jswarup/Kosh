@@ -114,7 +114,7 @@ impl IComputeBuffer for RustGpuBuffer
         })?;
 
         let  	view = slice.get_mapped_range();
-        let  	result = Buff::from( &*view);
+        let  	result = Buff::from( &view.as_ref().unwrap()[..]);
         drop( view);
         staging.unmap();
 
@@ -286,6 +286,26 @@ impl RustGpuDevice
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
+
+    
+    pub fn	FromShared( device: Arc< Device>, queue: Arc< Queue>) -> Self
+    {
+        RustGpuDevice {
+            _Device: device,
+            _Queue:  queue,
+            _Cache:  Arc::new( std::sync::Mutex::new( std::collections::HashMap::new())),
+        }
+    }
+
+    pub fn	WgpuDevice( &self) -> &Arc< Device>
+    {
+        &self._Device
+    }
+
+    pub fn	WgpuQueue( &self) -> &Arc< Queue>
+    {
+        &self._Queue
+    }
 
     pub fn	FromDeviceQueue( device: Device, queue: Queue) -> Self
     {

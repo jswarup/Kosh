@@ -1,5 +1,7 @@
 //-- frieze/app.rs -------------------------------------------------------------------------------------------------------------------
+use	std::sync::Arc;
 use	egui::{ Ui, Color32, RichText, Frame, Margin, Panel, Vec2 };
+use	crate::swarm::{ SwarmEngine, ViewportRenderer };
 use	crate::frieze::state::AppState;
 use	crate::frieze::tab_bar::RenderTabBar;
 use	crate::frieze::explorer::RenderExplorer;
@@ -21,15 +23,24 @@ impl KoshApp
     {
         // Apply crisp dark theme visuals (Catppuccin Mocha / VS Code Dark)
         let  	mut visuals = egui::Visuals::dark();
-        visuals.panel_fill = Color32::from_rgb( 24, 24, 37);            // --bg-surface: #181825
-        visuals.window_fill = Color32::from_rgb( 30, 30, 46);           // --bg-base: #1e1e2e
-        visuals.override_text_color = Some( Color32::from_rgb( 205, 214, 244)); // --text-primary: #cdd6f4
+        visuals.panel_fill = Color32::from_rgb( 24, 24, 37);
+        visuals.window_fill = Color32::from_rgb( 30, 30, 46);
+        visuals.override_text_color = Some( Color32::from_rgb( 205, 214, 244));
         visuals.widgets.noninteractive.bg_fill = Color32::from_rgb( 30, 30, 46);
-        visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new( 1.0, Color32::from_rgb( 49, 50, 68)); // --border: #313244
+        visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new( 1.0, Color32::from_rgb( 49, 50, 68));
         cc.egui_ctx.set_visuals( visuals);
 
+        let  	mut appState = AppState::default();
+
+        if let Some( ref renderState) = cc.wgpu_render_state {
+            let  	devArc = Arc::new( renderState.device.clone()); let  	queueArc = Arc::new( renderState.queue.clone()); let  	eng = SwarmEngine::FromSharedGpu( devArc.clone(), queueArc.clone());
+            let  	rend = Arc::new( ViewportRenderer::New( devArc, queueArc, renderState.target_format));
+            appState._Engine = Some( eng);
+            appState._ViewportRenderer = Some( rend);
+        }
+
         Self {
-            _State: AppState::default(),
+            _State: appState,
         }
     }
 }
@@ -40,7 +51,7 @@ impl eframe::App for KoshApp
 {
     fn	ui( &mut self, ui: &mut Ui, _frame: &mut eframe::Frame)
     {
-        // 1. Top Header & Tab Bar Panel (Height & Styling)
+        // 1. Top Header & Tab Bar Panel
         Panel::top( "top_panel")
             .frame(
                 Frame::new()
@@ -52,14 +63,13 @@ impl eframe::App for KoshApp
                 ui.horizontal( |ui| {
                     ui.spacing_mut().item_spacing = Vec2::new( 8.0, 0.0);
 
-                    // Brand Title
                     ui.label( RichText::new( "FENST").strong().size( 12.5).color( Color32::from_rgb( 137, 180, 250)));
                     ui.label( RichText::new( "/").size( 12.0).color( Color32::from_rgb( 108, 112, 134)));
-                    ui.label( RichText::new( "Rust-Native Graphics Workspace").size( 12.0).color( Color32::from_rgb( 166, 173, 200)));
+                    ui.label( RichText::new( "In-Process WebGPU Workspace").size( 12.0).color( Color32::from_rgb( 166, 173, 200)));
 
                     ui.with_layout( egui::Layout::right_to_left( egui::Align::Center), |ui| {
                         ui.label(
-                            RichText::new( "⚡ 100% Rust-Native (egui + wgpu)")
+                            RichText::new( "100% Rust-Native (egui + wgpu + swarm)")
                                 .size( 11.0)
                                 .color( Color32::from_rgb( 203, 166, 247))
                         );
@@ -70,7 +80,7 @@ impl eframe::App for KoshApp
                 RenderTabBar( ui, &mut self._State);
             });
 
-        // 2. Bottom Status Bar Panel (Height: 24px, #11111b)
+        // 2. Bottom Status Bar Panel
         Panel::bottom( "bottom_panel")
             .frame(
                 Frame::new()
@@ -89,7 +99,7 @@ impl eframe::App for KoshApp
 
                     ui.with_layout( egui::Layout::right_to_left( egui::Align::Center), |ui| {
                         ui.label(
-                            RichText::new( "In-Process Direct GPU Pipeline")
+                            RichText::new( "Unified frieze -> fenst -> swarm -> (WebGPU+symph) Pipeline")
                                 .monospace()
                                 .size( 11.0)
                                 .color( Color32::from_rgb( 137, 180, 250))
@@ -98,7 +108,7 @@ impl eframe::App for KoshApp
                 });
             });
 
-        // 3. Left Sidebar Explorer Panel (Width: 260px, #181825)
+        // 3. Left Sidebar Explorer Panel
         if self._State._IsExplorerOpen {
             Panel::left( "left_panel")
                 .resizable( true)
@@ -114,15 +124,15 @@ impl eframe::App for KoshApp
                 });
         }
 
-        // 4. Central Document Viewport Area (#1e1e2e)
+        // 4. Central Document Viewport Area
         let  	activeTab = self._State._OpenTabs.iter().find( |t| Some( &t._Id) == self._State._ActiveTabId.as_ref()).cloned();
 
         ui.vertical( |ui| {
             if let  	Some( tab) = activeTab {
                 if tab._IsPts {
-                    RenderPtsView( ui, &tab._Path, &mut self._State._PtsCamera);
+                    RenderPtsView( ui, &tab._Path, &mut self._State);
                 } else if tab._IsObj {
-                    RenderObjView( ui, &tab._Path, &mut self._State._ObjCamera, &mut self._State._ActiveObjMode);
+                    RenderObjView( ui, &tab._Path, &mut self._State);
                 } else if tab._IsFresco {
                     RenderFrescoView( ui, &tab._Path.to_string_lossy());
                 } else {
@@ -144,10 +154,9 @@ impl eframe::App for KoshApp
                     });
                 }
             } else {
-                // Empty state
                 ui.centered_and_justified( |ui| {
                     ui.vertical_centered( |ui| {
-                        ui.label( RichText::new( "❖").size( 42.0).color( Color32::from_rgba_premultiplied( 205, 214, 244, 30)));
+                        ui.label( RichText::new( "KOSH").size( 42.0).color( Color32::from_rgba_premultiplied( 205, 214, 244, 30)));
                         ui.add_space( 8.0);
                         ui.label( RichText::new( "Select a file from the explorer to open").strong().size( 13.5).color( Color32::from_rgb( 166, 173, 200)));
                         ui.add_space( 4.0);

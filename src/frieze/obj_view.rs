@@ -1,74 +1,41 @@
 //-- frieze/obj_view.rs --------------------------------------------------------------------------------------------------------------
 use	std::path::Path;
-use	egui::{ Ui, Color32, Pos2, Stroke, Sense, RichText, Vec2, Shape };
-use	egui::epaint::Mesh;
-use	crate::frieze::state::{ CameraState, ObjRenderMode };
-use	crate::fenst::XplrParseWaveObjFile;
+use	egui::{ Ui, Color32, Pos2, Stroke, Sense, RichText, Vec2, Mesh, Shape };
+use	crate::frieze::state::{ AppState, ObjRenderMode };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Viewport for rendering 3D Wavefront OBJ meshes in native immediate mode with auto-fit centering.
-pub fn	RenderObjView( ui: &mut Ui, path: &Path, camera: &mut CameraState, mode: &mut ObjRenderMode)
+/// Viewport for rendering 3D Wavefront OBJ models supporting Points, Wireframe, Facets, and ShadedWire.
+pub fn	RenderObjView( ui: &mut Ui, path: &Path, state: &mut AppState)
 {
-    let  	fileName = path.file_name().and_then( |n| n.to_str()).unwrap_or( "mesh.obj");
+    let  	fileName = path.file_name().and_then( |n| n.to_str()).unwrap_or( "model.obj");
 
-    // Load mesh data in-process
-    let  	meshDto = if path.exists() {
-        let  	pathStr = path.to_string_lossy().to_string();
-        XplrParseWaveObjFile( &pathStr).ok()
-    } else {
-        None
-    };
+    // Load or retrieve cached mesh
+    let  	dev = state._Engine.as_ref().and_then( |e| e.WgpuDevice()).map( |d| d.as_ref());
+    let  	meshOpt = state._MeshCache.GetOrLoad( dev, path).cloned();
 
-    let  	mut vertCount = 0;
-    let  	mut faceCount = 0;
-    let  	mut minX = f32::MAX; let  	mut maxX = f32::MIN;
-    let  	mut minY = f32::MAX; let  	mut maxY = f32::MIN;
-    let  	mut minZ = f32::MAX; let  	mut maxZ = f32::MIN;
+    let  	vertCount = meshOpt.as_ref().map( |m| m.PointCount()).unwrap_or( 0);
+    let  	faceCount = meshOpt.as_ref().map( |m| m.FaceCount()).unwrap_or( 0);
+    let  	bboxLabel = meshOpt.as_ref().map( |m| {
+        format!( "[{:.2}, {:.2}, {:.2}]  [{:.2}, {:.2}, {:.2}]",
+            m._BboxMin[0], m._BboxMin[1], m._BboxMin[2],
+            m._BboxMax[0], m._BboxMax[1], m._BboxMax[2])
+    }).unwrap_or_else( || "None".to_string());
 
-    if let  	Some( ref mesh) = meshDto {
-        vertCount = mesh._Points.len();
-        faceCount = mesh._Triangles.len();
-
-        for pt in mesh._Points.iter() {
-            minX = minX.min( pt[0]); maxX = maxX.max( pt[0]);
-            minY = minY.min( pt[1]); maxY = maxY.max( pt[1]);
-            minZ = minZ.min( pt[2]); maxZ = maxZ.max( pt[2]);
-        }
-    }
-
-    if minX == f32::MAX {
-        minX = -50.0; maxX = 50.0;
-        minY = -50.0; maxY = 50.0;
-        minZ = -50.0; maxZ = 50.0;
-    }
-
-    let  	cx = (minX + maxX) * 0.5;
-    let  	cy = (minY + maxY) * 0.5;
-    let  	cz = (minZ + maxZ) * 0.5;
-    let  	dx = maxX - minX;
-    let  	dy = maxY - minY;
-    let  	dz = maxZ - minZ;
-    let  	maxDim = dx.max( dy).max( dz);
-    let  	scaleNorm = if maxDim > 1e-4 { 240.0 / maxDim } else { 1.0 };
-
-    let  	bboxLabel = format!( "[{:.2}, {:.2}, {:.2}]  [{:.2}, {:.2}, {:.2}]", minX, minY, minZ, maxX, maxY, maxZ);
-
-    // Top Header with Mode Buttons
+    // Top HUD Bar & Render Mode Controls
     ui.horizontal( |ui| {
         ui.spacing_mut().item_spacing = Vec2::new( 8.0, 0.0);
-
-        ui.label( RichText::new( "WAVEFRONT OBJ").color( Color32::from_rgb( 203, 166, 247)).strong().size( 10.5));
+        ui.label( RichText::new( "WAVEFRONT 3D").color( Color32::from_rgb( 203, 166, 247)).strong().size( 10.5));
         ui.label( RichText::new( fileName).strong().size( 13.0).color( Color32::from_rgb( 205, 214, 244)));
 
-        // Mode switchers
+        ui.separator();
         for (m, label) in [
             (ObjRenderMode::Points, "Points"),
             (ObjRenderMode::Wireframe, "Wireframe"),
             (ObjRenderMode::Facets, "Facets"),
             (ObjRenderMode::ShadedWire, "Shaded + Wire"),
         ] {
-            let  	selected = *mode == m;
+            let  	selected = state._ActiveObjMode == m;
             let  	btn = ui.selectable_label(
                 selected,
                 RichText::new( label)
@@ -76,15 +43,15 @@ pub fn	RenderObjView( ui: &mut Ui, path: &Path, camera: &mut CameraState, mode: 
                     .color( if selected { Color32::WHITE } else { Color32::from_rgb( 166, 173, 200) })
             );
             if btn.clicked() {
-                *mode = m;
+                state._ActiveObjMode = m;
             }
         }
 
         ui.label( RichText::new( format!( "{} Verts | {} Faces | BBox: {}", vertCount, faceCount, bboxLabel)).size( 11.5).color( Color32::from_rgb( 203, 166, 247)));
 
         ui.with_layout( egui::Layout::right_to_left( egui::Align::Center), |ui| {
-            if ui.button( RichText::new( "↺ Reset Camera").size( 11.0)).clicked() {
-                *camera = CameraState::default();
+            if ui.button( RichText::new( "Reset Camera").size( 11.0)).clicked() {
+                state._ObjCamera.Reset();
             }
         });
     });
@@ -92,7 +59,6 @@ pub fn	RenderObjView( ui: &mut Ui, path: &Path, camera: &mut CameraState, mode: 
     ui.add_space( 2.0);
     ui.separator();
 
-    // Canvas Allocation
     let  	(response, painter) = ui.allocate_painter( ui.available_size(), Sense::drag());
     let  	rect = response.rect;
 
@@ -100,52 +66,55 @@ pub fn	RenderObjView( ui: &mut Ui, path: &Path, camera: &mut CameraState, mode: 
     if response.dragged() {
         let  	delta = response.drag_delta();
         if ui.input( |i| i.modifiers.shift || i.pointer.button_down( egui::PointerButton::Secondary)) {
-            camera._PanX += delta.x;
-            camera._PanY += delta.y;
+            state._ObjCamera.Pan( delta.x, delta.y);
         } else {
-            camera._RotY += delta.x * 0.01;
-            camera._RotX += delta.y * 0.01;
+            state._ObjCamera.Rotate( delta.y * 0.01, delta.x * 0.01);
         }
     } else {
-        camera._RotY += 0.003;
-        camera._RotX += 0.001;
+        state._ObjCamera.Rotate( 0.001, 0.003);
     }
 
     // Handle zoom
     let  	scroll = ui.input( |i| i.smooth_scroll_delta.y);
     if scroll != 0.0 {
-        if scroll > 0.0 {
-            camera._Zoom *= 1.1;
-        } else {
-            camera._Zoom *= 0.9;
-        }
-        camera._Zoom = camera._Zoom.clamp( 0.05, 50.0);
+        let  	factor = if scroll > 0.0 { 1.1 } else { 0.9 };
+        state._ObjCamera.Zoom( factor);
     }
 
     // Clear background (#0b0f19)
     painter.rect_filled( rect, 0.0, Color32::from_rgb( 11, 15, 25));
 
+    // Update GPU uniforms if renderer is active
+    if let Some( ref renderer) = state._ViewportRenderer {
+        renderer.UpdateUniforms( &state._ObjCamera, rect.width(), rect.height(), [0.8, 0.7, 1.0, 1.0]);
+    }
+
     let  	center = rect.center();
-    let  	cosY = camera._RotY.cos();
-    let  	sinY = camera._RotY.sin();
-    let  	cosX = camera._RotX.cos();
-    let  	sinX = camera._RotX.sin();
+    let  	cosY = state._ObjCamera._RotY.cos();
+    let  	sinY = state._ObjCamera._RotY.sin();
+    let  	cosX = state._ObjCamera._RotX.cos();
+    let  	sinX = state._ObjCamera._RotX.sin();
 
     let  	project = |v: [f32; 3]| -> (Pos2, f32) {
         let  	x1 = v[0] * cosY + v[2] * sinY;
         let  	z1 = -v[0] * sinY + v[2] * cosY;
         let  	y2 = v[1] * cosX - z1 * sinX;
         let  	z2 = v[1] * sinX + z1 * cosX;
-        let  	scale = (350.0 * camera._Zoom) / (300.0 + z2).max( 10.0);
-        (Pos2::new( center.x + camera._PanX + x1 * scale, center.y + camera._PanY - y2 * scale), z2)
+        let  	scale = ( 350.0 * state._ObjCamera._Zoom) / ( 300.0 + z2).max( 10.0);
+        ( Pos2::new( center.x + state._ObjCamera._PanX + x1 * scale, center.y + state._ObjCamera._PanY - y2 * scale), z2)
     };
 
-    if let  	Some( mesh) = meshDto {
+    if let Some( ref mesh) = meshOpt {
         let  	points = &mesh._Points;
         let  	triangles = &mesh._Triangles;
+        let  	cx = mesh._Center[0];
+        let  	cy = mesh._Center[1];
+        let  	cz = mesh._Center[2];
+        let  	scaleNorm = mesh._ScaleNorm;
+        let  	mode = state._ActiveObjMode;
 
         // Render Triangles / Facets
-        if *mode == ObjRenderMode::Facets || *mode == ObjRenderMode::ShadedWire {
+        if mode == ObjRenderMode::Facets || mode == ObjRenderMode::ShadedWire {
             for tri in triangles.iter() {
                 let  	idx0 = tri[0] as usize;
                 let  	idx1 = tri[1] as usize;
@@ -191,7 +160,7 @@ pub fn	RenderObjView( ui: &mut Ui, path: &Path, camera: &mut CameraState, mode: 
 
                         painter.add( Shape::mesh( eguiMesh));
 
-                        if *mode == ObjRenderMode::ShadedWire {
+                        if mode == ObjRenderMode::ShadedWire {
                             let  	wireStroke = Stroke::new( 0.5, Color32::from_rgba_premultiplied( 255, 255, 255, 25));
                             painter.line_segment( [p0, p1], wireStroke);
                             painter.line_segment( [p1, p2], wireStroke);
@@ -203,7 +172,7 @@ pub fn	RenderObjView( ui: &mut Ui, path: &Path, camera: &mut CameraState, mode: 
         }
 
         // Render Wireframe only
-        if *mode == ObjRenderMode::Wireframe {
+        if mode == ObjRenderMode::Wireframe {
             let  	wireStroke = Stroke::new( 1.0, Color32::from_rgb( 203, 166, 247));
             for tri in triangles.iter() {
                 let  	idx0 = tri[0] as usize;
@@ -224,7 +193,7 @@ pub fn	RenderObjView( ui: &mut Ui, path: &Path, camera: &mut CameraState, mode: 
         }
 
         // Render Points mode
-        if *mode == ObjRenderMode::Points {
+        if mode == ObjRenderMode::Points {
             let  	ptColor = Color32::from_rgb( 203, 166, 247);
             for pt in points.iter() {
                 let  	norm = [(pt[0] - cx) * scaleNorm, (pt[1] - cy) * scaleNorm, (pt[2] - cz) * scaleNorm];
@@ -237,7 +206,7 @@ pub fn	RenderObjView( ui: &mut Ui, path: &Path, camera: &mut CameraState, mode: 
     }
 
     // HUD Overlay
-    let  	hudText = format!( "{} Vertices | {} Faces | Zoom: {:.2}x | Rot: ({:.2}, {:.2})", vertCount, faceCount, camera._Zoom, camera._RotX, camera._RotY);
+    let  	hudText = format!( "{} Vertices | {} Faces | Mode: {:?} | In-Process WebGPU Cached | Zoom: {:.2}x", vertCount, faceCount, state._ActiveObjMode, state._ObjCamera._Zoom);
     painter.text(
         rect.left_bottom() + Vec2::new( 16.0, -16.0),
         egui::Align2::LEFT_BOTTOM,

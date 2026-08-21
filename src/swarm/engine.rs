@@ -221,6 +221,9 @@ impl SwarmEngine
 
     /// Automatically discovers and selects the best available compute hardware.
     /// Priority order: CudaOxide -> RustGpu -> Cpu fallback.
+    
+
+
     pub fn	Auto() -> Self
     {
         if let Ok( dev) = RustGpuDevice::Init() {
@@ -237,6 +240,31 @@ impl SwarmEngine
 
         SwarmEngine {
             _Device: SwarmDevice::Cpu( CpuDevice::New()),
+        }
+    }
+
+        /// Creates a compute engine wrapping an externally created wgpu Device and Queue.
+    pub fn	FromSharedGpu( device: std::sync::Arc< wgpu::Device>, queue: std::sync::Arc< wgpu::Queue>) -> Self
+    {
+        let  	rustGpu = RustGpuDevice::FromShared( device, queue);
+        SwarmEngine {
+            _Device: SwarmDevice::RustGpu( rustGpu),
+        }
+    }
+
+    pub fn	WgpuDevice( &self) -> Option< &std::sync::Arc< wgpu::Device>>
+    {
+        match &self._Device {
+            SwarmDevice::RustGpu( dev) => Some( dev.WgpuDevice()),
+            _ => None,
+        }
+    }
+
+    pub fn	WgpuQueue( &self) -> Option< &std::sync::Arc< wgpu::Queue>>
+    {
+        match &self._Device {
+            SwarmDevice::RustGpu( dev) => Some( dev.WgpuQueue()),
+            _ => None,
         }
     }
 
@@ -430,6 +458,9 @@ pub struct SwarmCluster
 impl SwarmCluster
 {
     /// Automatically discovers all hardware compute adapters and initializes the cluster.
+    
+
+
     pub fn	Auto() -> Self
     {
         let  	devices = RustGpuDevice::EnumerateDevices();

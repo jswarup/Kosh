@@ -103,7 +103,7 @@ impl IGpuOp for Device
         rx.recv().unwrap().unwrap();
 
         let  	view = slice.get_mapped_range();
-        let  	result = Buff::from( &*view);
+        let  	result = Buff::from( &view.as_ref().unwrap()[..]);
         drop( view);
         staging.unmap();
         result

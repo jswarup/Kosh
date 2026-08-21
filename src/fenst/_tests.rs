@@ -270,7 +270,7 @@ fn	TestParsePtsFileStream()
 #[test]
 fn	TestCameraOperations()
 {
-    use	crate::fenst::Camera;
+    use	crate::swarm::Camera;
 
     let  	mut cam = Camera::New();
     assert_eq!( cam._PanX, 0.0);
@@ -306,7 +306,7 @@ fn	TestCameraOperations()
 #[test]
 fn	TestSceneGraph()
 {
-    use	crate::fenst::SceneGraph;
+    use	crate::swarm::SceneGraph;
     use	crate::silo::Buff;
 
     let  	points = Buff![ [ -10.0, -10.0, -10.0 ], [ 10.0, 10.0, 10.0 ] ];
@@ -328,7 +328,7 @@ fn	TestSceneGraph()
 #[test]
 fn	TestSceneGraphSwarmProjection()
 {
-    use	crate::fenst::SceneGraph;
+    use	crate::swarm::SceneGraph;
     use	crate::silo::Buff;
     use	crate::swarm::SwarmEngine;
 
@@ -351,7 +351,7 @@ fn	TestSceneGraphSwarmProjection()
 #[test]
 fn	TestSceneGraphSwarmBoundingBoxProjection()
 {
-    use	crate::fenst::SceneGraph;
+    use	crate::swarm::SceneGraph;
     use	crate::silo::Buff;
     use	crate::swarm::SwarmEngine;
 
@@ -380,7 +380,7 @@ fn	TestSceneGraphSwarmBoundingBoxProjection()
 #[test]
 fn	TestSceneGraphSwarmFullSceneProjection()
 {
-    use	crate::fenst::SceneGraph;
+    use	crate::swarm::SceneGraph;
     use	crate::silo::Buff;
     use	crate::swarm::SwarmEngine;
 
@@ -402,7 +402,7 @@ fn	TestSceneGraphSwarmFullSceneProjection()
 #[test]
 fn	TestSceneGraphClusterMultiGpuProjection()
 {
-    use	crate::fenst::SceneGraph;
+    use	crate::swarm::SceneGraph;
     use	crate::silo::Buff;
     use	crate::swarm::SwarmCluster;
 
