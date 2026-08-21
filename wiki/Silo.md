@@ -2,60 +2,57 @@
 
 ## 1. Overview & Purpose
 
-The `silo` module is Kosh's memory, collection, and numeric foundation. It provides:
-1. **Custom Unsigned Numerics (`U8`, `U16`, `U32`, `U64`)**: Transparent numeric types with wrapping arithmetic, atomic bridges, explicit size conversions, and bitwise set operations.
-2. **Buffer & Slice Abstractions**:
-   - `Buff<T>`: Owns contiguous heap memory allocated via `std::alloc` with panic-safe initialization guards (`InitGuard`, `ResizeGuard`).
-   - `Arr<'a, T>`: Lightweight, zero-copy, copyable slice wrapper pointing to contiguous memory with lifetime bounds.
-   - `Stk<'a, 'b, T>`: Lock-free atomic stack backed by an `Arr<'b, T>` and an atomic size marker `Atm<U32>`.
-   - `Stash<T>`: Growable stack combining `Buff<T>` and `Atm<U32>`.
-   - `USeg`: Unsigned range/segment `[_First, _Last]` for intervals, slices, iteration, and parallel quicksort partitioning.
-3. **Zero-Cost Pointer & Type Casting**: Extension traits for type transmutes (`ICastExt`), raw pointer lifetime coercion (`IPtrExt`, `IConstPtrExt`), and raw byte slice views (`ISliceExt`).
+The `silo` module is Kosh's **foundational memory management and custom numerical type system**. It is designed around three core principles:
+1. **Two-Stage Memory Pipeline (`Stash` & `Buff`)**: Strict separation between dynamic, growable heap accumulation (`Stash<T>`) and immutable, fixed-size final storage (`Buff<T>`).
+2. **Zero `std::vec::Vec` Invariant**: `std::vec::Vec` is completely eliminated from the codebase to guarantee deterministic allocation profiles, cache locality, and explicit ownership boundaries.
+3. **Transparent Unsigned Numerics (`U8`, `U16`, `U32`, `U64`)**: Zero-cost `#[repr(transparent)]` unsigned integer wrappers that enforce wrapping arithmetic, prevent inadvertent implicit sign/widening bugs, and interoperate seamlessly with atomic atomics (`Atm<T>`).
 
 ---
 
-## 2. Architecture & Data Structures
+## 2. Architecture & Class Diagram
 
 ```mermaid
 classDiagram
-    class U8 {
-        +u8 0
-        +From(v: u8) U8
-        +AsUsize() usize
-    }
-    class U16 {
-        +u16 0
-        +From(v: u16) U16
-        +AsUsize() usize
-    }
-    class U32 {
-        +u32 0
-        +From(v: u32) U32
-        +AsUsize() usize
-    }
-    class U64 {
-        +u64 0
-        +From(v: u64) U64
-        +AsUsize() usize
-    }
-    class USeg {
-        +U32 _First
-        +U32 _Last
-        +New(first, sz) USeg
+    class Stash~T~ {
+        -NonNull~T~ _Ptr
+        -U32 _Cap
+        -Atm~U32~ _Sz
+        -U32 _GrowBy
+        +New() Stash~T~
+        +Create(sz, szStk, dispenser) Stash~T~
+        +WithCapacity(cap) Stash~T~
         +Size() U32
-        +QSort(less, swap)
-        +DoQSort(worker, less, swap)
-        +BinarySearch(piv, less) U32
+        +Capacity() U32
+        +Reserve(newCap)
+        +Clear()
+        +Push(val)
+        +PushVal(val)
+        +PushX(valRef)
+        +Pop() Option~T~
+        +PopToSize(targetSz)
+        +Slice() &[T]
+        +SliceMut() &mut [T]
+        +sort_by(compare)
+        +AppendStash(other)
+        +Append(arr)
+        +Arr() Arr~T~
+        +IntoBuff() Buff~T~
+        +ToBuff() Buff~T~
+        +Stk() Stk~T~
     }
+
     class Buff~T~ {
         -NonNull~T~ _Ptr
+        -U32 _Size
         +New() Buff~T~
         +Create(sz, dispenser) Buff~T~
-        +Push(val)
-        +Pop() Option~T~
         +Resize(newSz, dispenser)
         +Arr() Arr~T~
+        +Slice() &[T]
+        +Len() usize
+        +Size() U32
     }
+
     class Arr~'a, T~ {
         -NonNull~T~ _Ptr
         -U32 _Size
@@ -66,7 +63,9 @@ classDiagram
         +MutAt(k) &'a mut T
         +Swap(i, j)
         +Subset(first, sz) Arr
+        +Slice() &'a [T]
     }
+
     class Stk~'a, 'b, T~ {
         -_Size: &'a Atm~U32~
         -_Arr: Arr~'b, T~
@@ -75,24 +74,53 @@ classDiagram
         +Import(stk, maxMov) U32
         +Export(stk, maxMov) U32
     }
-    class Stash~T~ {
-        -_Buff: Buff~T~
-        -_Sz: Atm~U32~
-        +Pop(val) bool
-        +Stk() Stk
-        +Append(arr)
+
+    class USeg {
+        -U32 _First
+        -U32 _Last
+        +New(first, sz) USeg
+        +First() U32
+        +Last() U32
+        +Size() U32
+        +QSort(less, swap)
+        +DoQSort(worker, less, swap)
+        +BinarySearch(piv, less) U32
     }
 
-    Buff ..> Arr : produces Arr()
-    Stash *-- Buff : encapsulates
-    Stash ..> Stk : exposes Stk()
+    Stash --> Buff : IntoBuff() / ToBuff()
+    Stash ..> Stk : Stk()
+    Stash ..> Arr : Arr()
+    Buff ..> Arr : Arr()
     Stk o-- Arr : wraps backing buffer
-    Arr ..> USeg : generates USeg()
+    Arr ..> USeg : USeg()
 ```
 
 ---
 
-## 3. Quicksort & Partitioning Flowchart
+## 3. Two-Stage Memory Lifecycle Pipeline
+
+```mermaid
+flowchart LR
+    subgraph Phase1 ["Phase 1: Dynamic Accumulation"]
+        CreateStash["Stash::New()<br/>Stash::WithCapacity(cap)"] --> PushItems["stash.PushX(&mut item)<br/>stash.AppendStash(other)"]
+        PushItems --> Mutate["stash.SliceMut()<br/>stash.sort_by(cmp)"]
+    end
+
+    subgraph Phase2 ["Phase 2: Final Immutable Storage"]
+        Mutate --> Finalize["stash.IntoBuff()"]
+        Finalize --> BuffStorage["Buff&lt;T&gt;<br/>Immutable, Fixed Size,<br/>Zero Reallocation Overhead"]
+    end
+
+    BuffStorage --> View["buff.Arr() / buff.Slice()<br/>Zero-Copy Non-Owning View"]
+```
+
+### Why Separation Matters
+1. **`Stash<T>`**: Optimized for high-throughput mutation. Backed by raw non-null memory pointers with geometric capacity expansion, amortized O(1) append performance, and atomic `Stk` view sharing across worker threads.
+2. **`Buff<T>`**: Optimized for long-term read-only retention. Holds exact buffer allocations with zero unused capacity, preventing memory leaks and allocator fragmentation in cache hierarchies.
+
+---
+
+## 4. Quicksort & Partitioning Flowchart
 
 `USeg` and `Arr` provide parallel and sequential QuickSort implementations without allocating stack arrays:
 
@@ -114,11 +142,11 @@ flowchart TD
 
 ---
 
-## 4. Struct Reference
+## 5. Struct Reference
 
 ### `U8`, `U16`, `U32`, `U64`
 Transparent wrappers (`#[repr(transparent)]`) providing wrapping arithmetic and conversions:
-- **Constants**: `_X` (MAX), `_0` (0), `_1` (1), `U32::_16Sz` ($2^{16} = 65536$).
+- **Constants**: `_X` (MAX), `_0` (0), `_1` (1), `U32::_16Sz` (65536).
 - **Methods**:
   - `From(v: $prim) -> Self`: Constructor from primitive.
   - `Get(self) -> $prim`: Unwraps the primitive.
@@ -127,15 +155,36 @@ Transparent wrappers (`#[repr(transparent)]`) providing wrapping arithmetic and 
   - `AsU16()`, `AsU32()`, `AsU64()`: Explicit zero-cost widening.
 - **Traits Implemented**: `Add`, `Sub`, `Mul`, `Div`, `Rem`, `BitAnd`, `BitOr`, `BitXor`, `Shl`, `Shr`, `Neg`, `Not`, `AddAssign`, `SubAssign`, `Deref`, `Display`, `AtomicInt`.
 
+### `Stash<T>`
+Growable dynamic heap buffer with amortized O(1) capacity growth:
+- `New() -> Self`: Creates empty stash with zero initial capacity.
+- `WithCapacity<C: Into<U32>>(cap: C) -> Self`: Preallocates capacity.
+- `WithCapacityVal<C: Into<U32>>(cap: C, fillVal: T) -> Self where T: Clone`: Preallocates and initializes elements.
+- `Size(&self) -> U32`: Returns current active item count.
+- `Capacity(&self) -> U32`: Returns total allocated slot capacity.
+- `Reserve(&mut self, newCap: U32)`: Grows backing allocation to at least `newCap`.
+- `Push(&mut self, val: T)`: Pushes value by value, doubling capacity if full.
+- `PushX(&mut self, val: &mut T) where T: Default`: Moves element from mutable reference via `std::mem::take`.
+- `Pop(&mut self) -> Option<T>`: Pops top element, decrementing size.
+- `PopToSize(&mut self, targetSz: U32)`: Drops elements until count reaches `targetSz`.
+- `Slice(&self) -> &[T]`: Borrows active elements as standard slice.
+- `SliceMut(&mut self) -> &mut [T]`: Borrows active elements as mutable slice.
+- `sort_by<F>(&mut self, compare: F)`: In-place sorting of active elements.
+- `AppendStash(&mut self, other: Stash<T>)`: Moves all elements from `other` into `self`.
+- `Arr(&self) -> Arr<'_, T>`: Produces non-owning `Arr` slice.
+- `IntoBuff(self) -> Buff<T>`: Consumes stash and transfers exact allocation to `Buff<T>` with zero copying.
+- `ToBuff(&self) -> Buff<T> where T: Clone`: Clones active items into an immutable `Buff<T>`.
+- `Stk(&self) -> Stk<'_, '_, T>`: Exposes an atomic lock-free `Stk` view over capacity.
+
 ### `Buff<T>`
-An owned, growable heap array managed via `std::alloc`:
-- `New() -> Self`: Creates a zero-capacity dangling buffer.
-- `Create<S, Dispenser>(sz: S, dispenser: Dispenser) -> Self`: Allocates memory and initializes elements with `dispenser(index: U32)`. Protected against unwinding panics via `InitGuard`.
-- `Push(&mut self, val: T)`: Reallocates and appends `val`.
-- `Pop(&mut self) -> Option<T>`: Removes and drops the last element, shrinking memory if empty.
-- `Resize<Dispenser>(&mut self, newSize: U32, dispenser: Dispenser)`: Resizes in-place using `realloc` with `ResizeGuard` panic safety.
-- `ExtendFromSlice(&mut self, slice: &[T]) where T: Copy`: Fast memcpy extension.
+Owned immutable fixed-size heap buffer:
+- `New() -> Self`: Creates dangling zero-capacity buffer.
+- `Create<S, Dispenser>(sz: S, dispenser: Dispenser) -> Self`: Allocates fixed size and initializes elements with `dispenser(index: U32)`.
+- `Resize<Dispenser>(&mut self, newSize: U32, dispenser: Dispenser)`: Resizes allocation in-place using `realloc` with `ResizeGuard` unwind safety.
 - `Arr<'a>(&self) -> Arr<'a, T>`: Borrows buffer as an `Arr`.
+- `Slice(&self) -> &[T]`: Borrows buffer as standard slice.
+- `Len(&self) -> usize`: Returns element count as `usize`.
+- `Size(&self) -> U32`: Returns element count as `U32`.
 
 ### `Arr<'a, T>`
 A lightweight, Copy-enabled, non-owning slice reference (`_Ptr: NonNull<T>`, `_Size: U32`):
@@ -156,15 +205,6 @@ Lock-free, fixed-capacity stack backed by `Arr<'b, T>` with atomic CAS size poin
 - `Import<M>(&self, stk: &Stk<T>, maxMov: M) -> U32 where T: Copy`: Atomically transfers up to `maxMov` items from `stk` into `self`.
 - `Export<M>(&self, stk: &Stk<T>, maxMov: M) -> U32 where T: Copy`: Atomically transfers up to `maxMov` items from `self` into `stk`.
 
-### `Stash<T>`
-Growable stack container encapsulating `_Buff: Buff<T>` and `_Sz: Atm<U32>`:
-- `New() -> Self`: Creates empty stash.
-- `Create<Sz, SzStk, Dispenser>(sz: Sz, szStk: SzStk, dispenser: Dispenser) -> Self`: Pre-allocates buffer.
-- `Stk(&self) -> Stk<'_, '_, T>`: Obtains a lock-free `Stk` view of active elements.
-- `Push(&mut self, val: T) where T: Copy`: Pushes value, doubling buffer if capacity is exceeded.
-- `Append(&mut self, arr: Arr<'_, T>) where T: Copy`: Appends slice with single reallocation.
-- `TopMut(&self) -> Option<&mut T>`: Returns mutable reference to the top element.
-
 ### `USeg`
 Unsigned index interval `[_First, _Last]` (`_First: U32`, `_Last: U32`):
 - `New(first, sz) -> Self`: Constructs interval `[first, first + sz - 1]`.
@@ -181,7 +221,7 @@ Unsigned index interval `[_First, _Last]` (`_First: U32`, `_Last: U32`):
 
 ---
 
-## 5. Traits Reference
+## 6. Traits Reference
 
 | Trait | Purpose | Key Methods |
 | :--- | :--- | :--- |
@@ -198,8 +238,8 @@ Unsigned index interval `[_First, _Last]` (`_First: U32`, `_Last: U32`):
 
 ---
 
-## 6. Macros Reference
+## 7. Macros Reference
 
-- **`Buff![ elem1, elem2, ... ]` / `Buff![ elem ; count ]`**: Constructs an initialized `Buff<T>`.
+- **`Buff![ elem1, elem2, ... ]` / `Buff![ elem ; count ]`**: Constructs an initialized immutable `Buff<T>`.
 - **`Stash![ expr; for item in iter; if cond ]`**: List comprehension macro collecting evaluated elements into a `Stash<T>`.
 - **`ImplUIntTraits!( $type, $prim, $atomic, $asPrim )`**: Generates full arithmetic, casting, display, deref, and `AtomicInt` implementations for transparent integer wrappers.

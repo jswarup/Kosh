@@ -1,4 +1,4 @@
-﻿//-- frieze/obj_view.rs --------------------------------------------------------------------------------------------------------------
+//-- frieze/obj_view.rs --------------------------------------------------------------------------------------------------------------
 use	std::path::Path;
 use	egui::{ Ui, Color32, Pos2, Stroke, Sense, RichText, Vec2, Shape };
 use	egui::epaint::Mesh;
@@ -54,7 +54,7 @@ pub fn	RenderObjView( ui: &mut Ui, path: &Path, camera: &mut CameraState, mode: 
 
     let  	bboxLabel = format!( "[{:.2}, {:.2}, {:.2}]  [{:.2}, {:.2}, {:.2}]", minX, minY, minZ, maxX, maxY, maxZ);
 
-    // Top Header with Mode Buttons matching Aura
+    // Top Header with Mode Buttons
     ui.horizontal( |ui| {
         ui.spacing_mut().item_spacing = Vec2::new( 8.0, 0.0);
 
@@ -122,7 +122,7 @@ pub fn	RenderObjView( ui: &mut Ui, path: &Path, camera: &mut CameraState, mode: 
         camera._Zoom = camera._Zoom.clamp( 0.05, 50.0);
     }
 
-    // Clear background (#0b0f19 matching Aura)
+    // Clear background (#0b0f19)
     painter.rect_filled( rect, 0.0, Color32::from_rgb( 11, 15, 25));
 
     let  	center = rect.center();

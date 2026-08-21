@@ -1,4 +1,4 @@
-﻿//-- frieze/app.rs -------------------------------------------------------------------------------------------------------------------
+//-- frieze/app.rs -------------------------------------------------------------------------------------------------------------------
 use	egui::{ Ui, Color32, RichText, Frame, Margin, Panel, Vec2 };
 use	crate::frieze::state::AppState;
 use	crate::frieze::tab_bar::RenderTabBar;
@@ -19,7 +19,7 @@ impl KoshApp
 {
     pub fn	new( cc: &eframe::CreationContext<'_>) -> Self
     {
-        // Apply crisp dark theme visuals matching Aura (Catppuccin Mocha / VS Code Dark)
+        // Apply crisp dark theme visuals (Catppuccin Mocha / VS Code Dark)
         let  	mut visuals = egui::Visuals::dark();
         visuals.panel_fill = Color32::from_rgb( 24, 24, 37);            // --bg-surface: #181825
         visuals.window_fill = Color32::from_rgb( 30, 30, 46);           // --bg-base: #1e1e2e
@@ -40,7 +40,7 @@ impl eframe::App for KoshApp
 {
     fn	ui( &mut self, ui: &mut Ui, _frame: &mut eframe::Frame)
     {
-        // 1. Top Header & Tab Bar Panel (Height & Styling matching Aura)
+        // 1. Top Header & Tab Bar Panel (Height & Styling)
         Panel::top( "top_panel")
             .frame(
                 Frame::new()
@@ -70,7 +70,7 @@ impl eframe::App for KoshApp
                 RenderTabBar( ui, &mut self._State);
             });
 
-        // 2. Bottom Status Bar Panel (Height: 24px, #11111b matching Aura)
+        // 2. Bottom Status Bar Panel (Height: 24px, #11111b)
         Panel::bottom( "bottom_panel")
             .frame(
                 Frame::new()
@@ -98,7 +98,7 @@ impl eframe::App for KoshApp
                 });
             });
 
-        // 3. Left Sidebar Explorer Panel (Width: 260px, #181825 matching Aura)
+        // 3. Left Sidebar Explorer Panel (Width: 260px, #181825)
         if self._State._IsExplorerOpen {
             Panel::left( "left_panel")
                 .resizable( true)
@@ -114,7 +114,7 @@ impl eframe::App for KoshApp
                 });
         }
 
-        // 4. Central Document Viewport Area (#1e1e2e matching Aura)
+        // 4. Central Document Viewport Area (#1e1e2e)
         let  	activeTab = self._State._OpenTabs.iter().find( |t| Some( &t._Id) == self._State._ActiveTabId.as_ref()).cloned();
 
         ui.vertical( |ui| {
@@ -144,7 +144,7 @@ impl eframe::App for KoshApp
                     });
                 }
             } else {
-                // Empty state matching Aura
+                // Empty state
                 ui.centered_and_justified( |ui| {
                     ui.vertical_centered( |ui| {
                         ui.label( RichText::new( "❖").size( 42.0).color( Color32::from_rgba_premultiplied( 205, 214, 244, 30)));

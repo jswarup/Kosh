@@ -1,4 +1,4 @@
-﻿//-- frieze/explorer.rs --------------------------------------------------------------------------------------------------------------
+//-- frieze/explorer.rs --------------------------------------------------------------------------------------------------------------
 use	std::path::{ Path, PathBuf };
 use	egui::{ Ui, RichText, Color32, CollapsingHeader, Vec2 };
 use	crate::frieze::state::{ AppState, OpenTab };
@@ -6,7 +6,7 @@ use	crate::fresco::ExprRepos;
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Renders the sidebar file and Fresco explorer tree matching Aura's layout.
+/// Renders the sidebar file and Fresco explorer tree.
 pub fn	RenderExplorer( ui: &mut Ui, state: &mut AppState)
 {
     ui.vertical( |ui| {

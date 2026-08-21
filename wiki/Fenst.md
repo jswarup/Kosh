@@ -2,16 +2,13 @@
 
 ## 1. Overview & Purpose
 
-The `fenst` module provides Kosh with a **secondary Tauri desktop explorer, document viewer, and 3D point-cloud visualizer**. The default desktop application is the native [`frieze`](Frieze.md) workspace; launch Fenst explicitly with `cargo run -- --aura`. Key features include:
+The `fenst` module provides Kosh with a **virtual provider framework and data explorer**. The default desktop application is the native [`frieze`](Frieze.md) workspace. Key features include:
 1. **Virtual Explorer Abstraction (`Xplr`, `LeafXplr`, `BranchXplr`)**: Uniform node interface across filesystems, AST grammar trees, and symbolic expressions.
 2. **Provider Registry (`XplrRegistry`)**: URL scheme-based provider routing (`file://`, `expr://`, `ast://`).
 3. **High-Performance Content Streaming**: Windowed chunk reading (`XplrFetchChunk`) and safe size-guarded file readers (`XplrFetchContent`).
-4. **Desktop GUI Application**: Tauri v2 desktop shell with native menus, multi-windowing, and IPC command handlers (`fenst::xplrcmds`).
 5. **Interactive 3D Point Cloud Visualizer**: Real-time perspective projection (`Project3d`), rotating wireframe bounding box, and GPU-computed point rendering.
 
-> **Note**: Frontend assets, icons, and Tauri configuration for the desktop GUI are located in the [`aura`](Aura.md) module (`src/aura/`).
 
-> **Launch mode**: `cargo run` launches `frieze`; `cargo run -- --aura` launches this Tauri application.
 
 ---
 
@@ -85,7 +82,7 @@ classDiagram
 
 ```mermaid
 flowchart TD
-    Frontend["Tauri Frontend (WebGL/Canvas/HTML)"] -->|Invokes 'XplrProjectPts'| BackendCmd["fenst::xplrcmds::XplrProjectPts"]
+    Frontend["Frontend Presentation Layer"] -->|Invokes 'XplrProjectPts'| BackendCmd["fenst::xplrcmds::XplrProjectPts"]
     BackendCmd --> CheckState["Lookup or Initialize PtsSessionState (Singleton)"]
 
     CheckState -->|If initial load| GenPoints["Generate points via GPU Compute Shader (symph::pts_pointcloud_cs)"]
@@ -160,7 +157,7 @@ z_2 &= y \sin(\theta_x) + z_1 \cos(\theta_x) \\
 
 ---
 
-## 6. Tauri IPC Commands Reference (`xplrcmds`)
+## 6. Provider & Session Commands Reference (`xplrcmds`)
 
 | Command | Signature | Description |
 | :--- | :--- | :--- |
@@ -179,4 +176,4 @@ z_2 &= y \sin(\theta_x) + z_1 \cos(\theta_x) \\
 
 ### ⚠️ Data Serialization Note
 
-The `XplrProjectPts` command performs real-time serialization of millions of projected points every frame. **This is a critical performance bottleneck.** For optimization recommendations and identified inefficiencies in the aura↔fenst↔swarm serialization pipeline, see **[Serialization_Optimization.md](Serialization_Optimization.md)**.
+The `XplrProjectPts` command performs real-time serialization of millions of projected points every frame. **This is a critical performance bottleneck.** For optimization recommendations and identified inefficiencies in the fenst↔swarm serialization pipeline, see **[Serialization_Optimization.md](Serialization_Optimization.md)**.

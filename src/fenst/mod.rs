@@ -625,7 +625,6 @@ pub mod frescoxplr;
 pub mod shardxplr;
 pub mod provider;
 pub mod scene;
-pub mod app;
 pub mod xplrcmds;
 
 pub use	xplr::{ Xplr, LeafXplr, BranchXplr, XplrNodeDto, StreamChunkDto };
@@ -634,7 +633,6 @@ pub use	frescoxplr::{ FrescoLeaf, FrescoBranch, FrescoProvider };
 pub use	shardxplr::{ ShardLeaf, ShardBranch, ShardProvider };
 pub use	provider::{ XplrProvider, FsProvider, XplrRegistry, SharedXplrRegistry, CreateDefaultRegistry };
 pub use	scene::{ Camera, SceneGraph, SceneDisplayFrame };
-pub use	app::run;
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 

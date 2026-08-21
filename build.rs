@@ -1,5 +1,5 @@
 //-- build.rs ----------------------------------------------------------------------------------------------------------------------
-#![allow( non_snake_case)]
+#![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
 
 fn	CopyDirAll( src: &std::path::Path, dst: &std::path::Path)
 {
@@ -43,13 +43,6 @@ fn	main()
     };
 
     println!( "cargo::rustc-env=SYMPH_SPV_PATH={}", modulePath.display());
-
-    // Sync tauri.conf.json from src/aura/ for Tauri build system
-    let  	_ = std::fs::copy( "src/aura/tauri.conf.json", "tauri.conf.json");
-
-    let  	attrs = tauri_build::Attributes::new()
-        .capabilities_path_pattern( "src/aura/capabilities/*");
-    tauri_build::try_build( attrs).expect( "Failed to build Tauri app");
 
     // Relocate generated schemas to out/gen and clean root
     let  	genPath = std::path::Path::new( "gen");

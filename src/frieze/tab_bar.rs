@@ -1,10 +1,10 @@
-﻿//-- frieze/tab_bar.rs ---------------------------------------------------------------------------------------------------------------
+//-- frieze/tab_bar.rs ---------------------------------------------------------------------------------------------------------------
 use	egui::{ Ui, Color32, Vec2, RichText, Frame, Stroke, Margin };
 use	crate::frieze::state::AppState;
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Renders the top tab bar matching Aura's exact visual specifications.
+/// Renders the top tab bar visual specifications.
 pub fn	RenderTabBar( ui: &mut Ui, state: &mut AppState)
 {
     if state._OpenTabs.is_empty() {
@@ -21,7 +21,7 @@ pub fn	RenderTabBar( ui: &mut Ui, state: &mut AppState)
             let  	isActive = state._ActiveTabId.as_ref() == Some( &tab._Id);
             let  	tabId = tab._Id.clone();
 
-            // Background colors matching Aura (--tab-bg / --tab-active-bg)
+            // Background colors (--tab-bg / --tab-active-bg)
             let  	bg = if isActive {
                 Color32::from_rgb( 30, 30, 46)                          // #1e1e2e
             } else {

@@ -1,5 +1,5 @@
 # Data Serialization Optimization & Audit
-## Aura ↔ Fenst ↔ Swarm+Symph Pipeline
+## Fenst ↔ Swarm+Symph Pipeline
 
 ---
 
@@ -7,7 +7,7 @@
 
 ```mermaid
 flowchart TD
-    subgraph Aura["Aura (Frontend)"]
+    subgraph Frieze["Frieze (Frontend)"]
         FE["pts_viewer.js<br/>Canvas Rendering<br/>Mouse Events"]
     end
 
@@ -80,7 +80,7 @@ Render Phase (Every Frame):
   ↓
   Buff<(f32, f32, f32, f32, f32)> (2D projected x, y, radius, core_radius, alpha)
   ↓
-  PtsFrameDto._Points → ToBytes() → Tauri IPC → Frontend
+  PtsFrameDto._Points → ToBytes() → Frame IPC → Frontend
 ```
 
 **Issues**:
@@ -295,8 +295,7 @@ pub struct PtsFrameUpdate {
 **Implementation Flow**:
 
 ```rust
-#[tauri::command]
-pub fn XplrProjectPts(...) -> Result<tauri::ipc::Response, String> {
+pub fn XplrProjectPts(...) -> Result<Vec<u8>, String> {
     let mut guard = PTS_STATE.lock()?;
     let state = guard.entry(path.clone()).or_insert_with(|| {
         // FIRST TIME: Send metadata + full geometry
@@ -439,7 +438,6 @@ fn compute_frame_hash(scene: &SceneGraph, params: &CameraParams) -> u64 {
     std::hash::Hasher::finish(&hasher)
 }
 
-#[tauri::command]
 pub fn XplrProjectPts(...) -> Result<PtsFrameUpdate, String> {
     let new_hash = compute_frame_hash(&scene, &params);
     if new_hash == state.last_hash {
@@ -503,7 +501,7 @@ pub struct BinaryFrameHeader {
 ### Baseline (Current):
 - **Single Frame Size**: ~2 MB (100K points + metadata)
 - **60 FPS Load**: ~120 MB/s
-- **Tauri IPC Overhead**: High (full serialization every frame)
+- **Frame IPC Overhead**: High (full serialization every frame)
 
 ### After Phase 3 (Most Important):
 - **Frame Size**: ~700 KB (quantized points)
@@ -522,6 +520,6 @@ pub struct BinaryFrameHeader {
 
 - **File**: [src/fenst/xplrcmds.rs](src/fenst/xplrcmds.rs) - IPC command handlers
 - **File**: [src/fenst/mod.rs](src/fenst/mod.rs) - DTO definitions
-- **File**: [src/aura/frontend/pts_viewer.js](src/aura/frontend/pts_viewer.js) - Frontend rendering
+- **File**: [src/frieze/pts_view.rs](src/frieze/pts_view.rs) - Native rendering
 - **Wiki**: [Fenst.md](wiki/Fenst.md) - Architecture overview
 - **Wiki**: [Swarm.md](wiki/Swarm.md) - Compute pipeline

@@ -1,10 +1,10 @@
-﻿//-- frieze/fresco_view.rs -----------------------------------------------------------------------------------------------------------
+//-- frieze/fresco_view.rs -----------------------------------------------------------------------------------------------------------
 use	egui::{ Ui, Color32, RichText, Frame, Stroke, Margin, Vec2 };
 use	crate::fresco::ExprRepos;
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Viewport for inspecting Fresco symbolic AST expressions matching Aura's layout.
+/// Viewport for inspecting Fresco symbolic AST expressions.
 pub fn	RenderFrescoView( ui: &mut Ui, uri: &str)
 {
     ui.vertical( |ui| {

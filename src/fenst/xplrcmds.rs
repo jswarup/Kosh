@@ -1,6 +1,5 @@
-﻿//-- xplrcmds.rs ------------------------------------------------------------------------------------------------------------------
+//-- xplrcmds.rs ------------------------------------------------------------------------------------------------------------------
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
-use	tauri::Manager;
 use	crate::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, CreateDefaultRegistry, Camera, SceneGraph };
 use	crate::silo::{ Buff, ISliceExt };
 use	serde::Deserialize;
@@ -19,26 +18,8 @@ static SWARM_CLUSTER: LazyLock< SwarmCluster> = LazyLock::new( || {
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-fn	UrlEncode( input: &str) -> String
-{
-    let  	mut encoded = String::new();
-    for byte in input.bytes() {
-        match byte {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                encoded.push( byte as char);
-            }
-            _ => {
-                encoded.push_str( &format!( "%{:02X}", byte));
-            }
-        }
-    }
-    encoded
-}
-
-// ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Reads a directory and returns sorted entries (directories first, then files).
-#[tauri::command]
 pub fn	XplrListEntries( path: String) -> Result< Buff< XplrEntry>, String>
 {
     crate::fenst::XplrListEntries( path)
@@ -47,7 +28,6 @@ pub fn	XplrListEntries( path: String) -> Result< Buff< XplrEntry>, String>
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Reads the text content of a file, with a size guard.
-#[tauri::command]
 pub fn	XplrFetchContent( path: String) -> Result< XplrContent, String>
 {
     crate::fenst::XplrFetchContent( path)
@@ -56,7 +36,6 @@ pub fn	XplrFetchContent( path: String) -> Result< XplrContent, String>
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Returns metadata about a file or directory.
-#[tauri::command]
 pub fn	XplrLeafInfo( path: String) -> Result< crate::fenst::XplrLeafInfo, String>
 {
     crate::fenst::XplrLeafInfo( path)
@@ -65,11 +44,9 @@ pub fn	XplrLeafInfo( path: String) -> Result< crate::fenst::XplrLeafInfo, String
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Shows a native dialog to pick a folder.
-#[tauri::command]
-pub async fn	XplrSelectBranch( window: tauri::Window) -> Result< Option< String>, String>
+pub async fn	XplrSelectBranch() -> Result< Option< String>, String>
 {
     let  	fileDialog = rfd::AsyncFileDialog::new()
-        .set_parent( &window)
         .set_title( "Select Folder to Open");
 
     let  	folderHandle = fileDialog.pick_folder().await;
@@ -80,7 +57,6 @@ pub async fn	XplrSelectBranch( window: tauri::Window) -> Result< Option< String>
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Fetches children of a given URI using the registered XplrProviders.
-#[tauri::command]
 pub fn	XplrChildren( uri: String) -> Result< Buff< XplrNodeDto>, String>
 {
     let  	registry = CreateDefaultRegistry();
@@ -96,7 +72,6 @@ pub fn	XplrChildren( uri: String) -> Result< Buff< XplrNodeDto>, String>
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Returns the list of registered provider scheme prefixes.
-#[tauri::command]
 pub fn	XplrListProviders() -> Result< Buff< String>, String>
 {
     let  	registry = CreateDefaultRegistry();
@@ -111,7 +86,6 @@ pub fn	XplrListProviders() -> Result< Buff< String>, String>
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Reads a windowed chunk of a file using flux::BuffStream and silo::Buff.
-#[tauri::command]
 pub fn	XplrFetchChunk( path: String, offset: u64, size: usize) -> Result< StreamChunkDto, String>
 {
     crate::fenst::XplrFetchChunk( path, offset, size)
@@ -120,8 +94,7 @@ pub fn	XplrFetchChunk( path: String, offset: u64, size: usize) -> Result< Stream
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Generates 3D points from a .pts file (using fleck::ParsePtsStream) or from GPU compute shader if path is empty/omitted.
-#[tauri::command]
-pub fn	XplrFetchPtsPoints( path: Option< String>) -> Result< tauri::ipc::Response, String>
+pub fn	XplrFetchPtsPoints( path: Option< String>) -> Result< Vec< u8>, String>
 {
     let  	dto = if let Some( ref filePath) = path {
         if !filePath.is_empty() && std::path::Path::new( filePath).exists() {
@@ -134,14 +107,13 @@ pub fn	XplrFetchPtsPoints( path: Option< String>) -> Result< tauri::ipc::Respons
     };
 
     let  	bytes = dto.ToBytes();
-    return Ok( tauri::ipc::Response::new( bytes));
+    return Ok( bytes);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Parses and returns a Wavefront .obj 3D mesh model from the specified file path.
-#[tauri::command]
-pub fn	XplrFetchWaveObj( path: Option< String>) -> Result< tauri::ipc::Response, String>
+pub fn	XplrFetchWaveObj( path: Option< String>) -> Result< Vec< u8>, String>
 {
     let  	dto = if let Some( ref filePath) = path {
         if !filePath.is_empty() && std::path::Path::new( filePath).exists() {
@@ -164,81 +136,11 @@ pub fn	XplrFetchWaveObj( path: Option< String>) -> Result< tauri::ipc::Response,
     };
 
     let  	bytes = dto.ToBytes();
-    return Ok( tauri::ipc::Response::new( bytes));
+    return Ok( bytes);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-fn	OpenWindowHelper(
-    app: &tauri::AppHandle,
-    path: &str,
-    labelPrefix: &str,
-    urlTemplate: &str,
-    title: String,
-    width: f64,
-    height: f64,
-) -> Result< (), String>
-{
-    let  	mut hashVal: u64 = 5381;
-    for b in path.bytes() {
-        hashVal = hashVal.wrapping_mul( 33).wrapping_add( b as u64);
-    }
-    let  	label = format!( "{}{:x}", labelPrefix, hashVal);
-
-    if let Some( win) = app.get_webview_window( &label) {
-        let  	_ = win.set_focus();
-        return Ok( ());
-    }
-
-    let  	encodedPath = UrlEncode( path);
-    let  	url = format!( "{}{}", urlTemplate, encodedPath);
-
-    let  	builder = tauri::WebviewWindowBuilder::new(
-        app,
-        &label,
-        tauri::WebviewUrl::App( url.into())
-    )
-    .title( title)
-    .inner_size( width, height);
-
-    builder.build().map_err( |e| e.to_string())?;
-
-    Ok( ())
-}
-
-// ---------------------------------------------------------------------------------------------------------------------------------
-
-/// Opens a file content view in a new or existing separate window.
-#[tauri::command]
-pub fn	XplrOpenContentWindow( app: tauri::AppHandle, path: String) -> Result< (), String>
-{
-    if crate::fenst::IsPtsFile( &path) {
-        return XplrOpenPtsGraphicsWindow( app, path);
-    }
-
-    OpenWindowHelper( &app, &path, "win_", "index.html?file=", format!( "Fenst — {}", path), 900.0, 700.0)
-}
-
-// ---------------------------------------------------------------------------------------------------------------------------------
-
-/// Opens a dedicated rust-gpu graphics shader window displaying a 100x100x100 wireframe block for .pts files.
-#[tauri::command]
-pub fn	XplrOpenPtsGraphicsWindow( app: tauri::AppHandle, path: String) -> Result< (), String>
-{
-    if !std::path::Path::new( &path).exists() {
-        return Err( "File does not exist".to_string());
-    }
-
-    if !crate::fenst::IsPtsFile( &path) {
-        return Err( "Not a .pts file".to_string());
-    }
-
-    let  	fileName = std::path::Path::new( &path);
-
-    OpenWindowHelper( &app, &path, "pts_win_", "pts_viewer.html?file=", format!( "Fenst — Point Cloud Viewer — {}", fileName.display()), 960.0, 720.0)
-}
-
-// ---------------------------------------------------------------------------------------------------------------------------------
 
 struct PtsSessionState
 {
@@ -750,7 +652,6 @@ impl QuantizedPtsFrameDto
 
 /// Transforms and projects 3D point cloud coordinates and its bounding box to 2D screen coordinates,
 /// applying camera pan, zoom, and rotation state.
-#[tauri::command]
 pub fn	XplrProjectPts(
     path: String,
     width: f32,
@@ -764,7 +665,7 @@ pub fn	XplrProjectPts(
     rot_x: Option< f32>,
     rot_y: Option< f32>,
     is_interactive: Option< bool>,
-) -> Result< tauri::ipc::Response, String>
+) -> Result< Vec< u8>, String>
 {
     let  	mut guard = PTS_STATE.lock().map_err( |e| e.to_string())?;
     let  	state = guard.entry( path.clone()).or_insert_with( || {
@@ -828,7 +729,7 @@ pub fn	XplrProjectPts(
         _RotY: cam._RotY.to_bits(),
     };
     if state._LastFrameKey == Some( frameKey) {
-        return Ok( tauri::ipc::Response::new( String::new()));
+        return Ok( Vec::new());
     }
 
     let  	camRef = state._Scene.Camera();
@@ -945,13 +846,12 @@ pub fn	XplrProjectPts(
     let  	quantized_frame = QuantizedPtsFrameDto::FromPtsFrameDto( &frame, width, height);
     let  	bytes = quantized_frame.ToBytes();
     state._LastFrameKey = Some( frameKey);
-    return Ok( tauri::ipc::Response::new( bytes));
+    return Ok( bytes);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Resets camera pan, zoom, and rotation in the active SceneGraph to default centered view.
-#[tauri::command]
 pub fn	XplrResetCamera( path: String) -> Result< Camera, String>
 {
     let  	mut guard = PTS_STATE.lock().map_err( |e| e.to_string())?;
