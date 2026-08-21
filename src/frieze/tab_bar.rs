@@ -45,13 +45,13 @@ pub fn	RenderTabBar( ui: &mut Ui, state: &mut AppState)
 
                         // Badge icon
                         if tab._IsPts {
-                            ui.label( RichText::new( "• PTS").color( Color32::from_rgb( 137, 180, 250)).strong().size( 11.0));
+                            ui.label( RichText::new( "• PTS").color( Color32::from_rgb( 137, 180, 250)).strong().size( 13.0));
                         } else if tab._IsObj {
-                            ui.label( RichText::new( "◬ OBJ").color( Color32::from_rgb( 203, 166, 247)).strong().size( 11.0));
+                            ui.label( RichText::new( "◬ OBJ").color( Color32::from_rgb( 203, 166, 247)).strong().size( 13.0));
                         } else if tab._IsFresco {
-                            ui.label( RichText::new( "ƒ FRESCO").color( Color32::from_rgb( 137, 220, 235)).strong().size( 11.0));
+                            ui.label( RichText::new( "ƒ FRESCO").color( Color32::from_rgb( 137, 220, 235)).strong().size( 13.0));
                         } else {
-                            ui.label( RichText::new( "📄").size( 11.0));
+                            ui.label( RichText::new( "📄").size( 13.0));
                         }
 
                         // Tab title
@@ -61,13 +61,13 @@ pub fn	RenderTabBar( ui: &mut Ui, state: &mut AppState)
                             Color32::from_rgb( 166, 173, 200)           // #a6adc8
                         };
 
-                        let  	tabBtn = ui.selectable_label( false, RichText::new( &tab._Name).color( tabTextColor).size( 12.0));
+                        let  	tabBtn = ui.selectable_label( false, RichText::new( &tab._Name).color( tabTextColor).size( 14.0));
                         if tabBtn.clicked() {
                             tabToSelect = Some( tabId.clone());
                         }
 
                         // Close button
-                        if ui.small_button( RichText::new( "×").color( Color32::from_rgb( 108, 112, 134)).size( 12.0)).clicked() {
+                        if ui.small_button( RichText::new( "×").color( Color32::from_rgb( 108, 112, 134)).size( 14.0)).clicked() {
                             tabToClose = Some( tabId.clone());
                         }
                     });

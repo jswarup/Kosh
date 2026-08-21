@@ -25,8 +25,8 @@ pub fn	RenderObjView( ui: &mut Ui, path: &Path, state: &mut AppState)
     // Top HUD Bar & Render Mode Controls
     ui.horizontal( |ui| {
         ui.spacing_mut().item_spacing = Vec2::new( 8.0, 0.0);
-        ui.label( RichText::new( "WAVEFRONT 3D").color( Color32::from_rgb( 203, 166, 247)).strong().size( 10.5));
-        ui.label( RichText::new( fileName).strong().size( 13.0).color( Color32::from_rgb( 205, 214, 244)));
+        ui.label( RichText::new( "WAVEFRONT 3D").color( Color32::from_rgb( 203, 166, 247)).strong().size( 12.5));
+        ui.label( RichText::new( fileName).strong().size( 15.0).color( Color32::from_rgb( 205, 214, 244)));
 
         ui.separator();
         for (m, label) in [
@@ -39,7 +39,7 @@ pub fn	RenderObjView( ui: &mut Ui, path: &Path, state: &mut AppState)
             let  	btn = ui.selectable_label(
                 selected,
                 RichText::new( label)
-                    .size( 11.0)
+                    .size( 13.0)
                     .color( if selected { Color32::WHITE } else { Color32::from_rgb( 166, 173, 200) })
             );
             if btn.clicked() {
@@ -47,10 +47,10 @@ pub fn	RenderObjView( ui: &mut Ui, path: &Path, state: &mut AppState)
             }
         }
 
-        ui.label( RichText::new( format!( "{} Verts | {} Faces | BBox: {}", vertCount, faceCount, bboxLabel)).size( 11.5).color( Color32::from_rgb( 203, 166, 247)));
+        ui.label( RichText::new( format!( "{} Verts | {} Faces | BBox: {}", vertCount, faceCount, bboxLabel)).size( 13.5).color( Color32::from_rgb( 203, 166, 247)));
 
         ui.with_layout( egui::Layout::right_to_left( egui::Align::Center), |ui| {
-            if ui.button( RichText::new( "Reset Camera").size( 11.0)).clicked() {
+            if ui.button( RichText::new( "Reset Camera").size( 13.0)).clicked() {
                 state._ObjCamera.Reset();
             }
         });

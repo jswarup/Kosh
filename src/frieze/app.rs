@@ -2,8 +2,8 @@
 use	std::sync::Arc;
 use	egui::{ Ui, Color32, RichText, Frame, Margin, Panel };
 use	crate::swarm::{ SwarmEngine, ViewportRenderer };
-use	crate::frieze::state::AppState;
-use	crate::frieze::desktop::DesktopMenuBar;
+use	crate::frieze::state::{ AppState, TypographyLevel };
+use	crate::frieze::desktop::{ DesktopMenuBar, RenderSettingsWindow };
 use	crate::frieze::tab_bar::RenderTabBar;
 use	crate::frieze::explorer::{ RenderExplorer, RenderFloatingExplorerWindow, RenderExplorerViewTab };
 use	crate::frieze::pts_view::RenderPtsView;
@@ -24,7 +24,7 @@ impl KoshApp
     pub fn	new( cc: &eframe::CreationContext<'_>) -> Self
     {
         let  	mut appState = AppState::default();
-        appState._Theme.Apply( &cc.egui_ctx);
+        appState._Appearance.Apply( &cc.egui_ctx);
 
         if let Some( ref renderState) = cc.wgpu_render_state {
             let  	devArc = Arc::new( renderState.device.clone());
@@ -48,8 +48,9 @@ impl eframe::App for KoshApp
 {
     fn	ui( &mut self, ui: &mut Ui, _frame: &mut eframe::Frame)
     {
-        // 0. Render Floating Windows File Explorer if open
+        // 0. Render Floating Windows File Explorer and Settings Window if open
         RenderFloatingExplorerWindow( ui.ctx(), &mut self._State);
+        RenderSettingsWindow( ui.ctx(), &mut self._State);
 
         // 1. Top Desktop Menu Bar
         self._MenuBar.Render( ui, &mut self._State);
@@ -79,7 +80,7 @@ impl eframe::App for KoshApp
                     ui.label(
                         RichText::new( &self._State._StatusMessage)
                             .monospace()
-                            .size( 11.5)
+                            .size( self._State._Appearance.FontSize( TypographyLevel::SmallCaption))
                             .color( Color32::from_rgb( 166, 173, 200))
                     );
 
@@ -87,7 +88,7 @@ impl eframe::App for KoshApp
                         ui.label(
                             RichText::new( "Pure Native Rust (egui + wgpu + swarm)")
                                 .monospace()
-                                .size( 11.0)
+                                .size( self._State._Appearance.FontSize( TypographyLevel::SmallCaption))
                                 .color( self._State._Theme.AccentColor())
                         );
                     });
@@ -127,15 +128,15 @@ impl eframe::App for KoshApp
                     // Text Document Viewer
                     ui.vertical( |ui| {
                         ui.horizontal( |ui| {
-                            ui.label( RichText::new( &tab._Name).strong().size( 13.0).color( Color32::from_rgb( 205, 214, 244)));
-                            ui.label( RichText::new( format!( "{} lines | {} bytes", tab._LineCount, tab._Size)).size( 11.0).color( Color32::from_rgb( 108, 112, 134)));
+                            ui.label( RichText::new( &tab._Name).strong().size( self._State._Appearance.FontSize( TypographyLevel::Small)).color( Color32::from_rgb( 205, 214, 244)));
+                            ui.label( RichText::new( format!( "{} lines | {} bytes", tab._LineCount, tab._Size)).size( self._State._Appearance.FontSize( TypographyLevel::SmallCaption)).color( Color32::from_rgb( 108, 112, 134)));
                         });
                         ui.separator();
                         egui::ScrollArea::vertical().show( ui, |ui| {
                             ui.label(
                                 RichText::new( &tab._Content)
                                     .monospace()
-                                    .size( 12.0)
+                                    .size( self._State._Appearance.FontSize( TypographyLevel::Monospace))
                                     .color( Color32::from_rgb( 205, 214, 244))
                             );
                         });
@@ -144,11 +145,11 @@ impl eframe::App for KoshApp
             } else {
                 ui.centered_and_justified( |ui| {
                     ui.vertical_centered( |ui| {
-                        ui.label( RichText::new( "KOSH").size( 42.0).color( Color32::from_rgba_premultiplied( 205, 214, 244, 30)));
+                        ui.label( RichText::new( "KOSH").size( self._State._Appearance.FontSize( TypographyLevel::Title) + 18.0).color( Color32::from_rgba_premultiplied( 205, 214, 244, 30)));
                         ui.add_space( 8.0);
-                        ui.label( RichText::new( "Select a file from the explorer to open").strong().size( 13.5).color( Color32::from_rgb( 166, 173, 200)));
+                        ui.label( RichText::new( "Select a file from the explorer to open").strong().size( self._State._Appearance.FontSize( TypographyLevel::Small)).color( Color32::from_rgb( 166, 173, 200)));
                         ui.add_space( 4.0);
-                        ui.label( RichText::new( "Supports .pts point clouds, .obj 3D meshes, and fresco:// symbolic trees").size( 11.5).color( Color32::from_rgb( 108, 112, 134)));
+                        ui.label( RichText::new( "Supports .pts point clouds, .obj 3D meshes, and fresco:// symbolic trees").size( self._State._Appearance.FontSize( TypographyLevel::SmallCaption)).color( Color32::from_rgb( 108, 112, 134)));
                     });
                 });
             }

@@ -22,19 +22,19 @@ pub fn	RenderExplorer( ui: &mut Ui, state: &mut AppState)
                 ui.horizontal( |ui| {
                     ui.spacing_mut().item_spacing = Vec2::new( 6.0, 0.0);
 
-                    if ui.button( RichText::new( "⬆").size( 12.0)).on_hover_text( "Up to Parent Directory").clicked() {
+                    if ui.button( RichText::new( "⬆").size( 14.0)).on_hover_text( "Up to Parent Directory").clicked() {
                         if let Some( parent) = state._RootPath.parent() {
                             state._RootPath = parent.to_path_buf();
                         }
                     }
 
-                    if ui.button( RichText::new( "📂 Open").size( 11.0)).on_hover_text( "Choose Folder").clicked() {
+                    if ui.button( RichText::new( "📂 Open").size( 13.0)).on_hover_text( "Choose Folder").clicked() {
                         if let Some( folder) = rfd::FileDialog::new().pick_folder() {
                             state._RootPath = folder;
                         }
                     }
 
-                    if ui.button( RichText::new( "🪟 Win").size( 11.0)).on_hover_text( "Open Floating Explorer Window").clicked() {
+                    if ui.button( RichText::new( "🪟 Win").size( 13.0)).on_hover_text( "Open Floating Explorer Window").clicked() {
                         state._IsExplorerWindowOpen = true;
                     }
 
@@ -48,7 +48,7 @@ pub fn	RenderExplorer( ui: &mut Ui, state: &mut AppState)
                     ui.label(
                         RichText::new( format!( "📁 {}", shortPath))
                             .monospace()
-                            .size( 11.0)
+                            .size( 13.0)
                             .color( Color32::from_rgb( 137, 180, 250))
                     ).on_hover_text( &*pathDisplay);
                 });
@@ -61,7 +61,7 @@ pub fn	RenderExplorer( ui: &mut Ui, state: &mut AppState)
             .auto_shrink( [false, false])
             .show( ui, |ui| {
                 // Quick Access Section
-                CollapsingHeader::new( RichText::new( "⭐ Quick Access").strong().size( 12.0).color( Color32::from_rgb( 249, 226, 175)))
+                CollapsingHeader::new( RichText::new( "⭐ Quick Access").strong().size( 14.0).color( Color32::from_rgb( 249, 226, 175)))
                     .default_open( true)
                     .show( ui, |ui| {
                         render_quick_access_item( ui, "📦 workbench (3D Models)", &PathBuf::from( "workbench"), state);
@@ -75,7 +75,7 @@ pub fn	RenderExplorer( ui: &mut Ui, state: &mut AppState)
 
                 // This PC / Local Workspace Section
                 let  	folderName = state._RootPath.file_name().and_then( |n| n.to_str()).unwrap_or( "Workspace");
-                CollapsingHeader::new( RichText::new( format!( "💻 This PC > {}", folderName)).strong().size( 12.0).color( Color32::from_rgb( 205, 214, 244)))
+                CollapsingHeader::new( RichText::new( format!( "💻 This PC > {}", folderName)).strong().size( 14.0).color( Color32::from_rgb( 205, 214, 244)))
                     .default_open( true)
                     .show( ui, |ui| {
                         let  	root = state._RootPath.clone();
@@ -87,7 +87,7 @@ pub fn	RenderExplorer( ui: &mut Ui, state: &mut AppState)
                 ui.add_space( 4.0);
 
                 // Fresco Symbolic Repositories Section
-                CollapsingHeader::new( RichText::new( "∫ Fresco Symbolic Repos").strong().size( 12.0).color( Color32::from_rgb( 137, 220, 235)))
+                CollapsingHeader::new( RichText::new( "∫ Fresco Symbolic Repos").strong().size( 14.0).color( Color32::from_rgb( 137, 220, 235)))
                     .default_open( true)
                     .show( ui, |ui| {
                         render_fresco_tree( ui, state);
@@ -143,13 +143,13 @@ fn	render_explorer_body( ui: &mut Ui, state: &mut AppState)
                     ui.spacing_mut().item_spacing = Vec2::new( 6.0, 0.0);
 
                     // Navigation buttons
-                    if ui.button( RichText::new( "⬆ Up").size( 11.0)).clicked() {
+                    if ui.button( RichText::new( "⬆ Up").size( 13.0)).clicked() {
                         if let Some( parent) = state._RootPath.parent() {
                             state._RootPath = parent.to_path_buf();
                         }
                     }
 
-                    if ui.button( RichText::new( "📂 Open Folder...").size( 11.0)).clicked() {
+                    if ui.button( RichText::new( "📂 Open Folder...").size( 13.0)).clicked() {
                         if let Some( folder) = rfd::FileDialog::new().pick_folder() {
                             state._RootPath = folder;
                         }
@@ -160,7 +160,7 @@ fn	render_explorer_body( ui: &mut Ui, state: &mut AppState)
                     ui.label(
                         RichText::new( format!( "📁 This PC > {}", pathStr))
                             .monospace()
-                            .size( 11.5)
+                            .size( 13.5)
                             .color( Color32::from_rgb( 137, 180, 250))
                     );
 
@@ -316,11 +316,11 @@ fn	render_details_view( ui: &mut Ui, paths: &[PathBuf], state: &mut AppState)
         .inner_margin( Margin::symmetric( 8, 4))
         .show( ui, |ui| {
             ui.horizontal( |ui| {
-                ui.label( RichText::new( "Name").strong().size( 11.5).color( Color32::from_rgb( 166, 173, 200)));
+                ui.label( RichText::new( "Name").strong().size( 13.5).color( Color32::from_rgb( 166, 173, 200)));
                 ui.with_layout( egui::Layout::right_to_left( egui::Align::Center), |ui| {
-                    ui.label( RichText::new( "Size").strong().size( 11.5).color( Color32::from_rgb( 166, 173, 200)));
+                    ui.label( RichText::new( "Size").strong().size( 13.5).color( Color32::from_rgb( 166, 173, 200)));
                     ui.add_space( 30.0);
-                    ui.label( RichText::new( "Type").strong().size( 11.5).color( Color32::from_rgb( 166, 173, 200)));
+                    ui.label( RichText::new( "Type").strong().size( 13.5).color( Color32::from_rgb( 166, 173, 200)));
                     ui.add_space( 40.0);
                 });
             });
@@ -356,13 +356,13 @@ fn	render_details_view( ui: &mut Ui, paths: &[PathBuf], state: &mut AppState)
 
         ui.horizontal( |ui| {
             ui.spacing_mut().item_spacing = Vec2::new( 6.0, 0.0);
-            ui.label( RichText::new( icon).color( color).size( 12.0));
-            let  	btn = ui.selectable_label( false, RichText::new( &name).size( 11.5).color( Color32::from_rgb( 205, 214, 244)));
+            ui.label( RichText::new( icon).color( color).size( 14.0));
+            let  	btn = ui.selectable_label( false, RichText::new( &name).size( 13.5).color( Color32::from_rgb( 205, 214, 244)));
 
             ui.with_layout( egui::Layout::right_to_left( egui::Align::Center), |ui| {
-                ui.label( RichText::new( fileSizeStr).size( 11.0).color( Color32::from_rgb( 108, 112, 134)));
+                ui.label( RichText::new( fileSizeStr).size( 13.0).color( Color32::from_rgb( 108, 112, 134)));
                 ui.add_space( 30.0);
-                ui.label( RichText::new( typeName).size( 11.0).color( Color32::from_rgb( 137, 180, 250)));
+                ui.label( RichText::new( typeName).size( 13.0).color( Color32::from_rgb( 137, 180, 250)));
             });
 
             if btn.clicked() {
@@ -382,7 +382,7 @@ fn	render_quick_access_item( ui: &mut Ui, label: &str, path: &Path, state: &mut 
 {
     ui.horizontal( |ui| {
         ui.spacing_mut().item_spacing = Vec2::new( 6.0, 0.0);
-        let  	btn = ui.selectable_label( false, RichText::new( label).size( 11.5).color( Color32::from_rgb( 186, 194, 222)));
+        let  	btn = ui.selectable_label( false, RichText::new( label).size( 13.5).color( Color32::from_rgb( 186, 194, 222)));
         if btn.clicked() {
             if path.exists() {
                 state._RootPath = path.to_path_buf();
@@ -447,7 +447,7 @@ fn	render_dir_entries( ui: &mut Ui, dir: &Path, state: &mut AppState, depth: usi
 
         if path.is_dir() {
             let  	headerText = format!( "📁 {}", name);
-            CollapsingHeader::new( RichText::new( headerText).size( 11.5).color( Color32::from_rgb( 205, 214, 244)))
+            CollapsingHeader::new( RichText::new( headerText).size( 13.5).color( Color32::from_rgb( 205, 214, 244)))
                 .show( ui, |ui| {
                     render_dir_entries( ui, &path, state, depth + 1);
                 });
@@ -475,13 +475,13 @@ fn	render_dir_entries( ui: &mut Ui, dir: &Path, state: &mut AppState, depth: usi
 
             ui.horizontal( |ui| {
                 ui.spacing_mut().item_spacing = Vec2::new( 4.0, 0.0);
-                ui.label( RichText::new( icon).color( color).size( 11.0));
+                ui.label( RichText::new( icon).color( color).size( 13.0));
 
                 let  	labelColor = if isActive { Color32::from_rgb( 137, 180, 250) } else { Color32::from_rgb( 205, 214, 244) };
-                let  	itemBtn = ui.selectable_label( isActive, RichText::new( &name).color( labelColor).size( 11.5));
+                let  	itemBtn = ui.selectable_label( isActive, RichText::new( &name).color( labelColor).size( 13.5));
 
                 ui.with_layout( egui::Layout::right_to_left( egui::Align::Center), |ui| {
-                    ui.label( RichText::new( fileSizeStr).color( Color32::from_rgb( 108, 112, 134)).size( 10.0));
+                    ui.label( RichText::new( fileSizeStr).color( Color32::from_rgb( 108, 112, 134)).size( 12.0));
                 });
 
                 if itemBtn.clicked() {
@@ -507,10 +507,10 @@ fn	render_fresco_tree( ui: &mut Ui, state: &mut AppState)
     for (uri, label, badge) in terms {
         ui.horizontal( |ui| {
             ui.spacing_mut().item_spacing = Vec2::new( 5.0, 0.0);
-            ui.label( RichText::new( "∫").color( Color32::from_rgb( 137, 220, 235)).strong().size( 12.0));
-            let  	btn = ui.selectable_label( false, RichText::new( label).size( 11.5).color( Color32::from_rgb( 205, 214, 244)));
+            ui.label( RichText::new( "∫").color( Color32::from_rgb( 137, 220, 235)).strong().size( 14.0));
+            let  	btn = ui.selectable_label( false, RichText::new( label).size( 13.5).color( Color32::from_rgb( 205, 214, 244)));
             ui.with_layout( egui::Layout::right_to_left( egui::Align::Center), |ui| {
-                ui.label( RichText::new( badge).color( Color32::from_rgb( 108, 112, 134)).size( 10.0));
+                ui.label( RichText::new( badge).color( Color32::from_rgb( 108, 112, 134)).size( 12.0));
             });
 
             if btn.clicked() {

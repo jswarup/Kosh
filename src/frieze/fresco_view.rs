@@ -11,9 +11,9 @@ pub fn	RenderFrescoView( ui: &mut Ui, uri: &str)
         // Top Header
         ui.horizontal( |ui| {
             ui.spacing_mut().item_spacing = Vec2::new( 8.0, 0.0);
-            ui.label( RichText::new( "ƒ FRESCO").color( Color32::from_rgb( 137, 220, 235)).strong().size( 10.5));
-            ui.label( RichText::new( "Symbolic Expression Repository").strong().size( 13.0).color( Color32::from_rgb( 205, 214, 244)));
-            ui.label( RichText::new( uri).size( 11.5).color( Color32::from_rgb( 108, 112, 134)));
+            ui.label( RichText::new( "ƒ FRESCO").color( Color32::from_rgb( 137, 220, 235)).strong().size( 12.5));
+            ui.label( RichText::new( "Symbolic Expression Repository").strong().size( 15.0).color( Color32::from_rgb( 205, 214, 244)));
+            ui.label( RichText::new( uri).size( 13.5).color( Color32::from_rgb( 108, 112, 134)));
         });
 
         ui.add_space( 2.0);
@@ -30,9 +30,9 @@ pub fn	RenderFrescoView( ui: &mut Ui, uri: &str)
                     .corner_radius( 6)
                     .inner_margin( Margin::same( 14))
                     .show( ui, |ui| {
-                        ui.label( RichText::new( "Algebraic Term Structure & AST Representation").strong().size( 13.0).color( Color32::from_rgb( 137, 180, 250)));
+                        ui.label( RichText::new( "Algebraic Term Structure & AST Representation").strong().size( 15.0).color( Color32::from_rgb( 137, 180, 250)));
                         ui.add_space( 4.0);
-                        ui.label( RichText::new( "Fresco AST terms (PolyExpr, VarExpr, RealExpr, TermTree) are evaluated symbolically in Rust memory and can be sampled on GPU/SIMD compute kernels.").size( 12.0).color( Color32::from_rgb( 166, 173, 200)));
+                        ui.label( RichText::new( "Fresco AST terms (PolyExpr, VarExpr, RealExpr, TermTree) are evaluated symbolically in Rust memory and can be sampled on GPU/SIMD compute kernels.").size( 14.0).color( Color32::from_rgb( 166, 173, 200)));
                     });
 
                 ui.add_space( 12.0);
@@ -53,14 +53,14 @@ pub fn	RenderFrescoView( ui: &mut Ui, uri: &str)
                         .inner_margin( Margin::same( 12))
                         .show( ui, |ui| {
                             ui.horizontal( |ui| {
-                                ui.label( RichText::new( title).strong().size( 12.5).color( Color32::from_rgb( 205, 214, 244)));
+                                ui.label( RichText::new( title).strong().size( 14.5).color( Color32::from_rgb( 205, 214, 244)));
                                 ui.with_layout( egui::Layout::right_to_left( egui::Align::Center), |ui| {
-                                    ui.label( RichText::new( meta).size( 10.5).color( Color32::from_rgb( 108, 112, 134)));
+                                    ui.label( RichText::new( meta).size( 12.5).color( Color32::from_rgb( 108, 112, 134)));
                                 });
                             });
 
                             ui.add_space( 4.0);
-                            ui.label( RichText::new( formula).monospace().size( 12.5).color( Color32::from_rgb( 137, 220, 235)));
+                            ui.label( RichText::new( formula).monospace().size( 14.5).color( Color32::from_rgb( 137, 220, 235)));
                         });
 
                     ui.add_space( 8.0);

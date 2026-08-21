@@ -1,13 +1,10 @@
 //-- frieze/desktop.rs ---------------------------------------------------------------------------------------------------------------
-use	egui::{
-    Ui, Color32, RichText, Frame, Margin, Vec2,
-    Align, Layout, ViewportCommand,
-};
-use	crate::frieze::state::{ AppState, ObjRenderMode, AppTheme };
+use	egui::{ Ui, Context, Window, Color32, RichText };
+use	crate::frieze::state::{ AppState, AppTheme, ThemeMode, FontFamilyPreference };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Desktop native menu bar providing branding, dropdown menus, and workspace actions.
+/// Desktop Top Menu Bar component providing system menus and settings access.
 pub struct DesktopMenuBar;
 
 impl DesktopMenuBar
@@ -17,153 +14,240 @@ impl DesktopMenuBar
         Self
     }
 
-    /// Renders the top native desktop menu bar.
     pub fn	Render( &mut self, ui: &mut Ui, state: &mut AppState)
     {
-        Frame::new()
-            .fill( state._Theme.PanelFill())
-            .stroke( state._Theme.BorderStroke())
-            .inner_margin( Margin::symmetric( 12, 6))
-            .show( ui, |ui| {
-                ui.horizontal( |ui| {
-                    ui.spacing_mut().item_spacing = Vec2::new( 8.0, 0.0);
+        ui.horizontal( |ui| {
+            ui.menu_button( "File", |ui| {
+                if ui.button( "Open File Explorer").clicked() {
+                    state._IsExplorerWindowOpen = true;
+                    ui.close();
+                }
+                ui.separator();
+                if ui.button( "Toggle Explorer Sidebar").clicked() {
+                    state._IsExplorerOpen = !state._IsExplorerOpen;
+                    ui.close();
+                }
+            });
 
-                    // 1. Branding
-                    ui.label( RichText::new( "◆").size( 13.0).color( state._Theme.AccentColor()));
-                    ui.label( RichText::new( "FENST").strong().size( 12.5).color( state._Theme.AccentColor()));
-                    ui.label( RichText::new( "/").size( 12.0).color( Color32::from_rgb( 108, 112, 134)));
+            ui.menu_button( "Settings", |ui| {
+                if ui.button( "Preferences & Appearance...").clicked() {
+                    state._IsSettingsWindowOpen = true;
+                    ui.close();
+                }
 
-                    // 2. Desktop Dropdown Menus
-                    ui.horizontal( |ui| {
-                        // FILE
-                        ui.menu_button( "File", |ui| {
-                            if ui.button( "📂 Open Folder...").clicked() {
-                                if let Some( folder) = rfd::FileDialog::new().pick_folder() {
-                                    state._RootPath = folder;
-                                }
-                                ui.close();
-                            }
-                            if ui.button( "❌ Close Active Tab").clicked() {
-                                if let Some( ref activeId) = state._ActiveTabId.clone() {
-                                    state._OpenTabs.retain( |t| &t._Id != activeId);
-                                    state._ActiveTabId = state._OpenTabs.first().map( |t| t._Id.clone());
-                                }
-                                ui.close();
-                            }
-                            ui.separator();
-                            if ui.button( "🚪 Exit").clicked() {
-                                ui.ctx().send_viewport_cmd( ViewportCommand::Close);
-                            }
-                        });
+                ui.separator();
 
-                        // VIEW
-                        ui.menu_button( "View", |ui| {
-                            if ui.button( if state._IsExplorerOpen { "📁 Hide Sidebar Explorer" } else { "📁 Show Sidebar Explorer" }).clicked() {
-                                state._IsExplorerOpen = !state._IsExplorerOpen;
-                                ui.close();
-                            }
-                            if ui.button( "🪟 Open Floating File Explorer").clicked() {
-                                state._IsExplorerWindowOpen = true;
-                                ui.close();
-                            }
-                            ui.separator();
-                            if ui.button( "↺ Reset 3D Camera").clicked() {
-                                state._PtsCamera.Reset();
-                                state._ObjCamera.Reset();
-                                ui.close();
-                            }
-                        });
+                ui.menu_button( "Quick Theme Mode", |ui| {
+                    let  	mut changed = false;
 
-                        // RENDER
-                        ui.menu_button( "Render", |ui| {
-                            if ui.button( "• Points Mode").clicked() {
-                                state._ActiveObjMode = ObjRenderMode::Points;
-                                ui.close();
-                            }
-                            if ui.button( "• Wireframe Mode").clicked() {
-                                state._ActiveObjMode = ObjRenderMode::Wireframe;
-                                ui.close();
-                            }
-                            if ui.button( "• Facets Mode").clicked() {
-                                state._ActiveObjMode = ObjRenderMode::Facets;
-                                ui.close();
-                            }
-                            if ui.button( "• Shaded Wire Mode").clicked() {
-                                state._ActiveObjMode = ObjRenderMode::ShadedWire;
-                                ui.close();
-                            }
-                        });
+                    if ui.radio_value( &mut state._Appearance._ThemeMode, ThemeMode::System, "Auto (Follow OS)").clicked() {
+                        changed = true;
+                    }
 
-                        // COMPUTE
-                        ui.menu_button( "Compute", |ui| {
-                            let  	backendStr = state._Engine.as_ref().map( |e| format!( "{}", e.Backend())).unwrap_or_else( || "CPU Fallback".to_string());
-                            ui.label( format!( "Active Backend: {}", backendStr));
-                            ui.separator();
-                            if ui.button( "⚡ Run GPU Auto-Detect").clicked() {
-                                state._StatusMessage = "Swarm Engine: Hardware discovery refreshed ✓".to_string();
-                                ui.close();
-                            }
-                        });
+                    ui.separator();
 
-                        // SETTINGS (Theme switcher & UI settings)
-                        ui.menu_button( "Settings", |ui| {
-                            ui.label( RichText::new( "🎨 Workspace Theme").strong());
-                            ui.separator();
+                    if ui.radio_value( &mut state._Appearance._ThemeMode, ThemeMode::Explicit( AppTheme::Dark), "Dark").clicked() {
+                        state._Theme = AppTheme::Dark;
+                        state._Appearance._ExplicitTheme = AppTheme::Dark;
+                        changed = true;
+                    }
+                    if ui.radio_value( &mut state._Appearance._ThemeMode, ThemeMode::Explicit( AppTheme::Light), "Light").clicked() {
+                        state._Theme = AppTheme::Light;
+                        state._Appearance._ExplicitTheme = AppTheme::Light;
+                        changed = true;
+                    }
+                    if ui.radio_value( &mut state._Appearance._ThemeMode, ThemeMode::Explicit( AppTheme::Cyberpunk), "Cyberpunk").clicked() {
+                        state._Theme = AppTheme::Cyberpunk;
+                        state._Appearance._ExplicitTheme = AppTheme::Cyberpunk;
+                        changed = true;
+                    }
+                    if ui.radio_value( &mut state._Appearance._ThemeMode, ThemeMode::Explicit( AppTheme::Nord), "Nord").clicked() {
+                        state._Theme = AppTheme::Nord;
+                        state._Appearance._ExplicitTheme = AppTheme::Nord;
+                        changed = true;
+                    }
 
-                            let  	darkActive = state._Theme == AppTheme::Dark;
-                            let  	lightActive = state._Theme == AppTheme::Light;
-                            let  	cyberActive = state._Theme == AppTheme::Cyberpunk;
-                            let  	nordActive = state._Theme == AppTheme::Nord;
+                    if changed {
+                        state._Appearance.Apply( ui.ctx());
+                    }
+                });
 
-                            if ui.selectable_label( darkActive, "🌙 Dark (Mocha)").clicked() {
-                                state._Theme = AppTheme::Dark;
-                                state._Theme.Apply( ui.ctx());
-                                state._StatusMessage = "Theme switched to Dark (Catppuccin Mocha)".to_string();
-                                ui.close();
-                            }
-
-                            if ui.selectable_label( lightActive, "☀️ Light (Latte)").clicked() {
-                                state._Theme = AppTheme::Light;
-                                state._Theme.Apply( ui.ctx());
-                                state._StatusMessage = "Theme switched to Light (Latte)".to_string();
-                                ui.close();
-                            }
-
-                            if ui.selectable_label( cyberActive, "⚡ Cyberpunk Neon").clicked() {
-                                state._Theme = AppTheme::Cyberpunk;
-                                state._Theme.Apply( ui.ctx());
-                                state._StatusMessage = "Theme switched to Cyberpunk Neon".to_string();
-                                ui.close();
-                            }
-
-                            if ui.selectable_label( nordActive, "❄️ Nord Polar").clicked() {
-                                state._Theme = AppTheme::Nord;
-                                state._Theme.Apply( ui.ctx());
-                                state._StatusMessage = "Theme switched to Nord Polar".to_string();
-                                ui.close();
-                            }
-                        });
-
-                        // HELP
-                        ui.menu_button( "Help", |ui| {
-                            if ui.button( "📖 Architecture & Docs").clicked() {
-                                state._StatusMessage = "Documentation available in /wiki".to_string();
-                                ui.close();
-                            }
-                            ui.separator();
-                            ui.label( "Kosh Native Graphics Workspace v0.1.0");
-                        });
-                    });
-
-                    // 3. Right-Aligned Workspace Info Badge
-                    ui.with_layout( Layout::right_to_left( Align::Center), |ui| {
-                        ui.label(
-                            RichText::new( "100% Rust-Native (egui + wgpu + swarm)")
-                                .size( 11.0)
-                                .color( state._Theme.AccentColor())
-                        );
-                    });
+                ui.menu_button( "Quick Font Size Offset", |ui| {
+                    let  	mut changed = false;
+                    if ui.button( "+2 pt Larger").clicked() {
+                        state._Appearance._FontSizeOffset += 2.0;
+                        changed = true;
+                    }
+                    if ui.button( "-2 pt Smaller").clicked() {
+                        state._Appearance._FontSizeOffset -= 2.0;
+                        changed = true;
+                    }
+                    if ui.button( "Reset (0 pt)").clicked() {
+                        state._Appearance._FontSizeOffset = 0.0;
+                        changed = true;
+                    }
+                    if changed {
+                        state._Appearance.Apply( ui.ctx());
+                    }
                 });
             });
+
+            ui.menu_button( "Help", |ui| {
+                if ui.button( "About Kosh Native").clicked() {
+                    state._StatusMessage = "Kosh Native Workspace v0.1.0 (egui + wgpu + swarm)".to_string();
+                    ui.close();
+                }
+            });
+        });
     }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Floating, movable Settings & Preferences Dialog Window.
+pub fn	RenderSettingsWindow( ctx: &Context, state: &mut AppState)
+{
+    if !state._IsSettingsWindowOpen {
+        return;
+    }
+
+    let  	mut open = state._IsSettingsWindowOpen;
+    let  	mut changed = false;
+    let  	mut closeRequested = false;
+
+    Window::new( "Settings & Preferences")
+        .open( &mut open)
+        .resizable( true)
+        .default_size( [440.0, 480.0])
+        .show( ctx, |ui| {
+            ui.heading( "Appearance & Theme Cascade");
+            ui.label( RichText::new( "Primacy: OS System Preference -> Selected Theme Preset -> Custom Overrides").small().color( Color32::from_rgb( 166, 173, 200)));
+            ui.add_space( 8.0);
+
+            // Section 1: OS Primacy & Theme Mode
+            ui.group( |ui| {
+                ui.label( RichText::new( "Theme & OS Integration").strong());
+                ui.add_space( 4.0);
+
+                if ui.radio_value( &mut state._Appearance._ThemeMode, ThemeMode::System, "Auto (Follow OS System Theme)").clicked() {
+                    changed = true;
+                }
+
+                ui.add_space( 4.0);
+                ui.label( RichText::new( "Explicit Theme Preset:").small());
+                ui.horizontal( |ui| {
+                    if ui.radio_value( &mut state._Appearance._ThemeMode, ThemeMode::Explicit( AppTheme::Dark), "Dark").clicked() {
+                        state._Theme = AppTheme::Dark;
+                        state._Appearance._ExplicitTheme = AppTheme::Dark;
+                        changed = true;
+                    }
+                    if ui.radio_value( &mut state._Appearance._ThemeMode, ThemeMode::Explicit( AppTheme::Light), "Light").clicked() {
+                        state._Theme = AppTheme::Light;
+                        state._Appearance._ExplicitTheme = AppTheme::Light;
+                        changed = true;
+                    }
+                    if ui.radio_value( &mut state._Appearance._ThemeMode, ThemeMode::Explicit( AppTheme::Cyberpunk), "Cyberpunk").clicked() {
+                        state._Theme = AppTheme::Cyberpunk;
+                        state._Appearance._ExplicitTheme = AppTheme::Cyberpunk;
+                        changed = true;
+                    }
+                    if ui.radio_value( &mut state._Appearance._ThemeMode, ThemeMode::Explicit( AppTheme::Nord), "Nord").clicked() {
+                        state._Theme = AppTheme::Nord;
+                        state._Appearance._ExplicitTheme = AppTheme::Nord;
+                        changed = true;
+                    }
+                });
+
+                let  	activeResolved = state._Appearance.ResolveTheme( ui.ctx());
+                ui.label( RichText::new( format!( "Active Resolved Theme: {:?}", activeResolved)).small().color( state._Theme.AccentColor()));
+            });
+
+            ui.add_space( 8.0);
+
+            // Section 2: Typography & Baselined Font Scaling
+            ui.group( |ui| {
+                ui.label( RichText::new( "Typography & Font Scaling").strong());
+                ui.label( RichText::new( "All font levels scale together proportionally relative to baseline.").small().color( Color32::from_rgb( 166, 173, 200)));
+                ui.add_space( 4.0);
+
+                ui.horizontal( |ui| {
+                    ui.label( "Font Size Offset:");
+                    if ui.add( egui::Slider::new( &mut state._Appearance._FontSizeOffset, -4.0..=10.0).suffix( " pt")).changed() {
+                        changed = true;
+                    }
+                    if ui.button( "Reset").clicked() {
+                        state._Appearance._FontSizeOffset = 0.0;
+                        changed = true;
+                    }
+                });
+
+                ui.add_space( 4.0);
+                ui.horizontal( |ui| {
+                    ui.label( "Font Family:");
+                    if ui.radio_value( &mut state._Appearance._FontFamily, FontFamilyPreference::Default, "Default").clicked() {
+                        changed = true;
+                    }
+                    if ui.radio_value( &mut state._Appearance._FontFamily, FontFamilyPreference::Proportional, "Proportional").clicked() {
+                        changed = true;
+                    }
+                    if ui.radio_value( &mut state._Appearance._FontFamily, FontFamilyPreference::Monospace, "Monospace").clicked() {
+                        changed = true;
+                    }
+                });
+            });
+
+            ui.add_space( 8.0);
+
+            // Section 3: Text Color Override (Tertiary Primacy)
+            ui.group( |ui| {
+                ui.label( RichText::new( "Text Color Override (High Primacy)").strong());
+                ui.label( RichText::new( "Overrides default text color across all themes.").small().color( Color32::from_rgb( 166, 173, 200)));
+                ui.add_space( 4.0);
+
+                ui.horizontal( |ui| {
+                    if ui.selectable_label( state._Appearance._CustomTextColor.is_none(), "Theme Default").clicked() {
+                        state._Appearance._CustomTextColor = None;
+                        changed = true;
+                    }
+
+                    let  	swatches = [
+                        ( "Bright White", Color32::from_rgb( 255, 255, 255)),
+                        ( "Amber Gold",   Color32::from_rgb( 255, 191, 0)),
+                        ( "Cyan Cyber",    Color32::from_rgb( 0, 255, 204)),
+                        ( "Soft Mint",     Color32::from_rgb( 166, 227, 161)),
+                        ( "Rose Pink",     Color32::from_rgb( 245, 194, 231)),
+                    ];
+
+                    for ( name, color) in swatches {
+                        let  	isSelected = state._Appearance._CustomTextColor == Some( color);
+                        if ui.selectable_label( isSelected, name).clicked() {
+                            state._Appearance._CustomTextColor = Some( color);
+                            changed = true;
+                        }
+                    }
+                });
+            });
+
+            ui.add_space( 12.0);
+            ui.separator();
+            ui.horizontal( |ui| {
+                ui.with_layout( egui::Layout::right_to_left( egui::Align::Center), |ui| {
+                    if ui.button( "Close").clicked() {
+                        closeRequested = true;
+                    }
+                });
+            });
+        });
+
+    if closeRequested {
+        open = false;
+    }
+
+    state._IsSettingsWindowOpen = open;
+
+    if changed {
+        state._Appearance.Apply( ctx);
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------

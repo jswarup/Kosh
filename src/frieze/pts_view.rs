@@ -24,12 +24,12 @@ pub fn	RenderPtsView( ui: &mut Ui, path: &Path, state: &mut AppState)
     // Top HUD Bar
     ui.horizontal( |ui| {
         ui.spacing_mut().item_spacing = Vec2::new( 10.0, 0.0);
-        ui.label( RichText::new( "POINT CLOUD").color( Color32::from_rgb( 137, 180, 250)).strong().size( 10.5));
-        ui.label( RichText::new( fileName).strong().size( 13.0).color( Color32::from_rgb( 205, 214, 244)));
-        ui.label( RichText::new( format!( "{} Points | BBox: {}", pointCount, bboxLabel)).size( 11.5).color( Color32::from_rgb( 137, 220, 235)));
+        ui.label( RichText::new( "POINT CLOUD").color( Color32::from_rgb( 137, 180, 250)).strong().size( 12.5));
+        ui.label( RichText::new( fileName).strong().size( 15.0).color( Color32::from_rgb( 205, 214, 244)));
+        ui.label( RichText::new( format!( "{} Points | BBox: {}", pointCount, bboxLabel)).size( 13.5).color( Color32::from_rgb( 137, 220, 235)));
 
         ui.with_layout( egui::Layout::right_to_left( egui::Align::Center), |ui| {
-            if ui.button( RichText::new( "Reset Camera").size( 11.0)).clicked() {
+            if ui.button( RichText::new( "Reset Camera").size( 13.0)).clicked() {
                 state._PtsCamera.Reset();
             }
         });
