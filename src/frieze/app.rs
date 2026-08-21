@@ -1,46 +1,43 @@
 //-- frieze/app.rs -------------------------------------------------------------------------------------------------------------------
 use	std::sync::Arc;
-use	egui::{ Ui, Color32, RichText, Frame, Margin, Panel, Vec2 };
+use	egui::{ Ui, Color32, RichText, Frame, Margin, Panel };
 use	crate::swarm::{ SwarmEngine, ViewportRenderer };
 use	crate::frieze::state::AppState;
+use	crate::frieze::desktop::DesktopMenuBar;
 use	crate::frieze::tab_bar::RenderTabBar;
-use	crate::frieze::explorer::RenderExplorer;
+use	crate::frieze::explorer::{ RenderExplorer, RenderFloatingExplorerWindow, RenderExplorerViewTab };
 use	crate::frieze::pts_view::RenderPtsView;
 use	crate::frieze::obj_view::RenderObjView;
 use	crate::frieze::fresco_view::RenderFrescoView;
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Primary native application struct implementing eframe::App.
+/// Primary native application struct implementing eframe::App with native desktop look and feel.
 pub struct KoshApp
 {
-    pub _State: AppState,
+    pub _State:   AppState,
+    pub _MenuBar: DesktopMenuBar,
 }
 
 impl KoshApp
 {
     pub fn	new( cc: &eframe::CreationContext<'_>) -> Self
     {
-        // Apply crisp dark theme visuals (Catppuccin Mocha / VS Code Dark)
-        let  	mut visuals = egui::Visuals::dark();
-        visuals.panel_fill = Color32::from_rgb( 24, 24, 37);
-        visuals.window_fill = Color32::from_rgb( 30, 30, 46);
-        visuals.override_text_color = Some( Color32::from_rgb( 205, 214, 244));
-        visuals.widgets.noninteractive.bg_fill = Color32::from_rgb( 30, 30, 46);
-        visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new( 1.0, Color32::from_rgb( 49, 50, 68));
-        cc.egui_ctx.set_visuals( visuals);
-
         let  	mut appState = AppState::default();
+        appState._Theme.Apply( &cc.egui_ctx);
 
         if let Some( ref renderState) = cc.wgpu_render_state {
-            let  	devArc = Arc::new( renderState.device.clone()); let  	queueArc = Arc::new( renderState.queue.clone()); let  	eng = SwarmEngine::FromSharedGpu( devArc.clone(), queueArc.clone());
+            let  	devArc = Arc::new( renderState.device.clone());
+            let  	queueArc = Arc::new( renderState.queue.clone());
+            let  	eng = SwarmEngine::FromSharedGpu( devArc.clone(), queueArc.clone());
             let  	rend = Arc::new( ViewportRenderer::New( devArc, queueArc, renderState.target_format));
             appState._Engine = Some( eng);
             appState._ViewportRenderer = Some( rend);
         }
 
         Self {
-            _State: appState,
+            _State:   appState,
+            _MenuBar: DesktopMenuBar::New(),
         }
     }
 }
@@ -51,41 +48,30 @@ impl eframe::App for KoshApp
 {
     fn	ui( &mut self, ui: &mut Ui, _frame: &mut eframe::Frame)
     {
-        // 1. Top Header & Tab Bar Panel
-        Panel::top( "top_panel")
+        // 0. Render Floating Windows File Explorer if open
+        RenderFloatingExplorerWindow( ui.ctx(), &mut self._State);
+
+        // 1. Top Desktop Menu Bar
+        self._MenuBar.Render( ui, &mut self._State);
+
+        // 2. Tab Bar Header Panel
+        Panel::top( "tab_bar_panel")
             .frame(
                 Frame::new()
-                    .fill( Color32::from_rgb( 24, 24, 37))
-                    .stroke( egui::Stroke::new( 1.0, Color32::from_rgb( 49, 50, 68)))
+                    .fill( self._State._Theme.PanelFill())
+                    .stroke( self._State._Theme.BorderStroke())
                     .inner_margin( Margin::symmetric( 12, 6))
             )
             .show( ui, |ui| {
-                ui.horizontal( |ui| {
-                    ui.spacing_mut().item_spacing = Vec2::new( 8.0, 0.0);
-
-                    ui.label( RichText::new( "FENST").strong().size( 12.5).color( Color32::from_rgb( 137, 180, 250)));
-                    ui.label( RichText::new( "/").size( 12.0).color( Color32::from_rgb( 108, 112, 134)));
-                    ui.label( RichText::new( "In-Process WebGPU Workspace").size( 12.0).color( Color32::from_rgb( 166, 173, 200)));
-
-                    ui.with_layout( egui::Layout::right_to_left( egui::Align::Center), |ui| {
-                        ui.label(
-                            RichText::new( "100% Rust-Native (egui + wgpu + swarm)")
-                                .size( 11.0)
-                                .color( Color32::from_rgb( 203, 166, 247))
-                        );
-                    });
-                });
-
-                ui.add_space( 4.0);
                 RenderTabBar( ui, &mut self._State);
             });
 
-        // 2. Bottom Status Bar Panel
+        // 3. Bottom Status Bar Panel
         Panel::bottom( "bottom_panel")
             .frame(
                 Frame::new()
-                    .fill( Color32::from_rgb( 17, 17, 27))
-                    .stroke( egui::Stroke::new( 1.0, Color32::from_rgb( 49, 50, 68)))
+                    .fill( self._State._Theme.BottomFill())
+                    .stroke( self._State._Theme.BorderStroke())
                     .inner_margin( Margin::symmetric( 12, 4))
             )
             .show( ui, |ui| {
@@ -99,24 +85,24 @@ impl eframe::App for KoshApp
 
                     ui.with_layout( egui::Layout::right_to_left( egui::Align::Center), |ui| {
                         ui.label(
-                            RichText::new( "Unified frieze -> fenst -> swarm -> (WebGPU+symph) Pipeline")
+                            RichText::new( "Pure Native Rust (egui + wgpu + swarm)")
                                 .monospace()
                                 .size( 11.0)
-                                .color( Color32::from_rgb( 137, 180, 250))
+                                .color( self._State._Theme.AccentColor())
                         );
                     });
                 });
             });
 
-        // 3. Left Sidebar Explorer Panel
+        // 4. Left Sidebar Explorer Panel
         if self._State._IsExplorerOpen {
             Panel::left( "left_panel")
                 .resizable( true)
                 .default_size( 260.0)
                 .frame(
                     Frame::new()
-                        .fill( Color32::from_rgb( 24, 24, 37))
-                        .stroke( egui::Stroke::new( 1.0, Color32::from_rgb( 49, 50, 68)))
+                        .fill( self._State._Theme.PanelFill())
+                        .stroke( self._State._Theme.BorderStroke())
                         .inner_margin( Margin::same( 10))
                 )
                 .show( ui, |ui| {
@@ -124,12 +110,14 @@ impl eframe::App for KoshApp
                 });
         }
 
-        // 4. Central Document Viewport Area
+        // 5. Central Document Viewport Area
         let  	activeTab = self._State._OpenTabs.iter().find( |t| Some( &t._Id) == self._State._ActiveTabId.as_ref()).cloned();
 
         ui.vertical( |ui| {
             if let  	Some( tab) = activeTab {
-                if tab._IsPts {
+                if tab._IsExplorer {
+                    RenderExplorerViewTab( ui, &mut self._State);
+                } else if tab._IsPts {
                     RenderPtsView( ui, &tab._Path, &mut self._State);
                 } else if tab._IsObj {
                     RenderObjView( ui, &tab._Path, &mut self._State);

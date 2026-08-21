@@ -6,6 +6,7 @@ pub mod pts_view;
 pub mod obj_view;
 pub mod fresco_view;
 pub mod gpu_cache;
+pub mod desktop;
 pub mod app;
 
 pub use	app::KoshApp;
