@@ -18,6 +18,7 @@ use crate::wxfrieze::desktop::{
 use crate::wxfrieze::explorer::build_explorer_panel;
 use crate::wxfrieze::fresco_view::build_fresco_view_panel;
 use crate::wxfrieze::obj_view::build_obj_view_panel;
+use crate::wxfrieze::img_view::build_img_view_panel;
 use crate::wxfrieze::pts_view::build_pts_view_panel;
 use crate::wxfrieze::state::{AppState, AppTheme, OpenTab, SharedState};
 use crate::wxfrieze::tab_bar::close_active_tab;
@@ -97,6 +98,7 @@ fn open_tab_for_path(notebook: &Notebook, state: &SharedState, path: &Path) {
     let is_pts = ext == "pts";
     let is_obj = ext == "obj";
     let is_fresco = ext == "fresco" || ext == "frsc";
+    let is_img = ext == "png" || ext == "jpg" || ext == "jpeg";
 
     let label = if is_pts {
         format!("PTS  {name}")
@@ -104,6 +106,8 @@ fn open_tab_for_path(notebook: &Notebook, state: &SharedState, path: &Path) {
         format!("OBJ  {name}")
     } else if is_fresco {
         format!("FRESCO  {name}")
+    } else if is_img {
+        format!("IMG  {name}")
     } else {
         format!("{name}")
     };
@@ -117,6 +121,9 @@ fn open_tab_for_path(notebook: &Notebook, state: &SharedState, path: &Path) {
     } else if is_fresco {
         let page = build_fresco_view_panel(notebook, &path.to_string_lossy());
         notebook.add_page(&page, &label, true, None);
+    } else if is_img {
+        let page = build_img_view_panel(notebook, state.clone(), path.to_path_buf());
+        notebook.add_page(&page, &label, true, None);
     } else {
         let page = build_text_view_panel(notebook, path);
         notebook.add_page(&page, &label, true, None);
@@ -128,6 +135,7 @@ fn open_tab_for_path(notebook: &Notebook, state: &SharedState, path: &Path) {
         _IsPts: is_pts,
         _IsObj: is_obj,
         _IsFresco: is_fresco,
+        _IsImg: is_img,
     });
 }
 
@@ -146,4 +154,7 @@ fn build_text_view_panel(parent: &Notebook, path: &Path) -> Panel {
     panel.set_sizer(sizer, true);
     panel
 }
+
+
+
 

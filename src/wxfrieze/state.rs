@@ -1,4 +1,4 @@
-//-- wxfrieze/state.rs ----------------------------------------------------------------------------------------------------------------
+﻿//-- wxfrieze/state.rs ----------------------------------------------------------------------------------------------------------------
 use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -55,6 +55,7 @@ pub struct OpenTab {
     pub _IsPts: bool,
     pub _IsObj: bool,
     pub _IsFresco: bool,
+    pub _IsImg: bool,
 }
 
 /// Primary application state, shared across widgets via `Rc<RefCell<_>>`.
@@ -85,3 +86,4 @@ impl Default for AppState {
 }
 
 pub type SharedState = Rc<RefCell<AppState>>;
+
