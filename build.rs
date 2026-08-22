@@ -19,8 +19,56 @@ fn	CopyDirAll( src: &std::path::Path, dst: &std::path::Path)
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+
+fn	CompileWindowsManifest()
+{
+    if std::env::var( "CARGO_CFG_TARGET_OS").as_deref() != Ok( "windows") {
+        return;
+    }
+
+    println!( "cargo:rerun-if-changed=res/kosh.manifest");
+    println!( "cargo:rerun-if-changed=res/kosh.rc");
+
+    let  	outDir = std::env::var( "OUT_DIR").unwrap_or_default();
+    let  	resOutput = std::path::Path::new( &outDir).join( "kosh.res");
+
+    let  	mut rcPath: Option< std::path::PathBuf> = None;
+    let  	kitsBin = std::path::PathBuf::from( r"C:").join( "Program Files (x86)").join( "Windows Kits").join( "10").join( "bin");
+    if kitsBin.exists() {
+        if let Ok( entries) = std::fs::read_dir( &kitsBin) {
+            let  	mut versions: Vec< _> = entries.flatten().map( |e| e.path()).collect();
+            versions.sort();
+            for v in versions.into_iter().rev() {
+                let  	candidate = v.join( "x64").join( "rc.exe");
+                if candidate.exists() {
+                    rcPath = Some( candidate);
+                    break;
+                }
+            }
+        }
+    }
+
+    let  	rcExe = rcPath.unwrap_or_else( || std::path::PathBuf::from( "rc.exe"));
+    let  	status = std::process::Command::new( &rcExe)
+        .args( [
+            "/i", "res",
+            "/fo", &resOutput.to_string_lossy(),
+            "res/kosh.rc",
+        ])
+        .status();
+
+    if let Ok( s) = status {
+        if s.success() {
+            println!( "cargo:rustc-link-arg={}", resOutput.display());
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 fn	main()
 {
+    CompileWindowsManifest();
     // Compile the symph rust-gpu shader crate to SPIR-V at build time.
     // The resulting .spv path is emitted as a cargo env var for include_bytes!.
     let  	compileResult = spirv_builder::SpirvBuilder::new( "src/symph", "spirv-unknown-vulkan1.1")

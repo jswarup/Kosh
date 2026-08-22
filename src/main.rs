@@ -80,8 +80,8 @@ fn	main() -> Result< ()>
         setup_logging( true).context( "Setting up logging framework failed")?;
     }
 
-    // Default primary: 100% Native Pure-Rust Frieze (eframe + egui + wgpu)
-    if let  	Err( e) = kosh::frieze::run() {
+    // Default primary: 100% Native Pure-Rust wxFrieze (wxDragon/wxWidgets + wgpu)
+    if let  	Err( e) = kosh::wxfrieze::run() {
         eprintln!( "Error launching Kosh native window: {:?}", e);
     }
 

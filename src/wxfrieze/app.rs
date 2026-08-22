@@ -1,0 +1,139 @@
+//-- wxfrieze/app.rs ------------------------------------------------------------------------------------------------------------------
+//! Assembles the native wxDragon Kosh application: main frame, menu bar, status bar, and the
+//! Explorer + document Notebook tab strip. This is the wxDragon-based replacement entry point
+//! for the egui/eframe `frieze` module.
+use std::cell::RefCell;
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
+
+use anyhow::anyhow;
+use wxdragon::event::menu_events::MenuEvents;
+use wxdragon::id::ID_EXIT;
+use wxdragon::prelude::*;
+
+use crate::wxfrieze::desktop::{
+    build_menu_bar, ID_CLOSE_TAB, ID_OPEN_FOLDER, ID_THEME_CYBERPUNK, ID_THEME_DARK, ID_THEME_LIGHT, ID_THEME_NORD,
+};
+use crate::wxfrieze::explorer::build_explorer_panel;
+use crate::wxfrieze::fresco_view::build_fresco_view_panel;
+use crate::wxfrieze::obj_view::build_obj_view_panel;
+use crate::wxfrieze::pts_view::build_pts_view_panel;
+use crate::wxfrieze::state::{AppState, AppTheme, OpenTab, SharedState};
+use crate::wxfrieze::tab_bar::close_active_tab;
+
+/// Launches the native wxDragon-based Kosh desktop application window.
+pub fn run() -> anyhow::Result<()> {
+    let result = wxdragon::main(|_handle| {
+        let state: SharedState = Rc::new(RefCell::new(AppState::default()));
+
+        let frame = Frame::builder()
+            .with_title("Kosh — Native 3D GPU Workspace (wxDragon)")
+            .with_size(Size::new(1360, 840))
+            .build();
+
+        frame.set_menu_bar(build_menu_bar());
+        let status_bar = frame.create_status_bar(1, 0, wxdragon::id::ID_ANY as i32, "");
+        status_bar.set_status_text("Ready — Native Rust (wxDragon + wgpu + swarm)", 0);
+
+        let notebook = Notebook::builder(&frame).build();
+
+        let on_open_file: Rc<dyn Fn(PathBuf)> = {
+            let state = state.clone();
+            let notebook = notebook;
+            Rc::new(move |path: PathBuf| {
+                open_tab_for_path(&notebook, &state, &path);
+            })
+        };
+
+        let explorer_panel = build_explorer_panel(&notebook, state.clone(), on_open_file);
+        notebook.add_page(&explorer_panel, "📁 Explorer", true, None);
+
+        let sizer = BoxSizer::builder(Orientation::Vertical).build();
+        sizer.add(&notebook, 1, SizerFlag::Expand, 0);
+        frame.set_sizer(sizer, true);
+
+        {
+            let state = state.clone();
+            frame.on_menu_selected(move |evt| match evt.get_id() {
+                ID_OPEN_FOLDER => {
+                    if let Some(folder) = rfd::FileDialog::new().pick_folder() {
+                        state.borrow_mut()._RootPath = folder;
+                    }
+                }
+                ID_CLOSE_TAB => close_active_tab(&notebook),
+                ID_EXIT => {
+                    frame.close(false);
+                }
+                ID_THEME_DARK => state.borrow_mut()._Theme = AppTheme::Dark,
+                ID_THEME_LIGHT => state.borrow_mut()._Theme = AppTheme::Light,
+                ID_THEME_CYBERPUNK => state.borrow_mut()._Theme = AppTheme::Cyberpunk,
+                ID_THEME_NORD => state.borrow_mut()._Theme = AppTheme::Nord,
+                _ => {}
+            });
+        }
+
+        frame.show(true);
+        frame.centre();
+    });
+
+    result.map_err(|e| anyhow!("Failed to launch wxDragon application: {e:?}"))
+}
+
+/// Opens (or focuses) a document tab for the given file path, choosing the right native
+/// viewport (points / mesh / fresco / plain text) based on file extension.
+fn open_tab_for_path(notebook: &Notebook, state: &SharedState, path: &Path) {
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("file").to_string();
+
+    let is_pts = ext == "pts";
+    let is_obj = ext == "obj";
+    let is_fresco = ext == "fresco" || ext == "frsc";
+
+    let label = if is_pts {
+        format!("• PTS  {name}")
+    } else if is_obj {
+        format!("◬ OBJ  {name}")
+    } else if is_fresco {
+        format!("ƒ FRESCO  {name}")
+    } else {
+        format!("📄 {name}")
+    };
+
+    if is_pts {
+        let page = build_pts_view_panel(notebook, state.clone(), path.to_path_buf());
+        notebook.add_page(&page, &label, true, None);
+    } else if is_obj {
+        let page = build_obj_view_panel(notebook, state.clone(), path.to_path_buf());
+        notebook.add_page(&page, &label, true, None);
+    } else if is_fresco {
+        let page = build_fresco_view_panel(notebook, &path.to_string_lossy());
+        notebook.add_page(&page, &label, true, None);
+    } else {
+        let page = build_text_view_panel(notebook, path);
+        notebook.add_page(&page, &label, true, None);
+    }
+
+    state.borrow_mut()._OpenTabs.push(OpenTab {
+        _Path: path.to_path_buf(),
+        _Name: name,
+        _IsPts: is_pts,
+        _IsObj: is_obj,
+        _IsFresco: is_fresco,
+    });
+}
+
+/// Fallback plain-text viewer for files that aren't `.pts`/`.obj`/fresco documents.
+fn build_text_view_panel(parent: &Notebook, path: &Path) -> Panel {
+    let panel = Panel::builder(parent).build();
+    let sizer = BoxSizer::builder(Orientation::Vertical).build();
+
+    let content = std::fs::read_to_string(path).unwrap_or_else(|e| format!("Failed to read file: {e}"));
+    let text = TextCtrl::builder(&panel)
+        .with_style(wxdragon::widgets::textctrl::TextCtrlStyle::MultiLine | wxdragon::widgets::textctrl::TextCtrlStyle::ReadOnly)
+        .build();
+    text.set_value(&content);
+
+    sizer.add(&text, 1, SizerFlag::Expand, 0);
+    panel.set_sizer(sizer, true);
+    panel
+}
