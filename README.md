@@ -1,38 +1,16 @@
-<div align="center">
+﻿# Kosh: Native 3D GPU & Symbolic Computing Workspace
 
-# KOSH
-
-**High-Performance Computational Framework, 3D Geometry Engine & Heterogeneous Compute Pipeline**
-
-[![Rust Nightly](https://img.shields.io/badge/Rust-Nightly%202026--05--22-orange.svg)](https://www.rust-lang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-119%20Passed-brightgreen.svg)]()
-[![Zero Heap AST](https://img.shields.io/badge/AST%20Allocations-0%20Bytes%20(Stack%20Inlined)-success.svg)]()
-[![Zero Std Vec](https://img.shields.io/badge/std%3A%3AVec-0%20References%20(Stash%2FBuff%20Engine)-blueviolet.svg)]()
-
-</div>
+**Kosh** is a high-performance, zero-heap-AST computational framework and 3D geometric processing platform written in modern Rust. It is engineered for maximum memory efficiency, deterministic CPU cache locality, and heterogeneous SIMT hardware execution across multithreaded CPU, WebGPU (via `rust-gpu` SPIR-V bytecodes), and NVIDIA CUDA backends.
 
 ---
 
-## ?? System Overview
-
-**Kosh** is an ultra-low-latency, zero-heap-AST computational framework and 3D geometric processing system written in modern Rust. It is architected for maximum memory efficiency, CPU cache locality, and heterogeneous SIMT execution across CPU, WebGPU, and CUDA hardware.
-
-The codebase enforces strict, deterministic memory ownership:
-- **No `std::vec::Vec` References**: All memory is explicitly managed via custom `silo` primitives (`Stash<T>` for amortized $O(1)$ growable dynamic buffers, `Buff<T>` for immutable fixed-size final storage, and `Arr<'a, T>` for zero-copy views).
-- **Stack-Allocated Generic AST Trees**: Eliminates heap pointer indirection (`Box<dyn Node>`) using temporary lifetime extension across grammar combinators (`shard`), symbolic algebra (`fresco`), and chore schedulers (`heist`).
-- **Unified SIMT Execution**: Write algorithms once in pure Rust within `symph`, executing natively as SPIR-V compute shaders on GPUs or multithreaded SIMT workgroups on CPU.
-- **Native Visual Workspace**: Features **`frieze`** as the immediate-mode pure-Rust native desktop workspace (built with `eframe`, `egui`, and `wgpu`), with virtual explorer providers powered by **`fenst`**.
-
----
-
-## ??? System Architecture
+## Architecture & Subsystem Graph
 
 ```mermaid
-graph TD
+flowchart TD
     subgraph UI ["Desktop UI & Visualizer Layer"]
-        Frieze["<b>frieze</b><br/>Primary Native Desktop Workspace<br/>(eframe / egui / wgpu)"]
-        Fenst["<b>fenst</b><br/>Virtual Data Providers & Explorer"]
+        WxFrieze["<b>wxfrieze</b><br/>Native Desktop Workspace (wxDragon / wxWidgets + wgpu)<br/>Dockable AuiManager (Explorer, Canvas Tabs, Output Log)"]
+        Fenst["<b>fenst</b><br/>Virtual Data Providers & Graphics Orchestrator<br/>(Camera State, Asset Loading, Multi-GPU Sessions)"]
     end
 
     subgraph Geometry ["Geometry & Streaming Subsystems"]
@@ -53,9 +31,12 @@ graph TD
         Silo["<b>silo</b><br/>Dynamic Stash & Fixed Buff Storage,<br/>Custom Unsigned Math (U8..U64)"]
     end
 
-    Frieze --> Fleck
-    Frieze --> Fresco
-    Frieze --> Silo
+    WxFrieze --> Fleck
+    WxFrieze --> Fresco
+    WxFrieze --> Silo
+    WxFrieze --> Fenst
+    WxFrieze --> Swarm
+
     Fenst --> Silo
     Fenst --> Flux
     Fenst --> Swarm
@@ -88,7 +69,7 @@ graph TD
 
 ---
 
-## ?? Subsystem & Module Matrix
+## Subsystem & Module Matrix
 
 | Module | Core Purpose | Primary Structs & Enums | Primary Traits & Macros | Wiki Reference |
 | :--- | :--- | :--- | :--- | :--- |
@@ -101,12 +82,12 @@ graph TD
 | **`symph`** | Rust-GPU SPIR-V compute kernels and algorithms (`no_std` for SPIR-V builds) | Pure SIMT functions (`wang_hash`, `collatz`, `pointcloud_elem`, `double_elem`, `vector_add_elem`) | SPIR-V Shaders (`pts_pointcloud_cs`, `camera_transform_cs`, `frustum_cull_cs`, `scene_vs`, `scene_fs`) | [Swarm.md](wiki/Swarm.md) |
 | **`heist`** | Asynchronous workflow DAG orchestrator and scheduler | `Atelier<'a>`, `Maestro<'a>`, `Chore`, `ChoreTarget`, `JobInfo`, `AtelierInfo` | `IChoreNode`, `ChoreTree!`, `Chore!`, `CpuChore!`, `GpuAutoChore!` | [Heist.md](wiki/Heist.md) |
 | **`fleck`** | 3D Point Cloud (.pts) & Wavefront (.obj) mesh parsing, spatial bounding boxes, `Vex` | `PtsPoint`, `PtsCloud`, `WaveObjMesh`, `WaveObjFace`, `Vex<N, T>`, `Pt3f`, `WPt3f`, `Point32`, `RGB` | `ParsePts`, `ParsePtsStream`, `ParseWaveObj`, `ToDto` | [Fleck.md](wiki/Fleck.md) |
-| **`fenst`** | Virtual data provider framework and 3D visualizer | `XplrEntry`, `XplrContent`, `XplrLeafInfo`, `FsBranch`, `FsLeaf`, `FrescoBranch`, `ShardBranch`, `XplrRegistry`, `PtsSessionState`, `PtsFrameDto` | `Xplr`, `LeafXplr`, `BranchXplr`, `XplrProvider`, `CreateDefaultRegistry`, Provider & session API | [Fenst.md](wiki/Fenst.md) |
-| **`frieze`** | Primary native desktop workspace built with `eframe`, `egui`, and `wgpu` | `KoshApp`, `AppState`, `ViewTab`, `ExplorerView`, `PtsView`, `ObjView`, `FrescoView` | `run()` | [Frieze.md](wiki/Frieze.md) |
+| **`fenst`** | Virtual data provider framework, graphics session & camera orchestrator | `XplrEntry`, `XplrContent`, `XplrLeafInfo`, `FsBranch`, `FsLeaf`, `FrescoBranch`, `ShardBranch`, `XplrRegistry`, `PtsSessionState`, `PtsFrameDto` | `Xplr`, `LeafXplr`, `BranchXplr`, `XplrProvider`, `CreateDefaultRegistry` | [Fenst.md](wiki/Fenst.md) |
+| **`wxfrieze`** | Native desktop workspace built with `wxdragon` (wxWidgets 3.2+) and `wgpu` | `AppState`, `AppTheme`, `OpenTab`, `AuiManager`, `AuiPaneInfo`, `Notebook`, `ExplorerPanel`, `PtsView`, `ObjView`, `FrescoView` | `run()` | [Frieze.md](wiki/Frieze.md) |
 
 ---
 
-## ? Key Architectural Pillars
+## Key Architectural Pillars
 
 ### 1. Dual Memory Architecture: `Stash` (Dynamic) & `Buff` (Fixed Storage)
 Kosh strictly rejects uncontrolled heap vector reallocation. Instead, all dynamic collections use a two-phase memory lifecycle:
@@ -135,56 +116,55 @@ Asynchronous workflows are represented as DAG expressions via `ChoreTree!`.
 - Parallel branches: `A | B` posts tasks simultaneously across worker threads.
 - Worker threads (`Maestro`) execute pending jobs from thread-local queues and dynamically steal tasks from peers using Knuth multiplicative hash pseudo-random distribution.
 
+### 6. Strict Graphics Ownership Pipeline
+- **`wxfrieze` is Presentation Only**: `wxfrieze` manages native window events, user input, dockable AUI layout panes, and paints backend-projected primitives. It strictly does not parse raw geometry, compute camera matrices, cull primitives, or execute heavy graphics shaders.
+- **`fenst` Orchestrates Graphics**: `fenst` owns graphics sessions, asset loading, camera state, and frame serialization. All heavy graphics computations and 3D projections are delegated through `swarm` to `symph` compute kernels.
+
 ---
 
-## ?? Quickstart & CLI Commands
+## Quickstart & CLI Commands
 
 ### Prerequisites
-- **Rust Toolchain**: The pinned `nightly-2026-05-22` toolchain, including `rust-src`, `rustc-dev`, and `llvm-tools`.
-- **Cargo**: Included with the standard Rust toolchain.
+- **Rust Toolchain**: Modern Rust toolchain (Rust 2024 edition compatible).
+- **CMake & Ninja / MSVC**: Required for compiling native wxWidgets libraries via `wxdragon-sys`.
 
 ### Build and Test
 ```powershell
 # Build entire workspace
 cargo build
 
-# Run comprehensive test suite (119 unit tests)
+# Run comprehensive test suite
 cargo test
 
 # Run tests in release mode with logging
 cargo test --release -- --nocapture
 ```
 
-### Running Kosh Applications
-The root binary launches the native `frieze` workspace:
+### Running the Kosh Desktop Workspace
+The root binary launches the native `wxfrieze` workspace:
 ```powershell
-# Default launch: native eframe/egui/wgpu workspace
+# Default launch: native wxWidgets AUI workspace with direct GPU canvas
 cargo run
 
 # Run in optimized release mode
 cargo run --release
 ```
 
-### Running Tests
-The CLI test flag delegates to `cargo test`; use `--nocapture` as a Kosh CLI option before the test filter:
+### Running Tests via Kosh CLI Harness
 ```powershell
 # Run all internal unit tests through the Kosh CLI harness
 cargo run -- --test
 
-# Filter specific tests (e.g. QSort) with verbose logging
-cargo run -- --verbose --test QSort
+# Filter specific tests with verbose logging
+cargo run -- --verbose --test Scene
 
 # Run with test output visible
-cargo run -- --nocapture --test Scene
-
-# Direct Cargo equivalents
-cargo test
-cargo test Scene -- --nocapture
+cargo run -- --nocapture --test QSort
 ```
 
 ---
 
-## ?? Complete Wiki Documentation
+## Complete Wiki Documentation
 
 Explore the full in-depth documentation in the **[wiki/](wiki/Architecture.md)** folder:
 
@@ -197,6 +177,7 @@ Explore the full in-depth documentation in the **[wiki/](wiki/Architecture.md)**
 - **[Swarm & Symph (GPU/CPU Compute)](wiki/Swarm.md)**
 - **[Heist (Chore DAG Orchestration)](wiki/Heist.md)**
 - **[Fleck (Point Cloud & Mesh Parsing)](wiki/Fleck.md)**
-- **[Fenst (Virtual Explorer & Desktop GUI)](wiki/Fenst.md)**
-- **[Frieze (Native Desktop Workspace)](wiki/Frieze.md)**
+- **[Fenst (Virtual Explorer & Graphics Orchestration)](wiki/Fenst.md)**
+- **[Frieze / WxFrieze (Native Desktop Workspace)](wiki/Frieze.md)**
 - **[Serialization Optimization Notes](wiki/Serialization_Optimization.md)**
+

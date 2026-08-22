@@ -1,137 +1,124 @@
-# Module Reference: `frieze`
+﻿# Module Reference: `wxfrieze` (Desktop Workspace)
 
 ## 1. Overview & Purpose
 
-`frieze` is Kosh's **primary native desktop workspace and 3D visualizer**. It is built natively on **`eframe`**, **`egui`**, and **`wgpu`** to deliver instant response times, zero-copy memory rendering, and zero-IPC UI overhead.
+`wxfrieze` is Kosh's **primary native desktop workspace and 3D visualizer**. It is built natively on **`wxdragon`** (a modern Rust binding for wxWidgets 3.2+) and **`wgpu`** to deliver instant response times, native OS look-and-feel, and dockable window management via `wxAuiManager`.
 
-The root binary launches `frieze` by default:
+The root binary launches `wxfrieze` by default:
 
 ```powershell
 cargo run
 cargo run --release
 ```
 
-The application window is titled **Kosh — Native 3D GPU Workspace**, launching at 1360 x 840 preferred resolution (minimum 800 x 600).
+The main window launches titled **Kosh - Native 3D GPU Workspace (wxDragon)**, at 1360 x 840 preferred resolution with customizable themes (Dark, Light, Cyberpunk, Nord).
 
 ---
 
-## 2. Architecture & Component Diagram
+## 2. Architecture & Dockable AUI Layout
+
+`wxfrieze` uses an advanced user interface manager (`wxdragon::widgets::AuiManager`) that allows panels to be docked, floated, rearranged, and resized dynamically:
 
 ```mermaid
 classDiagram
-    class KoshApp {
-        -_State: AppState
-        +new(cc) KoshApp
-        +update(ctx, frame)
+    class Frame {
+        +set_menu_bar(menu_bar)
+        +create_status_bar()
+        +show(visible)
     }
 
-    class AppState {
-        -_ActiveTab: ViewTab
-        -_Explorer: ExplorerView
-        -_PtsView: PtsView
-        -_ObjView: ObjView
-        -_FrescoView: FrescoView
-        +SetCurrentFile(path)
-        +ActiveTab() ViewTab
+    class AuiManager {
+        +builder(parent)
+        +add_pane_with_info(window, pane_info)
+        +update()
+        +save_perspective() String
+        +load_perspective(perspective, update) bool
     }
 
-    class ViewTab {
-        <<enumeration>>
-        Explorer
-        PtsViewer
-        ObjViewer
-        FrescoViewer
+    class AuiPaneInfo {
+        +with_name(name) AuiPaneInfo
+        +with_caption(caption) AuiPaneInfo
+        +left() AuiPaneInfo
+        +center_pane() AuiPaneInfo
+        +bottom() AuiPaneInfo
+        +best_size(w, h) AuiPaneInfo
+        +min_size(w, h) AuiPaneInfo
+        +pane_border(bool) AuiPaneInfo
     }
 
-    class ExplorerView {
-        -_CurrentDir: PathBuf
-        -_Entries: Stash~PathBuf~
-        -_SelectedFile: Option~PathBuf~
-        +Render(ui, state)
+    class ExplorerPanel {
+        -_Tree: TreeCtrl
+        -_State: SharedState
         +Refresh()
     }
 
-    class PtsView {
-        -_Cloud: Option~PtsCloud~
-        -_Camera: CameraState
-        -_PointSize: f32
-        -_ColorMode: PtsColorMode
-        +Render(ui, state)
-        +LoadFile(path)
-        +ResetCamera()
+    class CentralNotebook {
+        -_Pages: Vec~DocumentPage~
+        +add_page(page, label, select)
     }
 
-    class ObjView {
-        -_Mesh: Option~WaveObjMesh~
-        -_Camera: CameraState
-        -_Wireframe: bool
-        -_ShowNormals: bool
-        +Render(ui, state)
-        +LoadFile(path)
-        +ResetCamera()
+    class OutputLog {
+        -_Text: TextCtrl
+        +AppendText(text)
     }
 
-    class FrescoView {
-        -_Expr: String
-        -_History: Stash~String~
-        +Render(ui, state)
-    }
-
-    KoshApp *-- AppState
-    AppState *-- ViewTab
-    AppState *-- ExplorerView
-    AppState *-- PtsView
-    AppState *-- ObjView
-    AppState *-- FrescoView
+    Frame *-- AuiManager
+    AuiManager o-- ExplorerPanel : Left Pane ("LeftExplorer")
+    AuiManager o-- CentralNotebook : Center Pane ("CentralCanvas")
+    AuiManager o-- OutputLog : Bottom Pane ("OutputLog")
 ```
+
+### Dockable Panes Breakdown:
+1. **Left Explorer (`LeftExplorer`)**: Docked on the left side with a best size of 240px and minimum size of 150px. Houses the interactive file tree and folder browser.
+2. **Central Canvas (`CentralCanvas`)**: Center pane with borders disabled. Houses the tabbed document `Notebook`, allowing multiple 3D viewports and text files to be opened simultaneously.
+3. **Console Output (`OutputLog`)**: Docked at the bottom with a best size of 150px height. Displays real-time engine logs, compilation statuses, and diagnostic traces.
 
 ---
 
-## 3. Directory & Source Layout
+## 3. Source & Directory Layout
 
 ```
-src/frieze/
-├── mod.rs             # Module definitions, KoshApp re-export, and run() entry point
-├── app.rs             # KoshApp eframe::App lifecycle, keyboard shortcuts, top bar
-├── state.rs           # Shared AppState container, active file selection, theme
-├── tab_bar.rs         # Navigation tab bar for switching between workspace views
-├── explorer.rs        # Interactive filesystem browser with file type icons
-├── pts_view.rs        # 3D Point Cloud (.pts) interactive camera viewport
-├── obj_view.rs        # 3D Wavefront Mesh (.obj) interactive wireframe/solid viewport
-├── fresco_view.rs     # Symbolic algebra expression evaluation and AST viewer
-├── Cargo.toml         # Embedded package configuration
-├── Trunk.toml         # Trunk build configuration
-└── index.html         # WebAssembly entrypoint template
+src/wxfrieze/
+|-- mod.rs             # Module re-exports and wxfrieze::run() entry point
+|-- app.rs             # Application setup, AuiManager construction, and tab dispatch
+|-- desktop.rs         # Native MenuBar (File, View, Theme, Reset Layout)
+|-- explorer.rs        # Native TreeCtrl filesystem browser with file activation
+|-- pts_view.rs        # 3D Point Cloud (.pts) interactive camera viewport
+|-- obj_view.rs        # 3D Wavefront Mesh (.obj) wireframe/solid viewport
+|-- fresco_view.rs     # Symbolic algebra expression evaluation and AST viewer
+|-- gpu_cache.rs       # WGPU graphics device, queue, and surface pipeline caching
+|-- state.rs           # Shared thread-safe AppState container and theme definitions
+`-- tab_bar.rs         # Active tab focus and close management
 ```
 
 ---
 
 ## 4. Workspaces & Visual Viewports
 
-### 4.1 Explorer Panel (`explorer.rs`)
-- **Filesystem Navigation**: Browse directory hierarchies with folder expansion, path history, and file selection.
-- **Provider Association**: Automatically inspects file extensions to launch the appropriate viewport:
-  - `.pts` -> Automatically opens `PtsView`
-  - `.obj` -> Automatically opens `ObjView`
-  - `.expr` / `.fresco` -> Automatically opens `FrescoView`
+### 4.1 Native Explorer Panel (`explorer.rs`)
+- **Filesystem Navigation**: Browse directory hierarchies with automatic root detection, folder picker dialogs (`rfd`), and tree expansion.
+- **Automated Viewport Routing**: Activating a file automatically spawns the appropriate document tab inside the central `Notebook`:
+  - `.pts` -> Spawns interactive 3D Point Cloud Viewport (`pts_view.rs`)
+  - `.obj` -> Spawns interactive 3D Wavefront Mesh Viewport (`obj_view.rs`)
+  - `.fresco` / `.frsc` -> Spawns Symbolic Algebra Viewport (`fresco_view.rs`)
+  - Plain Text / Other -> Spawns MultiLine Text Viewer (`build_text_view_panel`)
 
 ### 4.2 3D Point Cloud Viewport (`pts_view.rs`)
-- **Direct Geometry Rendering**: Ingests `fleck::PtsCloud` directly without IPC translation.
+- **Direct GPU Rendering**: Visualizes dense 3D point cloud datasets directly on native rendering canvases.
 - **Interactive Orbit Camera**:
   - **Left Click Drag**: Orbit rotation around model center.
-  - **Right Click Drag / Middle Click**: Pan viewport X/Y.
-  - **Scroll Wheel**: Smooth zoom.
+  - **Right Click Drag / Middle Click**: Pan viewport along X/Y.
+  - **Scroll Wheel**: Smooth camera zoom.
 - **Rendering Features**:
   - Axis-aligned 3D bounding box wireframe.
-  - Intensity and RGB color modes.
-  - Variable point size and perspective projection scaling.
+  - Variable point size, depth attenuation, and color modes.
 
 ### 4.3 3D Wavefront Mesh Viewport (`obj_view.rs`)
-- **Mesh Ingestion**: Parses Wavefront `.obj` files via `fleck::ParseWaveObj`.
+- **Mesh Ingestion**: Parses Wavefront `.obj` geometries via `fleck::ParseWaveObj`.
 - **Display Modes**:
   - Wireframe facet rendering with depth buffering.
   - Solid face rendering with surface normals and lighting.
-  - Automatic model centering and bounding sphere normalization.
+  - Automatic model centering and bounding box normalization.
 
 ### 4.4 Symbolic Expression Viewport (`fresco_view.rs`)
 - **Fresco Integration**: Real-time evaluation of mathematical term trees (`fresco::ExprRepos`).
@@ -139,12 +126,9 @@ src/frieze/
 
 ---
 
-## 5. Relationship to Secondary Frontends
+## 5. Graphics Ownership & Architectural Boundaries
 
-| Dimension | `frieze` (Primary) | Legacy / Headless |
-| :--- | :--- | :--- |
-| **Technology** | `eframe` + `egui` (Immediate-Mode Native) | Canvas 2D / IPC |
-| **Launch Command** | `cargo run` | N/A |
-| **Data Ingestion** | In-Process Direct `silo::Buff` Access | IPC Serialization over `xplrcmds` |
-| **Rendering Backend** | Native GPU Canvas (via `egui::Painter` / `wgpu`) | Canvas 2D on webview surface |
-| **Latency** | Sub-millisecond direct draw | Frame serialization bounded |
+`wxfrieze` strictly adheres to Kosh's **Presentation-Only Graphics Rule**:
+- **Presentation Responsibility**: `wxfrieze` manages windowing, mouse/keyboard input events, AUI pane layouts, and displays projected frames.
+- **Zero Heavy Compute**: `wxfrieze` **does not** parse raw geometric point buffers directly on the main thread, calculate camera projection matrices, or perform GPU compute culling.
+- **Delegation to Backend**: All geometry loading, camera state tracking, and projection passes are coordinated through `fenst` and executed across GPU/CPU hardware engines in `swarm` via `symph` compute kernels.

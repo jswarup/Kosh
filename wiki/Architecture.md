@@ -1,4 +1,4 @@
-# Kosh Architecture & Design Principles
+﻿# Kosh Architecture & Design Principles
 
 ## 1. System Overview
 
@@ -7,8 +7,8 @@ Kosh is an ultra-low-latency, zero-heap-AST computational framework and 3D geome
 ```mermaid
 flowchart TD
     subgraph UI ["Desktop UI & Visualizer Layer"]
-        Frieze["<b>frieze</b><br/>Primary Native Desktop Workspace<br/>(eframe / egui / wgpu)"]
-        Fenst["<b>fenst</b><br/>Virtual Data Providers & Explorer"]
+        WxFrieze["<b>wxfrieze</b><br/>Native Desktop Workspace (wxDragon / wxWidgets + wgpu)<br/>Dockable AuiManager (Explorer, Canvas Tabs, Output Log)"]
+        Fenst["<b>fenst</b><br/>Virtual Data Providers & Graphics Orchestrator<br/>(Camera State, Asset Loading, Multi-GPU Sessions)"]
     end
 
     subgraph Geometry ["Geometry & Streaming Subsystems"]
@@ -29,9 +29,12 @@ flowchart TD
         Silo["<b>silo</b><br/>Dynamic Stash & Fixed Buff Storage,<br/>Custom Unsigned Math (U8..U64)"]
     end
 
-    Frieze --> Fleck
-    Frieze --> Fresco
-    Frieze --> Silo
+    WxFrieze --> Fleck
+    WxFrieze --> Fresco
+    WxFrieze --> Silo
+    WxFrieze --> Fenst
+    WxFrieze --> Swarm
+
     Fenst --> Silo
     Fenst --> Flux
     Fenst --> Swarm
@@ -68,8 +71,8 @@ flowchart TD
 
 ### Pillar 1: Two-Stage Memory Pipeline (`Stash` & `Buff`) with Zero `std::vec::Vec`
 Kosh replaces unbounded standard vector allocations with explicit, deterministic memory ownership:
-- **Phase 1 (Dynamic Growth)**: `silo::Stash<T>` allocates heap memory via raw pointers with amortized O(1) capacity growth (`PushX`, `Pop`, `Reserve`, `AppendStash`).
-- **Phase 2 (Immutable Final Storage)**: `stash.IntoBuff()` transfers ownership to `silo::Buff<T>` without copying or leaving unused capacity.
+- **Phase 1 (Dynamic Growth)**: `silo::Stash<T>` allocates heap memory via raw pointers with amortized $O(1)$ capacity growth (`PushX`, `Pop`, `Reserve`, `AppendStash`).
+- **Phase 2 (Immutable Final Storage)**: `stash.IntoBuff()` transfers ownership to `silo::Buff<T>` without copying or leaving unused trailing capacity.
 - **Zero Standard Vectors**: `std::vec::Vec` is completely eliminated from the codebase.
 
 ### Pillar 2: Zero-Heap AST Allocation Policy
@@ -77,15 +80,26 @@ Recursive tree structures (such as grammar combinators in `shard`, symbolic alge
 Instead, trees are compiled directly into concrete nested generic structures (`BinNode<L, R, Op>`, `UniNode<C, Op>`) via declarative macros (`NodeTree!`, `ShardTree!`, `TermTree!`, `ChoreTree!`).
 Because expressions evaluate directly in the caller's stack frame, Rust's temporary lifetime extension guarantees that all child references remain valid without allocating a single byte on the heap.
 
-### Pillar 3: Portable SIMT Compute (CPU, WebGPU, CUDA)
+### Pillar 3: Project-Defined Transparent Unsigned Numeric Types
+The `silo::uint` module defines custom integer wrappers (`U8`, `U16`, `U32`, `U64`) using `#[repr(transparent)]`.
+These types enforce wrapping arithmetic semantics, eliminate implicit casting pitfalls, provide atomic interoperability with `Atm<T>`, and enable zero-copy slice and buffer transformations via `ICastExt` and `ISliceExt`.
+
+### Pillar 4: Portable SIMT Compute (CPU, WebGPU, CUDA)
 Algorithms in `symph` are written once in pure Rust. Using `#![no_std]` when targeting SPIR-V, compute kernels run across:
 - **WebGPU / Rust-GPU**: Dispatched as compiled SPIR-V bytecode pipelines.
 - **CUDA / Oxide**: Dispatched via PTX execution headers.
 - **CPU SIMT**: Multithreaded execution across SIMT workgroup chunks.
 
-### Pillar 4: Dual Workspace UI Architecture
-- **`frieze` (Primary Workspace)**: High-performance immediate-mode desktop application built on `eframe`, `egui`, and `wgpu`. Direct in-process memory access, zero IPC serialization overhead, responsive at 60+ FPS.
-- **`fenst` (Virtual Provider Subsystem)**: Virtual explorer providing pluggable provider schemes (`file://`, `expr://`, `ast://`).
+### Pillar 5: Work-Stealing Chore DAG Engine (`heist`)
+Asynchronous workflows are represented as DAG expressions via `ChoreTree!`.
+- Sequential execution: `A < B` guarantees that job `B` will only run after `A` decrements `B`'s atomic predecessor counter (`_SzPreds`) to zero.
+- Parallel branches: `A | B` posts tasks simultaneously across worker threads.
+- Worker threads (`Maestro`) execute pending jobs from thread-local queues and dynamically steal tasks from peers using Knuth multiplicative hash pseudo-random distribution.
+
+### Pillar 6: Graphics Ownership Architecture
+To ensure strict separation of concerns and maximum rendering throughput:
+- **`wxfrieze` is Presentation Only**: Built on `wxdragon` (wxWidgets) and `wgpu`. It manages OS window frames, dockable AUI layout panes (`wxAuiManager`), user input dispatch (orbit/pan/zoom), and native Canvas 2D / WGPU rendering surfaces. It **must not** parse raw geometry, compute camera projection matrices, perform frustum culling, or execute compute kernels.
+- **`fenst` Orchestrates Graphics**: `fenst` manages virtual data providers, active graphics sessions (`PtsSessionState`), asset caching, camera transformations, and multi-GPU frame dispatch. All heavy geometric projections are delegated through `swarm` to `symph` SIMT kernels.
 
 ---
 
@@ -102,5 +116,6 @@ Algorithms in `symph` are written once in pure Rust. Using `#![no_std]` when tar
 | **`symph`** | Rust-GPU SPIR-V compute kernels and algorithms (`no_std` for SPIR-V builds) | Pure SIMT functions (`wang_hash`, `collatz`, `pointcloud_elem`, `double_elem`, `vector_add_elem`) | SPIR-V Shaders (`pts_pointcloud_cs`, `camera_transform_cs`, `frustum_cull_cs`, `scene_vs`, `scene_fs`) | [Swarm.md](Swarm.md) |
 | **`heist`** | Asynchronous workflow DAG orchestrator and scheduler | `Atelier<'a>`, `Maestro<'a>`, `Chore`, `ChoreTarget`, `JobInfo`, `AtelierInfo` | `IChoreNode`, `ChoreTree!`, `Chore!`, `CpuChore!`, `GpuAutoChore!` | [Heist.md](Heist.md) |
 | **`fleck`** | 3D Point Cloud (.pts) & Wavefront (.obj) mesh parsing, spatial bounding boxes, `Vex` | `PtsPoint`, `PtsCloud`, `WaveObjMesh`, `WaveObjFace`, `Vex<N, T>`, `Pt3f`, `WPt3f`, `Point32`, `RGB` | `ParsePts`, `ParsePtsStream`, `ParseWaveObj`, `ToDto` | [Fleck.md](Fleck.md) |
-| **`fenst`** | Virtual data provider framework and 3D visualizer | `XplrEntry`, `XplrContent`, `XplrLeafInfo`, `FsBranch`, `FsLeaf`, `FrescoBranch`, `ShardBranch`, `XplrRegistry`, `PtsSessionState`, `PtsFrameDto` | `Xplr`, `LeafXplr`, `BranchXplr`, `XplrProvider`, `CreateDefaultRegistry`, Provider & session API | [Fenst.md](Fenst.md) |
-| **`frieze`** | Primary native desktop workspace built with `eframe`, `egui`, and `wgpu` | `KoshApp`, `AppState`, `ViewTab`, `ExplorerView`, `PtsView`, `ObjView`, `FrescoView` | `run()` | [Frieze.md](Frieze.md) |
+| **`fenst`** | Virtual data provider framework, graphics session & camera orchestrator | `XplrEntry`, `XplrContent`, `XplrLeafInfo`, `FsBranch`, `FsLeaf`, `FrescoBranch`, `ShardBranch`, `XplrRegistry`, `PtsSessionState`, `PtsFrameDto` | `Xplr`, `LeafXplr`, `BranchXplr`, `XplrProvider`, `CreateDefaultRegistry` | [Fenst.md](Fenst.md) |
+| **`wxfrieze`** | Native desktop workspace built with `wxdragon` (wxWidgets 3.2+) and `wgpu` | `AppState`, `AppTheme`, `OpenTab`, `AuiManager`, `AuiPaneInfo`, `Notebook`, `ExplorerPanel`, `PtsView`, `ObjView`, `FrescoView` | `run()` | [Frieze.md](Frieze.md) |
+

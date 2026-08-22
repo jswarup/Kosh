@@ -1,4 +1,4 @@
-# Module Reference: `shard`
+﻿# Module Reference: `shard`
 
 ## 1. Overview & Purpose
 
@@ -135,8 +135,8 @@ A 256-bit bitset (four `U64` words) representing arbitrary ASCII/byte character 
 - **`RepeatShard<C> = UniNode<C, USeg>`**: Repeats child grammar `C` according to interval `USeg`. Supports `*` (0..$\infty$), `+` (1..$\infty$), and `?` (0..1).
 - **`ActionShard<C, W> = UniNode<C, ActionOp<W>>`**: Executes notification closure `W: INotify` passing the matched slice `Arr<'_, U8>` when `C` matches.
 - **`BinShard<L, R> = BinNode<L, R>`**:
-  - `BinOp::Less` (`<`): Sequence — matches `_Left`, then matches `_Right` from left's end marker.
-  - `BinOp::Bor` (`|`): Alternation — attempts `_Left`; if unsuccessful, attempts `_Right` from the original marker.
+  - `BinOp::Less` (`<`): Sequence â€” matches `_Left`, then matches `_Right` from left's end marker.
+  - `BinOp::Bor` (`|`): Alternation â€” attempts `_Left`; if unsuccessful, attempts `_Right` from the original marker.
 
 ### `JSon<'a>`
 Streaming JSON parser driven by `FieldImp<'a>`:
@@ -169,3 +169,4 @@ let grammar = ShardTree!(
     < Real[ |val| { println!("Val: {}", val); true } ]
 );
 ```
+

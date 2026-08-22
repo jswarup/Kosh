@@ -1,14 +1,11 @@
-# Module Reference: `fenst`
+﻿# Module Reference: `fenst`
 
 ## 1. Overview & Purpose
 
-The `fenst` module provides Kosh with a **virtual provider framework and data explorer**. The default desktop application is the native [`frieze`](Frieze.md) workspace. Key features include:
-1. **Virtual Explorer Abstraction (`Xplr`, `LeafXplr`, `BranchXplr`)**: Uniform node interface across filesystems, AST grammar trees, and symbolic expressions.
-2. **Provider Registry (`XplrRegistry`)**: URL scheme-based provider routing (`file://`, `expr://`, `ast://`).
-3. **High-Performance Content Streaming**: Windowed chunk reading (`XplrFetchChunk`) and safe size-guarded file readers (`XplrFetchContent`).
-5. **Interactive 3D Point Cloud Visualizer**: Real-time perspective projection (`Project3d`), rotating wireframe bounding box, and GPU-computed point rendering.
-
-
+The `fenst` module is Kosh's **virtual data provider framework and graphics session orchestrator**. It provides:
+1. **Virtual Explorer Tree (`Xplr`, `XplrProvider`, `XplrRegistry`)**: Uniform virtual abstraction unifying filesystem nodes (`file://`), symbolic algebra expressions (`expr://`), and grammar ASTs (`ast://`).
+2. **Graphics Orchestration & Session Ownership**: Owns viewport camera state (`Camera`), scene graph geometry (`SceneGraph`), active point cloud sessions (`PtsSessionState`), and frame serialization pipelines.
+3. **Multi-GPU Dispatch Integration**: Interfaces with `swarm` compute engines to split point clouds across available GPU adapters (`SwarmCluster`) and execute SIMT camera projection shaders.
 
 ---
 
@@ -78,11 +75,11 @@ classDiagram
 
 ---
 
-### 3. Desktop 3D Graphics Scene Multi-GPU Display Pipeline
+## 3. Desktop 3D Graphics Scene Multi-GPU Display Pipeline
 
 ```mermaid
 flowchart TD
-    Frontend["Frontend Presentation Layer"] -->|Invokes 'XplrProjectPts'| BackendCmd["fenst::xplrcmds::XplrProjectPts"]
+    Frontend["Frontend Presentation Layer (wxfrieze)"] -->|Invokes 'XplrProjectPts'| BackendCmd["fenst::xplrcmds::XplrProjectPts"]
     BackendCmd --> CheckState["Lookup or Initialize PtsSessionState (Singleton)"]
 
     CheckState -->|If initial load| GenPoints["Generate points via GPU Compute Shader (symph::pts_pointcloud_cs)"]
@@ -101,7 +98,7 @@ flowchart TD
 
     ConnectBox --> AssembleDto["Assemble PtsFrameDto"]
     MergeResults --> AssembleDto
-    AssembleDto --> ReturnJSON["Return serializable frame DTO to Frontend for 60+ FPS redraw"]
+    AssembleDto --> ReturnJSON["Return frame payload to Frontend for 60+ FPS redraw"]
 ```
 
 ### Multi-GPU Cluster & Dedicated Shaders (`swarm` & `symph`)
@@ -174,6 +171,7 @@ z_2 &= y \sin(\theta_x) + z_1 \cos(\theta_x) \\
 | `XplrProjectPts`  | `(path, width, height, dpr, speed, color, pan_x, pan_y, zoom, rot_x, rot_y, is_interactive) -> Result<PtsFrameDto, String>` | Projects SceneGraph 3D points & bounding box with pan/zoom/rotate across Multi-GPU cluster. |
 | `XplrResetCamera` | `(path: String) -> Result<Camera, String>` | Resets SceneGraph camera pan, zoom, and rotation to defaults. |
 
-### ⚠️ Data Serialization Note
+### Data Serialization Note
 
-The `XplrProjectPts` command performs real-time serialization of millions of projected points every frame. **This is a critical performance bottleneck.** For optimization recommendations and identified inefficiencies in the fenst↔swarm serialization pipeline, see **[Serialization_Optimization.md](Serialization_Optimization.md)**.
+The `XplrProjectPts` command performs real-time serialization of millions of projected points every frame. For optimization recommendations and identified inefficiencies in the `fenst` / `swarm` serialization pipeline, see **[Serialization_Optimization.md](Serialization_Optimization.md)**.
+
