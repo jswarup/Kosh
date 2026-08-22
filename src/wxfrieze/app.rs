@@ -1,4 +1,4 @@
-//-- wxfrieze/app.rs ------------------------------------------------------------------------------------------------------------------
+﻿//-- wxfrieze/app.rs ------------------------------------------------------------------------------------------------------------------
 //! Assembles the native wxDragon Kosh application: main frame, menu bar, status bar, and the
 //! Explorer + document Notebook tab strip. This is the wxDragon-based replacement entry point
 //! for the egui/eframe `frieze` module.
@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use anyhow::anyhow;
+use wxdragon::widgets::{AuiManager, AuiPaneInfo};
 use wxdragon::event::menu_events::MenuEvents;
 use wxdragon::id::ID_EXIT;
 use wxdragon::prelude::*;
@@ -27,30 +28,38 @@ pub fn run() -> anyhow::Result<()> {
         let state: SharedState = Rc::new(RefCell::new(AppState::default()));
 
         let frame = Frame::builder()
-            .with_title("Kosh — Native 3D GPU Workspace (wxDragon)")
+            .with_title("Kosh - Native 3D GPU Workspace (wxDragon)")
             .with_size(Size::new(1360, 840))
             .build();
 
         frame.set_menu_bar(build_menu_bar());
         let status_bar = frame.create_status_bar(1, 0, wxdragon::id::ID_ANY as i32, "");
-        status_bar.set_status_text("Ready — Native Rust (wxDragon + wgpu + swarm)", 0);
+        status_bar.set_status_text("Ready - Native Rust (wxDragon + wgpu + swarm)", 0);
+
+        let manager = AuiManager::builder(&frame).build();
 
         let notebook = Notebook::builder(&frame).build();
 
         let on_open_file: Rc<dyn Fn(PathBuf)> = {
             let state = state.clone();
-            let notebook = notebook;
+            let notebook = notebook.clone();
             Rc::new(move |path: PathBuf| {
                 open_tab_for_path(&notebook, &state, &path);
             })
         };
 
-        let explorer_panel = build_explorer_panel(&notebook, state.clone(), on_open_file);
-        notebook.add_page(&explorer_panel, "📁 Explorer", true, None);
+        let explorer_panel = build_explorer_panel(&frame, state.clone(), on_open_file);
+        
+        let output_log = TextCtrl::builder(&frame)
+            .with_style(wxdragon::widgets::textctrl::TextCtrlStyle::MultiLine | wxdragon::widgets::textctrl::TextCtrlStyle::ReadOnly)
+            .build();
+        output_log.set_value("Console Output\n");
 
-        let sizer = BoxSizer::builder(Orientation::Vertical).build();
-        sizer.add(&notebook, 1, SizerFlag::Expand, 0);
-        frame.set_sizer(sizer, true);
+        manager.add_pane_with_info(&notebook, AuiPaneInfo::new().with_name("CentralCanvas").center_pane().pane_border(false));
+        manager.add_pane_with_info(&explorer_panel, AuiPaneInfo::new().with_name("LeftExplorer").with_caption("Explorer").left().best_size(240, -1).min_size(150, -1));
+        manager.add_pane_with_info(&output_log, AuiPaneInfo::new().with_name("OutputLog").with_caption("Output").bottom().best_size(-1, 150).min_size(-1, 80));
+
+        manager.update();
 
         {
             let state = state.clone();
@@ -90,13 +99,13 @@ fn open_tab_for_path(notebook: &Notebook, state: &SharedState, path: &Path) {
     let is_fresco = ext == "fresco" || ext == "frsc";
 
     let label = if is_pts {
-        format!("• PTS  {name}")
+        format!("PTS  {name}")
     } else if is_obj {
-        format!("◬ OBJ  {name}")
+        format!("OBJ  {name}")
     } else if is_fresco {
-        format!("ƒ FRESCO  {name}")
+        format!("FRESCO  {name}")
     } else {
-        format!("📄 {name}")
+        format!("{name}")
     };
 
     if is_pts {
@@ -137,3 +146,4 @@ fn build_text_view_panel(parent: &Notebook, path: &Path) -> Panel {
     panel.set_sizer(sizer, true);
     panel
 }
+

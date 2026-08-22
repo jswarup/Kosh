@@ -12,7 +12,7 @@ use crate::wxfrieze::state::SharedState;
 /// Builds the file/directory explorer panel. `on_open_file` is invoked with the path
 /// whenever the user activates (double-clicks / presses Enter on) a non-directory item.
 pub fn build_explorer_panel(
-    parent: &Notebook,
+    parent: &impl WxWidget,
     state: SharedState,
     on_open_file: Rc<dyn Fn(PathBuf)>,
 ) -> Panel {

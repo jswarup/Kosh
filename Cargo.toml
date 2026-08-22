@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "kosh"
 version = "0.1.0"
 edition = "2024"
@@ -19,7 +19,7 @@ wgpu = { version = "30", features = ["spirv"] }
 pollster = "0.4"
 rfd = "0.15"
 symph = { path = "src/symph" }
-wxdragon = "*"
+wxdragon = { version = "*", features = ["aui"] }
 
 [build-dependencies]
 spirv-builder = { git = "https://github.com/Rust-GPU/rust-gpu.git" }
