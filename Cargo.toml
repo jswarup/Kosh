@@ -19,8 +19,6 @@ wgpu = { version = "30", features = ["spirv"] }
 pollster = "0.4"
 rfd = "0.15"
 symph = { path = "src/symph" }
-egui = "0.36.1"
-eframe = "0.36.1"
 wxdragon = "*"
 
 [build-dependencies]
@@ -32,9 +30,6 @@ rand = "0.10.1"
 [profile.dev.build-override]
 opt-level = 3
 
-[profile.dev.package.rustc_codegen_spirv]
-opt-level = 3
-
 [profile.release]
 opt-level = 1
 lto = "off"
@@ -44,8 +39,3 @@ debug = false
 [profile.release.build-override]
 opt-level = 1
 debug = false
-
-[profile.release.package.rustc_codegen_spirv]
-opt-level = 1
-debug = false
-codegen-units = 1

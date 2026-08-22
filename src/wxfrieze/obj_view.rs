@@ -13,7 +13,7 @@ use wxdragon::prelude::*;
 use wxdragon::timer::Timer;
 use wxdragon::window::BackgroundStyle;
 
-use crate::frieze::state::ObjRenderMode;
+use crate::swarm::viewport::ObjRenderMode;
 use crate::wxfrieze::state::SharedState;
 
 struct DragState {

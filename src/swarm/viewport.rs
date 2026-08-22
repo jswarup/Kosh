@@ -13,7 +13,15 @@ use	wgpu::{
 use	crate::silo::U32;
 use	crate::silo::cast::ISliceExt;
 use	crate::swarm::scene::Camera;
-use	crate::frieze::state::ObjRenderMode;
+/// Represents a 3D OBJ render mode in the native viewport.
+#[derive( Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ObjRenderMode
+{
+    Points,
+    Wireframe,
+    Facets,
+    ShadedWire,
+}
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 

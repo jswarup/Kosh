@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use crate::frieze::state::ObjRenderMode;
+use crate::swarm::viewport::ObjRenderMode;
 use crate::swarm::Camera;
 use crate::wxfrieze::gpu_cache::GpuMeshCache;
 
