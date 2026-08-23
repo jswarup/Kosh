@@ -1,4 +1,4 @@
-//-- wxfrieze/obj_view.rs -------------------------------------------------------------------------------------------------------------
+//-- frieze/obj_view.rs -------------------------------------------------------------------------------------------------------------
 //! Native viewport for rendering Wavefront OBJ meshes with Points / Wireframe / Facets /
 //! ShadedWire modes, mouse orbit/pan, and zoom controls.
 use std::cell::Cell;
@@ -14,7 +14,7 @@ use wxdragon::timer::Timer;
 use wxdragon::window::BackgroundStyle;
 
 use crate::swarm::viewport::ObjRenderMode;
-use crate::wxfrieze::state::SharedState;
+use crate::frieze::state::SharedState;
 
 struct DragState {
     left_down: Cell<bool>,
@@ -32,7 +32,7 @@ pub fn build_obj_view_panel(parent: &Notebook, state: SharedState, path: PathBuf
     let toolbar_sizer = BoxSizer::builder(Orientation::Horizontal).build();
     let title_label = StaticText::builder(&toolbar)
         .with_label(&format!(
-            "WAVEFRONT 3D — {}",
+            "WAVEFRONT 3D ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â {}",
             path.file_name().and_then(|n| n.to_str()).unwrap_or("model.obj")
         ))
         .build();
@@ -90,6 +90,15 @@ pub fn build_obj_view_panel(parent: &Notebook, state: SharedState, path: PathBuf
         });
     }
     timer.start(33, false);
+
+    {
+        let canvas = canvas.clone();
+        canvas.on_size(move |evt| {
+            canvas.refresh(true, None);
+            evt.skip(true);
+        });
+    }
+
 
     {
         let drag = drag.clone();

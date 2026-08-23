@@ -1,4 +1,4 @@
-﻿//-- wxfrieze/app.rs ------------------------------------------------------------------------------------------------------------------
+//-- frieze/app.rs ------------------------------------------------------------------------------------------------------------------
 //! Assembles the native wxDragon Kosh application: main frame, menu bar, status bar, and the
 //! Explorer + document Notebook tab strip. This is the wxDragon-based replacement entry point
 //! for the egui/eframe `frieze` module.
@@ -10,18 +10,19 @@ use anyhow::anyhow;
 use wxdragon::widgets::{AuiManager, AuiPaneInfo};
 use wxdragon::event::menu_events::MenuEvents;
 use wxdragon::id::ID_EXIT;
+use crate::frieze::desktop::{ID_OPEN, ID_CLOSE};
 use wxdragon::prelude::*;
 
-use crate::wxfrieze::desktop::{
-    build_menu_bar, ID_CLOSE_TAB, ID_OPEN_FOLDER, ID_THEME_CYBERPUNK, ID_THEME_DARK, ID_THEME_LIGHT, ID_THEME_NORD,
+use crate::frieze::desktop::{
+    build_menu_bar, ID_THEME_CYBERPUNK, ID_THEME_DARK, ID_THEME_LIGHT, ID_THEME_NORD,
 };
-use crate::wxfrieze::explorer::build_explorer_panel;
-use crate::wxfrieze::fresco_view::build_fresco_view_panel;
-use crate::wxfrieze::obj_view::build_obj_view_panel;
-use crate::wxfrieze::img_view::build_img_view_panel;
-use crate::wxfrieze::pts_view::build_pts_view_panel;
-use crate::wxfrieze::state::{AppState, AppTheme, OpenTab, SharedState};
-use crate::wxfrieze::tab_bar::close_active_tab;
+use crate::frieze::explorer::build_explorer_panel;
+use crate::frieze::fresco_view::build_fresco_view_panel;
+use crate::frieze::obj_view::build_obj_view_panel;
+use crate::frieze::img_view::build_img_view_panel;
+use crate::frieze::pts_view::build_pts_view_panel;
+use crate::frieze::state::{AppState, AppTheme, OpenTab, SharedState};
+use crate::frieze::tab_bar::close_active_tab;
 
 /// Launches the native wxDragon-based Kosh desktop application window.
 pub fn run() -> anyhow::Result<()> {
@@ -36,6 +37,12 @@ pub fn run() -> anyhow::Result<()> {
         frame.set_menu_bar(build_menu_bar());
         let status_bar = frame.create_status_bar(1, 0, wxdragon::id::ID_ANY as i32, "");
         status_bar.set_status_text("Ready - Native Rust (wxDragon + wgpu + swarm)", 0);
+
+        if let Some(toolbar) = frame.create_tool_bar(None, wxdragon::id::ID_ANY as i32) {
+            let dummy_icon = wxdragon::bitmap::Bitmap::from_rgba(&vec![255; 16*16*4], 16, 16).unwrap();
+            toolbar.add_tool(ID_OPEN, "Open Folder", &dummy_icon, "Open a folder in the explorer");
+            toolbar.realize();
+        }
 
         let manager = AuiManager::builder(&frame).build();
 
@@ -65,12 +72,12 @@ pub fn run() -> anyhow::Result<()> {
         {
             let state = state.clone();
             frame.on_menu_selected(move |evt| match evt.get_id() {
-                ID_OPEN_FOLDER => {
+                ID_OPEN => {
                     if let Some(folder) = rfd::FileDialog::new().pick_folder() {
                         state.borrow_mut()._RootPath = folder;
                     }
                 }
-                ID_CLOSE_TAB => close_active_tab(&notebook),
+                ID_CLOSE => close_active_tab(&notebook, &state),
                 ID_EXIT => {
                     frame.close(false);
                 }
@@ -92,6 +99,13 @@ pub fn run() -> anyhow::Result<()> {
 /// Opens (or focuses) a document tab for the given file path, choosing the right native
 /// viewport (points / mesh / fresco / plain text) based on file extension.
 fn open_tab_for_path(notebook: &Notebook, state: &SharedState, path: &Path) {
+    let path_buf = path.to_path_buf();
+    let already_open = state.borrow()._OpenTabs.iter().position(|tab| tab._Path == path_buf);
+    if let Some(idx) = already_open {
+        notebook.set_selection(idx);
+        return;
+    }
+
     let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("file").to_string();
 

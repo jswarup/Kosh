@@ -1,4 +1,4 @@
-//-- wxfrieze/fresco_view.rs ----------------------------------------------------------------------------------------------------------
+//-- frieze/fresco_view.rs ----------------------------------------------------------------------------------------------------------
 //! Viewport for inspecting Fresco symbolic AST expressions (static informational panel).
 use wxdragon::prelude::*;
 use wxdragon::color::Colour;
@@ -13,7 +13,7 @@ pub fn build_fresco_view_panel(parent: &Notebook, uri: &str) -> Panel {
     let sizer = BoxSizer::builder(Orientation::Vertical).build();
 
     let header = StaticText::builder(&panel)
-        .with_label("ƒ FRESCO — Symbolic Expression Repository")
+        .with_label("Æ’ FRESCO â€” Symbolic Expression Repository")
         .build();
     header.set_foreground_color(Colour::rgb(137, 220, 235));
     sizer.add(&header, 0, SizerFlag::All, 10);

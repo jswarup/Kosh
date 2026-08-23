@@ -1,11 +1,11 @@
-﻿//-- wxfrieze/state.rs ----------------------------------------------------------------------------------------------------------------
+//-- frieze/state.rs ----------------------------------------------------------------------------------------------------------------
 use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::swarm::viewport::ObjRenderMode;
 use crate::swarm::Camera;
-use crate::wxfrieze::gpu_cache::GpuMeshCache;
+use crate::frieze::gpu_cache::GpuMeshCache;
 
 /// Active color theme preset for the wxDragon workspace.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

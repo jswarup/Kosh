@@ -9,6 +9,6 @@ pub mod fenst;
 pub mod fresco;
 pub mod swarm;
 pub mod fleck;
-pub mod wxfrieze;
+pub mod frieze;
 
 //---------------------------------------------------------------------------------------------------------------------------------

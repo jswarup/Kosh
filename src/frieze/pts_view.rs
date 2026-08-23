@@ -1,4 +1,4 @@
-//-- wxfrieze/pts_view.rs -------------------------------------------------------------------------------------------------------------
+//-- frieze/pts_view.rs -------------------------------------------------------------------------------------------------------------
 //! Native viewport for rendering 3D point clouds (`.pts`), with mouse orbit/pan and camera
 //! reset/zoom controls. Projection math mirrors the CPU projection used by the egui viewport;
 //! geometry loading/caching is shared via `crate::frieze::gpu_cache`.
@@ -14,7 +14,7 @@ use wxdragon::prelude::*;
 use wxdragon::timer::Timer;
 use wxdragon::window::BackgroundStyle;
 
-use crate::wxfrieze::state::SharedState;
+use crate::frieze::state::SharedState;
 
 struct DragState {
     left_down: Cell<bool>,
@@ -33,7 +33,7 @@ pub fn build_pts_view_panel(parent: &Notebook, state: SharedState, path: PathBuf
     let toolbar_sizer = BoxSizer::builder(Orientation::Horizontal).build();
     let title_label = StaticText::builder(&toolbar)
         .with_label(&format!(
-            "POINT CLOUD — {}",
+            "POINT CLOUD ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â {}",
             path.file_name().and_then(|n| n.to_str()).unwrap_or("point_cloud.pts")
         ))
         .build();
@@ -76,6 +76,15 @@ pub fn build_pts_view_panel(parent: &Notebook, state: SharedState, path: PathBuf
     timer.start(33, false);
 
     {
+        let canvas = canvas.clone();
+        canvas.on_size(move |evt| {
+            canvas.refresh(true, None);
+            evt.skip(true);
+        });
+    }
+
+
+    {
         let drag = drag.clone();
         canvas.on_mouse_left_down(move |evt| {
             if let WindowEventData::MouseButton(mb) = evt {
@@ -115,7 +124,13 @@ pub fn build_pts_view_panel(parent: &Notebook, state: SharedState, path: PathBuf
                 if let Some(pos) = mm.get_position() {
                     let dx = (pos.x - drag.last_x.get()) as f32;
                     let dy = (pos.y - drag.last_y.get()) as f32;
-                    if drag.right_down.get() {
+                    if drag.right_down.get() && drag.left_down.get() {
+                        let zoom_factor = 1.0 + (dy * 0.01);
+                        let mut st = state.borrow_mut();
+                        st._PtsCamera._Zoom *= zoom_factor;
+                        if st._PtsCamera._Zoom < 0.1 { st._PtsCamera._Zoom = 0.1; }
+                        canvas.refresh(false, None);
+                    } else if drag.right_down.get() {
                         state.borrow_mut()._PtsCamera.Pan(dx, dy);
                         canvas.refresh(false, None);
                     } else if drag.left_down.get() {
