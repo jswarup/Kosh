@@ -224,6 +224,35 @@ pub struct ProjectedLine
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
+/// 2D projected triangular facet with depth and shading attributes.
+#[derive( Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde( rename_all = "snake_case")]
+pub struct ProjectedFacet
+{
+    pub _P1:    ( f32, f32),
+    pub _P2:    ( f32, f32),
+    pub _P3:    ( f32, f32),
+    pub _ZAvg:  f32,
+    pub _Shade: u8,
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Frame payload containing projected mesh wireframes, facets, points, and status.
+#[derive( Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde( rename_all = "snake_case")]
+pub struct MeshFrameDto
+{
+    pub _Points:       Buff< ProjectedPoint>,
+    pub _WireLines:    Buff< ProjectedLine>,
+    pub _Facets:       Buff< ProjectedFacet>,
+    pub _PointCount:   usize,
+    pub _FaceCount:    usize,
+    pub _StatusText:   String,
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
 /// Phase 3: Quantized point data (7 bytes instead of 20 bytes = 65% bandwidth savings).
 /// Uses 16-bit screen coordinates and 8-bit attributes for sufficient precision in typical use.
 #[repr(C, packed)]
@@ -1169,5 +1198,154 @@ mod _tests
         assert_eq!( quant_size, 8);
         let  	ratio = quant_size as f64 / orig_size as f64;
         assert!( (ratio - 0.5).abs() < 0.01); // 50% of original = 50% savings
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Projects a 3D Wavefront mesh or point cloud using camera state and render mode,
+/// returning projected 2D primitives (points, wire lines, and depth-sorted shaded facets).
+pub fn	XplrProjectMesh(
+    points: &[ [f32; 3]],
+    triangles: &[ [u32; 3]],
+    camera: &Camera,
+    mode: crate::swarm::viewport::ObjRenderMode,
+    width: f32,
+    height: f32,
+) -> MeshFrameDto
+{
+    use crate::fleck::BBox3f;
+    use crate::swarm::viewport::ObjRenderMode;
+
+    if points.is_empty() {
+        return MeshFrameDto {
+            _Points:     Buff::New(),
+            _WireLines:  Buff::New(),
+            _Facets:     Buff::New(),
+            _PointCount: 0,
+            _FaceCount:  0,
+            _StatusText: "No geometry data available".to_string(),
+        };
+    }
+
+    let  	bbox = BBox3f::FromPoints( points);
+    let  	center = bbox.Center().Pos();
+    let  	scaleNorm = bbox.ScaleNorm( 240.0);
+
+    let  	projectedVerts: Vec< ( f32, f32, f32)> = points
+        .iter()
+        .map( |&p| {
+            let  	nx = ( p[0] - center[0]) * scaleNorm;
+            let  	ny = ( p[1] - center[1]) * scaleNorm;
+            let  	nz = ( p[2] - center[2]) * scaleNorm;
+            camera.Project( nx, ny, nz, width, height)
+        })
+        .collect();
+
+    let  	hasFaces = !triangles.is_empty();
+
+    let  	mut projectedPoints = Buff::New();
+    let  	mut wireLines = Buff::New();
+    let  	mut facets = Buff::New();
+
+    if !hasFaces || mode == ObjRenderMode::Points {
+        let  	pts = Buff::Create( crate::silo::U32( projectedVerts.len() as u32), |i| {
+            let  	pv = projectedVerts[i.AsUsize()];
+            ProjectedPoint {
+                _X:          pv.0,
+                _Y:          pv.1,
+                _Radius:     1.5,
+                _CoreRadius: 1.0,
+                _Alpha:      1.0,
+            }
+        });
+        projectedPoints = pts;
+    }
+
+    if !hasFaces {
+        let  	corners = bbox.Corners();
+        let  	projCorners: Vec< ( f32, f32, f32)> = corners
+            .iter()
+            .map( |c| {
+                let  	nx = ( c._X - center[0]) * scaleNorm;
+                let  	ny = ( c._Y - center[1]) * scaleNorm;
+                let  	nz = ( c._Z - center[2]) * scaleNorm;
+                camera.Project( nx, ny, nz, width, height)
+            })
+            .collect();
+
+        let  	edges = BBox3f::BoxEdges();
+        let  	boxLines = Buff::Create( crate::silo::U32( edges.len() as u32), |i| {
+            let  	( a, b) = edges[i.AsUsize()];
+            let  	p1 = projCorners[a];
+            let  	p2 = projCorners[b];
+            ProjectedLine {
+                _X1: p1.0,
+                _Y1: p1.1,
+                _X2: p2.0,
+                _Y2: p2.1,
+            }
+        });
+        wireLines = boxLines;
+    } else {
+        if mode == ObjRenderMode::Facets || mode == ObjRenderMode::ShadedWire {
+            let  	mut sortedTris: Vec< ( usize, f32)> = triangles
+                .iter()
+                .enumerate()
+                .map( |( i, tri)| {
+                    let  	zAvg = ( projectedVerts[tri[0] as usize].2
+                        + projectedVerts[tri[1] as usize].2
+                        + projectedVerts[tri[2] as usize].2)
+                        / 3.0;
+                    ( i, zAvg)
+                })
+                .collect();
+            sortedTris.sort_by( |a, b| b.1.partial_cmp( &a.1).unwrap_or( std::cmp::Ordering::Equal));
+
+            let  	facetBuff = Buff::Create( crate::silo::U32( sortedTris.len() as u32), |i| {
+                let  	( triIdx, z) = sortedTris[i.AsUsize()];
+                let  	tri = triangles[triIdx];
+                let  	a = projectedVerts[tri[0] as usize];
+                let  	b = projectedVerts[tri[1] as usize];
+                let  	c = projectedVerts[tri[2] as usize];
+                let  	shade = ( 200.0 - z).clamp( 60.0, 220.0) as u8;
+                ProjectedFacet {
+                    _P1:    ( a.0, a.1),
+                    _P2:    ( b.0, b.1),
+                    _P3:    ( c.0, c.1),
+                    _ZAvg:  z,
+                    _Shade: shade,
+                }
+            });
+            facets = facetBuff;
+        }
+
+        if mode == ObjRenderMode::Wireframe || mode == ObjRenderMode::ShadedWire {
+            let  	mut linesStash = crate::silo::Stash::WithCapacity( crate::silo::U32( (triangles.len() * 3) as u32));
+            for tri in triangles {
+                let  	a = projectedVerts[tri[0] as usize];
+                let  	b = projectedVerts[tri[1] as usize];
+                let  	c = projectedVerts[tri[2] as usize];
+                linesStash.Push( ProjectedLine { _X1: a.0, _Y1: a.1, _X2: b.0, _Y2: b.1 });
+                linesStash.Push( ProjectedLine { _X1: b.0, _Y1: b.1, _X2: c.0, _Y2: c.1 });
+                linesStash.Push( ProjectedLine { _X1: c.0, _Y1: c.1, _X2: a.0, _Y2: a.1 });
+            }
+            wireLines = linesStash.IntoBuff();
+        }
+    }
+
+    let  	statusText = if !hasFaces {
+        format!( "{} points", points.len())
+    } else {
+        format!( "{} verts | {} faces", points.len(), triangles.len())
+    };
+
+    MeshFrameDto {
+        _Points:     projectedPoints,
+        _WireLines:  wireLines,
+        _Facets:     facets,
+        _PointCount: points.len(),
+        _FaceCount:  triangles.len(),
+        _StatusText: statusText,
     }
 }

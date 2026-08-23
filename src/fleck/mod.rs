@@ -5,7 +5,7 @@ pub mod	ptio;
 pub mod	vex;
 pub mod	waveobjio;
 
-pub use	point::{ Dir3f, Pt3f, WPt2f, WPt3f };
+pub use	point::{ BBox3f, Dir3f, Pt3f, WPt2f, WPt3f };
 pub use	ptio::{ ParsePts, ParsePtsBytes, ParsePtsStream, PtsCloud, PtsPoint, PtsShard };
 pub use	vex::*;
 pub use	waveobjio::{

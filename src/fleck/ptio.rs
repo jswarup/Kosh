@@ -2,7 +2,7 @@
 use	std::fmt;
 use	crate::{
     fenst::PtsPointsDto,
-    fleck::Pt3f,
+    fleck::{ BBox3f, Pt3f },
     flux::instream::{ FixedStream, IStream },
     shard::{ IGrammar, Parser, Real, Charset },
     silo::{ Buff, Stash, IAccess, U32, U8 },
@@ -173,30 +173,25 @@ impl PtsCloud
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	BoundingBox( &self) -> ([f32; 3], [f32; 3])
+    pub fn	BoundingBox( &self) -> ( [f32; 3], [f32; 3])
     {
         if self._Points.IsEmpty() {
-            return ( [0.0, 0.0, 0.0], [0.0, 0.0, 0.0] );
+            return ( [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]);
         }
-        let  	mut minX = f32::MAX;
-        let  	mut minY = f32::MAX;
-        let  	mut minZ = f32::MAX;
-        let  	mut maxX = f32::MIN;
-        let  	mut maxY = f32::MIN;
-        let  	mut maxZ = f32::MIN;
-
         let  	arr = self._Points.Arr();
+        let  	mut bbox = BBox3f::Empty();
         let  	sz = self._Points.Size().AsUsize();
         for i in 0..sz {
             let  	pt = arr.At( U32( i as u32));
-            minX = minX.min( pt._Pos._X);
-            minY = minY.min( pt._Pos._Y);
-            minZ = minZ.min( pt._Pos._Z);
-            maxX = maxX.max( pt._Pos._X);
-            maxY = maxY.max( pt._Pos._Y);
-            maxZ = maxZ.max( pt._Pos._Z);
+            bbox.Extend( pt._Pos);
         }
-        ( [minX, minY, minZ], [maxX, maxY, maxZ])
+        ( bbox.Min(), bbox.Max())
+    }
+
+    pub fn	BBox( &self) -> BBox3f
+    {
+        let  	( bboxMin, bboxMax) = self.BoundingBox();
+        BBox3f::New( Pt3f::from( bboxMin), Pt3f::from( bboxMax))
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 use	std::fmt;
 use	crate::{
     fenst::{ PtsPointsDto, WaveObjMeshDto },
-    fleck::{ Dir3f, WPt2f, WPt3f },
+    fleck::{ BBox3f, Dir3f, Pt3f, WPt2f, WPt3f },
     flux::instream::{ FixedStream, IStream },
     shard::{ IGrammar, Parser, Charset },
     silo::{ Buff, Stash, IAccess, U32, U8 },
@@ -197,23 +197,18 @@ impl WaveObjModel
             return ( [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]);
         }
         let  	arr = self._Vertices.Arr();
-        let  	first = arr.At( U32( 0));
-        let  	mut minX = first._X;
-        let  	mut minY = first._Y;
-        let  	mut minZ = first._Z;
-        let  	mut maxX = first._X;
-        let  	mut maxY = first._Y;
-        let  	mut maxZ = first._Z;
-        for i in 1..self._Vertices.Size().AsUsize() {
+        let  	mut bbox = BBox3f::Empty();
+        for i in 0..self._Vertices.Size().AsUsize() {
             let  	v = arr.At( U32( i as u32));
-            if v._X < minX { minX = v._X; }
-            if v._Y < minY { minY = v._Y; }
-            if v._Z < minZ { minZ = v._Z; }
-            if v._X > maxX { maxX = v._X; }
-            if v._Y > maxY { maxY = v._Y; }
-            if v._Z > maxZ { maxZ = v._Z; }
+            bbox.Extend( Pt3f::New( v._X, v._Y, v._Z));
         }
-        ( [minX, minY, minZ], [maxX, maxY, maxZ])
+        ( bbox.Min(), bbox.Max())
+    }
+
+    pub fn	BBox( &self) -> BBox3f
+    {
+        let  	( bboxMin, bboxMax) = self.BoundingBox();
+        BBox3f::New( Pt3f::from( bboxMin), Pt3f::from( bboxMax))
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

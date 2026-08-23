@@ -1,7 +1,7 @@
 ﻿//-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 
 use	crate::{
-    fleck::ptio::{ ParsePts, ParsePtsBytes, ParsePtsStream, PtsCloud, PtsShard },
+    fleck::{ BBox3f, Pt3f, ptio::{ ParsePts, ParsePtsBytes, ParsePtsStream, PtsCloud, PtsShard } },
     flux::instream::FixedStream,
     shard::Parser,
     silo::{ IAccess, U32, U8 },
@@ -932,6 +932,44 @@ fn	TestBuffVectorSpaceAndInnerProduct()
 
     let  	splatBuff = Buff::< U8>::Splat( U8( 255), 4);
     assert_eq!( splatBuff, Buff![ U8( 255), U8( 255), U8( 255), U8( 255) ]);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestBBox3fBasicOps()
+{
+    let  	empty = BBox3f::Empty();
+    assert!( empty.IsEmpty());
+
+    let  	points = [
+        [ -10.0f32, 5.0, 20.0 ],
+        [ 30.0, -15.0, 40.0 ],
+        [ 0.0, 25.0, -5.0 ],
+    ];
+    let  	bbox = BBox3f::FromPoints( &points);
+    assert!( !bbox.IsEmpty());
+
+    assert_eq!( bbox.Min(), [ -10.0, -15.0, -5.0 ]);
+    assert_eq!( bbox.Max(), [ 30.0, 25.0, 40.0 ]);
+
+    let  	center = bbox.Center();
+    assert_eq!( center, Pt3f::New( 10.0, 5.0, 17.5));
+
+    let  	extent = bbox.Extent();
+    assert_eq!( extent, Pt3f::New( 40.0, 40.0, 45.0));
+    assert_eq!( bbox.MaxDim(), 45.0);
+
+    let  	scaleNorm = bbox.ScaleNorm( 240.0);
+    assert!(( scaleNorm - ( 240.0 / 45.0)).abs() < 1e-5);
+
+    let  	corners = bbox.Corners();
+    assert_eq!( corners.len(), 8);
+    assert_eq!( corners[0], Pt3f::New( -10.0, -15.0, -5.0));
+    assert_eq!( corners[6], Pt3f::New( 30.0, 25.0, 40.0));
+
+    let  	edges = BBox3f::BoxEdges();
+    assert_eq!( edges.len(), 12);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

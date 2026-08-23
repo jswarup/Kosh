@@ -36,9 +36,21 @@ pub trait Xplr
 {
     fn	Name( &self) -> &str;
     fn	Path( &self) -> &str;
-    fn	IsLeaf( &self) -> bool;
-    fn	AsLeaf( &self) -> Option< &dyn LeafXplr>;
-    fn	AsBranch( &self) -> Option< &dyn BranchXplr>;
+
+    fn	IsLeaf( &self) -> bool
+    {
+        self.AsLeaf().is_some()
+    }
+
+    fn	AsLeaf( &self) -> Option< &dyn LeafXplr>
+    {
+        None
+    }
+
+    fn	AsBranch( &self) -> Option< &dyn BranchXplr>
+    {
+        None
+    }
 
     fn	ToDto( &self, providerScheme: &str) -> XplrNodeDto
     {

@@ -1,11 +1,64 @@
 //-- frieze/state.rs ----------------------------------------------------------------------------------------------------------------
 use	std::cell::RefCell;
-use	std::path::PathBuf;
+use	std::path::{ Path, PathBuf };
 use	std::rc::Rc;
 
 use	crate::frieze::gpu_cache::GpuMeshCache;
 use	crate::swarm::viewport::ObjRenderMode;
 use	crate::swarm::Camera;
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Document kind for an open tab.
+#[derive( Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TabKind
+{
+    Pts,
+    Obj,
+    Fresco,
+    Image,
+    Text,
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+impl TabKind
+{
+    pub fn	FromPath( path: &Path) -> Self
+    {
+        let  	ext = path.extension().and_then( |e| e.to_str()).unwrap_or( "").to_lowercase();
+        if ext == "pts" {
+            TabKind::Pts
+        } else if ext == "obj" {
+            TabKind::Obj
+        } else if ext == "fresco" || ext == "frsc" {
+            TabKind::Fresco
+        } else if ext == "png" || ext == "jpg" || ext == "jpeg" {
+            TabKind::Image
+        } else {
+            TabKind::Text
+        }
+    }
+
+    pub fn	Badge( &self) -> &str
+    {
+        match self {
+            TabKind::Pts => "PTS",
+            TabKind::Obj => "OBJ",
+            TabKind::Fresco => "FRESCO",
+            TabKind::Image => "IMG",
+            TabKind::Text => "TXT",
+        }
+    }
+
+    pub fn	TabLabel( &self, name: &str) -> String
+    {
+        match self {
+            TabKind::Text => name.to_string(),
+            _ => format!( "{}  {}", self.Badge(), name),
+        }
+    }
+}
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -61,12 +114,28 @@ impl AppTheme
 #[derive( Clone, Debug)]
 pub struct OpenTab
 {
-    pub _Path:     PathBuf,
-    pub _Name:     String,
-    pub _IsPts:    bool,
-    pub _IsObj:    bool,
-    pub _IsFresco: bool,
-    pub _IsImg:    bool,
+    pub _Path: PathBuf,
+    pub _Name: String,
+    pub _Kind: TabKind,
+}
+
+impl OpenTab
+{
+    pub fn	New( path: PathBuf) -> Self
+    {
+        let  	name = path.file_name().and_then( |n| n.to_str()).unwrap_or( "file").to_string();
+        let  	kind = TabKind::FromPath( &path);
+        Self {
+            _Path: path,
+            _Name: name,
+            _Kind: kind,
+        }
+    }
+
+    pub fn	IsPts( &self) -> bool { self._Kind == TabKind::Pts }
+    pub fn	IsObj( &self) -> bool { self._Kind == TabKind::Obj }
+    pub fn	IsFresco( &self) -> bool { self._Kind == TabKind::Fresco }
+    pub fn	IsImg( &self) -> bool { self._Kind == TabKind::Image }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------

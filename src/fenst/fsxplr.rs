@@ -1,4 +1,4 @@
-﻿//-- fenst/fsxplr.rs ---------------------------------------------------------------------------------------------------------------
+//-- fenst/fsxplr.rs ---------------------------------------------------------------------------------------------------------------
 use	crate::fenst::xplr::{ Xplr, LeafXplr, BranchXplr };
 use	crate::silo::{ Buff, U32 };
 use	std::fs;
@@ -48,19 +48,9 @@ impl Xplr for FsLeaf
         &self._Path
     }
 
-    fn	IsLeaf( &self) -> bool
-    {
-        true
-    }
-
     fn	AsLeaf( &self) -> Option< &dyn LeafXplr>
     {
         Some( self)
-    }
-
-    fn	AsBranch( &self) -> Option< &dyn BranchXplr>
-    {
-        None
     }
 }
 
@@ -116,16 +106,6 @@ impl Xplr for FsBranch
     fn	Path( &self) -> &str
     {
         &self._Path
-    }
-
-    fn	IsLeaf( &self) -> bool
-    {
-        false
-    }
-
-    fn	AsLeaf( &self) -> Option< &dyn LeafXplr>
-    {
-        None
     }
 
     fn	AsBranch( &self) -> Option< &dyn BranchXplr>

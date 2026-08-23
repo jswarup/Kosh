@@ -1,7 +1,7 @@
 //-- fenst/provider.rs -------------------------------------------------------------------------------------------------------------
-use	crate::fenst::xplr::BranchXplr;
+use	crate::fenst::xplr::{ Xplr, LeafXplr, BranchXplr };
 use	crate::fenst::fsxplr::FsBranch;
-use	crate::silo::Buff;
+use	crate::silo::{ Buff, U32 };
 use	std::collections::HashMap;
 use	std::sync::{ Arc, RwLock };
 
@@ -11,6 +11,145 @@ pub trait XplrProvider: Send + Sync
 {
     fn	Scheme( &self) -> &str;
     fn	OpenRoot( &self, uri: &str) -> Result< Box< dyn BranchXplr>, String>;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Generic in-memory virtual leaf node.
+pub struct VirtualLeaf
+{
+    pub _Name:      String,
+    pub _Path:      String,
+    pub _Extension: String,
+    pub _Size:      u64,
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+impl VirtualLeaf
+{
+    pub fn	New( name: String, path: String, extension: String, size: u64) -> Self
+    {
+        Self {
+            _Name:      name,
+            _Path:      path,
+            _Extension: extension,
+            _Size:      size,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+impl Xplr for VirtualLeaf
+{
+    fn	Name( &self) -> &str
+    {
+        &self._Name
+    }
+
+    fn	Path( &self) -> &str
+    {
+        &self._Path
+    }
+
+    fn	AsLeaf( &self) -> Option< &dyn LeafXplr>
+    {
+        Some( self)
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+impl LeafXplr for VirtualLeaf
+{
+    fn	Size( &self) -> u64
+    {
+        self._Size
+    }
+
+    fn	Extension( &self) -> &str
+    {
+        &self._Extension
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Generic in-memory virtual branch node holding child Xplr nodes.
+pub struct VirtualBranch
+{
+    pub _Name:     String,
+    pub _Path:     String,
+    pub _Children: Buff< Box< dyn Xplr>>,
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+impl VirtualBranch
+{
+    pub fn	New( name: String, path: String, children: Buff< Box< dyn Xplr>>) -> Self
+    {
+        Self {
+            _Name:     name,
+            _Path:     path,
+            _Children: children,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+impl Xplr for VirtualBranch
+{
+    fn	Name( &self) -> &str
+    {
+        &self._Name
+    }
+
+    fn	Path( &self) -> &str
+    {
+        &self._Path
+    }
+
+    fn	AsBranch( &self) -> Option< &dyn BranchXplr>
+    {
+        Some( self)
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+impl BranchXplr for VirtualBranch
+{
+    fn	Children( &self) -> Result< Buff< Box< dyn Xplr>>, String>
+    {
+        let  	children = Buff::Create( self._Children.Size(), |i| {
+            let  	child = &self._Children[i.AsUsize()];
+            if let Some( leaf) = child.AsLeaf() {
+                let  	leafBox: Box< dyn Xplr> = Box::new( VirtualLeaf::New(
+                    child.Name().to_string(),
+                    child.Path().to_string(),
+                    leaf.Extension().to_string(),
+                    leaf.Size(),
+                ));
+                leafBox
+            } else {
+                let  	branchBox: Box< dyn Xplr> = Box::new( VirtualBranch::New(
+                    child.Name().to_string(),
+                    child.Path().to_string(),
+                    Buff::New(),
+                ));
+                branchBox
+            }
+        });
+        Ok( children)
+    }
+
+    fn	ChildCount( &self) -> Result< U32, String>
+    {
+        Ok( self._Children.Size())
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------

@@ -568,8 +568,10 @@ pub fn	XplrFetchPtsPoints( spirvBytes: &[u8]) -> Result< PtsPointsDto, String>
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/// Parses a .pts point cloud file from disk using flux::BuffStream and fleck::ParsePtsStream.
-pub fn	XplrParsePtsFile( path: &str) -> Result< PtsPointsDto, String>
+/// Helper to open and ingest a file with BuffStream for geometry or document parsers.
+pub fn	ParseFileWithStream< T, F>( path: &str, parser: F) -> Result< T, String>
+where
+    F: FnOnce( &mut BuffStream< std::fs::File>) -> Result< T, String>,
 {
     let  	filePath = PathBuf::from( path);
     if !filePath.exists() {
@@ -585,8 +587,18 @@ pub fn	XplrParsePtsFile( path: &str) -> Result< PtsPointsDto, String>
     stream.ReadAll()
         .map_err( |e| format!( "Failed to read stream for {}: {}", path, e))?;
 
-    let  	cloud = crate::fleck::ParsePtsStream( &mut stream)
-        .map_err( |e| format!( "Failed to parse .pts stream for {}: {}", path, e))?;
+    parser( &mut stream)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/// Parses a .pts point cloud file from disk using flux::BuffStream and fleck::ParsePtsStream.
+pub fn	XplrParsePtsFile( path: &str) -> Result< PtsPointsDto, String>
+{
+    let  	cloud = ParseFileWithStream( path, |stream| {
+        crate::fleck::ParsePtsStream( stream)
+            .map_err( |e| format!( "Failed to parse .pts stream for {}: {}", path, e))
+    })?;
 
     Ok( cloud.ToDto())
 }
@@ -596,22 +608,10 @@ pub fn	XplrParsePtsFile( path: &str) -> Result< PtsPointsDto, String>
 /// Parses a Wavefront .obj 3D mesh file from disk using flux::BuffStream and fleck::ParseWaveObjStream.
 pub fn	XplrParseWaveObjFile( path: &str) -> Result< WaveObjMeshDto, String>
 {
-    let  	filePath = PathBuf::from( path);
-    if !filePath.exists() {
-        return Err( format!( "File does not exist: {}", path));
-    }
-    if !filePath.is_file() {
-        return Err( format!( "Path is not a file: {}", path));
-    }
-
-    let  	mut stream = BuffStream::FromFile( &filePath)
-        .map_err( |e| format!( "Failed to open file stream for {}: {}", path, e))?;
-
-    stream.ReadAll()
-        .map_err( |e| format!( "Failed to read stream for {}: {}", path, e))?;
-
-    let  	model = crate::fleck::ParseWaveObjStream( &mut stream)
-        .map_err( |e| format!( "Failed to parse .obj stream for {}: {}", path, e))?;
+    let  	model = ParseFileWithStream( path, |stream| {
+        crate::fleck::ParseWaveObjStream( stream)
+            .map_err( |e| format!( "Failed to parse .obj stream for {}: {}", path, e))
+    })?;
 
     Ok( model.ToMeshDto())
 }
@@ -630,7 +630,8 @@ pub use	xplr::{ Xplr, LeafXplr, BranchXplr, XplrNodeDto, StreamChunkDto };
 pub use	fsxplr::{ FsLeaf, FsBranch };
 pub use	frescoxplr::{ FrescoLeaf, FrescoBranch, FrescoProvider };
 pub use	shardxplr::{ ShardLeaf, ShardBranch, ShardProvider };
-pub use	provider::{ XplrProvider, FsProvider, XplrRegistry, SharedXplrRegistry, CreateDefaultRegistry };
+pub use	provider::{ XplrProvider, FsProvider, VirtualLeaf, VirtualBranch, XplrRegistry, SharedXplrRegistry, CreateDefaultRegistry };
+pub use	xplrcmds::{ ProjectedFacet, MeshFrameDto, XplrProjectMesh };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 

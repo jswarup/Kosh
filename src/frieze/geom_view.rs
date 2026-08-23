@@ -293,129 +293,65 @@ fn	draw_geom_frame( dc: &AutoBufferedPaintDC, canvas: &Panel, state: &SharedStat
         ( st._Camera, st._ActiveObjMode)
     };
 
-    let  	centerX = width / 2.0;
-    let  	centerY = height / 2.0;
-    let  	cosY = camera._RotY.cos();
-    let  	sinY = camera._RotY.sin();
-    let  	cosX = camera._RotX.cos();
-    let  	sinX = camera._RotX.sin();
-
-    let  	project = |v: [f32; 3]| -> ( f32, f32, f32) {
-        let  	x1 = v[0] * cosY + v[2] * sinY;
-        let  	z1 = -v[0] * sinY + v[2] * cosY;
-        let  	y2 = v[1] * cosX - z1 * sinX;
-        let  	z2 = v[1] * sinX + z1 * cosX;
-        let  	scale = ( 350.0 * camera._Zoom) / ( 300.0 + z2).max( 10.0);
-        ( centerX + camera._PanX + x1 * scale, centerY + camera._PanY - y2 * scale, z2)
-    };
-
     let  	Some( mesh) = mesh else {
         dc.set_text_foreground( Colour::rgb( 166, 173, 200));
         dc.draw_text( "No geometry data available", 12, 10);
         return;
     };
 
-    let  	cx = mesh._Center[0];
-    let  	cy = mesh._Center[1];
-    let  	cz = mesh._Center[2];
-    let  	scaleNorm = mesh._ScaleNorm;
-
-    let  	localOf = |p: [f32; 3]| -> [f32; 3] {
-        [( p[0] - cx) * scaleNorm, ( p[1] - cy) * scaleNorm, ( p[2] - cz) * scaleNorm]
-    };
+    let  	frame = crate::fenst::XplrProjectMesh(
+        &mesh._Points,
+        &mesh._Triangles,
+        &camera,
+        mode,
+        width,
+        height,
+    );
 
     let  	hasFaces = mesh.FaceCount() > 0;
-    let  	projectedVerts: Vec< ( f32, f32, f32)> = mesh._Points.iter().map( |&p| project( localOf( p))).collect();
 
-    // If point cloud only, draw points and bounding box
-    if !hasFaces {
-        let  	[minX, minY, minZ] = mesh._BboxMin;
-        let  	[maxX, maxY, maxZ] = mesh._BboxMax;
-        let  	bboxVerts = [
-            [( minX - cx) * scaleNorm, ( minY - cy) * scaleNorm, ( minZ - cz) * scaleNorm],
-            [( maxX - cx) * scaleNorm, ( minY - cy) * scaleNorm, ( minZ - cz) * scaleNorm],
-            [( maxX - cx) * scaleNorm, ( maxY - cy) * scaleNorm, ( minZ - cz) * scaleNorm],
-            [( minX - cx) * scaleNorm, ( maxY - cy) * scaleNorm, ( minZ - cz) * scaleNorm],
-            [( minX - cx) * scaleNorm, ( minY - cy) * scaleNorm, ( maxZ - cz) * scaleNorm],
-            [( maxX - cx) * scaleNorm, ( minY - cy) * scaleNorm, ( maxZ - cz) * scaleNorm],
-            [( maxX - cx) * scaleNorm, ( maxY - cy) * scaleNorm, ( maxZ - cz) * scaleNorm],
-            [( minX - cx) * scaleNorm, ( maxY - cy) * scaleNorm, ( maxZ - cz) * scaleNorm],
-        ];
-        let  	projBox: Vec< ( f32, f32, f32)> = bboxVerts.iter().map( |&v| project( v)).collect();
-        let  	boxEdges = [(0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4), (0, 4), (1, 5), (2, 6), (3, 7)];
-
-        dc.set_pen( Colour::new( 0, 243, 255, 90), 1, PenStyle::Solid);
-        for &( a, b) in &boxEdges {
-            let  	( x1, y1, _) = projBox[a];
-            let  	( x2, y2, _) = projBox[b];
-            dc.draw_line( x1 as i32, y1 as i32, x2 as i32, y2 as i32);
-        }
-
-        dc.set_pen( Colour::rgb( 137, 220, 235), 1, PenStyle::Solid);
-        dc.set_brush( Colour::rgb( 137, 220, 235), BrushStyle::Solid);
-        for &( x, y, _) in &projectedVerts {
-            dc.draw_circle( x as i32, y as i32, 1);
-        }
-
-        dc.set_text_foreground( Colour::rgb( 137, 220, 235));
-        dc.draw_text( &format!( "{} points", mesh.PointCount()), 12, 10);
-        return;
-    }
-
-    // Mesh rendering with triangles
-    if mode == ObjRenderMode::Facets || mode == ObjRenderMode::ShadedWire {
-        let  	mut tris: Vec< ( usize, f32)> = mesh
-            ._Triangles
-            .iter()
-            .enumerate()
-            .map( |( i, tri)| {
-                let  	zAvg = ( projectedVerts[tri[0] as usize].2
-                    + projectedVerts[tri[1] as usize].2
-                    + projectedVerts[tri[2] as usize].2)
-                    / 3.0;
-                ( i, zAvg)
-            })
-            .collect();
-        tris.sort_by( |a, b| b.1.partial_cmp( &a.1).unwrap_or( std::cmp::Ordering::Equal));
-
+    // 1. Draw Facets
+    if !frame._Facets.is_empty() {
         dc.set_pen( Colour::rgb( 203, 166, 247), 1, PenStyle::Solid);
-        for ( i, z) in tris {
-            let  	tri = mesh._Triangles[i];
-            let  	a = projectedVerts[tri[0] as usize];
-            let  	b = projectedVerts[tri[1] as usize];
-            let  	c = projectedVerts[tri[2] as usize];
-            let  	shade = ( ( 200.0 - z).clamp( 60.0, 220.0)) as u8;
+        for facet in frame._Facets.iter() {
+            let  	shade = facet._Shade;
             dc.set_brush( Colour::rgb( shade, ( shade as f32 * 0.75) as u8, ( shade as f32 * 0.95) as u8), BrushStyle::Solid);
             let  	poly = [
-                DcPoint { x: a.0 as i32, y: a.1 as i32 },
-                DcPoint { x: b.0 as i32, y: b.1 as i32 },
-                DcPoint { x: c.0 as i32, y: c.1 as i32 },
+                DcPoint { x: facet._P1.0 as i32, y: facet._P1.1 as i32 },
+                DcPoint { x: facet._P2.0 as i32, y: facet._P2.1 as i32 },
+                DcPoint { x: facet._P3.0 as i32, y: facet._P3.1 as i32 },
             ];
             dc.draw_polygon( &poly, 0, 0, PolygonFillMode::OddEven);
         }
     }
 
-    if mode == ObjRenderMode::Wireframe || mode == ObjRenderMode::ShadedWire {
-        dc.set_pen( Colour::rgb( 203, 166, 247), 1, PenStyle::Solid);
-        for edge in mesh._Triangles.iter() {
-            let  	a = projectedVerts[edge[0] as usize];
-            let  	b = projectedVerts[edge[1] as usize];
-            let  	c = projectedVerts[edge[2] as usize];
-            dc.draw_line( a.0 as i32, a.1 as i32, b.0 as i32, b.1 as i32);
-            dc.draw_line( b.0 as i32, b.1 as i32, c.0 as i32, c.1 as i32);
-            dc.draw_line( c.0 as i32, c.1 as i32, a.0 as i32, a.1 as i32);
+    // 2. Draw Wireframe Lines
+    if !frame._WireLines.is_empty() {
+        if !hasFaces {
+            dc.set_pen( Colour::new( 0, 243, 255, 90), 1, PenStyle::Solid);
+        } else {
+            dc.set_pen( Colour::rgb( 203, 166, 247), 1, PenStyle::Solid);
+        }
+        for line in frame._WireLines.iter() {
+            dc.draw_line( line._X1 as i32, line._Y1 as i32, line._X2 as i32, line._Y2 as i32);
         }
     }
 
-    if mode == ObjRenderMode::Points {
-        dc.set_pen( Colour::rgb( 203, 166, 247), 1, PenStyle::Solid);
-        dc.set_brush( Colour::rgb( 203, 166, 247), BrushStyle::Solid);
-        for &( x, y, _) in &projectedVerts {
-            dc.draw_circle( x as i32, y as i32, 1);
+    // 3. Draw Points
+    if !frame._Points.is_empty() {
+        let  	col = if !hasFaces { Colour::rgb( 137, 220, 235) } else { Colour::rgb( 203, 166, 247) };
+        dc.set_pen( col, 1, PenStyle::Solid);
+        dc.set_brush( col, BrushStyle::Solid);
+        for pt in frame._Points.iter() {
+            dc.draw_circle( pt._X as i32, pt._Y as i32, 1);
         }
     }
 
-    dc.set_text_foreground( Colour::rgb( 203, 166, 247));
-    dc.draw_text( &format!( "{} verts | {} faces", mesh.PointCount(), mesh.FaceCount()), 12, 10);
+    // 4. Draw Status Overlay
+    let  	textCol = if !hasFaces { Colour::rgb( 137, 220, 235) } else { Colour::rgb( 203, 166, 247) };
+    dc.set_text_foreground( textCol);
+    dc.draw_text( &frame._StatusText, 12, 10);
     return;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------

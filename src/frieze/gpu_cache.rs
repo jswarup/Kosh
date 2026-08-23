@@ -1,7 +1,8 @@
-﻿//-- frieze/gpu_cache.rs -------------------------------------------------------------------------------------------------------------
+//-- frieze/gpu_cache.rs -------------------------------------------------------------------------------------------------------------
 use	std::collections::HashMap;
 use	std::path::{ Path, PathBuf };
 use	wgpu::Device;
+use	crate::fleck::BBox3f;
 use	crate::silo::Buff;
 use	crate::swarm::viewport::{ GpuMesh, ViewportVertex };
 use	crate::fenst::{ XplrParsePtsFile, XplrParseWaveObjFile };
@@ -21,6 +22,8 @@ pub struct LoadedMesh
     pub _ScaleNorm:     f32,
     pub _GpuMesh:       Option< GpuMesh>,
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------
 
 impl LoadedMesh
 {
@@ -43,6 +46,8 @@ pub struct GpuMeshCache
 {
     _Cache: HashMap< PathBuf, LoadedMesh>,
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------
 
 impl GpuMeshCache
 {
@@ -74,30 +79,11 @@ impl GpuMeshCache
             let  	dto = XplrParsePtsFile( &pathStr).ok()?;
             let  	pts = dto._Points;
 
-            let  	mut minX = f32::MAX; let  	mut maxX = f32::MIN;
-            let  	mut minY = f32::MAX; let  	mut maxY = f32::MIN;
-            let  	mut minZ = f32::MAX; let  	mut maxZ = f32::MIN;
-
-            for p in pts.iter() {
-                minX = minX.min( p[0]); maxX = maxX.max( p[0]);
-                minY = minY.min( p[1]); maxY = maxY.max( p[1]);
-                minZ = minZ.min( p[2]); maxZ = maxZ.max( p[2]);
-            }
-
-            if minX == f32::MAX {
-                minX = -50.0; maxX = 50.0;
-                minY = -50.0; maxY = 50.0;
-                minZ = -50.0; maxZ = 50.0;
-            }
-
-            let  	cx = ( minX + maxX) * 0.5;
-            let  	cy = ( minY + maxY) * 0.5;
-            let  	cz = ( minZ + maxZ) * 0.5;
-            let  	dx = maxX - minX;
-            let  	dy = maxY - minY;
-            let  	dz = maxZ - minZ;
-            let  	maxDim = dx.max( dy).max( dz);
-            let  	scaleNorm = if maxDim > 1e-4 { 240.0 / maxDim } else { 1.0 };
+            let  	bbox = BBox3f::FromPoints( &pts);
+            let  	min = bbox.Min();
+            let  	max = bbox.Max();
+            let  	center = bbox.Center().Pos();
+            let  	scaleNorm = bbox.ScaleNorm( 240.0);
 
             let  	gpuMesh = device.map( |dev| {
                 let  	vertices: Vec< ViewportVertex> = pts.iter().map( |p| {
@@ -112,8 +98,8 @@ impl GpuMeshCache
                     &vertices,
                     None,
                     None,
-                    [minX, minY, minZ],
-                    [maxX, maxY, maxZ],
+                    min,
+                    max,
                 )
             });
 
@@ -121,9 +107,9 @@ impl GpuMeshCache
                 _Points:    pts,
                 _Normals:   Buff::New(),
                 _Triangles: Buff::New(),
-                _BboxMin:   [minX, minY, minZ],
-                _BboxMax:   [maxX, maxY, maxZ],
-                _Center:    [cx, cy, cz],
+                _BboxMin:   min,
+                _BboxMax:   max,
+                _Center:    center,
                 _ScaleNorm: scaleNorm,
                 _GpuMesh:   gpuMesh,
             })
@@ -133,30 +119,11 @@ impl GpuMeshCache
             let  	normals = dto._Normals;
             let  	triangles = dto._Triangles;
 
-            let  	mut minX = f32::MAX; let  	mut maxX = f32::MIN;
-            let  	mut minY = f32::MAX; let  	mut maxY = f32::MIN;
-            let  	mut minZ = f32::MAX; let  	mut maxZ = f32::MIN;
-
-            for p in pts.iter() {
-                minX = minX.min( p[0]); maxX = maxX.max( p[0]);
-                minY = minY.min( p[1]); maxY = maxY.max( p[1]);
-                minZ = minZ.min( p[2]); maxZ = maxZ.max( p[2]);
-            }
-
-            if minX == f32::MAX {
-                minX = -50.0; maxX = 50.0;
-                minY = -50.0; maxY = 50.0;
-                minZ = -50.0; maxZ = 50.0;
-            }
-
-            let  	cx = ( minX + maxX) * 0.5;
-            let  	cy = ( minY + maxY) * 0.5;
-            let  	cz = ( minZ + maxZ) * 0.5;
-            let  	dx = maxX - minX;
-            let  	dy = maxY - minY;
-            let  	dz = maxZ - minZ;
-            let  	maxDim = dx.max( dy).max( dz);
-            let  	scaleNorm = if maxDim > 1e-4 { 240.0 / maxDim } else { 1.0 };
+            let  	bbox = BBox3f::FromPoints( &pts);
+            let  	min = bbox.Min();
+            let  	max = bbox.Max();
+            let  	center = bbox.Center().Pos();
+            let  	scaleNorm = bbox.ScaleNorm( 240.0);
 
             let  	gpuMesh = device.map( |dev| {
                 let  	vertices: Vec< ViewportVertex> = pts.iter().enumerate().map( |( i, p)| {
@@ -181,8 +148,8 @@ impl GpuMeshCache
                     &vertices,
                     Some( &indices),
                     Some( &wireIndices),
-                    [minX, minY, minZ],
-                    [maxX, maxY, maxZ],
+                    min,
+                    max,
                 )
             });
 
@@ -190,9 +157,9 @@ impl GpuMeshCache
                 _Points:    pts,
                 _Normals:   normals,
                 _Triangles: triangles,
-                _BboxMin:   [minX, minY, minZ],
-                _BboxMax:   [maxX, maxY, maxZ],
-                _Center:    [cx, cy, cz],
+                _BboxMin:   min,
+                _BboxMax:   max,
+                _Center:    center,
                 _ScaleNorm: scaleNorm,
                 _GpuMesh:   gpuMesh,
             })
@@ -201,3 +168,5 @@ impl GpuMeshCache
         }
     }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------

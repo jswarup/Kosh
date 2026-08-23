@@ -248,3 +248,141 @@ impl From< WPt2f> for Vex2f
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+/// Represents an axis-aligned 3D bounding box with 32-bit floating-point coordinates.
+#[derive( Clone, Copy, Debug, PartialEq)]
+pub struct BBox3f
+{
+    pub _Min: Pt3f,
+    pub _Max: Pt3f,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl Default for BBox3f
+{
+    fn	default() -> Self
+    {
+        Self::Empty()
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl BBox3f
+{
+    pub fn	New( min: Pt3f, max: Pt3f) -> Self
+    {
+        Self {
+            _Min: min,
+            _Max: max,
+        }
+    }
+
+    pub fn	Empty() -> Self
+    {
+        Self {
+            _Min: Pt3f::New( f32::MAX, f32::MAX, f32::MAX),
+            _Max: Pt3f::New( f32::MIN, f32::MIN, f32::MIN),
+        }
+    }
+
+    pub fn	FromPoints( points: &[ [f32; 3]]) -> Self
+    {
+        let  	mut bbox = Self::Empty();
+        for &p in points {
+            bbox.Extend( Pt3f::from( p));
+        }
+        if bbox.IsEmpty() {
+            bbox = Self::New( Pt3f::New( -50.0, -50.0, -50.0), Pt3f::New( 50.0, 50.0, 50.0));
+        }
+        return bbox;
+    }
+
+    pub fn	Extend( &mut self, pt: Pt3f)
+    {
+        self._Min._X = self._Min._X.min( pt._X);
+        self._Min._Y = self._Min._Y.min( pt._Y);
+        self._Min._Z = self._Min._Z.min( pt._Z);
+        self._Max._X = self._Max._X.max( pt._X);
+        self._Max._Y = self._Max._Y.max( pt._Y);
+        self._Max._Z = self._Max._Z.max( pt._Z);
+    }
+
+    pub fn	IsEmpty( &self) -> bool
+    {
+        self._Min._X > self._Max._X || self._Min._Y > self._Max._Y || self._Min._Z > self._Max._Z
+    }
+
+    pub fn	Center( &self) -> Pt3f
+    {
+        Pt3f::New(
+            ( self._Min._X + self._Max._X) * 0.5,
+            ( self._Min._Y + self._Max._Y) * 0.5,
+            ( self._Min._Z + self._Max._Z) * 0.5,
+        )
+    }
+
+    pub fn	Extent( &self) -> Pt3f
+    {
+        Pt3f::New(
+            self._Max._X - self._Min._X,
+            self._Max._Y - self._Min._Y,
+            self._Max._Z - self._Min._Z,
+        )
+    }
+
+    pub fn	MaxDim( &self) -> f32
+    {
+        let  	ext = self.Extent();
+        ext._X.max( ext._Y).max( ext._Z)
+    }
+
+    pub fn	ScaleNorm( &self, targetExtent: f32) -> f32
+    {
+        let  	maxDim = self.MaxDim();
+        if maxDim > 1e-4 {
+            targetExtent / maxDim
+        } else {
+            1.0
+        }
+    }
+
+    pub fn	Corners( &self) -> [Pt3f; 8]
+    {
+        [
+            Pt3f::New( self._Min._X, self._Min._Y, self._Min._Z),
+            Pt3f::New( self._Max._X, self._Min._Y, self._Min._Z),
+            Pt3f::New( self._Max._X, self._Max._Y, self._Min._Z),
+            Pt3f::New( self._Min._X, self._Max._Y, self._Min._Z),
+            Pt3f::New( self._Min._X, self._Min._Y, self._Max._Z),
+            Pt3f::New( self._Max._X, self._Min._Y, self._Max._Z),
+            Pt3f::New( self._Max._X, self._Max._Y, self._Max._Z),
+            Pt3f::New( self._Min._X, self._Max._Y, self._Max._Z),
+        ]
+    }
+
+    pub const fn	BoxEdges() -> [( usize, usize); 12]
+    {
+        [
+            ( 0, 1), ( 1, 2), ( 2, 3), ( 3, 0),
+            ( 4, 5), ( 5, 6), ( 6, 7), ( 7, 4),
+            ( 0, 4), ( 1, 5), ( 2, 6), ( 3, 7),
+        ]
+    }
+
+    pub fn	Min( &self) -> [f32; 3]
+    {
+        self._Min.Pos()
+    }
+
+    pub fn	Max( &self) -> [f32; 3]
+    {
+        self._Max.Pos()
+    }
+}
+
+
+//---------------------------------------------------------------------------------------------------------------------------------
