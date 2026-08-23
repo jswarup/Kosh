@@ -4,7 +4,7 @@ use	crate::{
     fenst::PtsPointsDto,
     fleck::{ BBox3f, Pt3f },
     flux::instream::{ FixedStream, IStream },
-    shard::{ IGrammar, Parser, Real, Charset },
+    shard::{ Charset, IGrammar, Parser, Real },
     silo::{ Buff, Stash, IAccess, U32, U8 },
     ShardTree,
 };
@@ -238,14 +238,15 @@ impl< 'a> IGrammar for PtsShard< 'a>
         let  	mut pointsStash = Stash::< PtsPoint>::WithCapacity( estimatedCap);
 
         let  	mut m = parser.CurrMark();
-        let  	numGrammar = ShardTree!( Real  );
+        let  	commentGrammar = ShardTree!( ( "#" | "//" ) < *( Charset::EndLine().Negative()) < "\n")  ;
+        let  	numGrammar = ShardTree!( Real );
         let  	hspcGrammar = ShardTree!( +[ " \t," ] );
         let  	nlGrammar = ShardTree!( ( ?'\r' < '\n' ) | '\r' );
 
         // Helper: skip whitespace, comments, and empty lines
         let  	mut isFirstLine = true;
 
-        let  	skippable = ShardTree!( *(( ( "#" | "//" ) < *( Charset::EndLine().Negative()) < "\n") |  [ " \r\n\t," ] ));
+        let  	skippable = ShardTree!( *(commentGrammar |  [ " \r\n\t," ] ));
 
         while m < parser.InStream().Size() {
             if let Some( nextM) = parser.ParseGrammar( &skippable, m) {
@@ -262,24 +263,13 @@ impl< 'a> IGrammar for PtsShard< 'a>
 
             while m < parser.InStream().Size() {
                 let  	currByte = parser.GetAt( m);
+                if let Some( nextM) = parser.ParseGrammar( &commentGrammar, m) {
+                    m = nextM;
+                    break;
+                } 
                 if currByte == U8( b'\r') || currByte == U8( b'\n') {
                     break;
-                }
-                if currByte == U8( b'#') {
-                    // Line trailing comment
-                    while m < parser.InStream().Size() {
-                        let  	c = parser.GetAt( m);
-                        if let Some( nextM) = parser.Incr( m) {
-                            m = nextM;
-                        } else {
-                            break;
-                        }
-                        if c == U8( b'\n') {
-                            break;
-                        }
-                    }
-                    break;
-                }
+                } 
 
                 let  	tokenMark = m;
                 if let Some( nextM) = parser.ParseGrammar( &numGrammar, tokenMark) {
@@ -306,7 +296,6 @@ impl< 'a> IGrammar for PtsShard< 'a>
                     m = nextM;
                 }
             }
-
             if isFirstLine && numCount == 1 {
                 // Header line with total points count
                 cloud._HeaderCount = Some( U32( lineNums[0] as u32));
