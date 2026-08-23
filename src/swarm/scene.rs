@@ -1,4 +1,4 @@
-﻿//-- scene.rs ---------------------------------------------------------------------------------------------------------------------
+//-- scene.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ Buff, Stash, U32 };
 use	crate::swarm::{ SwarmEngine, SwarmCluster, SwarmError };
 use	serde::{ Serialize, Deserialize };
@@ -118,6 +118,14 @@ impl Camera
             sinY * sx, -sinX * cosY * sy,  cosX * cosY * sz,  0.0,
             tx,         ty,               0.5,               1.0,
         ]
+    }
+
+    pub fn Fit(&mut self) {
+        self._PanX = 0.0;
+        self._PanY = 0.0;
+        self._Zoom = 0.4;
+        self._RotX = 0.0;
+        self._RotY = 0.0;
     }
 
     pub fn	Reset( &mut self)

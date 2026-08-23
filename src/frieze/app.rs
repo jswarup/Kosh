@@ -18,9 +18,8 @@ use crate::frieze::desktop::{
 };
 use crate::frieze::explorer::build_explorer_panel;
 use crate::frieze::fresco_view::build_fresco_view_panel;
-use crate::frieze::obj_view::build_obj_view_panel;
 use crate::frieze::img_view::build_img_view_panel;
-use crate::frieze::pts_view::build_pts_view_panel;
+use crate::frieze::geom_view::build_geom_view_panel;
 use crate::frieze::state::{AppState, AppTheme, OpenTab, SharedState};
 use crate::frieze::tab_bar::close_active_tab;
 
@@ -126,11 +125,8 @@ fn open_tab_for_path(notebook: &Notebook, state: &SharedState, path: &Path) {
         format!("{name}")
     };
 
-    if is_pts {
-        let page = build_pts_view_panel(notebook, state.clone(), path.to_path_buf());
-        notebook.add_page(&page, &label, true, None);
-    } else if is_obj {
-        let page = build_obj_view_panel(notebook, state.clone(), path.to_path_buf());
+    if is_pts || is_obj {
+        let page = build_geom_view_panel(notebook, state.clone(), path.to_path_buf());
         notebook.add_page(&page, &label, true, None);
     } else if is_fresco {
         let page = build_fresco_view_panel(notebook, &path.to_string_lossy());
