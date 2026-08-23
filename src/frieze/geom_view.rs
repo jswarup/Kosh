@@ -14,8 +14,34 @@ use	wxdragon::timer::Timer;
 use	wxdragon::window::BackgroundStyle;
 
 use	crate::frieze::state::SharedState;
-
 use	crate::swarm::viewport::ObjRenderMode;
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+#[cfg( target_os = "windows")]
+unsafe extern "system"
+{
+    fn	GetAsyncKeyState( vKey: i32) -> i16;
+}
+
+const	VK_SHIFT:   i32 = 0x10;
+const	VK_CONTROL: i32 = 0x11;
+
+fn	is_ctrl_pressed() -> bool
+{
+    #[cfg( target_os = "windows")]
+    unsafe { ( GetAsyncKeyState( VK_CONTROL) as u16 & 0x8000) != 0 }
+    #[cfg( not( target_os = "windows"))]
+    false
+}
+
+fn	is_shift_pressed() -> bool
+{
+    #[cfg( target_os = "windows")]
+    unsafe { ( GetAsyncKeyState( VK_SHIFT) as u16 & 0x8000) != 0 }
+    #[cfg( not( target_os = "windows"))]
+    false
+}
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -95,7 +121,7 @@ pub fn	build_geom_view_panel( parent: &Notebook, state: SharedState, path: PathB
         let  	drag = drag.clone();
         let  	canvas = canvas.clone();
         timer.on_tick( move |_| {
-            if !drag._LeftDown.get() {
+            if !drag._LeftDown.get() && !drag._RightDown.get() {
                 state.borrow_mut()._Camera.Rotate( 0.001, 0.003);
             }
             canvas.refresh( false, None);
@@ -112,12 +138,34 @@ pub fn	build_geom_view_panel( parent: &Notebook, state: SharedState, path: PathB
     }
 
     {
+        let  	state = state.clone();
+        let  	canvas = canvas.clone();
+        canvas.on_mouse_wheel( move |evt| {
+            if let WindowEventData::General( e) = evt {
+                let  	rot = e.get_wheel_rotation();
+                let  	ctrl = e.control_down() || is_ctrl_pressed();
+                if ctrl && rot != 0 {
+                    let  	mut st = state.borrow_mut();
+                    if rot > 0 {
+                        st._Camera._Zoom *= 1.1;
+                    } else {
+                        st._Camera._Zoom /= 1.1;
+                    }
+                    if st._Camera._Zoom < 0.05 { st._Camera._Zoom = 0.05; }
+                    canvas.refresh( false, None);
+                }
+            }
+        });
+    }
+
+    {
         let  	drag = drag.clone();
         let  	state = state.clone();
         let  	canvas = canvas.clone();
         canvas.on_mouse_left_down( move |evt| {
             if let WindowEventData::MouseButton( mb) = evt {
-                if mb.event.event.shift_down() {
+                let  	shift = mb.event.event.shift_down() || is_shift_pressed();
+                if shift {
                     state.borrow_mut()._Camera.Reset();
                     canvas.refresh( false, None);
                 } else if let Some( pos) = mb.get_position() {
@@ -140,7 +188,8 @@ pub fn	build_geom_view_panel( parent: &Notebook, state: SharedState, path: PathB
         let  	canvas = canvas.clone();
         canvas.on_mouse_right_down( move |evt| {
             if let WindowEventData::MouseButton( mb) = evt {
-                if mb.event.event.shift_down() {
+                let  	shift = mb.event.event.shift_down() || is_shift_pressed();
+                if shift {
                     state.borrow_mut()._Camera.Fit();
                     canvas.refresh( false, None);
                 } else if let Some( pos) = mb.get_position() {
@@ -166,13 +215,19 @@ pub fn	build_geom_view_panel( parent: &Notebook, state: SharedState, path: PathB
                 if let Some( pos) = mm.get_position() {
                     let  	dx = ( pos.x - drag._LastX.get()) as f32;
                     let  	dy = ( pos.y - drag._LastY.get()) as f32;
-                    let  	ctrl = mm.event.event.control_down();
+                    let  	ctrl = mm.event.event.control_down() || is_ctrl_pressed();
 
-                    if drag._LeftDown.get() && ctrl {
+                    if drag._LeftDown.get() && drag._RightDown.get() {
                         let  	zoomFactor = 1.0 + ( dy * 0.01);
                         let  	mut st = state.borrow_mut();
                         st._Camera._Zoom *= zoomFactor;
-                        if st._Camera._Zoom < 0.1 { st._Camera._Zoom = 0.1; }
+                        if st._Camera._Zoom < 0.05 { st._Camera._Zoom = 0.05; }
+                        canvas.refresh( false, None);
+                    } else if drag._LeftDown.get() && ctrl {
+                        let  	zoomFactor = 1.0 + ( dy * 0.01);
+                        let  	mut st = state.borrow_mut();
+                        st._Camera._Zoom *= zoomFactor;
+                        if st._Camera._Zoom < 0.05 { st._Camera._Zoom = 0.05; }
                         canvas.refresh( false, None);
                     } else if drag._RightDown.get() {
                         state.borrow_mut()._Camera.Pan( dx, dy);
