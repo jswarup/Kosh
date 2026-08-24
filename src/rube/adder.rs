@@ -77,7 +77,7 @@ impl FullAdder
         let  	h1 = HalfAdder::New( ctxt, &format!( "{name}.h1"), a, b, h1Sum, h1Carry);
 
         let  	h2Carry = ctxt.add_trigger( &format!( "{name}.h2Carry"), Reg::FALSE);
-        let  	h2 = HalfAdder::New( ctxt, &format!( "{name}.h2"), h1Sum, c_in, sum, h2Carry);
+        let  	h2 = HalfAdder::New( ctxt, &format!( "{name}.h2"), h1Sum, cIn, sum, h2Carry);
 
         let  	orGate = OrGate::new( ctxt, &format!( "{name}.or"), h1Carry, h2Carry, carry);
 

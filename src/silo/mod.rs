@@ -9,6 +9,8 @@ pub mod stk;
 pub mod uint; 
 pub mod useg;
 pub mod cast;
+pub mod graph;
+pub use graph::{EdgeConnect, GraphBroadcast};
 pub use	access::{ IAccess, AccessIter};
 pub use	arr::{Arr, IArr};
 pub use	buff::Buff;
