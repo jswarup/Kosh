@@ -22,6 +22,9 @@ struct Args
     /// Enable output prints from tests (nocapture)
     #[arg( short = 'g', long = "nocapture")]
     _Nocapture: bool,
+    /// Run native 3D GPU workspace
+    #[arg( long = "frieze")]
+    _Frieze: bool,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -81,8 +84,10 @@ fn	main() -> Result< ()>
     }
 
     // Default primary: 100% Native Pure-Rust frieze (wxDragon/wxWidgets + wgpu)
-    if let  	Err( e) = kosh::frieze::run() {
-        eprintln!( "Error launching Kosh native window: {:?}", e);
+    if args._Frieze {
+        if let  	Err( e) = kosh::frieze::run() {
+            eprintln!( "Error launching Kosh native window: {:?}", e);
+        }
     }
 
     Ok( ())
