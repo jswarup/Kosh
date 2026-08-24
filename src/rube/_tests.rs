@@ -1,7 +1,7 @@
 #[cfg( test)]
 mod _tests {
     use super::*;
-    use crate::rube::adder::RippleCarryAdder;
+    use crate::rube::adder::Adder;
     use crate::rube::sim_context::SimContext;
     
     
@@ -11,7 +11,7 @@ mod _tests {
         let  	mut ctxt = SimContext::new();
     
         const N: usize = 16;
-        let  	adder = RippleCarryAdder::< N>::new( &mut ctxt, "Adder16");
+        let  	adder = Adder::< N>::New( &mut ctxt, "Adder16");
     
         let  	test_cases = [
             ( 0, 0, 0, false),
@@ -23,28 +23,28 @@ mod _tests {
             ( 12345, 54321, 66666, true), // 66666 is > 65535, so overflow
         ];
     
-        for ( a_val, b_val, expected_sum, expected_carry) in test_cases {
-            adder.set_a( &mut ctxt, crate::silo::uint::U32(a_val));
-            adder.set_b( &mut ctxt, crate::silo::uint::U32(b_val));
+        for ( aVal, bVal, expected_sum, expected_carry) in test_cases {
+            adder.SetA( &mut ctxt, crate::silo::uint::U32(aVal));
+            adder.SetB( &mut ctxt, crate::silo::uint::U32(bVal));
     
             ctxt.drive();
     
-            let  	sum_val = adder.get_sum( &ctxt);
-            let  	carry_val = ctxt.get_value( adder.carry()).is_true();
+            let  	sumVal = adder.GetSum( &ctxt);
+            let  	carryVal = ctxt.get_value( adder.Carry()).is_true();
     
             // expected_sum is calculated as a 16-bit truncation
             let  	expected_truncated = expected_sum & 0xFFFF;
             let  	expected_overflow = expected_sum > 0xFFFF;
     
             assert_eq!(
-                sum_val, expected_truncated,
+                sumVal, expected_truncated,
                 "Sum failed for {} + {}. Expected {}, got {}",
-                a_val, b_val, expected_truncated, sum_val
+                aVal, bVal, expected_truncated, sumVal
             );
             assert_eq!(
-                carry_val, expected_carry || expected_overflow,
+                carryVal, expected_carry || expected_overflow,
                 "Carry failed for {} + {}. Expected {}, got {}",
-                a_val, b_val, expected_carry || expected_overflow, carry_val
+                aVal, bVal, expected_carry || expected_overflow, carryVal
             );
         }
     }
