@@ -9,11 +9,12 @@ mod _tests {
             adder::Adder,
             gates::{ AndGate, NandGate, NotGate, OrGate, XorGate },
             latches::{ CRSLatch, DLatch, RSLatch },
+            portlayout::{ IPortLayout, PortLayout, IPort, Port },
             reg::Reg,
             sim_context::SimContext,
             trigger::TriggerWad,
         },
-        silo::U32,
+        silo::{ IEdgeBroadcast, IEdgeConnect, U32 },
     };
 
     #[test]
@@ -427,6 +428,26 @@ mod _tests {
                 r
             );
         }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_port_layout()
+    {
+        let  	layout = PortLayout::New( U32( 10));
+        assert_eq!( layout.PortCast().SzGroup(), U32( 0));
+        assert_eq!( layout.PortConn().SzEdge(), U32( 0));
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_port_basic()
+    {
+        let  	port = Port::New( "clk", U32( 42));
+        assert_eq!( port.Name(), "clk");
+        assert_eq!( port.Trigger(), U32( 42));
     }
 }
 

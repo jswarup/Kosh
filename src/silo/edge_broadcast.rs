@@ -1,10 +1,11 @@
 //--- EdgeBroadcast --------------------------------------------------------------------------------------------------------------
 use	crate::silo::{ Buff, EdgeConnect, IEdgeConnect, Stash, U32 };
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub trait IEdgeBroadcast
 {
     fn	SzGroup( &self) -> U32;
-    fn	DoInit( &mut self, mxVert: U32);
     fn	GroupId( &self, c1: U32) -> U32;
     fn	FirstId( &self, g1: U32) -> U32;
     fn	SnitchNodeGroupIds( &mut self) -> Buff< U32>;
@@ -46,10 +47,10 @@ pub struct EdgeBroadcast
 
 impl EdgeBroadcast 
 {
-    pub fn	New() -> Self
+    pub fn	New( mxVert: U32) -> Self
     {
         Self {
-            _NodeGroupIds: Buff::New(),
+            _NodeGroupIds: Buff::Create( mxVert, |_| U32::_X),
             _FirstNodeIds: Stash::New(),
         }
     }
@@ -63,12 +64,7 @@ impl IEdgeBroadcast for EdgeBroadcast
     {
         self._FirstNodeIds.Size()
     }
-
-    fn	DoInit( &mut self, mxVert: U32)
-    {
-        self._NodeGroupIds = Buff::Create( mxVert, |_| U32::_X);
-    }
-
+ 
     fn	GroupId( &self, c1: U32) -> U32
     {
         self._NodeGroupIds[ c1.0 as usize]

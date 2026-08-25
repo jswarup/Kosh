@@ -2,7 +2,7 @@
 use	std::ops::BitOr;
 use	crate::{
     rube::reg::Reg,
-    silo::{ U32, U8 },
+    silo::{ Buff, U32, U8 },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -16,16 +16,21 @@ pub type TriggerId = U32;
 #[derive( Clone, Debug, Default)]
 pub struct TriggerWad
 {
-    pub _Names: Vec< String>,
-    pub _Past: Vec< Reg>,
-    pub _Current: Vec< Reg>,
-    pub _Future: Vec< Reg>,
+    pub _Names: Buff< String>,
+    pub _Past: Buff< Reg>,
+    pub _Current: Buff< Reg>,
+    pub _Future: Buff< Reg>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl TriggerWad
 {
+    pub fn	New() -> Self
+    {
+        Self::default()
+    }
+
     pub fn	new() -> Self
     {
         Self::default()
@@ -34,11 +39,13 @@ impl TriggerWad
     /// Add a signal with initial state
     pub fn	add( &mut self, name: impl Into< String>, initial: Reg) -> TriggerId
     {
+        let  	nameStr = name.into();
         let  	id = U32( self._Current.len() as u32);
-        self._Names.push( name.into());
-        self._Past.push( initial);
-        self._Current.push( initial);
-        self._Future.push( initial);
+        let  	newSize = id + U32( 1);
+        self._Names.Resize( newSize, |_| nameStr.clone());
+        self._Past.Resize( newSize, |_| initial);
+        self._Current.Resize( newSize, |_| initial);
+        self._Future.Resize( newSize, |_| initial);
         return id;
     }
 
