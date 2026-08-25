@@ -1,6 +1,14 @@
 //-- swarm/_tests.rs -----------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Buff, ISliceExt, U32 };
-use	crate::swarm::IGpuOp;
+use	crate::{
+    silo::{ Buff, ISliceExt, U32 },
+    swarm::{
+        cpu::CpuDevice,
+        cudaoxide::CudaOxideDevice,
+        engine::{ SwarmCluster, SwarmEngine },
+        traits::{ BackendKind, BufferUsage, IComputeDevice, KernelSource, WorkgroupDim },
+        IGpuOp,
+    },
+};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -438,9 +446,6 @@ fn	TestGpuCollatz()
 #[test]
 fn	TestCpuDoubleValues()
 {
-    use	crate::swarm::cpu::CpuDevice;
-    use	crate::swarm::traits::{ BufferUsage, IComputeDevice, WorkgroupDim };
-
     let  	cpu = CpuDevice::New();
     let  	szData = U32( 256);
     let  	input = Buff::Create( szData, |i| ( i.AsU32() + 1) as f32);
@@ -469,9 +474,6 @@ fn	TestCpuDoubleValues()
 #[test]
 fn	TestCpuVectorAdd()
 {
-    use	crate::swarm::cpu::CpuDevice;
-    use	crate::swarm::traits::{ BufferUsage, IComputeDevice, WorkgroupDim };
-
     let  	cpu = CpuDevice::New();
     let  	szData = U32( 512);
     let  	buffA = Buff::Create( szData, |i| i.AsU32() as f32);
@@ -504,9 +506,6 @@ fn	TestCpuVectorAdd()
 #[test]
 fn	TestCpuCollatz()
 {
-    use	crate::swarm::cpu::CpuDevice;
-    use	crate::swarm::traits::{ BufferUsage, IComputeDevice, WorkgroupDim };
-
     let  	cpu = CpuDevice::New();
     let  	szData = U32( 128);
     let  	inputBuff = Buff::Create( szData, |i| i.AsU32() + 1);
@@ -542,9 +541,6 @@ fn	TestCpuCollatz()
 #[test]
 fn	TestCpuPointCloud()
 {
-    use	crate::swarm::cpu::CpuDevice;
-    use	crate::swarm::traits::{ BufferUsage, IComputeDevice, WorkgroupDim };
-
     let  	cpu = CpuDevice::New();
     let  	numPoints = U32( 100);
     let  	numFloats = U32( ( numPoints.AsUsize() * 4) as u32);
@@ -579,9 +575,6 @@ fn	TestCpuPointCloud()
 #[test]
 fn	TestCudaOxidePtxExecution()
 {
-    use	crate::swarm::cudaoxide::CudaOxideDevice;
-    use	crate::swarm::traits::{ BufferUsage, IComputeDevice, KernelSource, WorkgroupDim };
-
     let  	cuda = CudaOxideDevice::Init().unwrap();
     let  	szData = U32( 256);
     let  	input = Buff::Create( szData, |i| ( i.AsU32() + 1) as f32);
@@ -611,9 +604,6 @@ fn	TestCudaOxidePtxExecution()
 #[test]
 fn	TestSwarmEngineBackendSwitching()
 {
-    use	crate::swarm::engine::SwarmEngine;
-    use	crate::swarm::traits::BackendKind;
-
     let  	testData: Buff< f32> = ( 1..=64).map( |x| x as f32).collect();
 
     // 1. Execute on CPU backend
@@ -676,8 +666,6 @@ fn	TestSwarmEngineBackendSwitching()
 #[test]
 fn	TestSwarmEngineAuto()
 {
-    use	crate::swarm::engine::SwarmEngine;
-
     let  	engine = SwarmEngine::Auto();
     println!( "TestSwarmEngineAuto: Auto-selected backend is {} ✓", engine.Backend());
 
@@ -691,9 +679,6 @@ fn	TestSwarmEngineAuto()
 #[test]
 fn	TestSharedSymphKernelParity()
 {
-    use	crate::swarm::traits::BackendKind;
-    use	crate::swarm::engine::SwarmEngine;
-
     // 1. Direct invocation of shared symph kernels
     let  	mut testData = Buff![1.0f32, 2.0, 3.0, 4.0];
     for i in 0..testData.len() {
@@ -754,9 +739,6 @@ fn	TestSharedSymphKernelParity()
 #[test]
 fn	TestSwarmCameraTransform()
 {
-    use	crate::swarm::engine::SwarmEngine;
-    use	crate::swarm::traits::BackendKind;
-
     let  	points = [
         [ 0.0f32, 0.0, 0.0 ],
         [ 10.0, 10.0, 10.0 ],
@@ -807,12 +789,10 @@ fn	TestSwarmCameraTransform()
 #[test]
 fn	TestSwarmClusterSharding()
 {
-    use	crate::swarm::engine::SwarmCluster;
-
     let  	cluster = SwarmCluster::Auto();
     assert!( cluster.DeviceCount() >= 1);
 
-    let  	points = Buff::Create( crate::silo::U32( 200), |i| {
+    let  	points = Buff::Create( U32( 200), |i| {
         let  	f = i.AsU32() as f32;
         [ f, f * 2.0, f * 0.5 ]
     });

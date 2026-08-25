@@ -1,9 +1,48 @@
 //-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
 use	std::ptr::null;
-use	crate::heist::Atelier;
-use	crate::silo::{ Arr, Buff, IAccess, Stash, Stk, U16, U32 };
-use	crate::stalks::{ Atm, DynIWorker, IWorker, IntoWorkPtr, Spinlock, WorkPtr};
 use	std::sync::atomic::Ordering;
+use	crate::heist::{ Atelier, choretree::IChoreNode };
+use	crate::silo::{ Arr, Buff, IAccess, Stash, Stk, U16, U32 };
+use	crate::stalks::{ Atm, DynIWorker, IWorker, IntoWorkPtr, Spinlock, WorkPtr };
+use	crate::swarm::{ SwarmDevice, SwarmEngine };
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait IMaestro< 'a>: IWorker
+{
+    fn	SetAtelier( &mut self, atelier: *const Atelier< 'a>);
+    fn	Atelier( &self) -> &Atelier< 'a>;
+    fn	MaestroIndex( &self) -> U32;
+    fn	Swarm( &self) -> Option< &SwarmEngine>;
+    fn	Device( &self) -> Option< &SwarmDevice>;
+
+    fn	ConstructJob< S: Into< U16>>( &self, succId: S, job: impl IntoWorkPtr< 'a>, docStr: &'static str) -> U16
+    where
+        Self: Sized;
+
+    fn	EnqueueJob< J: Into< U16>>( &self, jobId: J)
+    where
+        Self: Sized;
+
+    fn	ConstructEnqueArr< S: Into< U16>>( &self, succId: S, buff: Buff< U16>, docStr: &'static str) -> U16
+    where
+        Self: Sized;
+
+    fn	JobCacheStk( &self) -> Stk< '_, '_, U16>;
+    fn	RunQueueArr( &self) -> Arr< '_, U16>;
+    fn	FlushTempQueue( &self);
+    fn	EnqueRunJob( &self, jobId: &U16);
+    fn	PopJob( &self) -> U16;
+    fn	CurSuccId( &self) -> U16;
+
+    fn	SetCurSuccId< K: Into< U16>>( &self, val: K)
+    where
+        Self: Sized;
+
+    fn	PostChoreTree< T: IChoreNode>( &self, node: &T)
+    where
+        Self: Sized;
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -18,8 +57,10 @@ pub struct Maestro< 'a>
     _CurSuccId: Atm< U16>,
     _TempQueue: Stash< U16>,
 }
+
 unsafe impl< 'a> Send for Maestro< 'a>
 { }
+
 unsafe impl< 'a> Sync for Maestro< 'a>
 { }
 
@@ -27,9 +68,6 @@ unsafe impl< 'a> Sync for Maestro< 'a>
 
 impl< 'a> Maestro< 'a>
 {
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
     pub fn	New< I: Into< U32>>( maestroInd: I) -> Self
     {
         Self {
@@ -44,68 +82,55 @@ impl< 'a> Maestro< 'a>
         }
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	SetAtelier( &mut self, atelier: *const Atelier< 'a>)
-    {
-        self._Atelier = atelier;
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	Atelier( &self) -> &Atelier< 'a>
-    {
-        unsafe { &*self._Atelier }
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	MaestroIndex( &self) -> U32
-    {
-        self._Index
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
     pub fn	FromWorker< 'w>( worker: &'w DynIWorker< '_>) -> &'w Self
     {
         let  	ptr = worker as *const DynIWorker< '_> as *const ();
         assert!( !ptr.is_null());
         unsafe { &*( ptr as *const Self) }
     }
+}
 
-    //-----------------------------------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Swarm( &self) -> Option< &crate::swarm::SwarmEngine>
+impl< 'a> IMaestro< 'a> for Maestro< 'a>
+{
+    fn	SetAtelier( &mut self, atelier: *const Atelier< 'a>)
+    {
+        self._Atelier = atelier;
+    }
+
+    fn	Atelier( &self) -> &Atelier< 'a>
+    {
+        unsafe { &*self._Atelier }
+    }
+
+    fn	MaestroIndex( &self) -> U32
+    {
+        self._Index
+    }
+
+    fn	Swarm( &self) -> Option< &SwarmEngine>
     {
         self.Atelier().Swarm()
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	Device( &self) -> Option< &crate::swarm::SwarmDevice>
+    fn	Device( &self) -> Option< &SwarmDevice>
     {
         self.Swarm().map( |s| s.Device())
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	ConstructJob< S: Into< U16>>( &self, succId: S, job: impl IntoWorkPtr< 'a>, docStr: &'static str) -> U16
+    fn	ConstructJob< S: Into< U16>>( &self, succId: S, job: impl IntoWorkPtr< 'a>, docStr: &'static str) -> U16
     {
         self.Atelier().ConstructJob( self._Index, succId.into(), job.IntoWorkPtr(), docStr)
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	EnqueueJob< J: Into< U16>>( &self, jobId: J)
+    fn	EnqueueJob< J: Into< U16>>( &self, jobId: J)
     {
-        let     res = self._TempQueue.Stk().Push( jobId.into());
+        let  	res = self._TempQueue.Stk().Push( jobId.into());
         assert!( res);
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	ConstructEnqueArr< S: Into< U16>>( &self, succId: S, buff: Buff< U16>, docStr: &'static str) -> U16
+    fn	ConstructEnqueArr< S: Into< U16>>( &self, succId: S, buff: Buff< U16>, docStr: &'static str) -> U16
     {
         self.ConstructJob( succId.into(), move |worker: &DynIWorker< '_>| {
             let  	maestro = Maestro::FromWorker( worker);
@@ -116,23 +141,17 @@ impl< 'a> Maestro< 'a>
         }, docStr)
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	JobCacheStk( &self) -> Stk< '_, '_, U16>
+    fn	JobCacheStk( &self) -> Stk< '_, '_, U16>
     {
         self._JobCache.Stk()
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	RunQueueArr( &self) -> Arr< '_, U16>
+    fn	RunQueueArr( &self) -> Arr< '_, U16>
     {
         self._RunQueue.Stk().Arr()
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	FlushTempQueue( &self)
+    fn	FlushTempQueue( &self)
     {
         let  	arr = self._TempQueue.Stk().Arr();
         arr.USeg().Traverse( |i| {
@@ -145,19 +164,13 @@ impl< 'a> Maestro< 'a>
         self._TempQueue.ClearConcurrent();
     }
 
-
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	EnqueRunJob( &self, jobId: & U16)
+    fn	EnqueRunJob( &self, jobId: &U16)
     {
         let  	_guard = self._RunQlock.Lock();
         assert!( self._RunQueue.Stk().Push( *jobId), "RunQueue overflow!");
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	PopJob( &self) -> U16
+    fn	PopJob( &self) -> U16
     {
         let  	xStk = self._RunQueue.Stk();
         let  	mut jobId = U16( 0);
@@ -167,28 +180,22 @@ impl< 'a> Maestro< 'a>
                 return jobId;
             }
         }
-        jobId
+        return jobId;
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	CurSuccId( &self) -> U16
+    fn	CurSuccId( &self) -> U16
     {
         self._CurSuccId.Load( Ordering::Acquire)
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	SetCurSuccId< K: Into< U16>>( &self, val: K)
+    fn	SetCurSuccId< K: Into< U16>>( &self, val: K)
     {
         self._CurSuccId.Store( val, Ordering::Release);
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	PostChoreTree< T: crate::heist::choretree::IChoreNode>( &self, node: &T)
+    fn	PostChoreTree< T: IChoreNode>( &self, node: &T)
     {
-        let  	mut tails = crate::silo::Stash::New();
+        let  	mut tails = Stash::New();
         let  	head = node.Post( self, &mut tails);
         let  	succId = self.CurSuccId();
         while let  	Some( tail) = tails.Pop() {
@@ -196,8 +203,6 @@ impl< 'a> Maestro< 'a>
         }
         self.EnqueueJob( head);
     }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

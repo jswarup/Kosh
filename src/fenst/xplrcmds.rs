@@ -1,14 +1,24 @@
 #![allow( non_snake_case, non_camel_case_types, non_upper_case_globals)]
 //-- xplrcmds.rs ------------------------------------------------------------------------------------------------------------------
-use	crate::fenst::{ XplrEntry, XplrContent, XplrNodeDto, StreamChunkDto, PtsPointsDto, CreateDefaultRegistry };
-use	crate::swarm::{ Camera, SceneGraph };
-use	crate::silo::{ Buff, ISliceExt };
-use	serde::Deserialize;
-use	crate::swarm::SwarmCluster;
-use	serde::Serialize;
 use	std::collections::HashMap;
-use	std::sync::Mutex;
-use	std::sync::LazyLock;
+use	std::path::Path;
+use	std::sync::{ LazyLock, Mutex };
+use	serde::{ Deserialize, Serialize };
+use	crate::{
+    fenst::{
+        CreateDefaultRegistry, PtsPointsDto, StreamChunkDto,
+        XplrContent, XplrEntry, XplrFetchChunk as FenstFetchChunk,
+        XplrFetchContent as FenstFetchContent, XplrFetchPtsPoints as FenstFetchPtsPoints,
+        XplrLeafInfo as FenstLeafInfo, XplrListEntries as FenstListEntries,
+        XplrNodeDto, XplrParsePtsFile, XplrParseWaveObjFile,
+    },
+    fleck::BBox3f,
+    silo::{ Buff, ISliceExt, U32 },
+    swarm::{
+        Camera, SceneGraph, SwarmCluster,
+        viewport::ObjRenderMode,
+    },
+};
 
 
 static SYMPH_SPV: &[u8] = include_bytes!( env!( "SYMPH_SPV_PATH"));
@@ -23,7 +33,7 @@ static SWARM_CLUSTER: LazyLock< SwarmCluster> = LazyLock::new( || {
 /// Reads a directory and returns sorted entries (directories first, then files).
 pub fn	XplrListEntries( path: String) -> Result< Buff< XplrEntry>, String>
 {
-    crate::fenst::XplrListEntries( path)
+    FenstListEntries( path)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -31,15 +41,15 @@ pub fn	XplrListEntries( path: String) -> Result< Buff< XplrEntry>, String>
 /// Reads the text content of a file, with a size guard.
 pub fn	XplrFetchContent( path: String) -> Result< XplrContent, String>
 {
-    crate::fenst::XplrFetchContent( path)
+    FenstFetchContent( path)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /// Returns metadata about a file or directory.
-pub fn	XplrLeafInfo( path: String) -> Result< crate::fenst::XplrLeafInfo, String>
+pub fn	XplrLeafInfo( path: String) -> Result< FenstLeafInfo, String>
 {
-    crate::fenst::XplrLeafInfo( path)
+    FenstLeafInfo( path)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -78,7 +88,7 @@ pub fn	XplrListProviders() -> Result< Buff< String>, String>
     let  	registry = CreateDefaultRegistry();
     let  	guard = registry.read().map_err( |e| e.to_string())?;
     let  	schemes = guard.Schemes();
-    let  	buff = Buff::Create( crate::silo::U32( schemes.len() as u32), |i| {
+    let  	buff = Buff::Create( U32( schemes.len() as u32), |i| {
         schemes[i.AsUsize()].clone()
     });
     Ok( buff)
@@ -89,7 +99,7 @@ pub fn	XplrListProviders() -> Result< Buff< String>, String>
 /// Reads a windowed chunk of a file using flux::BuffStream and silo::Buff.
 pub fn	XplrFetchChunk( path: String, offset: u64, size: usize) -> Result< StreamChunkDto, String>
 {
-    crate::fenst::XplrFetchChunk( path, offset, size)
+    FenstFetchChunk( path, offset, size)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -98,13 +108,13 @@ pub fn	XplrFetchChunk( path: String, offset: u64, size: usize) -> Result< Stream
 pub fn	XplrFetchPtsPoints( path: Option< String>) -> Result< Vec< u8>, String>
 {
     let  	dto = if let Some( ref filePath) = path {
-        if !filePath.is_empty() && std::path::Path::new( filePath).exists() {
-            crate::fenst::XplrParsePtsFile( filePath)?
+        if !filePath.is_empty() && Path::new( filePath).exists() {
+            XplrParsePtsFile( filePath)?
         } else {
-            crate::fenst::XplrFetchPtsPoints( SYMPH_SPV)?
+            FenstFetchPtsPoints( SYMPH_SPV)?
         }
     } else {
-        crate::fenst::XplrFetchPtsPoints( SYMPH_SPV)?
+        FenstFetchPtsPoints( SYMPH_SPV)?
     };
 
     let  	bytes = dto.ToBytes();
@@ -117,20 +127,20 @@ pub fn	XplrFetchPtsPoints( path: Option< String>) -> Result< Vec< u8>, String>
 pub fn	XplrFetchWaveObj( path: Option< String>) -> Result< Vec< u8>, String>
 {
     let  	dto = if let Some( ref filePath) = path {
-        if !filePath.is_empty() && std::path::Path::new( filePath).exists() {
-            crate::fenst::XplrParseWaveObjFile( filePath)?
+        if !filePath.is_empty() && Path::new( filePath).exists() {
+            XplrParseWaveObjFile( filePath)?
         } else {
             let  	defaultObj = "workbench/blub/blub_control_mesh.obj";
-            if std::path::Path::new( defaultObj).exists() {
-                crate::fenst::XplrParseWaveObjFile( defaultObj)?
+            if Path::new( defaultObj).exists() {
+                XplrParseWaveObjFile( defaultObj)?
             } else {
                 return Err( "No valid .obj file path provided".to_string());
             }
         }
     } else {
         let  	defaultObj = "workbench/blub/blub_control_mesh.obj";
-        if std::path::Path::new( defaultObj).exists() {
-            crate::fenst::XplrParseWaveObjFile( defaultObj)?
+        if Path::new( defaultObj).exists() {
+            XplrParseWaveObjFile( defaultObj)?
         } else {
             return Err( "No valid .obj file path provided".to_string());
         }
@@ -699,9 +709,9 @@ pub fn	XplrProjectPts(
 {
     let  	mut guard = PTS_STATE.lock().map_err( |e| e.to_string())?;
     let  	state = guard.entry( path.clone()).or_insert_with( || {
-        let  	dto = if std::path::Path::new( &path).exists() {
-            crate::fenst::XplrParsePtsFile( &path)
-                .or_else( |_| crate::fenst::XplrFetchPtsPoints( SYMPH_SPV))
+        let  	dto = if Path::new( &path).exists() {
+            XplrParsePtsFile( &path)
+                .or_else( |_| FenstFetchPtsPoints( SYMPH_SPV))
                 .unwrap_or_else( |_| PtsPointsDto {
                     _Points: Buff::New(),
                     _Count: 0,
@@ -709,7 +719,7 @@ pub fn	XplrProjectPts(
                     _BboxMax: [ 0.0, 0.0, 0.0 ],
                 })
         } else {
-            crate::fenst::XplrFetchPtsPoints( SYMPH_SPV).unwrap_or_else( |_| PtsPointsDto {
+            FenstFetchPtsPoints( SYMPH_SPV).unwrap_or_else( |_| PtsPointsDto {
                 _Points: Buff::New(),
                 _Count: 0,
                 _BboxMin: [ 0.0, 0.0, 0.0 ],
@@ -901,13 +911,14 @@ mod _tests
 {
     use	super::*;
     use	crate::fenst::WaveObjMeshDto;
-    use	std::fs::File;
+    use	std::env::temp_dir;
+    use	std::fs::{ File, remove_file };
     use	std::io::Write;
 
     #[test]
     fn	TestXplrFetchPtsPointsWithFile()
     {
-        let  	tempPath = std::env::temp_dir().join( "test_fenst_cloud.pts");
+        let  	tempPath = temp_dir().join( "test_fenst_cloud.pts");
         {
             let  	mut f = File::create( &tempPath).unwrap();
             writeln!( f, "3").unwrap();
@@ -917,7 +928,7 @@ mod _tests
         }
 
         let  	pathStr = tempPath.to_str().unwrap().to_string();
-        let  	dtoDirect = crate::fenst::XplrParsePtsFile( &pathStr).unwrap();
+        let  	dtoDirect = XplrParsePtsFile( &pathStr).unwrap();
         assert_eq!( dtoDirect._Count, 3);
         assert_eq!( dtoDirect._Points.len(), 3);
         assert_eq!( dtoDirect._Points[0], [10.0, 20.0, 30.0]);
@@ -932,7 +943,7 @@ mod _tests
         let  	res = XplrFetchPtsPoints( Some( pathStr));
         assert!( res.is_ok());
 
-        let  	_ = std::fs::remove_file( &tempPath);
+        let  	_ = remove_file( &tempPath);
     }
 
     #[test]
@@ -1042,9 +1053,9 @@ mod _tests
     #[test]
     fn	TestWorkbenchBunnyDataParsing()
     {
-        let  	bunnyPath = std::path::Path::new( "workbench/bunnyData.pts");
+        let  	bunnyPath = Path::new( "workbench/bunnyData.pts");
         if bunnyPath.exists() {
-            let  	dto = crate::fenst::XplrParsePtsFile( "workbench/bunnyData.pts").unwrap();
+            let  	dto = XplrParsePtsFile( "workbench/bunnyData.pts").unwrap();
             assert_eq!( dto._Count, 30571);
             assert_eq!( dto._Points.len(), 30571);
 
@@ -1058,9 +1069,9 @@ mod _tests
     #[test]
     fn	TestWorkbenchBlubObjParsing()
     {
-        let  	blubPath = std::path::Path::new( "workbench/blub/blub_control_mesh.obj");
+        let  	blubPath = Path::new( "workbench/blub/blub_control_mesh.obj");
         if blubPath.exists() {
-            let  	dto = crate::fenst::XplrParseWaveObjFile( "workbench/blub/blub_control_mesh.obj").unwrap();
+            let  	dto = XplrParseWaveObjFile( "workbench/blub/blub_control_mesh.obj").unwrap();
             assert!( dto._VertexCount > 0);
             assert!( dto._FaceCount > 0);
             assert_eq!( dto._Points.len(), dto._VertexCount);
@@ -1209,14 +1220,11 @@ pub fn	XplrProjectMesh(
     points: &[ [f32; 3]],
     triangles: &[ [u32; 3]],
     camera: &Camera,
-    mode: crate::swarm::viewport::ObjRenderMode,
+    mode: ObjRenderMode,
     width: f32,
     height: f32,
 ) -> MeshFrameDto
 {
-    use crate::fleck::BBox3f;
-    use crate::swarm::viewport::ObjRenderMode;
-
     if points.is_empty() {
         return MeshFrameDto {
             _Points:     Buff::New(),

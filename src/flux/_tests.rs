@@ -1,16 +1,19 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
+use	std::fs::{ create_dir_all, remove_file, write };
 use	crate::{ 
-    flux::{ JsonOutStream, fluxexport::FieldExp, FixedStream, BuffStream, IStream, IFluxExportSource, IFluxImportSource}, 
-    silo::{ U8, U32 } 
+    flux::{
+        fluxexport::FieldExp, fluximport::FieldImp, BuffStream, FixedStream,
+        IFluxExportSource, IFluxImportSource, IStream, JsonOutStream,
+    }, 
+    silo::{ U32, U8 },
 };
-use	std::fs;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 struct Point
 {
-    _X : f64,
-    _Y :f64,
+    _X: f64,
+    _Y: f64,
 }
 
 crate::ImplFluxSource!( Point, _X, _Y);
@@ -21,7 +24,7 @@ fn	TestJsonOutStream()
     let  	prices = crate::Buff![ 12.34_f32, 56.78, 90.12, 34.56, 78.90 ];
     let  	arr = prices.Arr();
 
-    let     pt = Point{ _X: 10.0, _Y: 30.3};
+    let  	pt = Point { _X: 10.0, _Y: 30.3 };
 
     let  	mut output = String::new();
     {
@@ -31,8 +34,8 @@ fn	TestJsonOutStream()
         jsonStream.KeyField( "prices", FieldExp::FluxSource( &arr));
     }
 
-    let  	_ = fs::create_dir_all( "out/gen");
-    fs::write( "out/gen/a.json", output).unwrap();
+    let  	_ = create_dir_all( "out/gen");
+    write( "out/gen/a.json", output).unwrap();
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -62,12 +65,12 @@ fn	TestInStream()
 fn	TestInStreamFromFile()
 {
     let  	path = "test_inbuffstream.txt";
-    fs::write( path, b"hello").unwrap();
+    write( path, b"hello").unwrap();
     let  	mut stream = BuffStream::FromFile( path).unwrap();
     assert_eq!( stream.At( U32( 0)), b'h');
     assert_eq!( stream.At( U32( 1)), b'e');
     assert_eq!( <&str>::from( stream.BytesAt( U32( 1), U32( 4))), "ello");
-    fs::remove_file( path).unwrap();
+    remove_file( path).unwrap();
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -87,7 +90,6 @@ fn	TestFluxSourceDisplayDebug()
 
     let  	mut pt2 = Point { _X: 0., _Y: 0. };
     {
-        use crate::flux::fluximport::FieldImp;
         let  	mut field = FieldImp::Null;
         pt2.FetchFieldImp( &mut field);
         if let FieldImp::Obj( ref mut cb) = field {
@@ -109,4 +111,3 @@ fn	TestFluxSourceDisplayDebug()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-

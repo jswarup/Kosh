@@ -3,9 +3,12 @@
 use	std::ptr::NonNull;
 use	crate::{
     ShardTree, 
-    flux::{ FixedStream, IFluxImportSource, fluximport::FieldImp }, 
+    flux::{
+        FixedStream, IFluxExportSink, IFluxImportSource, JsonOutStream,
+        fluxexport::FieldExp, fluximport::FieldImp,
+    }, 
     shard::{ Charset, Hex, Int, JSon, Parser, Real, UInt, WSpc }, 
-    silo::{ U32, U64},
+    silo::{ IAccess, Stash, U32, U64 },
 };
 
 
@@ -511,7 +514,7 @@ struct Person
     _Name: String,
     _Age: U64,
     _Weight: f64,
-    _Groups: crate::silo::Stash< MemberGroup>,
+    _Groups: Stash< MemberGroup>,
 }
 impl Default for Person
 {
@@ -521,7 +524,7 @@ impl Default for Person
             _Name: String::new(),
             _Age: U64( 0),
             _Weight: 0.0,
-            _Groups: crate::silo::Stash::New(),
+            _Groups: Stash::New(),
         }
     }
 }
@@ -530,7 +533,7 @@ crate::ImplFluxSource!( Person, _Name, _Age, _Weight, _Groups);
 #[test]
 fn	TestPersonSerialization()
 {
-    let mut groups = crate::silo::Stash::< MemberGroup>::New();
+    let  	mut groups = Stash::< MemberGroup>::New();
     groups.Push( MemberGroup { _Name: "Group A".to_string() });
     groups.Push( MemberGroup { _Name: "Group B".to_string() });
 
@@ -542,7 +545,6 @@ fn	TestPersonSerialization()
     };
 
     // Serialize to JSON
-    use crate::flux::{ JsonOutStream, fluxexport::FieldExp, IFluxExportSink };
     let  	mut output = String::new();
     {
         let  	mut jsonStream = JsonOutStream::New( &mut output, false);
@@ -568,7 +570,6 @@ fn	TestPersonSerialization()
     assert_eq!( p1._Weight, p2._Weight);
     assert_eq!( p1._Groups.Size(), p2._Groups.Size());
     
-    use crate::silo::IAccess;
     assert_eq!( p1._Groups.Arr().At( U32( 0))._Name, p2._Groups.Arr().At( U32( 0))._Name);
     assert_eq!( p1._Groups.Arr().At( U32( 1))._Name, p2._Groups.Arr().At( U32( 1))._Name);
 }

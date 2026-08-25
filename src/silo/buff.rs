@@ -1,10 +1,17 @@
-﻿//-- buff.rs ----------------------------------------------------------------------------------------------------------------------
-use	std::{ alloc::realloc, fmt, marker::PhantomData, mem::{ forget, size_of, swap }, ptr::{ copy_nonoverlapping, drop_in_place, read, slice_from_raw_parts_mut, write } };
-use	crate::silo::{ Arr, IAccess, IArr, U32 };
-use	std::alloc::{ Layout, alloc, dealloc, handle_alloc_error };
-
-use	std::ops::{ Deref, DerefMut };
-use	std::ptr::NonNull;
+//-- buff.rs ----------------------------------------------------------------------------------------------------------------------
+use	std::{
+    alloc::{ alloc, dealloc, handle_alloc_error, realloc, Layout },
+    fmt,
+    marker::PhantomData,
+    mem::{ forget, size_of, swap },
+    ops::{ Deref, DerefMut },
+    ptr::{ copy_nonoverlapping, drop_in_place, NonNull, read, slice_from_raw_parts_mut, write },
+};
+use	serde::{
+    de::{ SeqAccess, Visitor },
+    Deserialize, Deserializer, Serialize, Serializer,
+};
+use	crate::silo::{ Arr, IAccess, IArr, Stash, U32 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -418,11 +425,11 @@ impl< T, const N: usize> From< [T; N]> for Buff< T>
 {
     fn	from( arr: [T; N]) -> Self
     {
-        let  	mut stash = crate::silo::Stash::WithCapacity( N as u32);
+        let  	mut stash = Stash::WithCapacity( N as u32);
         for item in IntoIterator::into_iter( arr) {
             stash.Push( item);
         }
-        stash.IntoBuff()
+        return stash.IntoBuff();
     }
 }
 
@@ -549,52 +556,52 @@ impl< T> FromIterator< T> for Buff< T>
     fn	from_iter< I: IntoIterator< Item = T>>( iter: I) -> Self
     {
         let  	iterator = iter.into_iter();
-        let  	mut stash = crate::silo::Stash::New();
+        let  	mut stash = Stash::New();
         for item in iterator {
             stash.Push( item);
         }
-        stash.IntoBuff()
+        return stash.IntoBuff();
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T: serde::Serialize> serde::Serialize for Buff< T>
+impl< T: Serialize> Serialize for Buff< T>
 {
     fn	serialize< S>( &self, serializer: S) -> Result< S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: Serializer,
     {
-        self.deref().serialize( serializer)
+        return self.deref().serialize( serializer);
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'de, T: serde::Deserialize< 'de>> serde::Deserialize< 'de> for Buff< T>
+impl< 'de, T: Deserialize< 'de>> Deserialize< 'de> for Buff< T>
 {
     fn	deserialize< D>( deserializer: D) -> Result< Self, D::Error>
     where
-        D: serde::Deserializer< 'de>,
+        D: Deserializer< 'de>,
     {
         struct BuffVisitor< T> {
-            marker: std::marker::PhantomData< fn() -> Buff< T>>,
+            marker: PhantomData< fn() -> Buff< T>>,
         }
-        impl< 'de, T: serde::Deserialize< 'de>> serde::de::Visitor< 'de> for BuffVisitor< T> {
+        impl< 'de, T: Deserialize< 'de>> Visitor< 'de> for BuffVisitor< T> {
             type Value = Buff< T>;
 
-            fn	expecting( &self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            fn	expecting( &self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str( "a sequence")
             }
 
             fn	visit_seq< A>( self, mut seq: A) -> Result< Self::Value, A::Error>
             where
-                A: serde::de::SeqAccess< 'de>,
+                A: SeqAccess< 'de>,
             {
                 let  	mut stash = if let Some( size) = seq.size_hint() {
-                    crate::silo::Stash::WithCapacity( size as u32)
+                    Stash::WithCapacity( size as u32)
                 } else {
-                    crate::silo::Stash::New()
+                    Stash::New()
                 };
 
                 while let Some( value) = seq.next_element()? {
@@ -604,7 +611,7 @@ impl< 'de, T: serde::Deserialize< 'de>> serde::Deserialize< 'de> for Buff< T>
                 Ok( stash.IntoBuff())
             }
         }
-        deserializer.deserialize_seq( BuffVisitor { marker: std::marker::PhantomData })
+        return deserializer.deserialize_seq( BuffVisitor { marker: PhantomData });
     }
 }
 

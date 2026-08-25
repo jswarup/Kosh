@@ -1,15 +1,17 @@
 //-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use	crate::{
-    heist::
-    { Atelier, Maestro, choretree::IChoreNode },
-    silo::
-    { Buff, IAccess, IArr, U16, U32 },
-    stalks::
-    { Atm, DynIWorker, IntoWorkPtr, IWorker, Worker },
-};
 use	std::sync::atomic::Ordering;
 use	std::sync::{ Arc, Mutex };
 use	std::thread;
+use	crate::{
+    Chore,
+    ChoreTree,
+    CpuChore,
+    GpuAutoChore,
+    heist::{ Atelier, ChoreTarget, IChoreNode, IMaestro, Maestro },
+    silo::{ Buff, IAccess, IArr, Stash, U16, U32 },
+    stalks::{ Atm, DynIWorker, IntoWorkPtr, IWorker, Worker },
+    swarm::SwarmEngine,
+};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -42,7 +44,7 @@ fn	BuffBasicAtelierTest()
 fn	TestThreadSharedInteger()
 {
     let  	shared = Arc::new( Mutex::new( 0));
-    let mut handles = crate::silo::Stash::New();
+    let  	mut handles = Stash::New();
     for i in 0..4 {
         let  	sharedClone = shared.clone();
         let  	handle = thread::spawn( move || {
@@ -78,16 +80,16 @@ fn	TestMaestroBasicOps()
 
 fn	TestChoreHelper() -> impl IChoreNode
 { 
-    let  	aChore = crate::Chore!( "10S", |_m| {
+    let  	aChore = Chore!( "10S", |_m| {
         print!( "{} ", 10);
     });
-    let  	bChore = crate::Chore!( "20S", |_m| {
+    let  	bChore = Chore!( "20S", |_m| {
         print!( "{} ", 20);
     });
-    let  	cChore = crate::Chore!( "40S", |_m| {
+    let  	cChore = Chore!( "40S", |_m| {
         print!( "{} ", 40);
     });
-    crate::ChoreTree!( ( cChore
+    ChoreTree!( ( cChore
             < ( bChore
                 | aChore
                 | |_m| {
@@ -113,58 +115,50 @@ fn	TestChoreBuds()
 #[test]
 fn	TestChoreTree()
 {
-    let  	a  = crate::Chore!( "A", |_m| {
+    let  	a  = Chore!( "A", |_m| {
         print!( "{} ", "A");
     });
-    let  	b  = crate::Chore!( "B", |_m| {
+    let  	b  = Chore!( "B", |_m| {
         print!( "{} ", "B");
     });
-    let  	c = crate::Chore!( "C", |_m| {
+    let  	c = Chore!( "C", |_m| {
         print!( "{} ", "C");
     });
-    let  	d = crate::Chore!( "D", |_m| {
+    let  	d = Chore!( "D", |_m| {
         print!( "{} ", "D");
     });
 
-    let  	e = crate::Chore!( "E", |_m| {
+    let  	e = Chore!( "E", |_m| {
         print!( "{} ", "E");
     });
 
-    let  	f = crate::Chore!( "F", |_m| {
+    let  	f = Chore!( "F", |_m| {
         print!( "{} ", "F");
     });
 
-    let  	g = crate::Chore!( "G", |_m| {
+    let  	g = Chore!( "G", |_m| {
         print!( "{} ", "G");
     });
 
-    let  	h = crate::Chore!( "H", |_m| {
+    let  	h = Chore!( "H", |_m| {
         print!( "{} ", "H");
     });
 
-    let  	i = crate::Chore!( "i", |_m| {
+    let  	i = Chore!( "i", |_m| {
         print!( "{} ", "I");
     });
 
-    let  	j = crate::Chore!( "J", |_m| {
+    let  	j = Chore!( "J", |_m| {
         print!( "{} ", "J");
     });
 
-    let  	choreTree= crate::ChoreTree!( ((( ( a < b ) | ( c <  d)) < e) | ( ( f | g) < h)  | i) < j);
-    //let  	choreTree= crate::ChoreTree!( ((( ( aChore | bChore ) < gChore))));
-
-
-
+    let  	choreTree = ChoreTree!( ((( ( a < b ) | ( c <  d)) < e) | ( ( f | g) < h)  | i) < j);
 
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();
 
-    // Note: Calling DoWork manually in DiveDf consumes the job, which causes
-    // use-after-free panics when DoLaunch actually runs them asynchronously.
-
-    mainMaestro.PostChoreTree(  &choreTree);
+    mainMaestro.PostChoreTree( &choreTree);
     atelier.DoLaunch();
-
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -203,8 +197,6 @@ static CPU_COUNT: Atm< U32> = U32::_0.IntoAtm();
 #[test]
 fn	TestHeistSwarmCpuChore()
 {
-    use	crate::heist::{ Chore, ChoreTarget };
-
     CPU_COUNT.Store( U32::_0, Ordering::Release);
 
     fn	stepA( _w: &DynIWorker< '_>)
@@ -217,13 +209,13 @@ fn	TestHeistSwarmCpuChore()
         CPU_COUNT.FetchAdd( U32( 20), Ordering::AcqRel);
     }
 
-    let  	choreA = Chore::Cpu( "CpuStepA", stepA);
-    let  	choreB = Chore::Cpu( "CpuStepB", stepB);
+    let  	choreA = CpuChore!( "CpuStepA", stepA);
+    let  	choreB = CpuChore!( "CpuStepB", stepB);
 
     assert_eq!( choreA.Target(), ChoreTarget::Cpu);
     assert_eq!( choreB.Target(), ChoreTarget::Cpu);
 
-    let  	choreTree = crate::ChoreTree!( choreA < choreB);
+    let  	choreTree = ChoreTree!( choreA < choreB);
     let  	atelier = Atelier::New( 2);
     let  	mainMaestro = atelier.MainMaestro();
     mainMaestro.PostChoreTree( &choreTree);
@@ -240,9 +232,6 @@ static GPU_RESULT_SUM: Atm< U32> = U32::_0.IntoAtm();
 #[test]
 fn	TestHeistSwarmGpuChore()
 {
-    use	crate::heist::{ Chore, ChoreTarget };
-    use	crate::swarm::SwarmEngine;
-
     GPU_RESULT_SUM.Store( U32::_0, Ordering::Release);
 
     fn	gpuWork( w: &DynIWorker< '_>)
@@ -260,7 +249,7 @@ fn	TestHeistSwarmGpuChore()
     let  	mut atelier = Atelier::New( 2);
     atelier.SetSwarm( engine);
 
-    let  	gpuChore = Chore::GpuAuto( "GpuDouble", gpuWork);
+    let  	gpuChore = GpuAutoChore!( "GpuDouble", gpuWork);
     assert_eq!( gpuChore.Target(), ChoreTarget::GpuAuto);
 
     let  	mainMaestro = atelier.MainMaestro();
@@ -281,9 +270,6 @@ static STAGE3_FINAL: Atm< U32> = U32::_0.IntoAtm();
 #[test]
 fn	TestHeistSwarmHeterogeneousPipeline()
 {
-    use	crate::heist::Chore;
-    use	crate::swarm::SwarmEngine;
-
     STAGE1_A.Store( U32::_0, Ordering::Release);
     STAGE1_B.Store( U32::_0, Ordering::Release);
     STAGE2_SUM.Store( U32::_0, Ordering::Release);
@@ -321,12 +307,12 @@ fn	TestHeistSwarmHeterogeneousPipeline()
     let  	mut atelier = Atelier::New( 4);
     atelier.SetSwarm( engine);
 
-    let  	choreA = Chore::Cpu( "ProduceA", produceA);
-    let  	choreB = Chore::Cpu( "ProduceB", produceB);
-    let  	mergeChore = Chore::Cpu( "Merge", mergeChunks);
-    let  	computeChore = Chore::GpuAuto( "GpuCompute", gpuCompute);
+    let  	choreA = CpuChore!( "ProduceA", produceA);
+    let  	choreB = CpuChore!( "ProduceB", produceB);
+    let  	mergeChore = CpuChore!( "Merge", mergeChunks);
+    let  	computeChore = GpuAutoChore!( "GpuCompute", gpuCompute);
 
-    let  	pipeline = crate::ChoreTree!(
+    let  	pipeline = ChoreTree!(
         ( choreA | choreB ) < mergeChore < computeChore
     );
 

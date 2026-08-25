@@ -23,4 +23,10 @@
   - **Module Re-exporting**: Re-export both `Foo` and `IFoo` at the module root (`pub use foo::{Foo, IFoo};`) so callers importing the module automatically bring the trait methods into scope.
   - **Object Safety & Generics**: Use `where Self: Sized` on generic trait methods to preserve object safety (`dyn IFoo`) for non-generic methods. Default implementations should be defined directly in `IFoo` when implemented via other trait methods.
 
+## Code Organization & Naming Guidelines
+- **Always Use Short Names & File-Level `use` Statements**:
+  - All `use` statements must be placed strictly at the file header (grouped logically by module).
+  - Do NOT use inline full-path qualifications (e.g. `crate::silo::Stash`, `crate::heist::choretree::IChoreNode`, `crate::swarm::SwarmEngine`, `std::sync::atomic::Ordering`).
+  - Import traits, structs, enums, and functions at the file header and refer to them exclusively by their short names throughout the file body.
+
 

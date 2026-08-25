@@ -1,10 +1,18 @@
-﻿//-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
+//-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
 
 use	crate::{
-    fleck::{ BBox3f, Pt3f, ptio::{ ParsePts, ParsePtsBytes, ParsePtsStream, PtsCloud, PtsShard } },
+    fleck::{
+        ptio::{ ParsePts, ParsePtsBytes, ParsePtsStream, PtsCloud, PtsShard },
+        vex::{
+            Cross, Dot, ICrossProduct, IInnerProductSpace, IScalar, IVectorSpace, Lerp,
+            Vex, Vex2f, Vex3d, Vex3f, Vex3i, Vex4f,
+        },
+        BBox3f, Dir3f, ParseWaveObj, ParseWaveObjBytes, ParseWaveObjStream,
+        Pt3f, WPt2f, WPt3f,
+    },
     flux::instream::FixedStream,
     shard::Parser,
-    silo::{ IAccess, U32, U8 },
+    silo::{ Buff, IAccess, U16, U32, U64, U8 },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -200,8 +208,6 @@ fn	TestPtsShardGrammarDirect()
 #[test]
 fn	TestWaveObjBasicCube()
 {
-    use	crate::fleck::ParseWaveObj;
-
     let  	objData = r#"
 # Wavefront OBJ Cube
 o Cube
@@ -245,8 +251,6 @@ f 4 1 5 8
 #[test]
 fn	TestWaveObjWithNormalsAndTexCoords()
 {
-    use	crate::fleck::ParseWaveObj;
-
     let  	objData = r#"
 # Vertices, TexCoords, Normals, and Faces with v/vt/vn
 v 0.0 0.0 0.0
@@ -291,8 +295,6 @@ f 1/1/1 2/2/1 3/3/1
 #[test]
 fn	TestWaveObjFaceFormats()
 {
-    use	crate::fleck::ParseWaveObj;
-
     let  	objData = r#"
 v 0.0 0.0 0.0
 v 1.0 0.0 0.0
@@ -350,8 +352,6 @@ f 1/1/1 2/2/1 4/2/1 3/1/1
 #[test]
 fn	TestWaveObjNegativeIndexing()
 {
-    use	crate::fleck::ParseWaveObj;
-
     let  	objData = r#"
 v 10.0 20.0 30.0
 v 40.0 50.0 60.0
@@ -374,9 +374,6 @@ f -3 -2 -1
 #[test]
 fn	TestWaveObjToDtoAndTriangulate()
 {
-    use	crate::fleck::{ ParseWaveObjBytes, ParseWaveObjStream };
-    use	crate::flux::instream::FixedStream;
-
     let  	objData = b"v 0.0 0.0 0.0\nv 10.0 0.0 0.0\nv 10.0 10.0 0.0\nv 0.0 10.0 0.0\nf 1 2 3 4\n";
     let  	model = ParseWaveObjBytes( objData).unwrap();
 
@@ -398,8 +395,6 @@ fn	TestWaveObjToDtoAndTriangulate()
 #[test]
 fn	TestWaveObjMetadataAndMaterials()
 {
-    use	crate::fleck::ParseWaveObj;
-
     let  	objData = r#"
 mtllib materials.mtl
 o MainModel
@@ -424,8 +419,6 @@ f 1 2 3
 #[test]
 fn	TestPt3fBasicOps()
 {
-    use	crate::fleck::Pt3f;
-
     let  	pt = Pt3f::New( 1.5, 2.5, 3.5);
     assert_eq!( pt._X, 1.5);
     assert_eq!( pt._Y, 2.5);
@@ -441,8 +434,6 @@ fn	TestPt3fBasicOps()
 #[test]
 fn	TestWPt3fBasicOps()
 {
-    use	crate::fleck::WPt3f;
-
     let  	pt = WPt3f::New( 1.0, 2.0, 3.0);
     assert_eq!( pt._X, 1.0);
     assert_eq!( pt._Y, 2.0);
@@ -463,8 +454,6 @@ fn	TestWPt3fBasicOps()
 #[test]
 fn	TestWPt2fBasicOps()
 {
-    use	crate::fleck::WPt2f;
-
     let  	pt = WPt2f::New( 0.25, 0.75);
     assert_eq!( pt._U, 0.25);
     assert_eq!( pt._V, 0.75);
@@ -483,8 +472,6 @@ fn	TestWPt2fBasicOps()
 #[test]
 fn	TestDir3fBasicOps()
 {
-    use	crate::fleck::Dir3f;
-
     let  	dir = Dir3f::New( 0.0, 0.0, 1.0);
     assert_eq!( dir._X, 0.0);
     assert_eq!( dir._Y, 0.0);
@@ -503,8 +490,6 @@ fn	TestDir3fBasicOps()
 #[test]
 fn	TestVexBasicConstructorsAndAccessors()
 {
-    use	crate::fleck::vex::{ Vex2f, Vex3d, Vex3f, Vex3i, Vex4f };
-
     let  	v2 = Vex2f::New2( 3.0, 4.0);
     assert_eq!( v2.X(), 3.0);
     assert_eq!( v2.Y(), 4.0);
@@ -545,8 +530,6 @@ fn	TestVexBasicConstructorsAndAccessors()
 #[test]
 fn	TestVexByValueAndByRefOperators()
 {
-    use	crate::fleck::vex::Vex3f;
-
     let  	a = Vex3f::New3( 1.0, 2.0, 3.0);
     let  	b = Vex3f::New3( 4.0, 5.0, 6.0);
 
@@ -603,8 +586,6 @@ fn	TestVexByValueAndByRefOperators()
 #[test]
 fn	TestVexScalarArithmetic()
 {
-    use	crate::fleck::vex::{ Vex3d, Vex3f, Vex3i };
-
     let  	vf = Vex3f::New3( 2.0, 3.0, 4.0);
     let  	sf = 2.5f32;
 
@@ -648,8 +629,6 @@ fn	TestVexScalarArithmetic()
 #[test]
 fn	TestVexVectorSpaceAndInnerProduct()
 {
-    use	crate::fleck::vex::{ Cross, Dot, ICrossProduct, IInnerProductSpace, IVectorSpace, Lerp, Vex3f };
-
     let  	zero = Vex3f::Zero();
     assert!( zero.IsZero());
 
@@ -721,10 +700,6 @@ fn	TestVexVectorSpaceAndInnerProduct()
 #[test]
 fn	TestVexIndexingAndConversionInterop()
 {
-    use	crate::fleck::{ Dir3f, Pt3f, WPt2f, WPt3f };
-    use	crate::fleck::vex::{ Vex2f, Vex3f, Vex4f };
-    use	crate::silo::{ U32, U64 };
-
     let  	mut v = Vex3f::New3( 10.0, 20.0, 30.0);
 
     // Indexing
@@ -786,9 +761,6 @@ fn	TestVexIndexingAndConversionInterop()
 #[test]
 fn	TestVexWithUIntScalarTypes()
 {
-    use	crate::fleck::vex::{ Dot, IScalar, Vex };
-    use	crate::silo::{ U16, U32, U64, U8 };
-
     // Test IScalar methods on UInt types
     assert_eq!( U32::ZERO, U32( 0));
     assert_eq!( U32::ONE, U32( 1));
@@ -837,9 +809,6 @@ fn	TestVexWithUIntScalarTypes()
 #[test]
 fn	TestBuffVectorSpaceAndInnerProduct()
 {
-    use	crate::fleck::vex::{ IInnerProductSpace, IVectorSpace };
-    use	crate::silo::{ Buff, U32, U8 };
-
     // 1. Float Vector Space (4D Euclidean space)
     let  	b1 = Buff![ 1.0f32, 2.0, 3.0, 4.0 ];
     let  	b2 = Buff![ 5.0f32, 6.0, 7.0, 8.0 ];

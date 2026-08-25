@@ -3,7 +3,7 @@ use	std::collections::HashSet;
 use	std::sync::Arc;
 use	std::sync::atomic::Ordering;
 use	std::{ fmt, hint::spin_loop, thread::{ scope, yield_now } };
-use	crate::heist::Maestro;
+use	crate::heist::{ Maestro, IMaestro };
 use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, U16, U32 };
 use	crate::silo::uint::Xplod;
 use	crate::stalks::{ Atm, Spinlock, WorkPtr };

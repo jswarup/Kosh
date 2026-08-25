@@ -1,12 +1,13 @@
-use	crate::silo::uint::*;
-/// Arithmetic components ( Adders)
-///
-/// Direct Rust equivalent of `Fr_HalfAdder`, `Fr_FullAdder`, `Fr_Adder`
-
-use	crate::rube::gates::{AndGate, OrGate, XorGate};
-use	crate::rube::reg::Reg;
-use	crate::rube::trigger::TriggerId;
-use	crate::rube::sim_context::SimContext;
+//-- adder.rs -----------------------------------------------------------------------------------------------------------------------
+use	crate::{
+    rube::{
+        gates::{ AndGate, OrGate, XorGate },
+        reg::Reg,
+        sim_context::SimContext,
+        trigger::TriggerId,
+    },
+    silo::U32,
+};
 
 /// Half Adder ( `Fr_HalfAdder`)
 ///
@@ -188,7 +189,7 @@ impl< const N: usize> Adder< N>
     }
 
     pub fn	GetSum( &self, ctxt: &SimContext) -> U32
-{
+    {
         let  	mut val = 0;
         for i in 0..N {
             let  	bit = ctxt.get_value( self._Sum[i]);
@@ -197,6 +198,6 @@ impl< const N: usize> Adder< N>
                 val |= 1 << i;
             }
         }
-        crate::silo::uint::U32(val)
+        return U32( val);
     }
 }

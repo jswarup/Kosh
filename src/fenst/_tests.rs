@@ -1,5 +1,16 @@
 //-- fenst/_tests.rs ---------------------------------------------------------------------------------------------------------------
-use	crate::fenst::{ XplrListEntries, XplrFetchContent, XplrLeafInfo };
+use	std::env::temp_dir;
+use	std::fs::{ File, remove_file };
+use	std::io::Write;
+use	std::path::Path;
+use	crate::{
+    fenst::{
+        FsBranch, FsLeaf, IsObjFile, Xplr, XplrFetchChunk, XplrFetchContent,
+        XplrLeafInfo, XplrListEntries, XplrParsePtsFile, XplrParseWaveObjFile, XplrRegistry,
+    },
+    silo::{ Buff, U32 },
+    swarm::{ Camera, SceneGraph, SwarmCluster, SwarmEngine },
+};
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -91,8 +102,6 @@ fn	TestGetFileInfoDirectory()
 #[test]
 fn	TestFsLeaf()
 {
-    use	crate::fenst::{ Xplr, FsLeaf };
-
     let  	leaf = FsLeaf::New( "Cargo.toml".to_string());
     assert_eq!( leaf.Name(), "Cargo.toml");
     assert_eq!( leaf.Path(), "Cargo.toml");
@@ -112,8 +121,6 @@ fn	TestFsLeaf()
 #[test]
 fn	TestFsBranch()
 {
-    use	crate::fenst::{ Xplr, FsBranch };
-
     let  	branch = FsBranch::New( "src".to_string());
     assert_eq!( branch.Name(), "src");
     assert_eq!( branch.Path(), "src");
@@ -149,8 +156,6 @@ fn	TestFsBranch()
 #[test]
 fn	TestXplrRegistry()
 {
-    use	crate::fenst::XplrRegistry;
-
     let  	registry = XplrRegistry::New();
     let  	schemes = registry.Schemes();
     assert!( schemes.contains( &"file".to_string()));
@@ -172,11 +177,11 @@ fn	TestXplrRegistry()
     assert!( !dto._Id.is_empty());
 }
 
+// ---------------------------------------------------------------------------------------------------------------------------------
+
 #[test]
 fn	TestReadFileChunk()
 {
-    use	crate::fenst::XplrFetchChunk;
-
     let  	result = XplrFetchChunk( "Cargo.toml".to_string(), 0, 30);
     assert!( result.is_ok(), "Failed to read file chunk: {:?}", result.err());
 
@@ -187,11 +192,11 @@ fn	TestReadFileChunk()
     assert!( chunk._Content.contains( "[package]"));
 }
 
+// ---------------------------------------------------------------------------------------------------------------------------------
+
 #[test]
 fn	TestFrescoProvider()
 {
-    use	crate::fenst::XplrRegistry;
-
     let  	registry = XplrRegistry::New();
     let  	schemes = registry.Schemes();
     assert!( schemes.contains( &"expr".to_string()));
@@ -214,8 +219,6 @@ fn	TestFrescoProvider()
 #[test]
 fn	TestShardProvider()
 {
-    use	crate::fenst::XplrRegistry;
-
     let  	registry = XplrRegistry::New();
     let  	schemes = registry.Schemes();
     assert!( schemes.contains( &"ast".to_string()));
@@ -237,11 +240,7 @@ fn	TestShardProvider()
 #[test]
 fn	TestParsePtsFileStream()
 {
-    use	crate::fenst::XplrParsePtsFile;
-    use	std::fs::File;
-    use	std::io::Write;
-
-    let  	tempPath = std::env::temp_dir().join( "test_stream_cloud.pts");
+    let  	tempPath = temp_dir().join( "test_stream_cloud.pts");
     {
         let  	mut f = File::create( &tempPath).unwrap();
         writeln!( f, "3").unwrap();
@@ -262,7 +261,7 @@ fn	TestParsePtsFileStream()
     assert_eq!( dto._BboxMin, [1.0, 2.0, 3.0]);
     assert_eq!( dto._BboxMax, [7.0, 8.0, 9.0]);
 
-    let  	_ = std::fs::remove_file( &tempPath);
+    let  	_ = remove_file( &tempPath);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -270,8 +269,6 @@ fn	TestParsePtsFileStream()
 #[test]
 fn	TestCameraOperations()
 {
-    use	crate::swarm::Camera;
-
     let  	mut cam = Camera::New();
     assert_eq!( cam._PanX, 0.0);
     assert_eq!( cam._PanY, 0.0);
@@ -306,9 +303,6 @@ fn	TestCameraOperations()
 #[test]
 fn	TestSceneGraph()
 {
-    use	crate::swarm::SceneGraph;
-    use	crate::silo::Buff;
-
     let  	points = Buff![ [ -10.0, -10.0, -10.0 ], [ 10.0, 10.0, 10.0 ] ];
 
     let  	mut scene = SceneGraph::WithPoints( points, [ -10.0, -10.0, -10.0 ], [ 10.0, 10.0, 10.0 ]);
@@ -328,10 +322,6 @@ fn	TestSceneGraph()
 #[test]
 fn	TestSceneGraphSwarmProjection()
 {
-    use	crate::swarm::SceneGraph;
-    use	crate::silo::Buff;
-    use	crate::swarm::SwarmEngine;
-
     let  	points = Buff![ [ 0.0, 0.0, 0.0 ], [ 5.0, 5.0, 5.0 ] ];
 
     let  	scene = SceneGraph::WithPoints( points, [ -10.0, -10.0, -10.0 ], [ 10.0, 10.0, 10.0 ]);
@@ -351,10 +341,6 @@ fn	TestSceneGraphSwarmProjection()
 #[test]
 fn	TestSceneGraphSwarmBoundingBoxProjection()
 {
-    use	crate::swarm::SceneGraph;
-    use	crate::silo::Buff;
-    use	crate::swarm::SwarmEngine;
-
     let  	points = Buff::New();
     let  	scene = SceneGraph::WithPoints( points, [ -10.0, -10.0, -10.0 ], [ 10.0, 10.0, 10.0 ]);
     let  	engine = SwarmEngine::Auto();
@@ -380,10 +366,6 @@ fn	TestSceneGraphSwarmBoundingBoxProjection()
 #[test]
 fn	TestSceneGraphSwarmFullSceneProjection()
 {
-    use	crate::swarm::SceneGraph;
-    use	crate::silo::Buff;
-    use	crate::swarm::SwarmEngine;
-
     let  	points = Buff![ [ 0.0, 0.0, 0.0 ], [ 10.0, 10.0, 10.0 ] ];
 
     let  	scene = SceneGraph::WithPoints( points, [ -20.0, -20.0, -20.0 ], [ 20.0, 20.0, 20.0 ]);
@@ -402,11 +384,7 @@ fn	TestSceneGraphSwarmFullSceneProjection()
 #[test]
 fn	TestSceneGraphClusterMultiGpuProjection()
 {
-    use	crate::swarm::SceneGraph;
-    use	crate::silo::Buff;
-    use	crate::swarm::SwarmCluster;
-
-    let  	points = Buff::Create( crate::silo::U32( 100), |i| {
+    let  	points = Buff::Create( U32( 100), |i| {
         let  	f = i.AsU32() as f32;
         [ f, f * 0.5, f * 0.2 ]
     });
@@ -427,8 +405,6 @@ fn	TestSceneGraphClusterMultiGpuProjection()
 #[test]
 fn	TestIsObjFile()
 {
-    use	crate::fenst::IsObjFile;
-
     assert!( IsObjFile( "model.obj"));
     assert!( IsObjFile( "C:/Models/bunny.OBJ"));
     assert!( IsObjFile( "mesh.obj"));
@@ -441,10 +417,8 @@ fn	TestIsObjFile()
 #[test]
 fn	TestParseWaveObjFileStream()
 {
-    use	crate::fenst::XplrParseWaveObjFile;
-
     let  	blubPath = "workbench/blub/blub_control_mesh.obj";
-    if std::path::Path::new( blubPath).exists() {
+    if Path::new( blubPath).exists() {
         let  	res = XplrParseWaveObjFile( blubPath);
         assert!( res.is_ok());
         let  	dto = res.unwrap();
