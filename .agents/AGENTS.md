@@ -15,3 +15,12 @@
 - **Frieze Is Presentation Only**: `frieze` is a thin presentation layer. It may manage DOM state, forward input, decode IPC frames, and paint backend-projected primitives through Canvas 2D. It MUST NOT parse geometry, calculate camera transforms, project vertices, cull, shade, sort geometry, or create WebGL/WebGPU contexts.
 - **Fenst Orchestrates Graphics**: `fenst` owns graphics sessions, asset loading, camera state, frame serialization, and IPC. All graphics computation and render preparation MUST be delegated through `swarm` to `symph` kernels, with a CPU fallback only inside that backend pipeline.
 
+## Architectural Guidelines
+- **Iface Pattern**:
+  - **1:1 Trait-per-Struct**: For a concrete struct `Foo`, define a corresponding trait `IFoo` containing all public non-constructor methods.
+  - **Inherent Impl Limitation**: Inherent `impl Foo` blocks are reserved exclusively for constructors (e.g. `New`, `Create`, `From...`).
+  - **Trait Implementation**: All functional/operational methods are implemented under `impl IFoo for Foo`.
+  - **Module Re-exporting**: Re-export both `Foo` and `IFoo` at the module root (`pub use foo::{Foo, IFoo};`) so callers importing the module automatically bring the trait methods into scope.
+  - **Object Safety & Generics**: Use `where Self: Sized` on generic trait methods to preserve object safety (`dyn IFoo`) for non-generic methods. Default implementations should be defined directly in `IFoo` when implemented via other trait methods.
+
+
