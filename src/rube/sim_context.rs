@@ -1,16 +1,22 @@
-/// Discrete-event simulation context and delta-cycle scheduler
-///
-/// Direct Rust equivalent of `Fr_SimContext` / `Fr_SimControl`.
-
-use	crate::rube::reg::Reg;
-use	crate::rube::trigger::{TriggerCntl, TriggerId, TriggerSense};
+//-- sim_context.rs -----------------------------------------------------------------------------------------------------------------
 use	std::collections::BTreeSet;
 use	std::sync::Arc;
+use	crate::{
+    rube::{
+        reg::Reg,
+        trigger::{ TriggerId, TriggerSense, TriggerWad },
+    },
+};
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 pub type ActionId = usize;
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 #[derive( Clone)]
-pub enum ActionKind {
+pub enum ActionKind
+{
     Nand { _In1: TriggerId, _In2: TriggerId, _Out: TriggerId },
     And { _In1: TriggerId, _In2: TriggerId, _Out: TriggerId },
     Or { _In1: TriggerId, _In2: TriggerId, _Out: TriggerId },
@@ -21,6 +27,8 @@ pub enum ActionKind {
     Custom( Arc< dyn Fn( &mut SimContext) + Send + Sync>),
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 #[derive( Clone, Debug)]
 pub struct Sensitivity
 {
@@ -29,29 +37,35 @@ pub struct Sensitivity
     pub _ActionId: ActionId,
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub struct SimContext
 {
-    pub _Triggers: TriggerCntl,
+    pub _Triggers: TriggerWad,
     _Actions: Vec< ActionKind>,
     _Sensitivities: Vec< Sensitivity>,
     _ArmedTriggers: BTreeSet< TriggerId>,
     pending_actions: BTreeSet< ActionId>,
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl Default for SimContext
 {
     fn	default() -> Self
-{
+    {
         Self::new()
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl SimContext
 {
     pub fn	new() -> Self
-{
+    {
         Self {
-            _Triggers: TriggerCntl::new(),
+            _Triggers: TriggerWad::new(),
             _Actions: Vec::new(),
             _Sensitivities: Vec::new(),
             _ArmedTriggers: BTreeSet::new(),
@@ -62,35 +76,35 @@ impl SimContext
     /// Add a new trigger ( signal) to the simulation context
     #[inline]
     pub fn	add_trigger( &mut self, name: &str, initial: Reg) -> TriggerId
-{
-        self._Triggers.add( name, initial)
+    {
+        return self._Triggers.add( name, initial);
     }
 
     /// Query the current value of a trigger
     #[inline]
     pub fn	get_value( &self, id: TriggerId) -> Reg
-{
-        self._Triggers.get( id)
+    {
+        return self._Triggers.get( id);
     }
 
     /// Query the future value of a trigger ( if staged)
     #[inline]
     pub fn	get_future_value( &self, id: TriggerId) -> Reg
-{
-        self._Triggers.get_future( id)
+    {
+        return self._Triggers.get_future( id);
     }
 
     /// Query trigger name
     #[inline]
     pub fn	get_trigger_name( &self, id: TriggerId) -> &str
-{
-        self._Triggers.name( id)
+    {
+        return self._Triggers.name( id);
     }
 
     /// Initialize a trigger value directly without scheduling events
     #[inline]
     pub fn	init_value( &mut self, id: TriggerId, val: Reg)
-{
+    {
         self._Triggers.init_value( id, val);
         self._ArmedTriggers.remove( &id);
     }
@@ -98,30 +112,30 @@ impl SimContext
     /// Set a new future value on a trigger, arming it if changed
     #[inline]
     pub fn	set_value( &mut self, id: TriggerId, val: Reg)
-{
+    {
         if self._Triggers.set_future_value( id, val) {
             self._ArmedTriggers.insert( id);
         }
     }
 
     /// Register a gate or action along with its input sensitivities
-    pub fn	add_action( &mut self, action: ActionKind, _Sensitivities: &[( TriggerId, TriggerSense)]) -> ActionId
-{
+    pub fn	add_action( &mut self, action: ActionKind, sensitivities: &[( TriggerId, TriggerSense)]) -> ActionId
+    {
         let  	act_id = self._Actions.len();
         self._Actions.push( action);
-        for &( trigger_id, sense) in _Sensitivities {
+        for &( trigger_id, sense) in sensitivities {
             self._Sensitivities.push( Sensitivity {
                 _TriggerId: trigger_id,
                 _Sense: sense,
                 _ActionId: act_id,
             });
         }
-        act_id
+        return act_id;
     }
 
     /// Perform delta-cycle propagation until all triggers reach steady state
     pub fn	drive( &mut self) -> usize
-{
+    {
         let  	mut delta_cycles = 0;
         const MAX_DELTA_CYCLES: usize = 10_000;
 
@@ -161,12 +175,12 @@ impl SimContext
             }
         }
 
-        delta_cycles
+        return delta_cycles;
     }
 
     /// Internal evaluation of an action
     fn	fire_action( &mut self, act_id: ActionId)
-{
+    {
         let  	action = self._Actions[act_id].clone();
         match action {
             ActionKind::Nand { _In1: in1, _In2: in2, _Out: out } => {
@@ -196,3 +210,5 @@ impl SimContext
         }
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------

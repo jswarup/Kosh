@@ -1,18 +1,20 @@
-use	crate::silo::uint::*;
-/// Trigger Control and Sensitivity for signal transitions
-///
-/// Direct Rust equivalent of signal state management and `Fr_TriggerSense`.
+//-- trigger.rs -------------------------------------------------------------------------------------------------------------------
+use	std::ops::BitOr;
+use	crate::{
+    rube::reg::Reg,
+    silo::{ U32, U8 },
+};
 
-use	crate::rube::reg::Reg;
+//---------------------------------------------------------------------------------------------------------------------------------
 
 pub type TriggerId = U32;
 
-/// Struct-of-Arrays ( SoA) trigger storage.
-///
+//--------------------------------------------------------------------------------------------------------------------------------- 
+
 /// Decouples cold metadata ( `names`) from hot simulation states ( `past`, `current`, `future`),
 /// ensuring cache-friendly contiguous memory access during delta-cycle propagation.
 #[derive( Clone, Debug, Default)]
-pub struct TriggerCntl
+pub struct TriggerWad
 {
     pub _Names: Vec< String>,
     pub _Past: Vec< Reg>,
@@ -20,70 +22,72 @@ pub struct TriggerCntl
     pub _Future: Vec< Reg>,
 }
 
-impl TriggerCntl
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl TriggerWad
 {
     pub fn	new() -> Self
-{
+    {
         Self::default()
     }
 
     /// Add a signal with initial state
     pub fn	add( &mut self, name: impl Into< String>, initial: Reg) -> TriggerId
-{
+    {
         let  	id = U32( self._Current.len() as u32);
         self._Names.push( name.into());
         self._Past.push( initial);
         self._Current.push( initial);
         self._Future.push( initial);
-        id
+        return id;
     }
 
     #[inline]
     pub fn	len( &self) -> usize
-{
-        self._Current.len()
+    {
+        return self._Current.len();
     }
 
     #[inline]
     pub fn	is_empty( &self) -> bool
-{
-        self._Current.is_empty()
+    {
+        return self._Current.is_empty();
     }
 
     #[inline]
     pub fn	get( &self, id: TriggerId) -> Reg
-{
-        self._Current[id.0 as usize]
+    {
+        return self._Current[id.0 as usize];
     }
 
     #[inline]
     pub fn	get_past( &self, id: TriggerId) -> Reg
-{
-        self._Past[id.0 as usize]
+    {
+        return self._Past[id.0 as usize];
     }
 
     #[inline]
     pub fn	get_future( &self, id: TriggerId) -> Reg
-{
-        self._Future[id.0 as usize]
+    {
+        return self._Future[id.0 as usize];
     }
 
     #[inline]
     pub fn	name( &self, id: TriggerId) -> &str
-{
-        &self._Names[id.0 as usize]
+    {
+        return &self._Names[id.0 as usize];
     }
 
     #[inline]
     pub fn	is_armed( &self, id: TriggerId) -> bool
-{
+    {
         let  	idx = id.0 as usize;
-        self._Current[idx] != self._Future[idx]
+        return self._Current[idx] != self._Future[idx];
     }
 
     #[inline]
     pub fn	init_value( &mut self, id: TriggerId, val: Reg)
-{
+    {
         let  	idx = id.0 as usize;
         self._Past[idx] = val;
         self._Current[idx] = val;
@@ -92,118 +96,120 @@ impl TriggerCntl
 
     #[inline]
     pub fn	set_future_value( &mut self, id: TriggerId, val: Reg) -> bool
-{
+    {
         let  	idx = id.0 as usize;
         self._Future[idx] = val;
-        self._Current[idx] != val
+        return self._Current[idx] != val;
     }
 
     #[inline]
     pub fn	advance( &mut self, id: TriggerId) -> ( Reg, Reg)
-{
+    {
         let  	idx = id.0 as usize;
         self._Past[idx] = self._Current[idx];
         self._Current[idx] = self._Future[idx];
-        ( self._Past[idx], self._Current[idx])
+        return ( self._Past[idx], self._Current[idx]);
     }
 
     // --- Logic Gate Methods ---
 
     #[inline]
     pub fn	and( &self, _In1: TriggerId, _In2: TriggerId) -> Reg
-{
-        self._Current[_In1.0 as usize] & self._Current[_In2.0 as usize]
+    {
+        return self._Current[_In1.0 as usize] & self._Current[_In2.0 as usize];
     }
 
     #[inline]
     pub fn	or( &self, _In1: TriggerId, _In2: TriggerId) -> Reg
-{
-        self._Current[_In1.0 as usize] | self._Current[_In2.0 as usize]
+    {
+        return self._Current[_In1.0 as usize] | self._Current[_In2.0 as usize];
     }
 
     #[inline]
     pub fn	xor( &self, _In1: TriggerId, _In2: TriggerId) -> Reg
-{
-        self._Current[_In1.0 as usize] ^ self._Current[_In2.0 as usize]
+    {
+        return self._Current[_In1.0 as usize] ^ self._Current[_In2.0 as usize];
     }
 
     #[inline]
     pub fn	not( &self, _In1: TriggerId) -> Reg
-{
-        !self._Current[_In1.0 as usize]
+    {
+        return !self._Current[_In1.0 as usize];
     }
 
     #[inline]
     pub fn	nand( &self, _In1: TriggerId, _In2: TriggerId) -> Reg
-{
-        !( self.and( _In1, _In2))
+    {
+        return !( self.and( _In1, _In2));
     }
 
     #[inline]
     pub fn	nor( &self, _In1: TriggerId, _In2: TriggerId) -> Reg
-{
-        !( self.or( _In1, _In2))
+    {
+        return !( self.or( _In1, _In2));
     }
 
     #[inline]
     pub fn	xnor( &self, _In1: TriggerId, _In2: TriggerId) -> Reg
-{
-        !( self.xor( _In1, _In2))
+    {
+        return !( self.xor( _In1, _In2));
     }
 
     // --- Edge Detection Methods ---
 
     #[inline]
     pub fn	is_edge( &self, id: TriggerId) -> bool
-{
+    {
         let  	idx = id.0 as usize;
-        self._Current[idx] != self._Past[idx]
+        return self._Current[idx] != self._Past[idx];
     }
 
     #[inline]
     pub fn	is_posedge( &self, id: TriggerId) -> bool
-{
+    {
         let  	idx = id.0 as usize;
         let  	cur = self._Current[idx];
         let  	past = self._Past[idx];
-        cur != past && ( cur.get_bool() && !past.get_bool() && cur.is_valid())
+        return cur != past && ( cur.get_bool() && !past.get_bool() && cur.is_valid());
     }
 
     #[inline]
     pub fn	is_negedge( &self, id: TriggerId) -> bool
-{
+    {
         let  	idx = id.0 as usize;
         let  	cur = self._Current[idx];
         let  	past = self._Past[idx];
-        cur != past && ( !cur.get_bool() && past.get_bool() && past.is_valid())
+        return cur != past && ( !cur.get_bool() && past.get_bool() && past.is_valid());
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct TriggerSense( pub U8);
 
 impl TriggerSense
 {
-    pub const NONE: Self = Self( U8(0));
-    pub const POS_EDGE: Self = Self( U8(1));
-    pub const NEG_EDGE: Self = Self( U8(2));
-    pub const EDGE: Self = Self( U8(1 | 2));
+    pub const NONE: Self = Self( U8( 0));
+    pub const POS_EDGE: Self = Self( U8( 1));
+    pub const NEG_EDGE: Self = Self( U8( 2));
+    pub const EDGE: Self = Self( U8( 1 | 2));
 
     #[inline]
     pub const fn	is_none( &self) -> bool
-{
-        self.0.0 == 0
+    {
+        return self.0.0 == 0;
     }
 
     #[inline]
     pub const fn	contains( &self, other: Self) -> bool
-{
-        ( self.0.0 & other.0.0) == other.0.0
+    {
+        return ( self.0.0 & other.0.0) == other.0.0;
     }
 
     #[inline]
-    pub fn	matches( &self, signals: &TriggerCntl, id: TriggerId) -> bool
-{
+    pub fn	matches( &self, signals: &TriggerWad, id: TriggerId) -> bool
+    {
         if self.is_none() || !signals.is_edge( id) {
             return false;
         }
@@ -213,16 +219,21 @@ impl TriggerSense
         if self.contains( Self::NEG_EDGE) && signals.is_negedge( id) {
             return true;
         }
-        self.0 == Self::EDGE.0
+        return self.0 == Self::EDGE.0;
     }
 }
 
-impl std::ops::BitOr for TriggerSense
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl BitOr for TriggerSense
 {
     type Output = Self;
+
     #[inline]
     fn	bitor( self, rhs: Self) -> Self::Output
-{
-        Self( self.0 | rhs.0)
+    {
+        return Self( self.0 | rhs.0);
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
