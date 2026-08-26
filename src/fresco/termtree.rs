@@ -1,6 +1,6 @@
 //-- termtree.rs ---------------------------------------------------------------------------------------------------------------------
 use	crate::{
-    stalks::{ DynIWorker, IWork, BinNode, INode, BinOp },
+    stalks::{ DynIWorker, IWork, BinNode, BinOp },
 };
 use	std::fmt;
 
@@ -94,7 +94,7 @@ impl From< f64> for Term
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait ITermNode: INode
+pub trait ITermNode
 {
     fn	ChildrenCount( &self) -> usize;
     fn	Child( &self, idx: usize) -> &dyn ITermNode;

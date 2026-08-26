@@ -2,11 +2,11 @@
 
 use	crate::flux::instream::IStream;
 use	crate::silo::{ IAccess, IArr, Stash, U32, U8 };
-use	crate::stalks::INode;
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IGrammar: INode
+pub trait IGrammar
 {
     fn	Match( &self, parser: &mut Parser) -> bool;
 }

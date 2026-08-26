@@ -195,7 +195,7 @@ mod _tests {
         let  	in2 = ctxt.add_trigger( "in2", Reg::FALSE);
         let  	out = ctxt.add_trigger( "out", Reg::FALSE);
 
-        let  	_gate = AndGate::new( &mut ctxt, "And", in1, in2, out);
+        let  	_gate = AndGate::new( &mut ctxt, U32( 0), "And", in1, in2, out);
 
         let  	truth_table = [
             ( false, false, Reg::FALSE),

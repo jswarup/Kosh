@@ -1,9 +1,11 @@
 //-- gates.rs -----------------------------------------------------------------------------------------------------------------------
 use	crate::{
     rube::{
+        modlayout::IModule,
         sim_context::{ ActionId, ActionKind, SimContext },
         trigger::{ TriggerId, TriggerSense },
     },
+    silo::U32,
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -54,6 +56,7 @@ impl NandGate
 #[derive( Clone, Debug)]
 pub struct AndGate
 {
+    _ModuleId: U32,
     _Name: String,
     _In1: TriggerId,
     _In2: TriggerId,
@@ -65,7 +68,7 @@ pub struct AndGate
 
 impl AndGate
 {
-    pub fn	New( ctxt: &mut SimContext, name: &str, in1: TriggerId, in2: TriggerId, out: TriggerId) -> Self
+    pub fn	New( ctxt: &mut SimContext, moduleId: U32, name: &str, in1: TriggerId, in2: TriggerId, out: TriggerId) -> Self
     {
         let  	action = ActionKind::And { _In1: in1, _In2: in2, _Out: out };
         let  	action_id = ctxt.add_action(
@@ -76,6 +79,7 @@ impl AndGate
             ],
         );
         Self {
+            _ModuleId: moduleId,
             _Name: name.to_string(),
             _In1: in1,
             _In2: in2,
@@ -84,9 +88,24 @@ impl AndGate
         }
     }
 
-    pub fn	new( ctxt: &mut SimContext, name: &str, in1: TriggerId, in2: TriggerId, out: TriggerId) -> Self
+    pub fn	new( ctxt: &mut SimContext, moduleId: U32, name: &str, in1: TriggerId, in2: TriggerId, out: TriggerId) -> Self
     {
-        Self::New( ctxt, name, in1, in2, out)
+        Self::New( ctxt, moduleId, name, in1, in2, out)
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IModule for AndGate
+{
+    fn	ModuleId( &self) -> U32
+    {
+        return self._ModuleId;
+    }
+
+    fn	Name( &self) -> &str
+    {
+        return &self._Name;
     }
 }
 

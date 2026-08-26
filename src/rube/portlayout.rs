@@ -4,6 +4,51 @@ use	crate::{
     silo::{ EdgeBroadcast, EdgeConnect, U32 },
 };
 
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[derive( Clone, Debug, PartialEq, Eq)]
+pub struct Port
+{
+    pub _Name: String,
+    pub _Trigger: TriggerId,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait IPort
+{
+    fn	Name( &self) -> &str;
+    fn	Trigger( &self) -> TriggerId;
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl Port
+{
+    pub fn	New( name: impl Into< String>, trigger: TriggerId) -> Self
+    {
+        Self {
+            _Name: name.into(),
+            _Trigger: trigger,
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IPort for Port
+{
+    fn	Name( &self) -> &str
+    {
+        return &self._Name;
+    }
+
+    fn	Trigger( &self) -> TriggerId
+    {
+        return self._Trigger;
+    }
+}
 //---------------------------------------------------------------------------------------------------------------------------------
 
 pub trait IPortLayout
@@ -57,51 +102,6 @@ impl IPortLayout for PortLayout
     fn	PortCastMut( &mut self) -> &mut EdgeBroadcast
     {
         return &mut self._PortCast;
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[derive( Clone, Debug, PartialEq, Eq)]
-pub struct Port
-{
-    pub _Name: String,
-    pub _Trigger: TriggerId,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-pub trait IPort
-{
-    fn	Name( &self) -> &str;
-    fn	Trigger( &self) -> TriggerId;
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl Port
-{
-    pub fn	New( name: impl Into< String>, trigger: TriggerId) -> Self
-    {
-        Self {
-            _Name: name.into(),
-            _Trigger: trigger,
-        }
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IPort for Port
-{
-    fn	Name( &self) -> &str
-    {
-        return &self._Name;
-    }
-
-    fn	Trigger( &self) -> TriggerId
-    {
-        return self._Trigger;
     }
 }
 

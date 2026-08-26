@@ -4,7 +4,7 @@ use	std::fmt;
 use	crate::{
     heist::{ IMaestro, Maestro },
     silo::{ Stash, U16 },
-    stalks::{ BinNode, BinOp, DynIWorker, INode, IntoWorkPtr, IWork },
+    stalks::{ BinNode, BinOp, DynIWorker, IntoWorkPtr, IWork },
     swarm::BackendKind,
 };
 
@@ -222,7 +222,7 @@ macro_rules! ChoreTree {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IChoreNode: INode
+pub trait IChoreNode
 {
     fn	Post( &self, maestro: &Maestro, tails: &mut Stash< U16>) -> U16;
 }

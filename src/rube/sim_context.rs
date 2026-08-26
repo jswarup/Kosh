@@ -3,6 +3,7 @@ use	std::collections::BTreeSet;
 use	std::sync::Arc;
 use	crate::{
     rube::{
+        modlayout::ModLayout,
         portlayout::PortLayout,
         reg::Reg,
         trigger::{ TriggerId, TriggerSense, TriggerWad },
@@ -41,10 +42,11 @@ pub struct Sensitivity
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct SimContext
+pub     struct SimContext
 {
-    pub _Triggers: TriggerWad,
-    pub _Layout: PortLayout,
+    pub     _Triggers: TriggerWad,
+    _PortLayout: PortLayout,
+    _ModLayout: ModLayout,
     _Actions: Vec< ActionKind>,
     _Sensitivities: Vec< Sensitivity>,
     _ArmedTriggers: BTreeSet< TriggerId>,
@@ -69,7 +71,8 @@ impl SimContext
     {
         Self {
             _Triggers: TriggerWad::new(),
-            _Layout: PortLayout::New( U32( 0)),
+            _PortLayout: PortLayout::New( U32( 0)),
+            _ModLayout: ModLayout::New(),
             _Actions: Vec::new(),
             _Sensitivities: Vec::new(),
             _ArmedTriggers: BTreeSet::new(),

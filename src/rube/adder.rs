@@ -35,7 +35,7 @@ impl HalfAdder
 {
     pub fn	New( ctxt: &mut SimContext, name: &str, a: TriggerId, b: TriggerId, sum: TriggerId, carry: TriggerId) -> Self
 {
-        let  	andGate = AndGate::new( ctxt, &format!( "{name}.and"), a, b, carry);
+        let  	andGate = AndGate::new( ctxt, U32( 0), &format!( "{name}.and"), a, b, carry);
         let  	xorGate = XorGate::new( ctxt, &format!( "{name}.xor"), a, b, sum);
 
         Self {
