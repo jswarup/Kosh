@@ -1,6 +1,6 @@
-﻿# Kosh: Native 3D GPU & Symbolic Computing Workspace
+# Kosh: Native 3D GPU, Symbolic Computing & Digital Logic Workspace
 
-**Kosh** is a high-performance, zero-heap-AST computational framework and 3D geometric processing platform written in modern Rust. It is engineered for maximum memory efficiency, deterministic CPU cache locality, and heterogeneous SIMT hardware execution across multithreaded CPU, WebGPU (via `rust-gpu` SPIR-V bytecodes), and NVIDIA CUDA backends.
+**Kosh** is a high-performance, zero-heap-AST computational framework, digital logic simulation engine, and 3D geometric processing platform written in modern Rust. It is engineered for maximum memory efficiency, deterministic CPU cache locality, and heterogeneous SIMT hardware execution across multithreaded CPU, WebGPU (via `rust-gpu` SPIR-V bytecodes), and NVIDIA CUDA backends.
 
 ---
 
@@ -19,10 +19,11 @@ flowchart TD
         Fresco["<b>fresco</b><br/>Symbolic Expressions & Term Trees"]
     end
 
-    subgraph Compute ["Compute & Async Scheduling Engine"]
+    subgraph Compute ["Compute, Scheduling & Digital Logic Engine"]
         Heist["<b>heist</b><br/>Work-Stealing Chore DAG Engine"]
         Swarm["<b>swarm</b><br/>Hardware Compute (CPU, WebGPU, CUDA)"]
         Symph["<b>symph</b><br/>Pure Rust-GPU SIMT Compute Kernels"]
+        Rube["<b>rube</b><br/>Synchronous Logic Netlists & Discrete-Event Simulation"]
     end
 
     subgraph Foundation ["Foundational Memory & Concurrency Layer"]
@@ -59,6 +60,8 @@ flowchart TD
     Swarm --> Silo
     Swarm --> Symph
 
+    Rube --> Silo
+
     Shard --> Silo
     Shard --> Stalks
     Shard --> Flux
@@ -81,6 +84,7 @@ flowchart TD
 | **`swarm`** | Hardware compute engine across CPU, WebGPU, and CUDA | `SwarmEngine`, `SwarmDevice`, `SwarmBuffer`, `SwarmKernel`, `StandardOp`, `SwarmMath` | `IComputeDevice`, `IComputeBuffer`, `IComputeKernel`, `IGpuOp` | [Swarm.md](wiki/Swarm.md) |
 | **`symph`** | Rust-GPU SPIR-V compute kernels and algorithms (`no_std` for SPIR-V builds) | Pure SIMT functions (`wang_hash`, `collatz`, `pointcloud_elem`, `double_elem`, `vector_add_elem`) | SPIR-V Shaders (`pts_pointcloud_cs`, `camera_transform_cs`, `frustum_cull_cs`, `scene_vs`, `scene_fs`) | [Swarm.md](wiki/Swarm.md) |
 | **`heist`** | Asynchronous workflow DAG orchestrator and scheduler | `Atelier<'a>`, `Maestro<'a>`, `Chore`, `ChoreTarget`, `JobInfo`, `AtelierInfo` | `IChoreNode`, `ChoreTree!`, `Chore!`, `CpuChore!`, `GpuAutoChore!` | [Heist.md](wiki/Heist.md) |
+| **`rube`** | Synchronous digital logic simulation and discrete-event dataflow framework | `Reg`, `TriggerState`, `TriggerWad`, `Layout`, `NetCompiler`, `SimEngine`, `SimContext`, `FastModule`, `CustomModule`, `Adder<N>` | `NandGate`, `AndGate`, `OrGate`, `NotGate`, `XorGate`, `CRSLatch`, `DLatch`, `RSLatch` | [Rube.md](wiki/Rube.md) |
 | **`fleck`** | 3D Point Cloud (.pts) & Wavefront (.obj) mesh parsing, spatial bounding boxes, `Vex` | `PtsPoint`, `PtsCloud`, `WaveObjMesh`, `WaveObjFace`, `Vex<N, T>`, `Pt3f`, `WPt3f`, `Point32`, `RGB` | `ParsePts`, `ParsePtsStream`, `ParseWaveObj`, `ToDto` | [Fleck.md](wiki/Fleck.md) |
 | **`fenst`** | Virtual data provider framework, graphics session & camera orchestrator | `XplrEntry`, `XplrContent`, `XplrLeafInfo`, `FsBranch`, `FsLeaf`, `FrescoBranch`, `ShardBranch`, `XplrRegistry`, `PtsSessionState`, `PtsFrameDto` | `Xplr`, `LeafXplr`, `BranchXplr`, `XplrProvider`, `CreateDefaultRegistry` | [Fenst.md](wiki/Fenst.md) |
 | **`wxfrieze`** | Native desktop workspace built with `wxdragon` (wxWidgets 3.2+) and `wgpu` | `AppState`, `AppTheme`, `OpenTab`, `AuiManager`, `AuiPaneInfo`, `Notebook`, `ExplorerPanel`, `PtsView`, `ObjView`, `FrescoView` | `run()` | [Frieze.md](wiki/Frieze.md) |
@@ -119,6 +123,12 @@ Asynchronous workflows are represented as DAG expressions via `ChoreTree!`.
 ### 6. Strict Graphics Ownership Pipeline
 - **`wxfrieze` is Presentation Only**: `wxfrieze` manages native window events, user input, dockable AUI layout panes, and paints backend-projected primitives. It strictly does not parse raw geometry, compute camera matrices, cull primitives, or execute heavy graphics shaders.
 - **`fenst` Orchestrates Graphics**: `fenst` owns graphics sessions, asset loading, camera state, and frame serialization. All heavy graphics computations and 3D projections are delegated through `swarm` to `symph` compute kernels.
+
+### 7. Synchronous Digital Logic & Discrete-Event Simulation (`rube`)
+- **Unified 16-Byte Multi-Value Register (`Reg`)**: Bit-packed 2-state and 4-state logic (0, 1, X) with IEEE-1364 bitwise operators (`!`, `&`, `|`, `^`).
+- **Array-of-Structures (AoS) Temporal Latching**: 48-byte `TriggerState` cells (`_Past`, `_Current`, `_Future`) fit within a single 64-byte L1 cache line.
+- **Topological Net Compilation (`NetCompiler`)**: Merges connected ports via Disjoint-Set Union (DSU) in $O(P \cdot \alpha(P))$ time.
+- **Dual Execution Modes**: Multicycle synchronous clock-ticking (`SimEngine`) and discrete-event delta-cycle propagation (`SimContext`) with flat 64-bit word bitmasks and inverted sensitivity indexes.
 
 ---
 
@@ -176,8 +186,8 @@ Explore the full in-depth documentation in the **[wiki/](wiki/Architecture.md)**
 - **[Flux (Streaming & Serialization)](wiki/Flux.md)**
 - **[Swarm & Symph (GPU/CPU Compute)](wiki/Swarm.md)**
 - **[Heist (Chore DAG Orchestration)](wiki/Heist.md)**
+- **[Rube (Digital Logic & Discrete-Event Simulation)](wiki/Rube.md)**
 - **[Fleck (Point Cloud & Mesh Parsing)](wiki/Fleck.md)**
 - **[Fenst (Virtual Explorer & Graphics Orchestration)](wiki/Fenst.md)**
 - **[Frieze / WxFrieze (Native Desktop Workspace)](wiki/Frieze.md)**
 - **[Serialization Optimization Notes](wiki/Serialization_Optimization.md)**
-

@@ -1,8 +1,8 @@
-﻿# Kosh Architecture & Design Principles
+# Kosh Architecture & Design Principles
 
 ## 1. System Overview
 
-Kosh is an ultra-low-latency, zero-heap-AST computational framework and 3D geometric processing system written in modern Rust. It is architected for maximum memory efficiency, CPU cache locality, and heterogeneous SIMT execution across CPU, WebGPU, and CUDA hardware.
+Kosh is an ultra-low-latency, zero-heap-AST computational framework, digital simulation system, and 3D geometric processing engine written in modern Rust. It is architected for maximum memory efficiency, CPU cache locality, and heterogeneous execution across CPU, WebGPU, and CUDA hardware.
 
 ```mermaid
 flowchart TD
@@ -17,10 +17,11 @@ flowchart TD
         Fresco["<b>fresco</b><br/>Symbolic Expressions & Term Trees"]
     end
 
-    subgraph Compute ["Compute & Async Scheduling Engine"]
+    subgraph Compute ["Compute, Scheduling & Digital Logic Engine"]
         Heist["<b>heist</b><br/>Work-Stealing Chore DAG Engine"]
         Swarm["<b>swarm</b><br/>Hardware Compute (CPU, WebGPU, CUDA)"]
         Symph["<b>symph</b><br/>Pure Rust-GPU SIMT Compute Kernels"]
+        Rube["<b>rube</b><br/>Synchronous Logic Netlists & Discrete-Event Simulation"]
     end
 
     subgraph Foundation ["Foundational Memory & Concurrency Layer"]
@@ -56,6 +57,8 @@ flowchart TD
 
     Swarm --> Silo
     Swarm --> Symph
+
+    Rube --> Silo
 
     Shard --> Silo
     Shard --> Stalks
@@ -101,6 +104,13 @@ To ensure strict separation of concerns and maximum rendering throughput:
 - **`wxfrieze` is Presentation Only**: Built on `wxdragon` (wxWidgets) and `wgpu`. It manages OS window frames, dockable AUI layout panes (`wxAuiManager`), user input dispatch (orbit/pan/zoom), and native Canvas 2D / WGPU rendering surfaces. It **must not** parse raw geometry, compute camera projection matrices, perform frustum culling, or execute compute kernels.
 - **`fenst` Orchestrates Graphics**: `fenst` manages virtual data providers, active graphics sessions (`PtsSessionState`), asset caching, camera transformations, and multi-GPU frame dispatch. All heavy geometric projections are delegated through `swarm` to `symph` SIMT kernels.
 
+### Pillar 7: Synchronous Digital Logic & Discrete-Event Simulation (`rube`)
+Digital logic circuits and event-driven dataflow systems are simulated with zero allocations during execution:
+- **Unified 16-Byte Multi-Value Register (`Reg`)**: Represents 2-state and 4-state logic (0, 1, X) with IEEE-1364 bitwise operators (`!`, `&`, `|`, `^`).
+- **Array-of-Structures (AoS) Temporal Latching**: 48-byte `TriggerState` cells (`_Past`, `_Current`, `_Future`) fit within a single 64-byte L1 cache line.
+- **Topological Net Compilation (`NetCompiler`)**: Merges connected ports via Disjoint-Set Union (DSU) in $O(P \cdot \alpha(P))$ time.
+- **Dual Execution Modes**: Multicycle synchronous clock-ticking (`SimEngine`) and discrete-event delta-cycle propagation (`SimContext`) with flat 64-bit word bitmasks and inverted sensitivity indexes.
+
 ---
 
 ## 3. Subsystems & Module Matrix
@@ -115,7 +125,7 @@ To ensure strict separation of concerns and maximum rendering throughput:
 | **`swarm`** | Hardware compute engine across CPU, WebGPU, and CUDA | `SwarmEngine`, `SwarmDevice`, `SwarmBuffer`, `SwarmKernel`, `StandardOp`, `SwarmMath` | `IComputeDevice`, `IComputeBuffer`, `IComputeKernel`, `IGpuOp` | [Swarm.md](Swarm.md) |
 | **`symph`** | Rust-GPU SPIR-V compute kernels and algorithms (`no_std` for SPIR-V builds) | Pure SIMT functions (`wang_hash`, `collatz`, `pointcloud_elem`, `double_elem`, `vector_add_elem`) | SPIR-V Shaders (`pts_pointcloud_cs`, `camera_transform_cs`, `frustum_cull_cs`, `scene_vs`, `scene_fs`) | [Swarm.md](Swarm.md) |
 | **`heist`** | Asynchronous workflow DAG orchestrator and scheduler | `Atelier<'a>`, `Maestro<'a>`, `Chore`, `ChoreTarget`, `JobInfo`, `AtelierInfo` | `IChoreNode`, `ChoreTree!`, `Chore!`, `CpuChore!`, `GpuAutoChore!` | [Heist.md](Heist.md) |
+| **`rube`** | Synchronous digital logic simulation and discrete-event dataflow framework | `Reg`, `TriggerState`, `TriggerWad`, `Layout`, `NetCompiler`, `SimEngine`, `SimContext`, `FastModule`, `CustomModule`, `Adder<N>` | `NandGate`, `AndGate`, `OrGate`, `NotGate`, `XorGate`, `CRSLatch`, `DLatch`, `RSLatch` | [Rube.md](Rube.md) |
 | **`fleck`** | 3D Point Cloud (.pts) & Wavefront (.obj) mesh parsing, spatial bounding boxes, `Vex` | `PtsPoint`, `PtsCloud`, `WaveObjMesh`, `WaveObjFace`, `Vex<N, T>`, `Pt3f`, `WPt3f`, `Point32`, `RGB` | `ParsePts`, `ParsePtsStream`, `ParseWaveObj`, `ToDto` | [Fleck.md](Fleck.md) |
 | **`fenst`** | Virtual data provider framework, graphics session & camera orchestrator | `XplrEntry`, `XplrContent`, `XplrLeafInfo`, `FsBranch`, `FsLeaf`, `FrescoBranch`, `ShardBranch`, `XplrRegistry`, `PtsSessionState`, `PtsFrameDto` | `Xplr`, `LeafXplr`, `BranchXplr`, `XplrProvider`, `CreateDefaultRegistry` | [Fenst.md](Fenst.md) |
 | **`wxfrieze`** | Native desktop workspace built with `wxdragon` (wxWidgets 3.2+) and `wgpu` | `AppState`, `AppTheme`, `OpenTab`, `AuiManager`, `AuiPaneInfo`, `Notebook`, `ExplorerPanel`, `PtsView`, `ObjView`, `FrescoView` | `run()` | [Frieze.md](Frieze.md) |
-
