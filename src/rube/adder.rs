@@ -9,7 +9,6 @@ use	crate::{
         module::KernelKind,
         port::{ PortDesc, PortId },
         reg::Reg,
-        regval::RegVal,
     },
     silo::U32,
 };
@@ -40,24 +39,38 @@ impl HalfAdder
     }
 
     #[inline]
-    pub fn	Sum( &self) -> PortId
+    pub const fn	In1( &self) -> PortId
+    {
+        return self._Xor.In1();
+    }
+
+    #[inline]
+    pub const fn	In2( &self) -> PortId
+    {
+        return self._Xor.In2();
+    }
+
+    #[inline]
+    pub const fn	Sum( &self) -> PortId
     {
         return self._Xor.Out();
     }
 
     #[inline]
-    pub fn	Carry( &self) -> PortId
+    pub const fn	Carry( &self) -> PortId
     {
         return self._And.Out();
     }
 
-    pub fn	SetA( &self, engine: &mut SimEngine, val: Reg< bool>)
+    #[inline]
+    pub fn	SetA( &self, engine: &mut SimEngine, val: Reg)
     {
         engine.SetPortBool( self._Xor.In1(), val);
         engine.SetPortBool( self._And.In1(), val);
     }
 
-    pub fn	SetB( &self, engine: &mut SimEngine, val: Reg< bool>)
+    #[inline]
+    pub fn	SetB( &self, engine: &mut SimEngine, val: Reg)
     {
         engine.SetPortBool( self._Xor.In2(), val);
         engine.SetPortBool( self._And.In2(), val);
@@ -98,28 +111,31 @@ impl FullAdder
     }
 
     #[inline]
-    pub fn	Sum( &self) -> PortId
+    pub const fn	Sum( &self) -> PortId
     {
         return self._HA2.Sum();
     }
 
     #[inline]
-    pub fn	Carry( &self) -> PortId
+    pub const fn	Carry( &self) -> PortId
     {
         return self._Or.Out();
     }
 
-    pub fn	SetA( &self, engine: &mut SimEngine, val: Reg< bool>)
+    #[inline]
+    pub fn	SetA( &self, engine: &mut SimEngine, val: Reg)
     {
         self._HA1.SetA( engine, val);
     }
 
-    pub fn	SetB( &self, engine: &mut SimEngine, val: Reg< bool>)
+    #[inline]
+    pub fn	SetB( &self, engine: &mut SimEngine, val: Reg)
     {
         self._HA1.SetB( engine, val);
     }
 
-    pub fn	SetCIn( &self, engine: &mut SimEngine, val: Reg< bool>)
+    #[inline]
+    pub fn	SetCIn( &self, engine: &mut SimEngine, val: Reg)
     {
         self._HA2.SetB( engine, val);
     }
@@ -142,20 +158,58 @@ impl< const N: usize> Adder< N>
     {
         let  	mut bits: Vec< FullAdder> = Vec::with_capacity( N);
         for i in 0..N {
-            let  	fa = FullAdder::New( layout, &format!( "{name}.Bit{i}"));
+            let  	bit = FullAdder::New( layout, &format!( "{name}.Bit{i}"));
             if i > 0 {
-                let _ = layout.Connect( bits[i - 1].Carry(), fa._HA2._Xor.In2());
-                let _ = layout.Connect( bits[i - 1].Carry(), fa._HA2._And.In2());
+                let  	prevCarry = bits[i - 1].Carry();
+                let _ = layout.Connect( prevCarry, bit._HA2._Xor.In2());
+                let _ = layout.Connect( prevCarry, bit._HA2._And.In2());
             }
-            bits.push( fa);
+            bits.push( bit);
         }
+
         return Self { _Bits: bits };
     }
 
     #[inline]
-    pub fn	Sum( &self, bit: usize) -> PortId
+    pub fn	SetA( &self, engine: &mut SimEngine, val: U32)
     {
-        return self._Bits[bit].Sum();
+        let  	v = val.0 as usize;
+        for i in 0..N {
+            let  	bitVal = ( ( v >> i) & 1) != 0;
+            self._Bits[i].SetA( engine, Reg::FromBool( bitVal));
+        }
+    }
+
+    #[inline]
+    pub fn	SetB( &self, engine: &mut SimEngine, val: U32)
+    {
+        let  	v = val.0 as usize;
+        for i in 0..N {
+            let  	bitVal = ( ( v >> i) & 1) != 0;
+            self._Bits[i].SetB( engine, Reg::FromBool( bitVal));
+        }
+    }
+
+    #[inline]
+    pub fn	SetCarryIn( &self, engine: &mut SimEngine, val: Reg)
+    {
+        if !self._Bits.is_empty() {
+            self._Bits[0].SetCIn( engine, val);
+        }
+    }
+
+    #[inline]
+    pub fn	GetSum( &self, engine: &SimEngine) -> usize
+    {
+        let  	mut sum = 0;
+        for i in 0..N {
+            if let Some( bit) = engine.GetPortBool( self._Bits[i].Sum()) {
+                if bit.IsTrue() {
+                    sum |= 1 << i;
+                }
+            }
+        }
+        return sum;
     }
 
     #[inline]
@@ -163,49 +217,11 @@ impl< const N: usize> Adder< N>
     {
         return self._Bits[N - 1].Carry();
     }
-
-    pub fn	SetA( &self, engine: &mut SimEngine, val: U32)
-    {
-        let  	v = u32::from( val);
-        for i in 0..N {
-            let  	bit = ( ( v >> i) & 1) != 0;
-            self._Bits[i].SetA( engine, Reg::FromBool( bit));
-        }
-    }
-
-    pub fn	SetB( &self, engine: &mut SimEngine, val: U32)
-    {
-        let  	v = u32::from( val);
-        for i in 0..N {
-            let  	bit = ( ( v >> i) & 1) != 0;
-            self._Bits[i].SetB( engine, Reg::FromBool( bit));
-        }
-    }
-
-    pub fn	SetCIn( &self, engine: &mut SimEngine, val: Reg< bool>)
-    {
-        if !self._Bits.is_empty() {
-            self._Bits[0].SetCIn( engine, val);
-        }
-    }
-
-    pub fn	GetSum( &self, engine: &SimEngine) -> u32
-    {
-        let  	mut res = 0u32;
-        for i in 0..N {
-            if let Some( bit) = engine.GetPortBool( self.Sum( i)) {
-                if bit.IsTrue() {
-                    res |= 1 << i;
-                }
-            }
-        }
-        return res;
-    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Fast 32-bit Bus Adder / ALU Module
+/// 32-Bit High-Performance Bus Adder using custom word-level kernel
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct BusAdder32
 {
@@ -221,27 +237,28 @@ impl BusAdder32
 {
     pub fn	New( layout: &mut Layout, name: &str) -> Self
     {
-        let  	kernel = Arc::new( |inVals: &[RegVal], outVals: &mut [RegVal]| {
-            let  	a = inVals[0]._Val;
-            let  	b = inVals[1]._Val;
-            let  	sum = a.wrapping_add( b) & 0xFFFF_FFFF;
-            let  	carry = ( a + b) > 0xFFFF_FFFF;
-            outVals[0] = RegVal::FromU32( U32( sum as u32));
-            outVals[1] = RegVal::FromBool( carry);
+        let  	adderKernel = Arc::new( |inVals: &[Reg], outVals: &mut [Reg]| {
+            let  	aVal = inVals[0].Val();
+            let  	bVal = inVals[1].Val();
+            let  	sum = aVal.wrapping_add( bVal) & 0xFFFF_FFFF;
+            let  	carry = ( aVal + bVal) > 0xFFFF_FFFF;
+
+            outVals[0] = Reg::FromU32( U32( sum as u32));
+            outVals[1] = Reg::FromBool( carry);
         });
 
-        let  	m = layout.AddModule(
+        let  	modId = layout.AddModule(
             name,
             &[ PortDesc::U32( "a"), PortDesc::U32( "b") ],
             &[ PortDesc::U32( "sum"), PortDesc::Bool( "carry") ],
-            KernelKind::Custom( kernel),
+            KernelKind::Custom( adderKernel),
         );
 
         return Self {
-            _A: layout.InPort( m, 0).unwrap(),
-            _B: layout.InPort( m, 1).unwrap(),
-            _Sum: layout.OutPort( m, 0).unwrap(),
-            _Carry: layout.OutPort( m, 1).unwrap(),
+            _A: layout.InPort( modId, 0).unwrap(),
+            _B: layout.InPort( modId, 1).unwrap(),
+            _Sum: layout.OutPort( modId, 0).unwrap(),
+            _Carry: layout.OutPort( modId, 1).unwrap(),
         };
     }
 }

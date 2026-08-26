@@ -3,7 +3,7 @@
 use	std::fmt;
 use	std::sync::Arc;
 use	crate::{
-    rube::{ port::PortId, regval::RegVal },
+    rube::{ port::PortId, reg::Reg },
     silo::{ Buff, U32 },
 };
 
@@ -38,7 +38,7 @@ pub enum KernelKind
     Xor,
     Nor,
     Xnor,
-    Custom( Arc< dyn Fn( &[RegVal], &mut [RegVal]) + Send + Sync>),
+    Custom( Arc< dyn Fn( &[Reg], &mut [Reg]) + Send + Sync>),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -85,36 +85,6 @@ impl ModuleDescriptor
             _OutPorts: outPorts,
             _Kernel: kernel,
         };
-    }
-
-    #[inline]
-    pub fn	Id( &self) -> ModuleId
-    {
-        return self._Id;
-    }
-
-    #[inline]
-    pub fn	Name( &self) -> &str
-    {
-        return &self._Name;
-    }
-
-    #[inline]
-    pub fn	InPorts( &self) -> &Buff< PortId>
-    {
-        return &self._InPorts;
-    }
-
-    #[inline]
-    pub fn	OutPorts( &self) -> &Buff< PortId>
-    {
-        return &self._OutPorts;
-    }
-
-    #[inline]
-    pub fn	Kernel( &self) -> &KernelKind
-    {
-        return &self._Kernel;
     }
 }
 

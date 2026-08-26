@@ -32,19 +32,19 @@ impl NandGate
     }
 
     #[inline]
-    pub fn	In1( &self) -> PortId
+    pub const fn	In1( &self) -> PortId
     {
         return self._In1;
     }
 
     #[inline]
-    pub fn	In2( &self) -> PortId
+    pub const fn	In2( &self) -> PortId
     {
         return self._In2;
     }
 
     #[inline]
-    pub fn	Out( &self) -> PortId
+    pub const fn	Out( &self) -> PortId
     {
         return self._Out;
     }
@@ -76,19 +76,19 @@ impl AndGate
     }
 
     #[inline]
-    pub fn	In1( &self) -> PortId
+    pub const fn	In1( &self) -> PortId
     {
         return self._In1;
     }
 
     #[inline]
-    pub fn	In2( &self) -> PortId
+    pub const fn	In2( &self) -> PortId
     {
         return self._In2;
     }
 
     #[inline]
-    pub fn	Out( &self) -> PortId
+    pub const fn	Out( &self) -> PortId
     {
         return self._Out;
     }
@@ -120,19 +120,19 @@ impl OrGate
     }
 
     #[inline]
-    pub fn	In1( &self) -> PortId
+    pub const fn	In1( &self) -> PortId
     {
         return self._In1;
     }
 
     #[inline]
-    pub fn	In2( &self) -> PortId
+    pub const fn	In2( &self) -> PortId
     {
         return self._In2;
     }
 
     #[inline]
-    pub fn	Out( &self) -> PortId
+    pub const fn	Out( &self) -> PortId
     {
         return self._Out;
     }
@@ -140,7 +140,7 @@ impl OrGate
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// 1-Input NOT ( Inverter) Gate
+/// 1-Input Inverter / NOT Gate
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct NotGate
 {
@@ -162,13 +162,13 @@ impl NotGate
     }
 
     #[inline]
-    pub fn	In( &self) -> PortId
+    pub const fn	In( &self) -> PortId
     {
         return self._In;
     }
 
     #[inline]
-    pub fn	Out( &self) -> PortId
+    pub const fn	Out( &self) -> PortId
     {
         return self._Out;
     }
@@ -200,19 +200,19 @@ impl XorGate
     }
 
     #[inline]
-    pub fn	In1( &self) -> PortId
+    pub const fn	In1( &self) -> PortId
     {
         return self._In1;
     }
 
     #[inline]
-    pub fn	In2( &self) -> PortId
+    pub const fn	In2( &self) -> PortId
     {
         return self._In2;
     }
 
     #[inline]
-    pub fn	Out( &self) -> PortId
+    pub const fn	Out( &self) -> PortId
     {
         return self._Out;
     }

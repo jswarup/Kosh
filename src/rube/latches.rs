@@ -37,35 +37,37 @@ impl RSLatch
     }
 
     #[inline]
-    pub fn	S( &self) -> PortId
+    pub const fn	S( &self) -> PortId
     {
         return self._Nand1.In1();
     }
 
     #[inline]
-    pub fn	R( &self) -> PortId
+    pub const fn	R( &self) -> PortId
     {
         return self._Nand2.In1();
     }
 
     #[inline]
-    pub fn	Q( &self) -> PortId
+    pub const fn	Q( &self) -> PortId
     {
         return self._Nand1.Out();
     }
 
     #[inline]
-    pub fn	Q1( &self) -> PortId
+    pub const fn	Q1( &self) -> PortId
     {
         return self._Nand2.Out();
     }
 
-    pub fn	SetS( &self, engine: &mut SimEngine, val: Reg< bool>)
+    #[inline]
+    pub fn	SetS( &self, engine: &mut SimEngine, val: Reg)
     {
         engine.SetPortBool( self.S(), val);
     }
 
-    pub fn	SetR( &self, engine: &mut SimEngine, val: Reg< bool>)
+    #[inline]
+    pub fn	SetR( &self, engine: &mut SimEngine, val: Reg)
     {
         engine.SetPortBool( self.R(), val);
     }
@@ -103,66 +105,69 @@ impl CRSLatch
     }
 
     #[inline]
-    pub fn	Clk1( &self) -> PortId
+    pub const fn	Clk1( &self) -> PortId
     {
         return self._GateS.In2();
     }
 
     #[inline]
-    pub fn	Clk2( &self) -> PortId
+    pub const fn	Clk2( &self) -> PortId
     {
         return self._GateR.In1();
     }
 
     #[inline]
-    pub fn	S( &self) -> PortId
+    pub const fn	S( &self) -> PortId
     {
         return self._GateS.In1();
     }
 
     #[inline]
-    pub fn	R( &self) -> PortId
+    pub const fn	R( &self) -> PortId
     {
         return self._GateR.In2();
     }
 
     #[inline]
-    pub fn	Q( &self) -> PortId
+    pub const fn	Q( &self) -> PortId
     {
         return self._RS.Q();
     }
 
     #[inline]
-    pub fn	Q1( &self) -> PortId
+    pub const fn	Q1( &self) -> PortId
     {
         return self._RS.Q1();
     }
 
-    pub fn	SetClk( &self, engine: &mut SimEngine, val: Reg< bool>)
-    {
-        engine.SetPortBool( self._GateS.In2(), val);
-        engine.SetPortBool( self._GateR.In1(), val);
-    }
-
-    pub fn	SetS( &self, engine: &mut SimEngine, val: Reg< bool>)
+    #[inline]
+    pub fn	SetS( &self, engine: &mut SimEngine, val: Reg)
     {
         engine.SetPortBool( self.S(), val);
     }
 
-    pub fn	SetR( &self, engine: &mut SimEngine, val: Reg< bool>)
+    #[inline]
+    pub fn	SetR( &self, engine: &mut SimEngine, val: Reg)
     {
         engine.SetPortBool( self.R(), val);
+    }
+
+    #[inline]
+    pub fn	SetClk( &self, engine: &mut SimEngine, val: Reg)
+    {
+        engine.SetPortBool( self.Clk1(), val);
+        engine.SetPortBool( self.Clk2(), val);
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Transparent D Latch
+/// Transparent D-Latch
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct DLatch
 {
-    pub _Not: NotGate,
     pub _CRS: CRSLatch,
+    pub _Inv: NotGate,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -171,119 +176,66 @@ impl DLatch
 {
     pub fn	New( layout: &mut Layout, name: &str) -> Self
     {
-        let  	notGate = NotGate::New( layout, &format!( "{name}.Not"));
         let  	crs = CRSLatch::New( layout, &format!( "{name}.CRS"));
+        let  	inv = NotGate::New( layout, &format!( "{name}.Inv"));
 
-        let _ = layout.Connect( notGate.Out(), crs.R());
+        let _ = layout.Connect( inv.Out(), crs.R());
 
         return Self {
-            _Not: notGate,
             _CRS: crs,
+            _Inv: inv,
         };
     }
 
     #[inline]
-    pub fn	D( &self) -> PortId
+    pub const fn	D( &self) -> PortId
     {
         return self._CRS.S();
     }
 
     #[inline]
-    pub fn	Q( &self) -> PortId
+    pub const fn	DInv( &self) -> PortId
+    {
+        return self._Inv.In();
+    }
+
+    #[inline]
+    pub const fn	E1( &self) -> PortId
+    {
+        return self._CRS.Clk1();
+    }
+
+    #[inline]
+    pub const fn	E2( &self) -> PortId
+    {
+        return self._CRS.Clk2();
+    }
+
+    #[inline]
+    pub const fn	Q( &self) -> PortId
     {
         return self._CRS.Q();
     }
 
     #[inline]
-    pub fn	Q1( &self) -> PortId
+    pub const fn	Q1( &self) -> PortId
     {
         return self._CRS.Q1();
     }
 
-    pub fn	SetE( &self, engine: &mut SimEngine, val: Reg< bool>)
+    #[inline]
+    pub fn	SetD( &self, engine: &mut SimEngine, val: Reg)
     {
-        self._CRS.SetClk( engine, val);
+        engine.SetPortBool( self.D(), val);
+        engine.SetPortBool( self.DInv(), val);
     }
 
-    pub fn	SetD( &self, engine: &mut SimEngine, val: Reg< bool>)
+    #[inline]
+    pub fn	SetE( &self, engine: &mut SimEngine, val: Reg)
     {
-        engine.SetPortBool( self._CRS.S(), val);
-        engine.SetPortBool( self._Not.In(), val);
+        engine.SetPortBool( self.E1(), val);
+        engine.SetPortBool( self.E2(), val);
     }
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
 
-/// Master-Slave RS Flip-Flop
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct RSFlipFlop
-{
-    pub _Master: CRSLatch,
-    pub _Slave: CRSLatch,
-    pub _Not: NotGate,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl RSFlipFlop
-{
-    pub fn	New( layout: &mut Layout, name: &str) -> Self
-    {
-        let  	master = CRSLatch::New( layout, &format!( "{name}.Master"));
-        let  	slave = CRSLatch::New( layout, &format!( "{name}.Slave"));
-        let  	notGate = NotGate::New( layout, &format!( "{name}.Not"));
-
-        let _ = layout.Connect( master.Q(), slave.S());
-        let _ = layout.Connect( master.Q1(), slave.R());
-        let _ = layout.Connect( notGate.Out(), slave.Clk1());
-        let _ = layout.Connect( notGate.Out(), slave.Clk2());
-
-        return Self {
-            _Master: master,
-            _Slave: slave,
-            _Not: notGate,
-        };
-    }
-
-    #[inline]
-    pub fn	S( &self) -> PortId
-    {
-        return self._Master.S();
-    }
-
-    #[inline]
-    pub fn	R( &self) -> PortId
-    {
-        return self._Master.R();
-    }
-
-    #[inline]
-    pub fn	Q( &self) -> PortId
-    {
-        return self._Slave.Q();
-    }
-
-    #[inline]
-    pub fn	Q1( &self) -> PortId
-    {
-        return self._Slave.Q1();
-    }
-
-    pub fn	SetClk( &self, engine: &mut SimEngine, val: Reg< bool>)
-    {
-        self._Master.SetClk( engine, val);
-        engine.SetPortBool( self._Not.In(), val);
-    }
-
-    pub fn	SetS( &self, engine: &mut SimEngine, val: Reg< bool>)
-    {
-        self._Master.SetS( engine, val);
-    }
-
-    pub fn	SetR( &self, engine: &mut SimEngine, val: Reg< bool>)
-    {
-        self._Master.SetR( engine, val);
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------

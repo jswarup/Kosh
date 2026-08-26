@@ -6,11 +6,9 @@ use	crate::{
         module::{ KernelOp, ModuleId },
         port::PortId,
         reg::Reg,
-        regval::RegVal,
-        signal::{ SignalMeta, SignalState },
-        trigger::TriggerId,
+        trigger::{ TriggerId, TriggerMeta, TriggerState },
     },
-    silo::{ Buff, U32 },
+    silo::Buff,
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -30,7 +28,7 @@ pub struct FastModule
 impl FastModule
 {
     #[inline]
-    pub fn	New( in1: TriggerId, in2: TriggerId, out: TriggerId, op: KernelOp) -> Self
+    pub const fn	New( in1: TriggerId, in2: TriggerId, out: TriggerId, op: KernelOp) -> Self
     {
         return Self {
             _In1: in1,
@@ -49,7 +47,7 @@ pub struct CustomModule
     pub _ModuleId: ModuleId,
     pub _InTriggers: Buff< TriggerId>,
     pub _OutTriggers: Buff< TriggerId>,
-    pub _Callback: Arc< dyn Fn( &[RegVal], &mut [RegVal]) + Send + Sync>,
+    pub _Callback: Arc< dyn Fn( &[Reg], &mut [Reg]) + Send + Sync>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -60,7 +58,7 @@ impl CustomModule
         moduleId: ModuleId,
         inTriggers: Buff< TriggerId>,
         outTriggers: Buff< TriggerId>,
-        callback: Arc< dyn Fn( &[RegVal], &mut [RegVal]) + Send + Sync>,
+        callback: Arc< dyn Fn( &[Reg], &mut [Reg]) + Send + Sync>,
     ) -> Self
     {
         return Self {
@@ -75,14 +73,14 @@ impl CustomModule
 //---------------------------------------------------------------------------------------------------------------------------------
 
 /// High-density AoS Synchronous Simulation Engine.
-/// Stores hot signal states in `_Signals` ( 48 bytes per cell, cache-aligned).
+/// Stores hot trigger states in `_Triggers` ( 48 bytes per cell, cache-aligned).
 /// Stores cold metadata separately in `_Meta`.
 /// Evaluates fast gates via 16-byte `FastModule` descriptors without heap overhead.
 #[derive( Clone)]
 pub struct SimEngine
 {
-    pub _Signals: Buff< SignalState>,
-    pub _Meta: Buff< SignalMeta>,
+    pub _Triggers: Buff< TriggerState>,
+    pub _Meta: Buff< TriggerMeta>,
     pub _FastModules: Buff< FastModule>,
     pub _CustomModules: Buff< CustomModule>,
     pub _PortToTrigger: Buff< TriggerId>,
@@ -94,15 +92,15 @@ pub struct SimEngine
 impl SimEngine
 {
     pub fn	New(
-        signals: Buff< SignalState>,
-        meta: Buff< SignalMeta>,
+        triggers: Buff< TriggerState>,
+        meta: Buff< TriggerMeta>,
         fastModules: Buff< FastModule>,
         customModules: Buff< CustomModule>,
         portToTrigger: Buff< TriggerId>,
     ) -> Self
     {
         return Self {
-            _Signals: signals,
+            _Triggers: triggers,
             _Meta: meta,
             _FastModules: fastModules,
             _CustomModules: customModules,
@@ -111,57 +109,72 @@ impl SimEngine
         };
     }
 
-    /// Executes a single synchronous discrete-event simulation cycle with zero heap allocations:
-    /// 1. Phase 1: Pure evaluation reading immutable Present values ( T) from AoS cells.
-    /// 2. Phase 2: Commit output stages to the Future slots ( T+1).
+    /// Executes a single synchronous discrete-event simulation cycle with ZERO heap allocations:
+    /// 1. Phase 1: Pure evaluation reading immutable Present values ( T) from AoS cells and writing directly to Future slots ( T+1).
+    /// 2. Phase 2: Custom module evaluations.
     /// 3. Phase 3: Clock tick latching ( Past <- Present, Present <- Future).
+    #[inline]
     pub fn	Tick( &mut self) -> usize
     {
-        let  	mut stagedOutputs: Vec<( TriggerId, RegVal)> = Vec::with_capacity( self._FastModules.len() + self._CustomModules.len());
-
-        // Phase 1: Evaluate Fast Gates
+        // Phase 1: Evaluate Fast Gates ( zero-heap-allocation, direct streaming write to _Future)
         for i in 0..self._FastModules.len() {
             let  	fm = self._FastModules[i];
-            let  	in1 = self._Signals[usize::from( fm._In1)]._Current;
-            let  	in2 = self._Signals[usize::from( fm._In2)]._Current;
+            let  	in1 = self._Triggers[usize::from( fm._In1)]._Current;
+            let  	in2 = self._Triggers[usize::from( fm._In2)]._Current;
 
             let  	res = match fm._Op {
-                KernelOp::Nand => !( in1 & in2),
-                KernelOp::And => in1 & in2,
-                KernelOp::Or => in1 | in2,
-                KernelOp::Not => !in1,
-                KernelOp::Xor => in1 ^ in2,
-                KernelOp::Nor => !( in1 | in2),
-                KernelOp::Xnor => !( in1 ^ in2),
+                KernelOp::Nand => ( !( in1 & in2)).Masked( 1),
+                KernelOp::And => ( in1 & in2).Masked( 1),
+                KernelOp::Or => ( in1 | in2).Masked( 1),
+                KernelOp::Not => ( !in1).Masked( 1),
+                KernelOp::Xor => ( in1 ^ in2).Masked( 1),
+                KernelOp::Nor => ( !( in1 | in2)).Masked( 1),
+                KernelOp::Xnor => ( !( in1 ^ in2)).Masked( 1),
             };
-            stagedOutputs.push(( fm._Out, res));
+            self._Triggers[usize::from( fm._Out)]._Future = res;
         }
 
-        // Phase 1b: Evaluate Custom Modules
+        // Phase 2: Evaluate Custom Modules
         for i in 0..self._CustomModules.len() {
             let  	cm = &self._CustomModules[i];
-            let  	inVals: Vec< RegVal> = ( 0..cm._InTriggers.len())
-                .map( |k| self._Signals[usize::from( cm._InTriggers[k])]._Current)
-                .collect();
-            let  	mut outVals: Vec< RegVal> = ( 0..cm._OutTriggers.len())
-                .map( |k| self._Signals[usize::from( cm._OutTriggers[k])]._Future)
-                .collect();
+            let  	inLen = cm._InTriggers.len();
+            let  	outLen = cm._OutTriggers.len();
 
-            ( cm._Callback)( &inVals, &mut outVals);
+            // Stack-allocated buffers for modules with up to 16 inputs/outputs
+            if inLen <= 16 && outLen <= 16 {
+                let  	mut inBuf = [Reg::default(); 16];
+                let  	mut outBuf = [Reg::default(); 16];
+                for k in 0..inLen {
+                    inBuf[k] = self._Triggers[usize::from( cm._InTriggers[k])]._Current;
+                }
+                for k in 0..outLen {
+                    outBuf[k] = self._Triggers[usize::from( cm._OutTriggers[k])]._Future;
+                }
 
-            for k in 0..cm._OutTriggers.len() {
-                stagedOutputs.push(( cm._OutTriggers[k], outVals[k]));
+                ( cm._Callback)( &inBuf[..inLen], &mut outBuf[..outLen]);
+
+                for k in 0..outLen {
+                    self._Triggers[usize::from( cm._OutTriggers[k])]._Future = outBuf[k];
+                }
+            } else {
+                let  	inVals: Vec< Reg> = ( 0..inLen)
+                    .map( |k| self._Triggers[usize::from( cm._InTriggers[k])]._Current)
+                    .collect();
+                let  	mut outVals: Vec< Reg> = ( 0..outLen)
+                    .map( |k| self._Triggers[usize::from( cm._OutTriggers[k])]._Future)
+                    .collect();
+
+                ( cm._Callback)( &inVals, &mut outVals);
+
+                for k in 0..outLen {
+                    self._Triggers[usize::from( cm._OutTriggers[k])]._Future = outVals[k];
+                }
             }
         }
 
-        // Phase 2: Commit ( Staged Future committed to AoS Signal Future slots)
-        for ( trigId, val) in stagedOutputs {
-            self._Signals[usize::from( trigId)]._Future = val;
-        }
-
-        // Phase 3: Clock Tick ( Advance each AoS Signal cell in contiguous memory)
-        for i in 0..self._Signals.len() {
-            self._Signals[i].Advance();
+        // Phase 3: Clock Tick ( Advance contiguous slice of AoS cells)
+        for i in 0..self._Triggers.len() {
+            self._Triggers[i].Advance();
         }
 
         self._CycleCount += 1;
@@ -169,51 +182,51 @@ impl SimEngine
     }
 
     #[inline]
-    pub fn	CycleCount( &self) -> usize
+    pub const fn	CycleCount( &self) -> usize
     {
         return self._CycleCount;
     }
 
     #[inline]
-    pub fn	Signals( &self) -> &Buff< SignalState>
+    pub fn	Triggers( &self) -> &Buff< TriggerState>
     {
-        return &self._Signals;
+        return &self._Triggers;
     }
 
     #[inline]
-    pub fn	SignalsMut( &mut self) -> &mut Buff< SignalState>
+    pub fn	TriggersMut( &mut self) -> &mut Buff< TriggerState>
     {
-        return &mut self._Signals;
+        return &mut self._Triggers;
     }
 
     #[inline]
-    pub fn	GetSignal( &self, id: TriggerId) -> RegVal
+    pub fn	GetTrigger( &self, id: TriggerId) -> Reg
     {
-        return self._Signals[usize::from( id)]._Current;
+        return self._Triggers[usize::from( id)]._Current;
     }
 
     #[inline]
-    pub fn	GetPastSignal( &self, id: TriggerId) -> RegVal
+    pub fn	GetPastTrigger( &self, id: TriggerId) -> Reg
     {
-        return self._Signals[usize::from( id)]._Past;
+        return self._Triggers[usize::from( id)]._Past;
     }
 
     #[inline]
-    pub fn	GetFutureSignal( &self, id: TriggerId) -> RegVal
+    pub fn	GetFutureTrigger( &self, id: TriggerId) -> Reg
     {
-        return self._Signals[usize::from( id)]._Future;
+        return self._Triggers[usize::from( id)]._Future;
     }
 
     #[inline]
-    pub fn	SetSignal( &mut self, id: TriggerId, val: RegVal)
+    pub fn	SetTrigger( &mut self, id: TriggerId, val: Reg)
     {
-        self._Signals[usize::from( id)]._Future = val;
+        self._Triggers[usize::from( id)]._Future = val;
     }
 
     #[inline]
-    pub fn	InitSignal( &mut self, id: TriggerId, val: RegVal)
+    pub fn	InitTrigger( &mut self, id: TriggerId, val: Reg)
     {
-        self._Signals[usize::from( id)].Init( val);
+        self._Triggers[usize::from( id)].Init( val);
     }
 
     #[inline]
@@ -227,72 +240,72 @@ impl SimEngine
     }
 
     #[inline]
-    pub fn	GetPortValue( &self, portId: PortId) -> Option< RegVal>
+    pub fn	GetPortValue( &self, portId: PortId) -> Option< Reg>
     {
         let  	trigId = self.GetPortTrigger( portId)?;
-        return Some( self.GetSignal( trigId));
+        return Some( self.GetTrigger( trigId));
     }
 
     #[inline]
-    pub fn	SetPortValue( &mut self, portId: PortId, val: RegVal) -> bool
+    pub fn	SetPortValue( &mut self, portId: PortId, val: Reg) -> bool
     {
         if let Some( trigId) = self.GetPortTrigger( portId) {
-            self.InitSignal( trigId, val);
+            self.InitTrigger( trigId, val);
             return true;
         }
         return false;
     }
 
     #[inline]
-    pub fn	StagePortValue( &mut self, portId: PortId, val: RegVal) -> bool
+    pub fn	StagePortValue( &mut self, portId: PortId, val: Reg) -> bool
     {
         if let Some( trigId) = self.GetPortTrigger( portId) {
-            self.SetSignal( trigId, val);
+            self.SetTrigger( trigId, val);
             return true;
         }
         return false;
     }
 
     #[inline]
-    pub fn	GetPortBool( &self, portId: PortId) -> Option< Reg< bool>>
+    pub fn	GetPortBool( &self, portId: PortId) -> Option< Reg>
     {
         return self.GetPortValue( portId).map( |v| v.AsBool());
     }
 
     #[inline]
-    pub fn	SetPortBool( &mut self, portId: PortId, val: Reg< bool>) -> bool
+    pub fn	SetPortBool( &mut self, portId: PortId, val: Reg) -> bool
     {
-        return self.SetPortValue( portId, RegVal::FromRegBool( val));
+        return self.SetPortValue( portId, val.AsBool());
     }
 
     #[inline]
-    pub fn	GetPortU32( &self, portId: PortId) -> Option< Reg< U32>>
+    pub fn	GetPortU32( &self, portId: PortId) -> Option< Reg>
     {
-        return self.GetPortValue( portId).map( |v| v.AsU32());
+        return self.GetPortValue( portId).map( |v| v.Masked( 0xFFFF_FFFF));
     }
 
     #[inline]
-    pub fn	SetPortU32( &mut self, portId: PortId, val: Reg< U32>) -> bool
+    pub fn	SetPortU32( &mut self, portId: PortId, val: Reg) -> bool
     {
-        return self.SetPortValue( portId, RegVal::FromRegU32( val));
+        return self.SetPortValue( portId, val.Masked( 0xFFFF_FFFF));
     }
 
     #[inline]
     pub fn	IsPosedge( &self, id: TriggerId) -> bool
     {
-        return self._Signals[usize::from( id)].IsPosedge();
+        return self._Triggers[usize::from( id)].IsPosedge();
     }
 
     #[inline]
     pub fn	IsNegedge( &self, id: TriggerId) -> bool
     {
-        return self._Signals[usize::from( id)].IsNegedge();
+        return self._Triggers[usize::from( id)].IsNegedge();
     }
 
     #[inline]
     pub fn	IsEdge( &self, id: TriggerId) -> bool
     {
-        return self._Signals[usize::from( id)].IsEdge();
+        return self._Triggers[usize::from( id)].IsEdge();
     }
 }
 

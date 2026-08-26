@@ -1,14 +1,9 @@
 //-- sim_context.rs -----------------------------------------------------------------------------------------------------------------
 use	std::collections::BTreeSet;
 use	std::sync::Arc;
-use	crate::{
-    rube::{
-        modlayout::ModLayout,
-        portlayout::PortLayout,
-        reg::Reg,
-        trigger::{ TriggerId, TriggerSense, TriggerWad },
-    },
-    silo::U32,
+use	crate::rube::{
+    reg::Reg,
+    trigger::{ TriggerId, TriggerSense, TriggerWad },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -23,7 +18,7 @@ pub enum ActionKind
     Nand { _In1: TriggerId, _In2: TriggerId, _Out: TriggerId },
     And { _In1: TriggerId, _In2: TriggerId, _Out: TriggerId },
     Or { _In1: TriggerId, _In2: TriggerId, _Out: TriggerId },
-    Not { _InSig: TriggerId, _Out: TriggerId },
+    Not { _In: TriggerId, _Out: TriggerId },
     Xor { _In1: TriggerId, _In2: TriggerId, _Out: TriggerId },
     Nor { _In1: TriggerId, _In2: TriggerId, _Out: TriggerId },
     Xnor { _In1: TriggerId, _In2: TriggerId, _Out: TriggerId },
@@ -44,9 +39,7 @@ pub struct Sensitivity
 
 pub struct SimContext
 {
-    pub _Triggers: TriggerWad< bool>,
-    _PortLayout: PortLayout,
-    _ModLayout: ModLayout,
+    pub _Triggers: TriggerWad,
     _Actions: Vec< ActionKind>,
     _Sensitivities: Vec< Sensitivity>,
     _ArmedTriggers: BTreeSet< TriggerId>,
@@ -71,8 +64,6 @@ impl SimContext
     {
         return Self {
             _Triggers: TriggerWad::New(),
-            _PortLayout: PortLayout::New( U32( 0)),
-            _ModLayout: ModLayout::New(),
             _Actions: Vec::new(),
             _Sensitivities: Vec::new(),
             _ArmedTriggers: BTreeSet::new(),
@@ -101,12 +92,7 @@ impl SimContext
         return self._Triggers.GetFuture( id);
     }
 
-    /// Query trigger name
-    #[inline]
-    pub fn	GetTriggerName( &self, id: TriggerId) -> &str
-    {
-        return self._Triggers.Name( id);
-    }
+
 
     /// Initialize a trigger value directly without scheduling events
     #[inline]
@@ -202,8 +188,8 @@ impl SimContext
                 let  	res = self._Triggers.Or( in1, in2);
                 self.SetValue( out, res);
             }
-            ActionKind::Not { _InSig: inSig, _Out: out } => {
-                let  	res = self._Triggers.Not( inSig);
+            ActionKind::Not { _In: inTrig, _Out: out } => {
+                let  	res = self._Triggers.Not( inTrig);
                 self.SetValue( out, res);
             }
             ActionKind::Xor { _In1: in1, _In2: in2, _Out: out } => {

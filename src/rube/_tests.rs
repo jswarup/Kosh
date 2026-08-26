@@ -11,10 +11,8 @@ mod _tests {
             latches::{ CRSLatch, DLatch, RSLatch },
             layout::{ Layout, LayoutError },
             module::KernelKind,
-            port::PortDesc,
-            portlayout::{ PortLayout, TopologyPort },
+            port::{ PortDesc, PortLayout, PortType, TopologyPort },
             reg::Reg,
-            regval::RegVal,
             trigger::TriggerWad,
         },
         silo::{ IEdgeBroadcast, IEdgeConnect, U32 },
@@ -268,9 +266,9 @@ mod _tests {
     fn	test_reg_bitwise_operations()
     {
         // Basic NOT
-        assert_eq!( !Reg::FALSE, Reg::TRUE);
-        assert_eq!( !Reg::TRUE, Reg::FALSE);
-        assert_eq!( !Reg::X, Reg::X);
+        assert_eq!( ( !Reg::FALSE).AsBool(), Reg::TRUE);
+        assert_eq!( ( !Reg::TRUE).AsBool(), Reg::FALSE);
+        assert_eq!( ( !Reg::X).AsBool(), Reg::X);
 
         // Basic AND
         assert_eq!( Reg::TRUE & Reg::TRUE, Reg::TRUE);
@@ -290,52 +288,54 @@ mod _tests {
     #[test]
     fn	test_generic_reg()
     {
-        let  	knownVal = Reg::< U32>::Known( U32( 42));
+        let  	knownVal = Reg::Known( 42);
         assert!( knownVal.IsValid());
         assert!( !knownVal.IsX());
-        assert_eq!( *knownVal.Val(), U32( 42));
+        assert_eq!( knownVal.Val(), 42);
+        assert_eq!( knownVal.GetU32(), U32( 42));
 
-        let  	unknownVal = Reg::< U32>::Unknown( U32( 0));
+        let  	unknownVal = Reg::Unknown( 0xFF);
         assert!( !unknownVal.IsValid());
         assert!( unknownVal.IsX());
 
-        let  	mut defaultReg = Reg::< U32>::default();
+        let  	defaultReg = Reg::default();
         assert!( defaultReg.IsX());
         assert!( !defaultReg.IsValid());
 
-        defaultReg._Val = U32( 100);
-        defaultReg._X = false;
-        assert_eq!( *defaultReg.Val(), U32( 100));
-        assert!( defaultReg.IsValid());
+        let  	mut reg100 = Reg::FromU32( U32( 100));
+        assert_eq!( reg100.Val(), 100);
+        assert!( reg100.IsValid());
+        assert_eq!( reg100.GetU32(), U32( 100));
 
-        defaultReg.ConvertX();
-        assert!( defaultReg.IsX());
+        reg100._X = 1;
+        assert!( reg100.IsX());
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
     #[test]
-    fn	test_generic_trigger_wad()
+    fn	test_trigger_wad_basic()
     {
-        let  	mut triggers = TriggerWad::< U32>::New();
-        let  	s0 = triggers.Add( "bus0", Reg::< U32>::Known( U32( 10)));
-        let  	s1 = triggers.Add( "bus1", Reg::< U32>::Unknown( U32( 0)));
+        let  	mut triggers = TriggerWad::New();
+        let  	s0 = triggers.AddTyped( "bus0", PortType::U32Val, Reg::FromU32( U32( 10)));
+        let  	s1 = triggers.AddTyped( "bus1", PortType::U32Val, Reg::X_U32);
 
         assert_eq!( triggers.Len(), 2);
         assert!( !triggers.IsEmpty());
         assert_eq!( triggers.Name( s0), "bus0");
         assert_eq!( triggers.Name( s1), "bus1");
+        assert_eq!( triggers.PortType( s0), PortType::U32Val);
 
-        assert_eq!( *triggers.Get( s0).Val(), U32( 10));
+        assert_eq!( triggers.Get( s0).GetU32(), U32( 10));
         assert!( triggers.Get( s0).IsValid());
         assert!( triggers.Get( s1).IsX());
 
-        triggers.SetFutureValue( s0, Reg::< U32>::Known( U32( 20)));
+        triggers.SetFutureValue( s0, Reg::FromU32( U32( 20)));
         assert!( triggers.IsArmed( s0));
 
         let  	( past, cur) = triggers.Advance( s0);
-        assert_eq!( *past.Val(), U32( 10));
-        assert_eq!( *cur.Val(), U32( 20));
+        assert_eq!( past.GetU32(), U32( 10));
+        assert_eq!( cur.GetU32(), U32( 20));
         assert!( triggers.IsEdge( s0));
     }
 
@@ -348,7 +348,7 @@ mod _tests {
             let  	mut t = TriggerWad::New();
             t.Add( "f", Reg::FALSE);
             t.Add( "t", Reg::TRUE);
-            t.Add( "x", Reg::X);
+            t.Add( "x", Reg::X_BOOL);
             t
         };
         let  	idF = U32( 0);
@@ -407,8 +407,8 @@ mod _tests {
         engine.SetPortBool( latch.R(), Reg::TRUE);
         let  	qTrig = engine.GetPortTrigger( latch.Q()).unwrap();
         let  	q1Trig = engine.GetPortTrigger( latch.Q1()).unwrap();
-        engine.InitSignal( qTrig, RegVal::FALSE);
-        engine.InitSignal( q1Trig, RegVal::TRUE);
+        engine.InitTrigger( qTrig, Reg::FALSE);
+        engine.InitTrigger( q1Trig, Reg::TRUE);
         engine.Tick();
 
         assert_eq!( engine.GetPortBool( latch.Q()), Some( Reg::FALSE));
@@ -680,8 +680,8 @@ mod _tests {
         engine.SetPortBool( rPort, Reg::TRUE);
         let  	qTrig = engine.GetPortTrigger( qPort).unwrap();
         let  	q1Trig = engine.GetPortTrigger( q1Port).unwrap();
-        engine.InitSignal( qTrig, RegVal::FALSE);
-        engine.InitSignal( q1Trig, RegVal::TRUE);
+        engine.InitTrigger( qTrig, Reg::FALSE);
+        engine.InitTrigger( q1Trig, Reg::TRUE);
 
         // Step 1: Hold ( S=1, R=1) -> remains Q=0, Q1=1
         engine.Tick();
@@ -722,7 +722,7 @@ mod _tests {
         // 32-bit ALU adder with Enable signal:
         // Inputs: [ a: U32, b: U32, enable: Bool ]
         // Outputs: [ sum: U32, overflow: Bool ]
-        let  	aluKernel = std::sync::Arc::new( |inVals: &[RegVal], outVals: &mut [RegVal]| {
+        let  	aluKernel = std::sync::Arc::new( |inVals: &[Reg], outVals: &mut [Reg]| {
             let  	aVal = inVals[0].Val();
             let  	bVal = inVals[1].Val();
             let  	en = inVals[2].IsTrue();
@@ -730,11 +730,11 @@ mod _tests {
             if en {
                 let  	sum = aVal.wrapping_add( bVal) & 0xFFFF_FFFF;
                 let  	overflow = ( aVal + bVal) > 0xFFFF_FFFF;
-                outVals[0] = RegVal::FromU32( U32( sum as u32));
-                outVals[1] = RegVal::FromBool( overflow);
+                outVals[0] = Reg::FromU32( U32( sum as u32));
+                outVals[1] = Reg::FromBool( overflow);
             } else {
-                outVals[0] = RegVal::FromU32( U32( 0));
-                outVals[1] = RegVal::FALSE;
+                outVals[0] = Reg::FromU32( U32( 0));
+                outVals[1] = Reg::FALSE;
             }
         });
 
@@ -754,24 +754,24 @@ mod _tests {
         let  	mut engine = layout.Compile().expect( "Compilation failed");
 
         // Cycle 1: en=false -> sum=0, overflow=false
-        engine.SetPortU32( portA, Reg::Known( U32( 100)));
-        engine.SetPortU32( portB, Reg::Known( U32( 200)));
+        engine.SetPortU32( portA, Reg::Known( 100));
+        engine.SetPortU32( portB, Reg::Known( 200));
         engine.SetPortBool( portEn, Reg::FALSE);
         engine.Tick();
-        assert_eq!( engine.GetPortU32( portSum), Some( Reg::Known( U32( 0))));
+        assert_eq!( engine.GetPortU32( portSum), Some( Reg::Known( 0)));
         assert_eq!( engine.GetPortBool( portOverflow), Some( Reg::FALSE));
 
         // Cycle 2: en=true -> sum=300, overflow=false
         engine.SetPortBool( portEn, Reg::TRUE);
         engine.Tick();
-        assert_eq!( engine.GetPortU32( portSum), Some( Reg::Known( U32( 300))));
+        assert_eq!( engine.GetPortU32( portSum), Some( Reg::Known( 300)));
         assert_eq!( engine.GetPortBool( portOverflow), Some( Reg::FALSE));
 
         // Cycle 3: 0xFFFF_FFFF + 1 -> sum=0, overflow=true
-        engine.SetPortU32( portA, Reg::Known( U32( 0xFFFF_FFFF)));
-        engine.SetPortU32( portB, Reg::Known( U32( 1)));
+        engine.SetPortU32( portA, Reg::Known( 0xFFFF_FFFF));
+        engine.SetPortU32( portB, Reg::Known( 1));
         engine.Tick();
-        assert_eq!( engine.GetPortU32( portSum), Some( Reg::Known( U32( 0))));
+        assert_eq!( engine.GetPortU32( portSum), Some( Reg::Known( 0)));
         assert_eq!( engine.GetPortBool( portOverflow), Some( Reg::TRUE));
     }
 
@@ -784,11 +784,11 @@ mod _tests {
         let  	busAdder = BusAdder32::New( &mut layout, "Adder32");
         let  	mut engine = layout.Compile().expect( "Compilation failed");
 
-        engine.SetPortU32( busAdder._A, Reg::Known( U32( 12345)));
-        engine.SetPortU32( busAdder._B, Reg::Known( U32( 54321)));
+        engine.SetPortU32( busAdder._A, Reg::Known( 12345));
+        engine.SetPortU32( busAdder._B, Reg::Known( 54321));
         engine.Tick();
 
-        assert_eq!( engine.GetPortU32( busAdder._Sum), Some( Reg::Known( U32( 66666))));
+        assert_eq!( engine.GetPortU32( busAdder._Sum), Some( Reg::Known( 66666)));
         assert_eq!( engine.GetPortBool( busAdder._Carry), Some( Reg::FALSE));
     }
 }

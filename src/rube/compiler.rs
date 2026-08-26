@@ -1,15 +1,13 @@
 //-- compiler.rs ---------------------------------------------------------------------------------------------------------------------
 
-use	std::collections::BTreeMap;
 use	std::sync::Arc;
 use	crate::{
     rube::{
         engine::{ CustomModule, FastModule, SimEngine },
         layout::{ Layout, LayoutError },
         module::{ KernelKind, KernelOp },
-        regval::RegVal,
-        signal::{ SignalMeta, SignalState },
-        trigger::TriggerId,
+        reg::Reg,
+        trigger::{ TriggerId, TriggerMeta, TriggerState },
     },
     silo::{ Buff, U32 },
 };
@@ -23,7 +21,8 @@ pub struct NetCompiler;
 
 impl NetCompiler
 {
-    pub fn	New() -> Self
+    #[inline]
+    pub const fn	New() -> Self
     {
         return Self;
     }
@@ -32,7 +31,7 @@ impl NetCompiler
     {
         let  	portCount = layout._Ports.len();
 
-        // Step 1: Disjoint Set Union ( DSU / Union-Find) to merge connected nets
+        // Step 1: Disjoint Set Union ( DSU / Union-Find) to merge connected nets with path compression
         let  	mut parent: Vec< usize> = ( 0..portCount).collect();
 
         fn	find( p: &mut [usize], i: usize) -> usize
@@ -58,45 +57,45 @@ impl NetCompiler
             union( &mut parent, usize::from( srcOut.0), usize::from( dstIn.0));
         }
 
-        // Step 2: Map canonical net roots to AoS SignalState & SignalMeta
-        let  	mut rootToTrigger: BTreeMap< usize, TriggerId> = BTreeMap::new();
-        let  	mut signals = Vec::new();
-        let  	mut meta = Vec::new();
-        let  	mut portToTrigger = Vec::new();
+        // Step 2: Map canonical net roots to AoS TriggerState & TriggerMeta via O( 1) direct indexed array
+        let  	mut rootToTrigger: Vec< Option< TriggerId>> = vec![ None; portCount ];
+        let  	mut triggers = Vec::with_capacity( portCount);
+        let  	mut meta = Vec::with_capacity( portCount);
+        let  	mut portToTrigger = Vec::with_capacity( portCount);
 
         for portIdx in 0..portCount {
             let  	root = find( &mut parent, portIdx);
-            let  	trigId = if let Some( &existingId) = rootToTrigger.get( &root) {
+            let  	trigId = if let Some( existingId) = rootToTrigger[root] {
                 existingId
             } else {
                 let  	rootPort = &layout._Ports[root];
-                let  	newIdx = signals.len();
+                let  	newIdx = triggers.len();
                 let  	newId = U32( newIdx as u32);
-                let  	defaultVal = RegVal::DefaultTyped( rootPort._PortType);
+                let  	defaultVal = Reg::DefaultTyped( rootPort._PortType);
 
-                signals.push( SignalState::New( defaultVal));
-                meta.push( SignalMeta::New( rootPort.Name(), rootPort._PortType));
-                rootToTrigger.insert( root, newId);
+                triggers.push( TriggerState::New( defaultVal));
+                meta.push( TriggerMeta::New( rootPort.Name(), rootPort._PortType));
+                rootToTrigger[root] = Some( newId);
                 newId
             };
             portToTrigger.push( trigId);
         }
 
         // Step 3: Categorize Fast Modules vs Custom Modules
-        let  	mut fastModules = Vec::new();
+        let  	mut fastModules = Vec::with_capacity( layout._Modules.len());
         let  	mut customModules = Vec::new();
 
         for modIdx in 0..layout._Modules.len() {
             let  	module = &layout._Modules[modIdx];
 
-            let  	mut inTriggers = Vec::new();
+            let  	mut inTriggers = Vec::with_capacity( module._InPorts.len());
             for i in 0..module._InPorts.len() {
                 let  	portId = module._InPorts[i];
                 let  	trigId = portToTrigger[usize::from( portId.0)];
                 inTriggers.push( trigId);
             }
 
-            let  	mut outTriggers = Vec::new();
+            let  	mut outTriggers = Vec::with_capacity( module._OutPorts.len());
             for i in 0..module._OutPorts.len() {
                 let  	portId = module._OutPorts[i];
                 let  	trigId = portToTrigger[usize::from( portId.0)];
@@ -150,7 +149,7 @@ impl NetCompiler
         }
 
         return Ok( SimEngine::New(
-            Buff::from( signals.as_slice()),
+            Buff::from( triggers.as_slice()),
             Buff::from( meta.as_slice()),
             Buff::from( fastModules.as_slice()),
             Buff::from( customModules.as_slice()),

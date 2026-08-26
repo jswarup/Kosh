@@ -55,7 +55,7 @@ impl std::error::Error for LayoutError {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Clone, Debug)]
+#[derive( Clone, Debug, Default)]
 pub struct Layout
 {
     pub _Modules: Vec< ModuleDescriptor>,
@@ -66,18 +66,9 @@ pub struct Layout
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl Default for Layout
-{
-    fn	default() -> Self
-    {
-        return Self::New();
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
 impl Layout
 {
+    #[inline]
     pub fn	New() -> Self
     {
         return Self {
@@ -93,7 +84,7 @@ impl Layout
         let  	modIdx = self._Modules.len();
         let  	modId = ModuleId( U32( modIdx as u32));
 
-        let  	mut inPortIds = Vec::new();
+        let  	mut inPortIds = Vec::with_capacity( inPorts.len());
         for inDesc in inPorts {
             let  	portIdx = self._Ports.len();
             let  	portId = PortId( U32( portIdx as u32));
@@ -104,7 +95,7 @@ impl Layout
             inPortIds.push( portId);
         }
 
-        let  	mut outPortIds = Vec::new();
+        let  	mut outPortIds = Vec::with_capacity( outPorts.len());
         for outDesc in outPorts {
             let  	portIdx = self._Ports.len();
             let  	portId = PortId( U32( portIdx as u32));
@@ -126,6 +117,7 @@ impl Layout
         return modId;
     }
 
+    #[inline]
     pub fn	AddModuleSimple( &mut self, name: &str, inPorts: &[&str], outPorts: &[&str], kernel: KernelKind) -> ModuleId
     {
         let  	inDescs: Vec< PortDesc> = inPorts.iter().map( |&n| PortDesc::Bool( n)).collect();
@@ -133,6 +125,7 @@ impl Layout
         return self.AddModule( name, &inDescs, &outDescs, kernel);
     }
 
+    #[inline]
     pub fn	InPort( &self, moduleId: ModuleId, portIdx: usize) -> Option< PortId>
     {
         let  	idx = usize::from( moduleId.0);
@@ -146,6 +139,7 @@ impl Layout
         return Some( module._InPorts[portIdx]);
     }
 
+    #[inline]
     pub fn	OutPort( &self, moduleId: ModuleId, portIdx: usize) -> Option< PortId>
     {
         let  	idx = usize::from( moduleId.0);
@@ -231,6 +225,7 @@ impl Layout
         return &self._Connections;
     }
 
+    #[inline]
     pub fn	Compile( &self) -> Result< SimEngine, LayoutError>
     {
         return NetCompiler::New().Compile( self);
