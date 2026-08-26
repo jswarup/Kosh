@@ -2,6 +2,7 @@
 use	std::ops::BitOr;
 use	crate::{
     rube::{
+        module::KernelOp,
         port::PortType,
         reg::Reg,
     },
@@ -273,50 +274,43 @@ impl TriggerWad
     #[inline]
     pub fn	And( &self, in1: TriggerId, in2: TriggerId) -> Reg
     {
-        let  	mask = self.PortType( in1).Mask();
-        return ( self.Get( in1) & self.Get( in2)).Masked( mask);
+        return KernelOp::And.Eval( self.Get( in1), self.Get( in2), self.PortType( in1).Mask());
     }
 
     #[inline]
     pub fn	Or( &self, in1: TriggerId, in2: TriggerId) -> Reg
     {
-        let  	mask = self.PortType( in1).Mask();
-        return ( self.Get( in1) | self.Get( in2)).Masked( mask);
+        return KernelOp::Or.Eval( self.Get( in1), self.Get( in2), self.PortType( in1).Mask());
     }
 
     #[inline]
     pub fn	Xor( &self, in1: TriggerId, in2: TriggerId) -> Reg
     {
-        let  	mask = self.PortType( in1).Mask();
-        return ( self.Get( in1) ^ self.Get( in2)).Masked( mask);
+        return KernelOp::Xor.Eval( self.Get( in1), self.Get( in2), self.PortType( in1).Mask());
     }
 
     #[inline]
     pub fn	Not( &self, in1: TriggerId) -> Reg
     {
-        let  	mask = self.PortType( in1).Mask();
-        return ( !self.Get( in1)).Masked( mask);
+        return KernelOp::Not.Eval( self.Get( in1), Reg::FALSE, self.PortType( in1).Mask());
     }
 
     #[inline]
     pub fn	Nand( &self, in1: TriggerId, in2: TriggerId) -> Reg
     {
-        let  	mask = self.PortType( in1).Mask();
-        return ( !( self.Get( in1) & self.Get( in2))).Masked( mask);
+        return KernelOp::Nand.Eval( self.Get( in1), self.Get( in2), self.PortType( in1).Mask());
     }
 
     #[inline]
     pub fn	Nor( &self, in1: TriggerId, in2: TriggerId) -> Reg
     {
-        let  	mask = self.PortType( in1).Mask();
-        return ( !( self.Get( in1) | self.Get( in2))).Masked( mask);
+        return KernelOp::Nor.Eval( self.Get( in1), self.Get( in2), self.PortType( in1).Mask());
     }
 
     #[inline]
     pub fn	Xnor( &self, in1: TriggerId, in2: TriggerId) -> Reg
     {
-        let  	mask = self.PortType( in1).Mask();
-        return ( !( self.Get( in1) ^ self.Get( in2))).Masked( mask);
+        return KernelOp::Xnor.Eval( self.Get( in1), self.Get( in2), self.PortType( in1).Mask());
     }
 }
 

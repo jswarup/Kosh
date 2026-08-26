@@ -10,7 +10,7 @@ use	crate::{
         port::{ PortDesc, PortId },
         reg::Reg,
     },
-    silo::U32,
+    silo::{ Buff, Stash, U32 },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -147,7 +147,7 @@ impl FullAdder
 #[derive( Clone, Debug)]
 pub struct Adder< const N: usize>
 {
-    pub _Bits: Vec< FullAdder>,
+    pub _Bits: Buff< FullAdder>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -156,18 +156,18 @@ impl< const N: usize> Adder< N>
 {
     pub fn	New( layout: &mut Layout, name: &str) -> Self
     {
-        let  	mut bits: Vec< FullAdder> = Vec::with_capacity( N);
+        let  	mut bits: Stash< FullAdder> = Stash::WithCapacity( U32( N as u32));
         for i in 0..N {
             let  	bit = FullAdder::New( layout, &format!( "{name}.Bit{i}"));
             if i > 0 {
-                let  	prevCarry = bits[i - 1].Carry();
+                let  	prevCarry = bits.Slice()[i - 1].Carry();
                 let _ = layout.Connect( prevCarry, bit._HA2._Xor.In2());
                 let _ = layout.Connect( prevCarry, bit._HA2._And.In2());
             }
-            bits.push( bit);
+            bits.Push( bit);
         }
 
-        return Self { _Bits: bits };
+        return Self { _Bits: bits.IntoBuff() };
     }
 
     #[inline]

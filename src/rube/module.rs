@@ -28,6 +28,26 @@ pub enum KernelOp
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl KernelOp
+{
+    #[inline]
+    pub fn	Eval( self, in1: Reg, in2: Reg, mask: u64) -> Reg
+    {
+        let  	res = match self {
+            Self::Nand => !( in1 & in2),
+            Self::And => in1 & in2,
+            Self::Or => in1 | in2,
+            Self::Not => !in1,
+            Self::Xor => in1 ^ in2,
+            Self::Nor => !( in1 | in2),
+            Self::Xnor => !( in1 ^ in2),
+        };
+        return res.Masked( mask);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 #[derive( Clone)]
 pub enum KernelKind
 {
@@ -57,6 +77,24 @@ impl fmt::Debug for KernelKind
             Self::Xnor => write!( f, "KernelKind::Xnor"),
             Self::Custom( _) => write!( f, "KernelKind::Custom(...)"),
         }
+    }
+}
+
+impl KernelKind
+{
+    #[inline]
+    pub const fn	ToFastOp( &self) -> Option< KernelOp>
+    {
+        return match self {
+            Self::Nand => Some( KernelOp::Nand),
+            Self::And => Some( KernelOp::And),
+            Self::Or => Some( KernelOp::Or),
+            Self::Not => Some( KernelOp::Not),
+            Self::Xor => Some( KernelOp::Xor),
+            Self::Nor => Some( KernelOp::Nor),
+            Self::Xnor => Some( KernelOp::Xnor),
+            Self::Custom( _) => None,
+        };
     }
 }
 

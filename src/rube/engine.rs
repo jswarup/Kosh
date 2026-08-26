@@ -121,17 +121,7 @@ impl SimEngine
             let  	fm = self._FastModules[i];
             let  	in1 = self._Triggers[usize::from( fm._In1)]._Current;
             let  	in2 = self._Triggers[usize::from( fm._In2)]._Current;
-
-            let  	res = match fm._Op {
-                KernelOp::Nand => ( !( in1 & in2)).Masked( 1),
-                KernelOp::And => ( in1 & in2).Masked( 1),
-                KernelOp::Or => ( in1 | in2).Masked( 1),
-                KernelOp::Not => ( !in1).Masked( 1),
-                KernelOp::Xor => ( in1 ^ in2).Masked( 1),
-                KernelOp::Nor => ( !( in1 | in2)).Masked( 1),
-                KernelOp::Xnor => ( !( in1 ^ in2)).Masked( 1),
-            };
-            self._Triggers[usize::from( fm._Out)]._Future = res;
+            self._Triggers[usize::from( fm._Out)]._Future = fm._Op.Eval( in1, in2, 1);
         }
 
         // Phase 2: Evaluate Custom Modules
@@ -157,12 +147,8 @@ impl SimEngine
                     self._Triggers[usize::from( cm._OutTriggers[k])]._Future = outBuf[k];
                 }
             } else {
-                let  	inVals: Vec< Reg> = ( 0..inLen)
-                    .map( |k| self._Triggers[usize::from( cm._InTriggers[k])]._Current)
-                    .collect();
-                let  	mut outVals: Vec< Reg> = ( 0..outLen)
-                    .map( |k| self._Triggers[usize::from( cm._OutTriggers[k])]._Future)
-                    .collect();
+                let  	inVals = Buff::Create( crate::silo::U32( inLen as u32), |k| self._Triggers[usize::from( cm._InTriggers[k.AsUsize()])]._Current);
+                let  	mut outVals = Buff::Create( crate::silo::U32( outLen as u32), |k| self._Triggers[usize::from( cm._OutTriggers[k.AsUsize()])]._Future);
 
                 ( cm._Callback)( &inVals, &mut outVals);
 

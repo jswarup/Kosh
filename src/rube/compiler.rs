@@ -5,11 +5,11 @@ use	crate::{
     rube::{
         engine::{ CustomModule, FastModule, SimEngine },
         layout::{ Layout, LayoutError },
-        module::{ KernelKind, KernelOp },
+        module::KernelKind,
         reg::Reg,
         trigger::{ TriggerId, TriggerMeta, TriggerState },
     },
-    silo::{ Buff, U32 },
+    silo::{ Buff, Stash, U32 },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -29,10 +29,11 @@ impl NetCompiler
 
     pub fn	Compile( &self, layout: &Layout) -> Result< SimEngine, LayoutError>
     {
-        let  	portCount = layout._Ports.len();
+        let  	portCount = layout._Ports.Size().AsUsize();
+        let  	portCountU32 = layout._Ports.Size();
 
         // Step 1: Disjoint Set Union ( DSU / Union-Find) to merge connected nets with path compression
-        let  	mut parent: Vec< usize> = ( 0..portCount).collect();
+        let  	mut parent = Buff::Create( portCountU32, |i| i.AsUsize());
 
         fn	find( p: &mut [usize], i: usize) -> usize
         {
@@ -53,107 +54,76 @@ impl NetCompiler
             }
         }
 
-        for &( srcOut, dstIn) in &layout._Connections {
+        for &( srcOut, dstIn) in layout._Connections.Slice() {
             union( &mut parent, usize::from( srcOut.0), usize::from( dstIn.0));
         }
 
-        // Step 2: Map canonical net roots to AoS TriggerState & TriggerMeta via O( 1) direct indexed array
-        let  	mut rootToTrigger: Vec< Option< TriggerId>> = vec![ None; portCount ];
-        let  	mut triggers = Vec::with_capacity( portCount);
-        let  	mut meta = Vec::with_capacity( portCount);
-        let  	mut portToTrigger = Vec::with_capacity( portCount);
+        // Step 2: Map canonical net roots to AoS TriggerState & TriggerMeta via direct indexed array
+        let  	mut rootToTrigger = Buff::< Option< TriggerId>>::Create( portCountU32, |_| None);
+        let  	mut triggers = Stash::WithCapacity( portCountU32);
+        let  	mut meta = Stash::WithCapacity( portCountU32);
+        let  	mut portToTrigger = Stash::WithCapacity( portCountU32);
 
         for portIdx in 0..portCount {
             let  	root = find( &mut parent, portIdx);
             let  	trigId = if let Some( existingId) = rootToTrigger[root] {
                 existingId
             } else {
-                let  	rootPort = &layout._Ports[root];
-                let  	newIdx = triggers.len();
+                let  	rootPort = &layout._Ports.Slice()[root];
+                let  	newIdx = triggers.Size().AsUsize();
                 let  	newId = U32( newIdx as u32);
                 let  	defaultVal = Reg::DefaultTyped( rootPort._PortType);
 
-                triggers.push( TriggerState::New( defaultVal));
-                meta.push( TriggerMeta::New( rootPort.Name(), rootPort._PortType));
+                triggers.Push( TriggerState::New( defaultVal));
+                meta.Push( TriggerMeta::New( rootPort.Name(), rootPort._PortType));
                 rootToTrigger[root] = Some( newId);
                 newId
             };
-            portToTrigger.push( trigId);
+            portToTrigger.Push( trigId);
         }
 
         // Step 3: Categorize Fast Modules vs Custom Modules
-        let  	mut fastModules = Vec::with_capacity( layout._Modules.len());
-        let  	mut customModules = Vec::new();
+        let  	modCount = layout._Modules.Size().AsUsize();
+        let  	mut fastModules = Stash::WithCapacity( layout._Modules.Size());
+        let  	mut customModules = Stash::New();
 
-        for modIdx in 0..layout._Modules.len() {
-            let  	module = &layout._Modules[modIdx];
+        for modIdx in 0..modCount {
+            let  	module = &layout._Modules.Slice()[modIdx];
 
-            let  	mut inTriggers = Vec::with_capacity( module._InPorts.len());
+            let  	mut inTriggers = Stash::WithCapacity( U32( module._InPorts.len() as u32));
             for i in 0..module._InPorts.len() {
                 let  	portId = module._InPorts[i];
-                let  	trigId = portToTrigger[usize::from( portId.0)];
-                inTriggers.push( trigId);
+                let  	trigId = portToTrigger.Slice()[usize::from( portId.0)];
+                inTriggers.Push( trigId);
             }
 
-            let  	mut outTriggers = Vec::with_capacity( module._OutPorts.len());
+            let  	mut outTriggers = Stash::WithCapacity( U32( module._OutPorts.len() as u32));
             for i in 0..module._OutPorts.len() {
                 let  	portId = module._OutPorts[i];
-                let  	trigId = portToTrigger[usize::from( portId.0)];
-                outTriggers.push( trigId);
+                let  	trigId = portToTrigger.Slice()[usize::from( portId.0)];
+                outTriggers.Push( trigId);
             }
 
-            match &module._Kernel {
-                KernelKind::Nand => {
-                    let  	in1 = inTriggers[0];
-                    let  	in2 = if inTriggers.len() > 1 { inTriggers[1] } else { in1 };
-                    fastModules.push( FastModule::New( in1, in2, outTriggers[0], KernelOp::Nand));
-                }
-                KernelKind::And => {
-                    let  	in1 = inTriggers[0];
-                    let  	in2 = if inTriggers.len() > 1 { inTriggers[1] } else { in1 };
-                    fastModules.push( FastModule::New( in1, in2, outTriggers[0], KernelOp::And));
-                }
-                KernelKind::Or => {
-                    let  	in1 = inTriggers[0];
-                    let  	in2 = if inTriggers.len() > 1 { inTriggers[1] } else { in1 };
-                    fastModules.push( FastModule::New( in1, in2, outTriggers[0], KernelOp::Or));
-                }
-                KernelKind::Not => {
-                    let  	in1 = inTriggers[0];
-                    fastModules.push( FastModule::New( in1, in1, outTriggers[0], KernelOp::Not));
-                }
-                KernelKind::Xor => {
-                    let  	in1 = inTriggers[0];
-                    let  	in2 = if inTriggers.len() > 1 { inTriggers[1] } else { in1 };
-                    fastModules.push( FastModule::New( in1, in2, outTriggers[0], KernelOp::Xor));
-                }
-                KernelKind::Nor => {
-                    let  	in1 = inTriggers[0];
-                    let  	in2 = if inTriggers.len() > 1 { inTriggers[1] } else { in1 };
-                    fastModules.push( FastModule::New( in1, in2, outTriggers[0], KernelOp::Nor));
-                }
-                KernelKind::Xnor => {
-                    let  	in1 = inTriggers[0];
-                    let  	in2 = if inTriggers.len() > 1 { inTriggers[1] } else { in1 };
-                    fastModules.push( FastModule::New( in1, in2, outTriggers[0], KernelOp::Xnor));
-                }
-                KernelKind::Custom( callback) => {
-                    customModules.push( CustomModule::New(
-                        module._Id,
-                        Buff::from( inTriggers.as_slice()),
-                        Buff::from( outTriggers.as_slice()),
-                        Arc::clone( callback),
-                    ));
-                }
+            if let Some( op) = module._Kernel.ToFastOp() {
+                let  	in1 = inTriggers.Slice()[0];
+                let  	in2 = if inTriggers.Size().0 > 1 { inTriggers.Slice()[1] } else { in1 };
+                fastModules.Push( FastModule::New( in1, in2, outTriggers.Slice()[0], op));
+            } else if let KernelKind::Custom( ref callback) = module._Kernel {
+                customModules.Push( CustomModule::New(
+                    module._Id,
+                    inTriggers.IntoBuff(),
+                    outTriggers.IntoBuff(),
+                    Arc::clone( callback),
+                ));
             }
         }
 
         return Ok( SimEngine::New(
-            Buff::from( triggers.as_slice()),
-            Buff::from( meta.as_slice()),
-            Buff::from( fastModules.as_slice()),
-            Buff::from( customModules.as_slice()),
-            Buff::from( portToTrigger.as_slice()),
+            triggers.IntoBuff(),
+            meta.IntoBuff(),
+            fastModules.IntoBuff(),
+            customModules.IntoBuff(),
+            portToTrigger.IntoBuff(),
         ));
     }
 }

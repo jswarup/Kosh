@@ -8,6 +8,19 @@ use	crate::rube::{
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+#[inline]
+fn	CreateGate2( layout: &mut Layout, name: &str, kind: KernelKind) -> ( PortId, PortId, PortId)
+{
+    let  	m = layout.AddModuleSimple( name, &[ "in1", "in2" ], &[ "out" ], kind);
+    return (
+        layout.InPort( m, 0).unwrap(),
+        layout.InPort( m, 1).unwrap(),
+        layout.OutPort( m, 0).unwrap(),
+    );
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 /// 2-Input NAND Gate
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct NandGate
@@ -21,14 +34,11 @@ pub struct NandGate
 
 impl NandGate
 {
+    #[inline]
     pub fn	New( layout: &mut Layout, name: &str) -> Self
     {
-        let  	m = layout.AddModuleSimple( name, &[ "in1", "in2" ], &[ "out" ], KernelKind::Nand);
-        return Self {
-            _In1: layout.InPort( m, 0).unwrap(),
-            _In2: layout.InPort( m, 1).unwrap(),
-            _Out: layout.OutPort( m, 0).unwrap(),
-        };
+        let  	( in1, in2, out) = CreateGate2( layout, name, KernelKind::Nand);
+        return Self { _In1: in1, _In2: in2, _Out: out };
     }
 
     #[inline]
@@ -65,14 +75,11 @@ pub struct AndGate
 
 impl AndGate
 {
+    #[inline]
     pub fn	New( layout: &mut Layout, name: &str) -> Self
     {
-        let  	m = layout.AddModuleSimple( name, &[ "in1", "in2" ], &[ "out" ], KernelKind::And);
-        return Self {
-            _In1: layout.InPort( m, 0).unwrap(),
-            _In2: layout.InPort( m, 1).unwrap(),
-            _Out: layout.OutPort( m, 0).unwrap(),
-        };
+        let  	( in1, in2, out) = CreateGate2( layout, name, KernelKind::And);
+        return Self { _In1: in1, _In2: in2, _Out: out };
     }
 
     #[inline]
@@ -109,14 +116,134 @@ pub struct OrGate
 
 impl OrGate
 {
+    #[inline]
     pub fn	New( layout: &mut Layout, name: &str) -> Self
     {
-        let  	m = layout.AddModuleSimple( name, &[ "in1", "in2" ], &[ "out" ], KernelKind::Or);
-        return Self {
-            _In1: layout.InPort( m, 0).unwrap(),
-            _In2: layout.InPort( m, 1).unwrap(),
-            _Out: layout.OutPort( m, 0).unwrap(),
-        };
+        let  	( in1, in2, out) = CreateGate2( layout, name, KernelKind::Or);
+        return Self { _In1: in1, _In2: in2, _Out: out };
+    }
+
+    #[inline]
+    pub const fn	In1( &self) -> PortId
+    {
+        return self._In1;
+    }
+
+    #[inline]
+    pub const fn	In2( &self) -> PortId
+    {
+        return self._In2;
+    }
+
+    #[inline]
+    pub const fn	Out( &self) -> PortId
+    {
+        return self._Out;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+/// 2-Input XOR Gate
+#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct XorGate
+{
+    pub _In1: PortId,
+    pub _In2: PortId,
+    pub _Out: PortId,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl XorGate
+{
+    #[inline]
+    pub fn	New( layout: &mut Layout, name: &str) -> Self
+    {
+        let  	( in1, in2, out) = CreateGate2( layout, name, KernelKind::Xor);
+        return Self { _In1: in1, _In2: in2, _Out: out };
+    }
+
+    #[inline]
+    pub const fn	In1( &self) -> PortId
+    {
+        return self._In1;
+    }
+
+    #[inline]
+    pub const fn	In2( &self) -> PortId
+    {
+        return self._In2;
+    }
+
+    #[inline]
+    pub const fn	Out( &self) -> PortId
+    {
+        return self._Out;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+/// 2-Input NOR Gate
+#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct NorGate
+{
+    pub _In1: PortId,
+    pub _In2: PortId,
+    pub _Out: PortId,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl NorGate
+{
+    #[inline]
+    pub fn	New( layout: &mut Layout, name: &str) -> Self
+    {
+        let  	( in1, in2, out) = CreateGate2( layout, name, KernelKind::Nor);
+        return Self { _In1: in1, _In2: in2, _Out: out };
+    }
+
+    #[inline]
+    pub const fn	In1( &self) -> PortId
+    {
+        return self._In1;
+    }
+
+    #[inline]
+    pub const fn	In2( &self) -> PortId
+    {
+        return self._In2;
+    }
+
+    #[inline]
+    pub const fn	Out( &self) -> PortId
+    {
+        return self._Out;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+/// 2-Input XNOR Gate
+#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct XnorGate
+{
+    pub _In1: PortId,
+    pub _In2: PortId,
+    pub _Out: PortId,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl XnorGate
+{
+    #[inline]
+    pub fn	New( layout: &mut Layout, name: &str) -> Self
+    {
+        let  	( in1, in2, out) = CreateGate2( layout, name, KernelKind::Xnor);
+        return Self { _In1: in1, _In2: in2, _Out: out };
     }
 
     #[inline]
@@ -152,6 +279,7 @@ pub struct NotGate
 
 impl NotGate
 {
+    #[inline]
     pub fn	New( layout: &mut Layout, name: &str) -> Self
     {
         let  	m = layout.AddModuleSimple( name, &[ "in" ], &[ "out" ], KernelKind::Not);
@@ -165,50 +293,6 @@ impl NotGate
     pub const fn	In( &self) -> PortId
     {
         return self._In;
-    }
-
-    #[inline]
-    pub const fn	Out( &self) -> PortId
-    {
-        return self._Out;
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-/// 2-Input XOR Gate
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct XorGate
-{
-    pub _In1: PortId,
-    pub _In2: PortId,
-    pub _Out: PortId,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl XorGate
-{
-    pub fn	New( layout: &mut Layout, name: &str) -> Self
-    {
-        let  	m = layout.AddModuleSimple( name, &[ "in1", "in2" ], &[ "out" ], KernelKind::Xor);
-        return Self {
-            _In1: layout.InPort( m, 0).unwrap(),
-            _In2: layout.InPort( m, 1).unwrap(),
-            _Out: layout.OutPort( m, 0).unwrap(),
-        };
-    }
-
-    #[inline]
-    pub const fn	In1( &self) -> PortId
-    {
-        return self._In1;
-    }
-
-    #[inline]
-    pub const fn	In2( &self) -> PortId
-    {
-        return self._In2;
     }
 
     #[inline]

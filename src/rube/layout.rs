@@ -8,7 +8,7 @@ use	crate::{
         module::{ KernelKind, ModuleDescriptor, ModuleId },
         port::{ Port, PortDesc, PortDir, PortId, PortType },
     },
-    silo::{ Buff, U32 },
+    silo::{ Buff, Stash, U32 },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -55,13 +55,22 @@ impl std::error::Error for LayoutError {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Clone, Debug, Default)]
 pub struct Layout
 {
-    pub _Modules: Vec< ModuleDescriptor>,
-    pub _Ports: Vec< Port>,
-    pub _Connections: Vec<( PortId, PortId)>,
-    pub _InDrivers: Vec< Option< PortId>>,
+    pub _Modules: Stash< ModuleDescriptor>,
+    pub _Ports: Stash< Port>,
+    pub _Connections: Stash<( PortId, PortId)>,
+    pub _InDrivers: Stash< Option< PortId>>,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl Default for Layout
+{
+    fn	default() -> Self
+    {
+        return Self::New();
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -72,56 +81,56 @@ impl Layout
     pub fn	New() -> Self
     {
         return Self {
-            _Modules: Vec::new(),
-            _Ports: Vec::new(),
-            _Connections: Vec::new(),
-            _InDrivers: Vec::new(),
+            _Modules: Stash::New(),
+            _Ports: Stash::New(),
+            _Connections: Stash::New(),
+            _InDrivers: Stash::New(),
         };
     }
 
     pub fn	AddModule( &mut self, name: &str, inPorts: &[PortDesc], outPorts: &[PortDesc], kernel: KernelKind) -> ModuleId
     {
-        let  	modIdx = self._Modules.len();
+        let  	modIdx = self._Modules.Size().AsUsize();
         let  	modId = ModuleId( U32( modIdx as u32));
 
-        let  	mut inPortIds = Vec::with_capacity( inPorts.len());
+        let  	mut inPortIds = Stash::WithCapacity( U32( inPorts.len() as u32));
         for inDesc in inPorts {
-            let  	portIdx = self._Ports.len();
+            let  	portIdx = self._Ports.Size().AsUsize();
             let  	portId = PortId( U32( portIdx as u32));
             let  	fullName = format!( "{name}.{}", inDesc._Name);
             let  	port = Port::New( portId, modId.0, &fullName, PortDir::In, inDesc._Type);
-            self._Ports.push( port);
-            self._InDrivers.push( None);
-            inPortIds.push( portId);
+            self._Ports.Push( port);
+            self._InDrivers.Push( None);
+            inPortIds.Push( portId);
         }
 
-        let  	mut outPortIds = Vec::with_capacity( outPorts.len());
+        let  	mut outPortIds = Stash::WithCapacity( U32( outPorts.len() as u32));
         for outDesc in outPorts {
-            let  	portIdx = self._Ports.len();
+            let  	portIdx = self._Ports.Size().AsUsize();
             let  	portId = PortId( U32( portIdx as u32));
             let  	fullName = format!( "{name}.{}", outDesc._Name);
             let  	port = Port::New( portId, modId.0, &fullName, PortDir::Out, outDesc._Type);
-            self._Ports.push( port);
-            self._InDrivers.push( None);
-            outPortIds.push( portId);
+            self._Ports.Push( port);
+            self._InDrivers.Push( None);
+            outPortIds.Push( portId);
         }
 
         let  	module = ModuleDescriptor::New(
             modId,
             name,
-            Buff::from( inPortIds.as_slice()),
-            Buff::from( outPortIds.as_slice()),
+            inPortIds.IntoBuff(),
+            outPortIds.IntoBuff(),
             kernel,
         );
-        self._Modules.push( module);
+        self._Modules.Push( module);
         return modId;
     }
 
     #[inline]
     pub fn	AddModuleSimple( &mut self, name: &str, inPorts: &[&str], outPorts: &[&str], kernel: KernelKind) -> ModuleId
     {
-        let  	inDescs: Vec< PortDesc> = inPorts.iter().map( |&n| PortDesc::Bool( n)).collect();
-        let  	outDescs: Vec< PortDesc> = outPorts.iter().map( |&n| PortDesc::Bool( n)).collect();
+        let  	inDescs = Buff::Create( U32( inPorts.len() as u32), |i| PortDesc::Bool( inPorts[i.AsUsize()]));
+        let  	outDescs = Buff::Create( U32( outPorts.len() as u32), |i| PortDesc::Bool( outPorts[i.AsUsize()]));
         return self.AddModule( name, &inDescs, &outDescs, kernel);
     }
 
@@ -129,10 +138,10 @@ impl Layout
     pub fn	InPort( &self, moduleId: ModuleId, portIdx: usize) -> Option< PortId>
     {
         let  	idx = usize::from( moduleId.0);
-        if idx >= self._Modules.len() {
+        if idx >= self._Modules.Size().AsUsize() {
             return None;
         }
-        let  	module = &self._Modules[idx];
+        let  	module = &self._Modules.Slice()[idx];
         if portIdx >= module._InPorts.len() {
             return None;
         }
@@ -143,10 +152,10 @@ impl Layout
     pub fn	OutPort( &self, moduleId: ModuleId, portIdx: usize) -> Option< PortId>
     {
         let  	idx = usize::from( moduleId.0);
-        if idx >= self._Modules.len() {
+        if idx >= self._Modules.Size().AsUsize() {
             return None;
         }
-        let  	module = &self._Modules[idx];
+        let  	module = &self._Modules.Slice()[idx];
         if portIdx >= module._OutPorts.len() {
             return None;
         }
@@ -157,15 +166,16 @@ impl Layout
     {
         let  	srcIdx = usize::from( srcOut.0);
         let  	dstIdx = usize::from( dstIn.0);
+        let  	portCount = self._Ports.Size().AsUsize();
 
-        if srcIdx >= self._Ports.len() {
+        if srcIdx >= portCount {
             return Err( LayoutError::PortNotFound( srcOut));
         }
-        if dstIdx >= self._Ports.len() {
+        if dstIdx >= portCount {
             return Err( LayoutError::PortNotFound( dstIn));
         }
 
-        let  	srcPort = &self._Ports[srcIdx];
+        let  	srcPort = &self._Ports.Slice()[srcIdx];
         if srcPort._Dir != PortDir::Out {
             return Err( LayoutError::InvalidPortDirection {
                 _Port: srcOut,
@@ -174,7 +184,7 @@ impl Layout
             });
         }
 
-        let  	dstPort = &self._Ports[dstIdx];
+        let  	dstPort = &self._Ports.Slice()[dstIdx];
         if dstPort._Dir != PortDir::In {
             return Err( LayoutError::InvalidPortDirection {
                 _Port: dstIn,
@@ -194,7 +204,7 @@ impl Layout
         }
 
         // Check 1-to-1 input assignment rule
-        if let Some( existingSrc) = self._InDrivers[dstIdx] {
+        if let Some( existingSrc) = self._InDrivers.Slice()[dstIdx] {
             return Err( LayoutError::DuplicateInputDriver {
                 _DstIn: dstIn,
                 _ExistingSrc: existingSrc,
@@ -202,27 +212,27 @@ impl Layout
             });
         }
 
-        self._InDrivers[dstIdx] = Some( srcOut);
-        self._Connections.push(( srcOut, dstIn));
+        self._InDrivers.SliceMut()[dstIdx] = Some( srcOut);
+        self._Connections.Push(( srcOut, dstIn));
         return Ok( ());
     }
 
     #[inline]
     pub fn	Modules( &self) -> &[ModuleDescriptor]
     {
-        return &self._Modules;
+        return self._Modules.Slice();
     }
 
     #[inline]
     pub fn	Ports( &self) -> &[Port]
     {
-        return &self._Ports;
+        return self._Ports.Slice();
     }
 
     #[inline]
     pub fn	Connections( &self) -> &[( PortId, PortId)]
     {
-        return &self._Connections;
+        return self._Connections.Slice();
     }
 
     #[inline]
