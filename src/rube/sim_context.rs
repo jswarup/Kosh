@@ -42,15 +42,15 @@ pub struct Sensitivity
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub     struct SimContext
+pub struct SimContext
 {
-    pub     _Triggers: TriggerWad,
+    pub _Triggers: TriggerWad< bool>,
     _PortLayout: PortLayout,
     _ModLayout: ModLayout,
     _Actions: Vec< ActionKind>,
     _Sensitivities: Vec< Sensitivity>,
     _ArmedTriggers: BTreeSet< TriggerId>,
-    pending_actions: BTreeSet< ActionId>,
+    _PendingActions: BTreeSet< ActionId>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -59,101 +59,120 @@ impl Default for SimContext
 {
     fn	default() -> Self
     {
-        Self::new()
+        Self::New()
     }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait ISimContext
+{
+    fn	AddTrigger( &mut self, name: &str, initial: Reg) -> TriggerId;
+    fn	GetValue( &self, id: TriggerId) -> Reg;
+    fn	GetFutureValue( &self, id: TriggerId) -> Reg;
+    fn	GetTriggerName( &self, id: TriggerId) -> &str;
+    fn	InitValue( &mut self, id: TriggerId, val: Reg);
+    fn	SetValue( &mut self, id: TriggerId, val: Reg);
+    fn	AddAction( &mut self, action: ActionKind, sensitivities: &[( TriggerId, TriggerSense)]) -> ActionId;
+    fn	Drive( &mut self) -> usize;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl SimContext
 {
-    pub fn	new() -> Self
+    pub fn	New() -> Self
     {
         Self {
-            _Triggers: TriggerWad::new(),
+            _Triggers: TriggerWad::New(),
             _PortLayout: PortLayout::New( U32( 0)),
             _ModLayout: ModLayout::New(),
             _Actions: Vec::new(),
             _Sensitivities: Vec::new(),
             _ArmedTriggers: BTreeSet::new(),
-            pending_actions: BTreeSet::new(),
+            _PendingActions: BTreeSet::new(),
         }
+    }
+
+    pub fn	new() -> Self
+    {
+        Self::New()
     }
 
     /// Add a new trigger ( signal) to the simulation context
     #[inline]
-    pub fn	add_trigger( &mut self, name: &str, initial: Reg) -> TriggerId
+    pub fn	AddTrigger( &mut self, name: &str, initial: Reg) -> TriggerId
     {
-        return self._Triggers.add( name, initial);
+        return self._Triggers.Add( name, initial);
     }
 
     /// Query the current value of a trigger
     #[inline]
-    pub fn	get_value( &self, id: TriggerId) -> Reg
+    pub fn	GetValue( &self, id: TriggerId) -> Reg
     {
-        return self._Triggers.get( id);
+        return self._Triggers.Get( id);
     }
 
     /// Query the future value of a trigger ( if staged)
     #[inline]
-    pub fn	get_future_value( &self, id: TriggerId) -> Reg
+    pub fn	GetFutureValue( &self, id: TriggerId) -> Reg
     {
-        return self._Triggers.get_future( id);
+        return self._Triggers.GetFuture( id);
     }
 
     /// Query trigger name
     #[inline]
-    pub fn	get_trigger_name( &self, id: TriggerId) -> &str
+    pub fn	GetTriggerName( &self, id: TriggerId) -> &str
     {
-        return self._Triggers.name( id);
+        return self._Triggers.Name( id);
     }
 
     /// Initialize a trigger value directly without scheduling events
     #[inline]
-    pub fn	init_value( &mut self, id: TriggerId, val: Reg)
+    pub fn	InitValue( &mut self, id: TriggerId, val: Reg)
     {
-        self._Triggers.init_value( id, val);
+        self._Triggers.InitValue( id, val);
         self._ArmedTriggers.remove( &id);
     }
 
     /// Set a new future value on a trigger, arming it if changed
     #[inline]
-    pub fn	set_value( &mut self, id: TriggerId, val: Reg)
+    pub fn	SetValue( &mut self, id: TriggerId, val: Reg)
     {
-        if self._Triggers.set_future_value( id, val) {
+        if self._Triggers.SetFutureValue( id, val) {
             self._ArmedTriggers.insert( id);
         }
     }
 
     /// Register a gate or action along with its input sensitivities
-    pub fn	add_action( &mut self, action: ActionKind, sensitivities: &[( TriggerId, TriggerSense)]) -> ActionId
+    pub fn	AddAction( &mut self, action: ActionKind, sensitivities: &[( TriggerId, TriggerSense)]) -> ActionId
     {
-        let  	act_id = self._Actions.len();
+        let  	actId = self._Actions.len();
         self._Actions.push( action);
-        for &( trigger_id, sense) in sensitivities {
+        for &( triggerId, sense) in sensitivities {
             self._Sensitivities.push( Sensitivity {
-                _TriggerId: trigger_id,
+                _TriggerId: triggerId,
                 _Sense: sense,
-                _ActionId: act_id,
+                _ActionId: actId,
             });
         }
-        return act_id;
+        return actId;
     }
 
     /// Perform delta-cycle propagation until all triggers reach steady state
-    pub fn	drive( &mut self) -> usize
+    pub fn	Drive( &mut self) -> usize
     {
-        let  	mut delta_cycles = 0;
+        let  	mut deltaCycles = 0;
         const MAX_DELTA_CYCLES: usize = 10_000;
 
         loop {
-            if self._ArmedTriggers.is_empty() && self.pending_actions.is_empty() {
+            if self._ArmedTriggers.is_empty() && self._PendingActions.is_empty() {
                 break;
             }
 
-            delta_cycles += 1;
-            if delta_cycles > MAX_DELTA_CYCLES {
-                eprintln!( "[SimContext::drive] Warning: Maximum delta cycles ( {}) reached, possible oscillation/metastability.", MAX_DELTA_CYCLES);
+            deltaCycles += 1;
+            if deltaCycles > MAX_DELTA_CYCLES {
+                eprintln!( "[SimContext::Drive] Warning: Maximum delta cycles ( {}) reached, possible oscillation/metastability.", MAX_DELTA_CYCLES);
                 break;
             }
 
@@ -161,60 +180,120 @@ impl SimContext
             let  	armed: Vec< TriggerId> = self._ArmedTriggers.iter().copied().collect();
             self._ArmedTriggers.clear();
 
-            for trigger_id in armed {
-                if self._Triggers.is_armed( trigger_id) {
-                    self._Triggers.advance( trigger_id);
+            for triggerId in armed {
+                if self._Triggers.IsArmed( triggerId) {
+                    self._Triggers.Advance( triggerId);
 
                     for s in &self._Sensitivities {
-                        if s._TriggerId == trigger_id && s._Sense.matches( &self._Triggers, trigger_id) {
-                            self.pending_actions.insert( s._ActionId);
+                        if s._TriggerId == triggerId && s._Sense.Matches( &self._Triggers, triggerId) {
+                            self._PendingActions.insert( s._ActionId);
                         }
                     }
                 }
             }
 
             // Step 2: Fire all pending actions
-            let  	pending: Vec< ActionId> = self.pending_actions.iter().copied().collect();
-            self.pending_actions.clear();
+            let  	pending: Vec< ActionId> = self._PendingActions.iter().copied().collect();
+            self._PendingActions.clear();
 
-            for act_id in pending {
-                self.fire_action( act_id);
+            for actId in pending {
+                self._FireAction( actId);
             }
         }
 
-        return delta_cycles;
+        return deltaCycles;
     }
 
     /// Internal evaluation of an action
-    fn	fire_action( &mut self, act_id: ActionId)
+    fn	_FireAction( &mut self, actId: ActionId)
     {
-        let  	action = self._Actions[act_id].clone();
+        let  	action = self._Actions[actId].clone();
         match action {
             ActionKind::Nand { _In1: in1, _In2: in2, _Out: out } => {
-                self.set_value( out, self._Triggers.nand( in1, in2));
+                let  	res = self._Triggers.Nand( in1, in2);
+                self.SetValue( out, res);
             }
             ActionKind::And { _In1: in1, _In2: in2, _Out: out } => {
-                self.set_value( out, self._Triggers.and( in1, in2));
+                let  	res = self._Triggers.And( in1, in2);
+                self.SetValue( out, res);
             }
             ActionKind::Or { _In1: in1, _In2: in2, _Out: out } => {
-                self.set_value( out, self._Triggers.or( in1, in2));
+                let  	res = self._Triggers.Or( in1, in2);
+                self.SetValue( out, res);
             }
-            ActionKind::Not { _InSig: in_sig, _Out: out } => {
-                self.set_value( out, self._Triggers.not( in_sig));
+            ActionKind::Not { _InSig: inSig, _Out: out } => {
+                let  	res = self._Triggers.Not( inSig);
+                self.SetValue( out, res);
             }
             ActionKind::Xor { _In1: in1, _In2: in2, _Out: out } => {
-                self.set_value( out, self._Triggers.xor( in1, in2));
+                let  	res = self._Triggers.Xor( in1, in2);
+                self.SetValue( out, res);
             }
             ActionKind::Nor { _In1: in1, _In2: in2, _Out: out } => {
-                self.set_value( out, self._Triggers.nor( in1, in2));
+                let  	res = self._Triggers.Nor( in1, in2);
+                self.SetValue( out, res);
             }
             ActionKind::Xnor { _In1: in1, _In2: in2, _Out: out } => {
-                self.set_value( out, self._Triggers.xnor( in1, in2));
+                let  	res = self._Triggers.Xnor( in1, in2);
+                self.SetValue( out, res);
             }
             ActionKind::Custom( callback) => {
                 callback( self);
             }
         }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl ISimContext for SimContext
+{
+    #[inline]
+    fn	AddTrigger( &mut self, name: &str, initial: Reg) -> TriggerId
+    {
+        return self.AddTrigger( name, initial);
+    }
+
+    #[inline]
+    fn	GetValue( &self, id: TriggerId) -> Reg
+    {
+        return self.GetValue( id);
+    }
+
+    #[inline]
+    fn	GetFutureValue( &self, id: TriggerId) -> Reg
+    {
+        return self.GetFutureValue( id);
+    }
+
+    #[inline]
+    fn	GetTriggerName( &self, id: TriggerId) -> &str
+    {
+        return self.GetTriggerName( id);
+    }
+
+    #[inline]
+    fn	InitValue( &mut self, id: TriggerId, val: Reg)
+    {
+        self.InitValue( id, val);
+    }
+
+    #[inline]
+    fn	SetValue( &mut self, id: TriggerId, val: Reg)
+    {
+        self.SetValue( id, val);
+    }
+
+    #[inline]
+    fn	AddAction( &mut self, action: ActionKind, sensitivities: &[( TriggerId, TriggerSense)]) -> ActionId
+    {
+        return self.AddAction( action, sensitivities);
+    }
+
+    #[inline]
+    fn	Drive( &mut self) -> usize
+    {
+        return self.Drive();
     }
 }
 

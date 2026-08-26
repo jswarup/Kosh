@@ -10,6 +10,16 @@ use	crate::{
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+pub trait INandGate
+{
+    fn	In1( &self) -> TriggerId;
+    fn	In2( &self) -> TriggerId;
+    fn	Out( &self) -> TriggerId;
+    fn	Name( &self) -> &str;
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 /// 2-Input NAND Gate ( `Fr_NandGate`)
 #[derive( Clone, Debug)]
 pub struct NandGate
@@ -28,7 +38,7 @@ impl NandGate
     pub fn	New( ctxt: &mut SimContext, name: &str, in1: TriggerId, in2: TriggerId, out: TriggerId) -> Self
     {
         let  	action = ActionKind::Nand { _In1: in1, _In2: in2, _Out: out };
-        let  	action_id = ctxt.add_action(
+        let  	actionId = ctxt.AddAction(
             action,
             &[
                 ( in1, TriggerSense::EDGE),
@@ -40,14 +50,48 @@ impl NandGate
             _In1: in1,
             _In2: in2,
             _Out: out,
-            _ActionId: action_id,
+            _ActionId: actionId,
         }
     }
+}
 
-    pub fn	new( ctxt: &mut SimContext, name: &str, in1: TriggerId, in2: TriggerId, out: TriggerId) -> Self
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl INandGate for NandGate
+{
+    #[inline]
+    fn	In1( &self) -> TriggerId
     {
-        Self::New( ctxt, name, in1, in2, out)
+        return self._In1;
     }
+
+    #[inline]
+    fn	In2( &self) -> TriggerId
+    {
+        return self._In2;
+    }
+
+    #[inline]
+    fn	Out( &self) -> TriggerId
+    {
+        return self._Out;
+    }
+
+    #[inline]
+    fn	Name( &self) -> &str
+    {
+        return &self._Name;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait IAndGate
+{
+    fn	In1( &self) -> TriggerId;
+    fn	In2( &self) -> TriggerId;
+    fn	Out( &self) -> TriggerId;
+    fn	Name( &self) -> &str;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -71,7 +115,7 @@ impl AndGate
     pub fn	New( ctxt: &mut SimContext, moduleId: U32, name: &str, in1: TriggerId, in2: TriggerId, out: TriggerId) -> Self
     {
         let  	action = ActionKind::And { _In1: in1, _In2: in2, _Out: out };
-        let  	action_id = ctxt.add_action(
+        let  	actionId = ctxt.AddAction(
             action,
             &[
                 ( in1, TriggerSense::EDGE),
@@ -84,13 +128,37 @@ impl AndGate
             _In1: in1,
             _In2: in2,
             _Out: out,
-            _ActionId: action_id,
+            _ActionId: actionId,
         }
     }
+}
 
-    pub fn	new( ctxt: &mut SimContext, moduleId: U32, name: &str, in1: TriggerId, in2: TriggerId, out: TriggerId) -> Self
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IAndGate for AndGate
+{
+    #[inline]
+    fn	In1( &self) -> TriggerId
     {
-        Self::New( ctxt, moduleId, name, in1, in2, out)
+        return self._In1;
+    }
+
+    #[inline]
+    fn	In2( &self) -> TriggerId
+    {
+        return self._In2;
+    }
+
+    #[inline]
+    fn	Out( &self) -> TriggerId
+    {
+        return self._Out;
+    }
+
+    #[inline]
+    fn	Name( &self) -> &str
+    {
+        return &self._Name;
     }
 }
 
@@ -107,6 +175,16 @@ impl IModule for AndGate
     {
         return &self._Name;
     }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait IOrGate
+{
+    fn	In1( &self) -> TriggerId;
+    fn	In2( &self) -> TriggerId;
+    fn	Out( &self) -> TriggerId;
+    fn	Name( &self) -> &str;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -129,7 +207,7 @@ impl OrGate
     pub fn	New( ctxt: &mut SimContext, name: &str, in1: TriggerId, in2: TriggerId, out: TriggerId) -> Self
     {
         let  	action = ActionKind::Or { _In1: in1, _In2: in2, _Out: out };
-        let  	action_id = ctxt.add_action(
+        let  	actionId = ctxt.AddAction(
             action,
             &[
                 ( in1, TriggerSense::EDGE),
@@ -141,14 +219,47 @@ impl OrGate
             _In1: in1,
             _In2: in2,
             _Out: out,
-            _ActionId: action_id,
+            _ActionId: actionId,
         }
     }
+}
 
-    pub fn	new( ctxt: &mut SimContext, name: &str, in1: TriggerId, in2: TriggerId, out: TriggerId) -> Self
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IOrGate for OrGate
+{
+    #[inline]
+    fn	In1( &self) -> TriggerId
     {
-        Self::New( ctxt, name, in1, in2, out)
+        return self._In1;
     }
+
+    #[inline]
+    fn	In2( &self) -> TriggerId
+    {
+        return self._In2;
+    }
+
+    #[inline]
+    fn	Out( &self) -> TriggerId
+    {
+        return self._Out;
+    }
+
+    #[inline]
+    fn	Name( &self) -> &str
+    {
+        return &self._Name;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait INotGate
+{
+    fn	InSig( &self) -> TriggerId;
+    fn	Out( &self) -> TriggerId;
+    fn	Name( &self) -> &str;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -167,25 +278,53 @@ pub struct NotGate
 
 impl NotGate
 {
-    pub fn	New( ctxt: &mut SimContext, name: &str, in_sig: TriggerId, out: TriggerId) -> Self
+    pub fn	New( ctxt: &mut SimContext, name: &str, inSig: TriggerId, out: TriggerId) -> Self
     {
-        let  	action = ActionKind::Not { _InSig: in_sig, _Out: out };
-        let  	action_id = ctxt.add_action(
+        let  	action = ActionKind::Not { _InSig: inSig, _Out: out };
+        let  	actionId = ctxt.AddAction(
             action,
-            &[( in_sig, TriggerSense::EDGE)],
+            &[( inSig, TriggerSense::EDGE)],
         );
         Self {
             _Name: name.to_string(),
-            _InSig: in_sig,
+            _InSig: inSig,
             _Out: out,
-            _ActionId: action_id,
+            _ActionId: actionId,
         }
     }
+}
 
-    pub fn	new( ctxt: &mut SimContext, name: &str, in_sig: TriggerId, out: TriggerId) -> Self
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl INotGate for NotGate
+{
+    #[inline]
+    fn	InSig( &self) -> TriggerId
     {
-        Self::New( ctxt, name, in_sig, out)
+        return self._InSig;
     }
+
+    #[inline]
+    fn	Out( &self) -> TriggerId
+    {
+        return self._Out;
+    }
+
+    #[inline]
+    fn	Name( &self) -> &str
+    {
+        return &self._Name;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait IXorGate
+{
+    fn	In1( &self) -> TriggerId;
+    fn	In2( &self) -> TriggerId;
+    fn	Out( &self) -> TriggerId;
+    fn	Name( &self) -> &str;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -208,7 +347,7 @@ impl XorGate
     pub fn	New( ctxt: &mut SimContext, name: &str, in1: TriggerId, in2: TriggerId, out: TriggerId) -> Self
     {
         let  	action = ActionKind::Xor { _In1: in1, _In2: in2, _Out: out };
-        let  	action_id = ctxt.add_action(
+        let  	actionId = ctxt.AddAction(
             action,
             &[
                 ( in1, TriggerSense::EDGE),
@@ -220,13 +359,37 @@ impl XorGate
             _In1: in1,
             _In2: in2,
             _Out: out,
-            _ActionId: action_id,
+            _ActionId: actionId,
         }
     }
+}
 
-    pub fn	new( ctxt: &mut SimContext, name: &str, in1: TriggerId, in2: TriggerId, out: TriggerId) -> Self
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IXorGate for XorGate
+{
+    #[inline]
+    fn	In1( &self) -> TriggerId
     {
-        Self::New( ctxt, name, in1, in2, out)
+        return self._In1;
+    }
+
+    #[inline]
+    fn	In2( &self) -> TriggerId
+    {
+        return self._In2;
+    }
+
+    #[inline]
+    fn	Out( &self) -> TriggerId
+    {
+        return self._Out;
+    }
+
+    #[inline]
+    fn	Name( &self) -> &str
+    {
+        return &self._Name;
     }
 }
 

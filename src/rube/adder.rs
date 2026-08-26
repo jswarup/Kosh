@@ -3,12 +3,22 @@
 use	crate::{
     rube::{
         gates::{ AndGate, OrGate, XorGate },
-        reg::Reg,
+        reg::{ IRegBool, Reg },
         sim_context::SimContext,
         trigger::TriggerId,
     },
     silo::U32,
 }; 
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait IHalfAdder
+{
+    fn	A( &self) -> TriggerId;
+    fn	B( &self) -> TriggerId;
+    fn	Sum( &self) -> TriggerId;
+    fn	Carry( &self) -> TriggerId;
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -31,14 +41,16 @@ pub struct HalfAdder
     pub _XorGate: XorGate,
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl HalfAdder
 {
     pub fn	New( ctxt: &mut SimContext, name: &str, a: TriggerId, b: TriggerId, sum: TriggerId, carry: TriggerId) -> Self
-{
-        let  	andGate = AndGate::new( ctxt, U32( 0), &format!( "{name}.and"), a, b, carry);
-        let  	xorGate = XorGate::new( ctxt, &format!( "{name}.xor"), a, b, sum);
+    {
+        let  	andGate = AndGate::New( ctxt, U32( 0), &format!( "{name}.and"), a, b, carry);
+        let  	xorGate = XorGate::New( ctxt, &format!( "{name}.xor"), a, b, sum);
 
-        Self {
+        return Self {
             _Name: name.to_string(),
             _A: a,
             _B: b,
@@ -46,16 +58,58 @@ impl HalfAdder
             _Carry: carry,
             _AndGate: andGate,
             _XorGate: xorGate,
-        }
+        };
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IHalfAdder for HalfAdder
+{
+    #[inline]
+    fn	A( &self) -> TriggerId
+    {
+        return self._A;
+    }
+
+    #[inline]
+    fn	B( &self) -> TriggerId
+    {
+        return self._B;
+    }
+
+    #[inline]
+    fn	Sum( &self) -> TriggerId
+    {
+        return self._Sum;
+    }
+
+    #[inline]
+    fn	Carry( &self) -> TriggerId
+    {
+        return self._Carry;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait IFullAdder
+{
+    fn	A( &self) -> TriggerId;
+    fn	B( &self) -> TriggerId;
+    fn	CIn( &self) -> TriggerId;
+    fn	Sum( &self) -> TriggerId;
+    fn	Carry( &self) -> TriggerId;
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 /// Full Adder ( `Fr_FullAdder`)
 ///
 /// Ports:
 /// - `a`: Input A
 /// - `b`: Input B
-/// - `c_in`: Input Carry
+/// - `cIn`: Input Carry
 /// - `sum`: Output Sum
 /// - `carry`: Output Carry
 #[derive( Clone, Debug)]
@@ -72,20 +126,22 @@ pub struct FullAdder
     _OrGate: OrGate,
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl FullAdder
 {
     pub fn	New( ctxt: &mut SimContext, name: &str, a: TriggerId, b: TriggerId, cIn: TriggerId, sum: TriggerId, carry: TriggerId) -> Self
-{
-        let  	h1Sum = ctxt.add_trigger( &format!( "{name}.h1Sum"), Reg::FALSE);
-        let  	h1Carry = ctxt.add_trigger( &format!( "{name}.h1Carry"), Reg::FALSE);
+    {
+        let  	h1Sum = ctxt.AddTrigger( &format!( "{name}.h1Sum"), Reg::FALSE);
+        let  	h1Carry = ctxt.AddTrigger( &format!( "{name}.h1Carry"), Reg::FALSE);
         let  	h1 = HalfAdder::New( ctxt, &format!( "{name}.h1"), a, b, h1Sum, h1Carry);
 
-        let  	h2Carry = ctxt.add_trigger( &format!( "{name}.h2Carry"), Reg::FALSE);
+        let  	h2Carry = ctxt.AddTrigger( &format!( "{name}.h2Carry"), Reg::FALSE);
         let  	h2 = HalfAdder::New( ctxt, &format!( "{name}.h2"), h1Sum, cIn, sum, h2Carry);
 
-        let  	orGate = OrGate::new( ctxt, &format!( "{name}.or"), h1Carry, h2Carry, carry);
+        let  	orGate = OrGate::New( ctxt, &format!( "{name}.or"), h1Carry, h2Carry, carry);
 
-        Self {
+        return Self {
             _Name: name.to_string(),
             _A: a,
             _B: b,
@@ -95,9 +151,59 @@ impl FullAdder
             _H1: h1,
             _H2: h2,
             _OrGate: orGate,
-        }
+        };
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IFullAdder for FullAdder
+{
+    #[inline]
+    fn	A( &self) -> TriggerId
+    {
+        return self._A;
+    }
+
+    #[inline]
+    fn	B( &self) -> TriggerId
+    {
+        return self._B;
+    }
+
+    #[inline]
+    fn	CIn( &self) -> TriggerId
+    {
+        return self._CIn;
+    }
+
+    #[inline]
+    fn	Sum( &self) -> TriggerId
+    {
+        return self._Sum;
+    }
+
+    #[inline]
+    fn	Carry( &self) -> TriggerId
+    {
+        return self._Carry;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait IAdder< const N: usize>
+{
+    fn	A( &self) -> &[TriggerId; N];
+    fn	B( &self) -> &[TriggerId; N];
+    fn	Sum( &self) -> &[TriggerId; N];
+    fn	Carry( &self) -> TriggerId;
+    fn	SetA( &self, ctxt: &mut SimContext, val: U32);
+    fn	SetB( &self, ctxt: &mut SimContext, val: U32);
+    fn	GetSum( &self, ctxt: &SimContext) -> U32;
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 /// Ripple Carry Adder ( `Fr_Adder< N>`)
 ///
@@ -114,37 +220,34 @@ pub struct Adder< const N: usize>
     _Chain: Vec< FullAdder>,
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl< const N: usize> Adder< N>
 {
     pub fn	New( ctxt: &mut SimContext, name: &str) -> Self
-{
+    {
         assert!( N > 0, "Adder must have at least 1 bit");
         let  	mut a = [U32( 0); N];
         let  	mut b = [U32( 0); N];
         let  	mut sum = [U32( 0); N];
         for i in 0..N {
-            a[i] = ctxt.add_trigger( &format!( "{name}._A[{i}]"), Reg::FALSE);
-            b[i] = ctxt.add_trigger( &format!( "{name}._B[{i}]"), Reg::FALSE);
-            sum[i] = ctxt.add_trigger( &format!( "{name}._Sum[{i}]"), Reg::FALSE);
+            a[i] = ctxt.AddTrigger( &format!( "{name}._A[{i}]"), Reg::FALSE);
+            b[i] = ctxt.AddTrigger( &format!( "{name}._B[{i}]"), Reg::FALSE);
+            sum[i] = ctxt.AddTrigger( &format!( "{name}._Sum[{i}]"), Reg::FALSE);
         }
-        let  	carry = ctxt.add_trigger( &format!( "{name}.carry_out"), Reg::FALSE);
-        Self::WithTriggers( ctxt, name, a, b, sum, carry)
+        let  	carry = ctxt.AddTrigger( &format!( "{name}.carry_out"), Reg::FALSE);
+        return Self::WithTriggers( ctxt, name, a, b, sum, carry);
     }
 
-    pub fn	A( &self) -> &[TriggerId; N] { &self._A }
-    pub fn	B( &self) -> &[TriggerId; N] { &self._B }
-    pub fn	Sum( &self) -> &[TriggerId; N] { &self._Sum }
-    pub fn	Carry( &self) -> TriggerId { self._Carry }
-
     pub fn	WithTriggers( ctxt: &mut SimContext, name: &str, a: [TriggerId; N], b: [TriggerId; N], sum: [TriggerId; N], carry: TriggerId) -> Self
-{
+    {
         assert!( N > 0, "Adder must have at least 1 bit");
 
         let  	mut chain = Vec::new();
 
         // 1st bit is a HalfAdder ( no carry in)
         let  	mut prevCarry = if N > 1 {
-            ctxt.add_trigger( &format!( "{name}.carry_0"), Reg::FALSE)
+            ctxt.AddTrigger( &format!( "{name}.carry_0"), Reg::FALSE)
         } else {
             carry
         };
@@ -156,7 +259,7 @@ impl< const N: usize> Adder< N>
             let  	nextCarry = if i == N - 1 {
                 carry
             } else {
-                ctxt.add_trigger( &format!( "{name}.carry_{i}"), Reg::FALSE)
+                ctxt.AddTrigger( &format!( "{name}.carry_{i}"), Reg::FALSE)
             };
 
             let  	fa = FullAdder::New( ctxt, &format!( "{name}.bit{i}"), a[i], b[i], prevCarry, sum[i], nextCarry);
@@ -164,7 +267,7 @@ impl< const N: usize> Adder< N>
             prevCarry = nextCarry;
         }
 
-        Self {
+        return Self {
             _Name: name.to_string(),
             _A: a,
             _B: b,
@@ -172,35 +275,66 @@ impl< const N: usize> Adder< N>
             _Carry: carry,
             _FirstAdder: firstAdder,
             _Chain: chain,
-        }
+        };
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< const N: usize> IAdder< N> for Adder< N>
+{
+    #[inline]
+    fn	A( &self) -> &[TriggerId; N]
+    {
+        return &self._A;
     }
 
-    pub fn	SetA( &self, ctxt: &mut SimContext, val: U32)
-{
+    #[inline]
+    fn	B( &self) -> &[TriggerId; N]
+    {
+        return &self._B;
+    }
+
+    #[inline]
+    fn	Sum( &self) -> &[TriggerId; N]
+    {
+        return &self._Sum;
+    }
+
+    #[inline]
+    fn	Carry( &self) -> TriggerId
+    {
+        return self._Carry;
+    }
+
+    fn	SetA( &self, ctxt: &mut SimContext, val: U32)
+    {
         for i in 0..N {
             let  	bit = if ( val & ( 1 << i)) != 0 { Reg::TRUE } else { Reg::FALSE };
-            ctxt.set_value( self._A[i], bit);
+            ctxt.SetValue( self._A[i], bit);
         }
     }
 
-    pub fn	SetB( &self, ctxt: &mut SimContext, val: U32)
-{
+    fn	SetB( &self, ctxt: &mut SimContext, val: U32)
+    {
         for i in 0..N {
             let  	bit = if ( val & ( 1 << i)) != 0 { Reg::TRUE } else { Reg::FALSE };
-            ctxt.set_value( self._B[i], bit);
+            ctxt.SetValue( self._B[i], bit);
         }
     }
 
-    pub fn	GetSum( &self, ctxt: &SimContext) -> U32
+    fn	GetSum( &self, ctxt: &SimContext) -> U32
     {
         let  	mut val = 0;
         for i in 0..N {
-            let  	bit = ctxt.get_value( self._Sum[i]);
-            assert!( bit.is_true() || bit.is_false(), "Output bit is not a valid boolean state: {:?}", bit);
-            if bit.is_true() {
+            let  	bit = ctxt.GetValue( self._Sum[i]);
+            assert!( bit.IsTrue() || bit.IsFalse(), "Output bit is not a valid boolean state: {:?}", bit);
+            if bit.IsTrue() {
                 val |= 1 << i;
             }
         }
         return U32( val);
     }
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------

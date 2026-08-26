@@ -28,5 +28,12 @@
   - All `use` statements must be placed strictly at the file header (grouped logically by module).
   - Do NOT use inline full-path qualifications (e.g. `crate::silo::Stash`, `crate::heist::choretree::IChoreNode`, `crate::swarm::SwarmEngine`, `std::sync::atomic::Ordering`).
   - Import traits, structs, enums, and functions at the file header and refer to them exclusively by their short names throughout the file body.
+- **Casing & Naming Standards**:
+  - **Structs, Enums, & Types**: `PascalCase` (e.g. `TriggerWad`, `SimContext`, `PortLayout`, `Reg`).
+  - **Traits**: `PascalCase` with `I` prefix (e.g. `ITriggerWad`, `IPortLayout`, `IReg`, `IAccess`).
+  - **Methods & Functions**: `PascalCase` (e.g. `fn\tNew()`, `fn\tAdd()`, `fn\tGet()`, `fn\tAdvance()`, `fn\tIsEdge()`, `fn\tSize()`).
+  - **Function / Method Arguments**: `camelCase` (e.g. `val`, `initialVal`, `mxVert`, `biDirFlg`, `inSig`).
+  - **Local Variables**: `camelCase` preceded by `let  \t` (two spaces + tab, e.g. `let  \tnameStr = `, `let  \tnewSize = `).
+  - **Struct Data Members (Fields)**: Preceded by an underscore `_` followed by `PascalCase` (e.g. `_Data`, `_Size`, `_Names`, `_PastVal`, `_CurrentVal`, `_FutureVal`, `_X`).
 
 
