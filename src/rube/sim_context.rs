@@ -59,22 +59,8 @@ impl Default for SimContext
 {
     fn	default() -> Self
     {
-        Self::New()
+        return Self::New();
     }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-pub trait ISimContext
-{
-    fn	AddTrigger( &mut self, name: &str, initial: Reg) -> TriggerId;
-    fn	GetValue( &self, id: TriggerId) -> Reg;
-    fn	GetFutureValue( &self, id: TriggerId) -> Reg;
-    fn	GetTriggerName( &self, id: TriggerId) -> &str;
-    fn	InitValue( &mut self, id: TriggerId, val: Reg);
-    fn	SetValue( &mut self, id: TriggerId, val: Reg);
-    fn	AddAction( &mut self, action: ActionKind, sensitivities: &[( TriggerId, TriggerSense)]) -> ActionId;
-    fn	Drive( &mut self) -> usize;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -83,7 +69,7 @@ impl SimContext
 {
     pub fn	New() -> Self
     {
-        Self {
+        return Self {
             _Triggers: TriggerWad::New(),
             _PortLayout: PortLayout::New( U32( 0)),
             _ModLayout: ModLayout::New(),
@@ -91,12 +77,7 @@ impl SimContext
             _Sensitivities: Vec::new(),
             _ArmedTriggers: BTreeSet::new(),
             _PendingActions: BTreeSet::new(),
-        }
-    }
-
-    pub fn	new() -> Self
-    {
-        Self::New()
+        };
     }
 
     /// Add a new trigger ( signal) to the simulation context
@@ -241,59 +222,6 @@ impl SimContext
                 callback( self);
             }
         }
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl ISimContext for SimContext
-{
-    #[inline]
-    fn	AddTrigger( &mut self, name: &str, initial: Reg) -> TriggerId
-    {
-        return self.AddTrigger( name, initial);
-    }
-
-    #[inline]
-    fn	GetValue( &self, id: TriggerId) -> Reg
-    {
-        return self.GetValue( id);
-    }
-
-    #[inline]
-    fn	GetFutureValue( &self, id: TriggerId) -> Reg
-    {
-        return self.GetFutureValue( id);
-    }
-
-    #[inline]
-    fn	GetTriggerName( &self, id: TriggerId) -> &str
-    {
-        return self.GetTriggerName( id);
-    }
-
-    #[inline]
-    fn	InitValue( &mut self, id: TriggerId, val: Reg)
-    {
-        self.InitValue( id, val);
-    }
-
-    #[inline]
-    fn	SetValue( &mut self, id: TriggerId, val: Reg)
-    {
-        self.SetValue( id, val);
-    }
-
-    #[inline]
-    fn	AddAction( &mut self, action: ActionKind, sensitivities: &[( TriggerId, TriggerSense)]) -> ActionId
-    {
-        return self.AddAction( action, sensitivities);
-    }
-
-    #[inline]
-    fn	Drive( &mut self) -> usize
-    {
-        return self.Drive();
     }
 }
 

@@ -3,14 +3,6 @@ use	crate::silo::{ EdgeConnect, Stash, U32 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IModule
-{
-    fn	ModuleId( &self) -> U32;
-    fn	Name( &self) -> &str;
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
 pub struct Module
 {
     pub _ModuleId: U32,
@@ -23,36 +15,23 @@ impl Module
 {
     pub fn	New( moduleId: U32, name: impl Into< String>) -> Self
     {
-        Self {
+        return Self {
             _ModuleId: moduleId,
             _Name: name.into(),
-        }
+        };
     }
-}
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IModule for Module
-{
-    fn	ModuleId( &self) -> U32
+    #[inline]
+    pub fn	ModuleId( &self) -> U32
     {
         return self._ModuleId;
     }
 
-    fn	Name( &self) -> &str
+    #[inline]
+    pub fn	Name( &self) -> &str
     {
         return &self._Name;
     }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-pub trait IModLayout
-{
-    fn	ModConn( &self) -> &EdgeConnect;
-    fn	ModConnMut( &mut self) -> &mut EdgeConnect;
-    fn	Register( &mut self, name: String) -> U32;
-    fn	NameAt( &self, index: U32) -> &str;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -65,39 +44,47 @@ pub struct ModLayout
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl ModLayout
+impl Default for ModLayout
 {
-    pub fn	New() -> Self
+    fn	default() -> Self
     {
-        Self {
-            _ModConn: EdgeConnect::New(),
-            _Names: Stash::New(),
-        }
+        return Self::New();
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl IModLayout for ModLayout
+impl ModLayout
 {
-    fn	ModConn( &self) -> &EdgeConnect
+    pub fn	New() -> Self
+    {
+        return Self {
+            _ModConn: EdgeConnect::New(),
+            _Names: Stash::New(),
+        };
+    }
+
+    #[inline]
+    pub fn	ModConn( &self) -> &EdgeConnect
     {
         return &self._ModConn;
     }
 
-    fn	ModConnMut( &mut self) -> &mut EdgeConnect
+    #[inline]
+    pub fn	ModConnMut( &mut self) -> &mut EdgeConnect
     {
         return &mut self._ModConn;
     }
 
-    fn	Register( &mut self, name: String) -> U32
+    pub fn	Register( &mut self, name: String) -> U32
     {
         let  	sz = self._Names.Size();
         self._Names.Push( name);
         return sz;
     }
 
-    fn	NameAt( &self, index: U32) -> &str
+    #[inline]
+    pub fn	NameAt( &self, index: U32) -> &str
     {
         return &self._Names.Slice()[index.AsUsize()];
     }

@@ -25,21 +25,11 @@ impl< Val: Default> Default for Reg< Val>
     #[inline]
     fn	default() -> Self
     {
-        Self {
+        return Self {
             _Val: Val::default(),
             _X: true,
-        }
+        };
     }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-pub trait IReg< Val>
-{
-    fn	Val( &self) -> &Val;
-    fn	IsX( &self) -> bool;
-    fn	IsValid( &self) -> bool;
-    fn	ConvertX( &mut self);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -49,59 +39,44 @@ impl< Val> Reg< Val>
     #[inline]
     pub const fn	New( val: Val, x: bool) -> Self
     {
-        Self { _Val: val, _X: x }
+        return Self { _Val: val, _X: x };
     }
 
     #[inline]
     pub const fn	Known( val: Val) -> Self
     {
-        Self { _Val: val, _X: false }
+        return Self { _Val: val, _X: false };
     }
 
     #[inline]
     pub const fn	Unknown( val: Val) -> Self
     {
-        Self { _Val: val, _X: true }
+        return Self { _Val: val, _X: true };
     }
-}
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< Val> IReg< Val> for Reg< Val>
-{
     #[inline]
-    fn	Val( &self) -> &Val
+    pub fn	Val( &self) -> &Val
     {
         return &self._Val;
     }
 
     #[inline]
-    fn	IsX( &self) -> bool
+    pub fn	IsX( &self) -> bool
     {
         return self._X;
     }
 
     #[inline]
-    fn	IsValid( &self) -> bool
+    pub fn	IsValid( &self) -> bool
     {
         return !self._X;
     }
 
     #[inline]
-    fn	ConvertX( &mut self)
+    pub fn	ConvertX( &mut self)
     {
         self._X = true;
     }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-pub trait IRegBool
-{
-    fn	IsFalse( &self) -> bool;
-    fn	IsTrue( &self) -> bool;
-    fn	GetBool( &self) -> bool;
-    fn	ToChar( &self) -> char;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -116,9 +91,9 @@ impl Reg< bool>
     pub const fn	FromBool( val: bool) -> Self
     {
         if val {
-            Self::TRUE
+            return Self::TRUE;
         } else {
-            Self::FALSE
+            return Self::FALSE;
         }
     }
 
@@ -126,38 +101,33 @@ impl Reg< bool>
     pub fn	FromChar( c: char) -> Option< Self>
     {
         match c {
-            '0' => Some( Self::FALSE),
-            '1' => Some( Self::TRUE),
-            'x' | 'X' => Some( Self::X),
-            _ => None,
+            '0' => return Some( Self::FALSE),
+            '1' => return Some( Self::TRUE),
+            'x' | 'X' => return Some( Self::X),
+            _ => return None,
         }
     }
-}
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IRegBool for Reg< bool>
-{
     #[inline]
-    fn	IsFalse( &self) -> bool
+    pub fn	IsFalse( &self) -> bool
     {
         return !self._X && !self._Val;
     }
 
     #[inline]
-    fn	IsTrue( &self) -> bool
+    pub fn	IsTrue( &self) -> bool
     {
         return !self._X && self._Val;
     }
 
     #[inline]
-    fn	GetBool( &self) -> bool
+    pub fn	GetBool( &self) -> bool
     {
         return self._Val;
     }
 
     #[inline]
-    fn	ToChar( &self) -> char
+    pub fn	ToChar( &self) -> char
     {
         if self._X {
             return 'X';

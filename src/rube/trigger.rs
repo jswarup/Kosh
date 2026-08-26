@@ -31,7 +31,7 @@ impl< Val> Default for TriggerWad< Val>
 {
     fn	default() -> Self
     {
-        Self {
+        return Self {
             _Names: Buff::New(),
             _PastVal: Buff::New(),
             _PastX: Buff::New(),
@@ -39,41 +39,8 @@ impl< Val> Default for TriggerWad< Val>
             _CurrentX: Buff::New(),
             _FutureVal: Buff::New(),
             _FutureX: Buff::New(),
-        }
+        };
     }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-pub trait ITriggerWad< Val>
-{
-    fn	Add( &mut self, name: &str, initial: Reg< Val>) -> TriggerId;
-    fn	Len( &self) -> usize;
-    fn	IsEmpty( &self) -> bool;
-    fn	Get( &self, id: TriggerId) -> Reg< Val>;
-    fn	GetPast( &self, id: TriggerId) -> Reg< Val>;
-    fn	GetFuture( &self, id: TriggerId) -> Reg< Val>;
-    fn	Name( &self, id: TriggerId) -> &str;
-    fn	IsArmed( &self, id: TriggerId) -> bool;
-    fn	InitValue( &mut self, id: TriggerId, val: Reg< Val>);
-    fn	SetFutureValue( &mut self, id: TriggerId, val: Reg< Val>) -> bool;
-    fn	Advance( &mut self, id: TriggerId) -> ( Reg< Val>, Reg< Val>);
-    fn	IsEdge( &self, id: TriggerId) -> bool;
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-pub trait ITriggerWadBool
-{
-    fn	And( &self, in1: TriggerId, in2: TriggerId) -> Reg< bool>;
-    fn	Or( &self, in1: TriggerId, in2: TriggerId) -> Reg< bool>;
-    fn	Xor( &self, in1: TriggerId, in2: TriggerId) -> Reg< bool>;
-    fn	Not( &self, in1: TriggerId) -> Reg< bool>;
-    fn	Nand( &self, in1: TriggerId, in2: TriggerId) -> Reg< bool>;
-    fn	Nor( &self, in1: TriggerId, in2: TriggerId) -> Reg< bool>;
-    fn	Xnor( &self, in1: TriggerId, in2: TriggerId) -> Reg< bool>;
-    fn	IsPosedge( &self, id: TriggerId) -> bool;
-    fn	IsNegedge( &self, id: TriggerId) -> bool;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -82,7 +49,7 @@ impl< Val> TriggerWad< Val>
 {
     pub fn	New() -> Self
     {
-        Self::default()
+        return Self::default();
     }
 }
 
@@ -197,71 +164,6 @@ impl< Val: Clone + Copy + PartialEq> TriggerWad< Val>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< Val: Clone + Copy + PartialEq> ITriggerWad< Val> for TriggerWad< Val>
-{
-    fn	Add( &mut self, name: &str, initial: Reg< Val>) -> TriggerId
-    {
-        return self.Add( name, initial);
-    }
-
-    fn	Len( &self) -> usize
-    {
-        return self.Len();
-    }
-
-    fn	IsEmpty( &self) -> bool
-    {
-        return self.IsEmpty();
-    }
-
-    fn	Get( &self, id: TriggerId) -> Reg< Val>
-    {
-        return self.Get( id);
-    }
-
-    fn	GetPast( &self, id: TriggerId) -> Reg< Val>
-    {
-        return self.GetPast( id);
-    }
-
-    fn	GetFuture( &self, id: TriggerId) -> Reg< Val>
-    {
-        return self.GetFuture( id);
-    }
-
-    fn	Name( &self, id: TriggerId) -> &str
-    {
-        return self.Name( id);
-    }
-
-    fn	IsArmed( &self, id: TriggerId) -> bool
-    {
-        return self.IsArmed( id);
-    }
-
-    fn	InitValue( &mut self, id: TriggerId, val: Reg< Val>)
-    {
-        self.InitValue( id, val);
-    }
-
-    fn	SetFutureValue( &mut self, id: TriggerId, val: Reg< Val>) -> bool
-    {
-        return self.SetFutureValue( id, val);
-    }
-
-    fn	Advance( &mut self, id: TriggerId) -> ( Reg< Val>, Reg< Val>)
-    {
-        return self.Advance( id);
-    }
-
-    fn	IsEdge( &self, id: TriggerId) -> bool
-    {
-        return self.IsEdge( id);
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
 impl TriggerWad< bool>
 {
     // --- Logic Gate Methods ---
@@ -330,65 +232,6 @@ impl TriggerWad< bool>
         let  	pastVal = self._PastVal[idx];
         let  	pastX = self._PastX[idx];
         return ( curVal != pastVal || curX != pastX) && ( !curVal && pastVal && !pastX);
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl ITriggerWadBool for TriggerWad< bool>
-{
-    #[inline]
-    fn	And( &self, in1: TriggerId, in2: TriggerId) -> Reg< bool>
-    {
-        return self.And( in1, in2);
-    }
-
-    #[inline]
-    fn	Or( &self, in1: TriggerId, in2: TriggerId) -> Reg< bool>
-    {
-        return self.Or( in1, in2);
-    }
-
-    #[inline]
-    fn	Xor( &self, in1: TriggerId, in2: TriggerId) -> Reg< bool>
-    {
-        return self.Xor( in1, in2);
-    }
-
-    #[inline]
-    fn	Not( &self, in1: TriggerId) -> Reg< bool>
-    {
-        return self.Not( in1);
-    }
-
-    #[inline]
-    fn	Nand( &self, in1: TriggerId, in2: TriggerId) -> Reg< bool>
-    {
-        return self.Nand( in1, in2);
-    }
-
-    #[inline]
-    fn	Nor( &self, in1: TriggerId, in2: TriggerId) -> Reg< bool>
-    {
-        return self.Nor( in1, in2);
-    }
-
-    #[inline]
-    fn	Xnor( &self, in1: TriggerId, in2: TriggerId) -> Reg< bool>
-    {
-        return self.Xnor( in1, in2);
-    }
-
-    #[inline]
-    fn	IsPosedge( &self, id: TriggerId) -> bool
-    {
-        return self.IsPosedge( id);
-    }
-
-    #[inline]
-    fn	IsNegedge( &self, id: TriggerId) -> bool
-    {
-        return self.IsNegedge( id);
     }
 }
 

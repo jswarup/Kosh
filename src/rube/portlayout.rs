@@ -4,11 +4,10 @@ use	crate::{
     silo::{ EdgeBroadcast, EdgeConnect, U32 },
 };
 
-
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Clone, Debug, PartialEq, Eq)]
-pub struct Port
+pub struct TopologyPort
 {
     pub _Name: String,
     pub _Trigger: TriggerId,
@@ -16,47 +15,27 @@ pub struct Port
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IPort
-{
-    fn	Name( &self) -> &str;
-    fn	Trigger( &self) -> TriggerId;
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl Port
+impl TopologyPort
 {
     pub fn	New( name: impl Into< String>, trigger: TriggerId) -> Self
     {
-        Self {
+        return Self {
             _Name: name.into(),
             _Trigger: trigger,
-        }
+        };
     }
-}
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IPort for Port
-{
-    fn	Name( &self) -> &str
+    #[inline]
+    pub fn	Name( &self) -> &str
     {
         return &self._Name;
     }
 
-    fn	Trigger( &self) -> TriggerId
+    #[inline]
+    pub fn	Trigger( &self) -> TriggerId
     {
         return self._Trigger;
     }
-}
-//---------------------------------------------------------------------------------------------------------------------------------
-
-pub trait IPortLayout
-{
-    fn	PortConn( &self) -> &EdgeConnect;
-    fn	PortConnMut( &mut self) -> &mut EdgeConnect;
-    fn	PortCast( &self) -> &EdgeBroadcast;
-    fn	PortCastMut( &mut self) -> &mut EdgeBroadcast;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -73,33 +52,32 @@ impl PortLayout
 {
     pub fn	New( mxVert: U32) -> Self
     {
-        Self {
+        return Self {
             _PortConn: EdgeConnect::New(),
             _PortCast: EdgeBroadcast::New( mxVert),
-        }
+        };
     }
-}
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IPortLayout for PortLayout
-{
-    fn	PortConn( &self) -> &EdgeConnect
+    #[inline]
+    pub fn	PortConn( &self) -> &EdgeConnect
     {
         return &self._PortConn;
     }
 
-    fn	PortConnMut( &mut self) -> &mut EdgeConnect
+    #[inline]
+    pub fn	PortConnMut( &mut self) -> &mut EdgeConnect
     {
         return &mut self._PortConn;
     }
 
-    fn	PortCast( &self) -> &EdgeBroadcast
+    #[inline]
+    pub fn	PortCast( &self) -> &EdgeBroadcast
     {
         return &self._PortCast;
     }
 
-    fn	PortCastMut( &mut self) -> &mut EdgeBroadcast
+    #[inline]
+    pub fn	PortCastMut( &mut self) -> &mut EdgeBroadcast
     {
         return &mut self._PortCast;
     }

@@ -6,13 +6,16 @@
 mod _tests {
     use	crate::{
         rube::{
-            adder::{ Adder, IAdder },
+            adder::{ Adder, BusAdder32 },
             gates::{ AndGate, NandGate, NotGate, OrGate, XorGate },
-            latches::{ CRSLatch, DLatch, ICRSLatch, IDLatch, IRSLatch, RSLatch },
-            portlayout::{ IPort, IPortLayout, Port, PortLayout },
-            reg::{ IReg, IRegBool, Reg },
-            sim_context::{ ISimContext, SimContext },
-            trigger::{ ITriggerWad, ITriggerWadBool, TriggerWad },
+            latches::{ CRSLatch, DLatch, RSLatch },
+            layout::{ Layout, LayoutError },
+            module::KernelKind,
+            port::PortDesc,
+            portlayout::{ PortLayout, TopologyPort },
+            reg::Reg,
+            regval::RegVal,
+            trigger::TriggerWad,
         },
         silo::{ IEdgeBroadcast, IEdgeConnect, U32 },
     };
@@ -20,10 +23,10 @@ mod _tests {
     #[test]
     fn	test_adder_basic()
     {
-        let  	mut ctxt = SimContext::New();
-
+        let  	mut layout = Layout::New();
         const N: usize = 16;
-        let  	adder = Adder::< N>::New( &mut ctxt, "Adder16");
+        let  	adder = Adder::< N>::New( &mut layout, "Adder16");
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
 
         let  	testCases = [
             ( 0, 0, 0, false),
@@ -36,15 +39,17 @@ mod _tests {
         ];
 
         for ( aVal, bVal, expectedSum, expectedCarry) in testCases {
-            adder.SetA( &mut ctxt, U32( aVal));
-            adder.SetB( &mut ctxt, U32( bVal));
+            adder.SetA( &mut engine, U32( aVal));
+            adder.SetB( &mut engine, U32( bVal));
 
-            ctxt.Drive();
+            // Tick for full ripple carry propagation ( 3 gate delays per bit)
+            for _ in 0..( N * 3) {
+                engine.Tick();
+            }
 
-            let  	sumVal = adder.GetSum( &ctxt);
-            let  	carryVal = ctxt.GetValue( adder.Carry()).IsTrue();
+            let  	sumVal = adder.GetSum( &engine);
+            let  	carryVal = engine.GetPortBool( adder.Carry()).unwrap().IsTrue();
 
-            // expectedSum is calculated as a 16-bit truncation
             let  	expectedTruncated = expectedSum & 0xFFFF;
             let  	expectedOverflow = expectedSum > 0xFFFF;
 
@@ -66,38 +71,39 @@ mod _tests {
     #[test]
     fn	test_clocked_rs_latch()
     {
-        let  	mut ctxt = SimContext::New();
-        let  	crs = CRSLatch::New( &mut ctxt, "CRSLatch");
+        let  	mut layout = Layout::New();
+        let  	crs = CRSLatch::New( &mut layout, "CRSLatch");
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
 
         // When clk=0, S and R changes have no effect
-        ctxt.SetValue( crs.Clk(), Reg::FALSE);
-        ctxt.SetValue( crs.S(), Reg::TRUE);
-        ctxt.SetValue( crs.R(), Reg::FALSE);
-        ctxt.Drive();
-        assert_eq!( ctxt.GetValue( crs.Q()), Reg::FALSE);
+        crs.SetClk( &mut engine, Reg::FALSE);
+        crs.SetS( &mut engine, Reg::TRUE);
+        crs.SetR( &mut engine, Reg::FALSE);
+        for _ in 0..4 { engine.Tick(); }
+        assert_eq!( engine.GetPortBool( crs.Q()), Some( Reg::FALSE));
 
         // Pulse clock high while S=1, R=0 -> Q becomes 1
-        ctxt.SetValue( crs.Clk(), Reg::TRUE);
-        ctxt.Drive();
-        assert_eq!( ctxt.GetValue( crs.Q()), Reg::TRUE);
-        assert_eq!( ctxt.GetValue( crs.Q1()), Reg::FALSE);
+        crs.SetClk( &mut engine, Reg::TRUE);
+        for _ in 0..4 { engine.Tick(); }
+        assert_eq!( engine.GetPortBool( crs.Q()), Some( Reg::TRUE));
+        assert_eq!( engine.GetPortBool( crs.Q1()), Some( Reg::FALSE));
 
         // Clock back low -> retains Q=1
-        ctxt.SetValue( crs.Clk(), Reg::FALSE);
-        ctxt.Drive();
-        assert_eq!( ctxt.GetValue( crs.Q()), Reg::TRUE);
+        crs.SetClk( &mut engine, Reg::FALSE);
+        for _ in 0..4 { engine.Tick(); }
+        assert_eq!( engine.GetPortBool( crs.Q()), Some( Reg::TRUE));
 
         // Set R=1, S=0 with clk=0 -> still Q=1
-        ctxt.SetValue( crs.S(), Reg::FALSE);
-        ctxt.SetValue( crs.R(), Reg::TRUE);
-        ctxt.Drive();
-        assert_eq!( ctxt.GetValue( crs.Q()), Reg::TRUE);
+        crs.SetS( &mut engine, Reg::FALSE);
+        crs.SetR( &mut engine, Reg::TRUE);
+        for _ in 0..4 { engine.Tick(); }
+        assert_eq!( engine.GetPortBool( crs.Q()), Some( Reg::TRUE));
 
         // Pulse clk=1 -> Q resets to 0
-        ctxt.SetValue( crs.Clk(), Reg::TRUE);
-        ctxt.Drive();
-        assert_eq!( ctxt.GetValue( crs.Q()), Reg::FALSE);
-        assert_eq!( ctxt.GetValue( crs.Q1()), Reg::TRUE);
+        crs.SetClk( &mut engine, Reg::TRUE);
+        for _ in 0..4 { engine.Tick(); }
+        assert_eq!( engine.GetPortBool( crs.Q()), Some( Reg::FALSE));
+        assert_eq!( engine.GetPortBool( crs.Q1()), Some( Reg::TRUE));
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -105,40 +111,41 @@ mod _tests {
     #[test]
     fn	test_d_latch()
     {
-        let  	mut ctxt = SimContext::New();
-        let  	dLatch = DLatch::New( &mut ctxt, "DLatch");
+        let  	mut layout = Layout::New();
+        let  	dLatch = DLatch::New( &mut layout, "DLatch");
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
 
         // Enable = 0 ( latched): changing D has no effect
-        ctxt.SetValue( dLatch.E(), Reg::FALSE);
-        ctxt.SetValue( dLatch.D(), Reg::TRUE);
-        ctxt.Drive();
-        assert_eq!( ctxt.GetValue( dLatch.Q()), Reg::FALSE);
+        dLatch.SetE( &mut engine, Reg::FALSE);
+        dLatch.SetD( &mut engine, Reg::TRUE);
+        for _ in 0..4 { engine.Tick(); }
+        assert_eq!( engine.GetPortBool( dLatch.Q()), Some( Reg::FALSE));
 
         // Enable = 1 ( transparent): D=1 passes to Q=1
-        ctxt.SetValue( dLatch.E(), Reg::TRUE);
-        ctxt.SetValue( dLatch.D(), Reg::TRUE);
-        ctxt.Drive();
-        assert_eq!( ctxt.GetValue( dLatch.Q()), Reg::TRUE);
-        assert_eq!( ctxt.GetValue( dLatch.Q1()), Reg::FALSE);
+        dLatch.SetE( &mut engine, Reg::TRUE);
+        dLatch.SetD( &mut engine, Reg::TRUE);
+        for _ in 0..4 { engine.Tick(); }
+        assert_eq!( engine.GetPortBool( dLatch.Q()), Some( Reg::TRUE));
+        assert_eq!( engine.GetPortBool( dLatch.Q1()), Some( Reg::FALSE));
 
         // D=0 passes to Q=0
-        ctxt.SetValue( dLatch.D(), Reg::FALSE);
-        ctxt.Drive();
-        assert_eq!( ctxt.GetValue( dLatch.Q()), Reg::FALSE);
-        assert_eq!( ctxt.GetValue( dLatch.Q1()), Reg::TRUE);
+        dLatch.SetD( &mut engine, Reg::FALSE);
+        for _ in 0..4 { engine.Tick(); }
+        assert_eq!( engine.GetPortBool( dLatch.Q()), Some( Reg::FALSE));
+        assert_eq!( engine.GetPortBool( dLatch.Q1()), Some( Reg::TRUE));
 
         // Set D=1, then Enable=0 ( latch 1)
-        ctxt.SetValue( dLatch.D(), Reg::TRUE);
-        ctxt.Drive();
-        assert_eq!( ctxt.GetValue( dLatch.Q()), Reg::TRUE);
+        dLatch.SetD( &mut engine, Reg::TRUE);
+        for _ in 0..4 { engine.Tick(); }
+        assert_eq!( engine.GetPortBool( dLatch.Q()), Some( Reg::TRUE));
 
-        ctxt.SetValue( dLatch.E(), Reg::FALSE);
-        ctxt.Drive();
+        dLatch.SetE( &mut engine, Reg::FALSE);
+        for _ in 0..4 { engine.Tick(); }
 
         // Now change D=0 while E=0 -> Q remains 1
-        ctxt.SetValue( dLatch.D(), Reg::FALSE);
-        ctxt.Drive();
-        assert_eq!( ctxt.GetValue( dLatch.Q()), Reg::TRUE, "Q should stay latched at 1");
+        dLatch.SetD( &mut engine, Reg::FALSE);
+        for _ in 0..4 { engine.Tick(); }
+        assert_eq!( engine.GetPortBool( dLatch.Q()), Some( Reg::TRUE), "Q should stay latched at 1");
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -146,12 +153,9 @@ mod _tests {
     #[test]
     fn	test_nand_gate()
     {
-        let  	mut ctxt = SimContext::New();
-        let  	in1 = ctxt.AddTrigger( "in1", Reg::FALSE);
-        let  	in2 = ctxt.AddTrigger( "in2", Reg::FALSE);
-        let  	out = ctxt.AddTrigger( "out", Reg::TRUE);
-
-        let  	_gate = NandGate::New( &mut ctxt, "Nand", in1, in2, out);
+        let  	mut layout = Layout::New();
+        let  	gate = NandGate::New( &mut layout, "Nand");
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
 
         let  	truthTable = [
             ( false, false, Reg::TRUE),
@@ -161,10 +165,10 @@ mod _tests {
         ];
 
         for ( a, b, expected) in truthTable {
-            ctxt.SetValue( in1, Reg::FromBool( a));
-            ctxt.SetValue( in2, Reg::FromBool( b));
-            ctxt.Drive();
-            assert_eq!( ctxt.GetValue( out), expected, "NAND failed for {a} and {b}");
+            engine.SetPortBool( gate.In1(), Reg::FromBool( a));
+            engine.SetPortBool( gate.In2(), Reg::FromBool( b));
+            engine.Tick();
+            assert_eq!( engine.GetPortBool( gate.Out()), Some( expected), "NAND failed for {a} and {b}");
         }
     }
 
@@ -173,19 +177,17 @@ mod _tests {
     #[test]
     fn	test_not_gate()
     {
-        let  	mut ctxt = SimContext::New();
-        let  	in1 = ctxt.AddTrigger( "in1", Reg::FALSE);
-        let  	out = ctxt.AddTrigger( "out", Reg::TRUE);
+        let  	mut layout = Layout::New();
+        let  	gate = NotGate::New( &mut layout, "Not");
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
 
-        let  	_gate = NotGate::New( &mut ctxt, "Not", in1, out);
+        engine.SetPortBool( gate.In(), Reg::FALSE);
+        engine.Tick();
+        assert_eq!( engine.GetPortBool( gate.Out()), Some( Reg::TRUE));
 
-        ctxt.SetValue( in1, Reg::FALSE);
-        ctxt.Drive();
-        assert_eq!( ctxt.GetValue( out), Reg::TRUE);
-
-        ctxt.SetValue( in1, Reg::TRUE);
-        ctxt.Drive();
-        assert_eq!( ctxt.GetValue( out), Reg::FALSE);
+        engine.SetPortBool( gate.In(), Reg::TRUE);
+        engine.Tick();
+        assert_eq!( engine.GetPortBool( gate.Out()), Some( Reg::FALSE));
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -193,12 +195,9 @@ mod _tests {
     #[test]
     fn	test_and_gate()
     {
-        let  	mut ctxt = SimContext::New();
-        let  	in1 = ctxt.AddTrigger( "in1", Reg::FALSE);
-        let  	in2 = ctxt.AddTrigger( "in2", Reg::FALSE);
-        let  	out = ctxt.AddTrigger( "out", Reg::FALSE);
-
-        let  	_gate = AndGate::New( &mut ctxt, U32( 0), "And", in1, in2, out);
+        let  	mut layout = Layout::New();
+        let  	gate = AndGate::New( &mut layout, "And");
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
 
         let  	truthTable = [
             ( false, false, Reg::FALSE),
@@ -208,10 +207,10 @@ mod _tests {
         ];
 
         for ( a, b, expected) in truthTable {
-            ctxt.SetValue( in1, Reg::FromBool( a));
-            ctxt.SetValue( in2, Reg::FromBool( b));
-            ctxt.Drive();
-            assert_eq!( ctxt.GetValue( out), expected, "AND failed for {a} and {b}");
+            engine.SetPortBool( gate.In1(), Reg::FromBool( a));
+            engine.SetPortBool( gate.In2(), Reg::FromBool( b));
+            engine.Tick();
+            assert_eq!( engine.GetPortBool( gate.Out()), Some( expected), "AND failed for {a} and {b}");
         }
     }
 
@@ -220,12 +219,9 @@ mod _tests {
     #[test]
     fn	test_or_gate()
     {
-        let  	mut ctxt = SimContext::New();
-        let  	in1 = ctxt.AddTrigger( "in1", Reg::FALSE);
-        let  	in2 = ctxt.AddTrigger( "in2", Reg::FALSE);
-        let  	out = ctxt.AddTrigger( "out", Reg::FALSE);
-
-        let  	_gate = OrGate::New( &mut ctxt, "Or", in1, in2, out);
+        let  	mut layout = Layout::New();
+        let  	gate = OrGate::New( &mut layout, "Or");
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
 
         let  	truthTable = [
             ( false, false, Reg::FALSE),
@@ -235,10 +231,10 @@ mod _tests {
         ];
 
         for ( a, b, expected) in truthTable {
-            ctxt.SetValue( in1, Reg::FromBool( a));
-            ctxt.SetValue( in2, Reg::FromBool( b));
-            ctxt.Drive();
-            assert_eq!( ctxt.GetValue( out), expected, "OR failed for {a} and {b}");
+            engine.SetPortBool( gate.In1(), Reg::FromBool( a));
+            engine.SetPortBool( gate.In2(), Reg::FromBool( b));
+            engine.Tick();
+            assert_eq!( engine.GetPortBool( gate.Out()), Some( expected), "OR failed for {a} and {b}");
         }
     }
     
@@ -247,12 +243,9 @@ mod _tests {
     #[test]
     fn	test_xor_gate()
     {
-        let  	mut ctxt = SimContext::New();
-        let  	in1 = ctxt.AddTrigger( "in1", Reg::FALSE);
-        let  	in2 = ctxt.AddTrigger( "in2", Reg::FALSE);
-        let  	out = ctxt.AddTrigger( "out", Reg::FALSE);
-
-        let  	_gate = XorGate::New( &mut ctxt, "Xor", in1, in2, out);
+        let  	mut layout = Layout::New();
+        let  	gate = XorGate::New( &mut layout, "Xor");
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
 
         let  	truthTable = [
             ( false, false, Reg::FALSE),
@@ -262,10 +255,10 @@ mod _tests {
         ];
 
         for ( a, b, expected) in truthTable {
-            ctxt.SetValue( in1, Reg::FromBool( a));
-            ctxt.SetValue( in2, Reg::FromBool( b));
-            ctxt.Drive();
-            assert_eq!( ctxt.GetValue( out), expected, "XOR failed for {a} and {b}");
+            engine.SetPortBool( gate.In1(), Reg::FromBool( a));
+            engine.SetPortBool( gate.In2(), Reg::FromBool( b));
+            engine.Tick();
+            assert_eq!( engine.GetPortBool( gate.Out()), Some( expected), "XOR failed for {a} and {b}");
         }
     }
 
@@ -344,9 +337,6 @@ mod _tests {
         assert_eq!( *past.Val(), U32( 10));
         assert_eq!( *cur.Val(), U32( 20));
         assert!( triggers.IsEdge( s0));
-
-        let  	dynTriggers: &dyn ITriggerWad< U32> = &triggers;
-        assert_eq!( dynTriggers.Len(), 2);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -354,19 +344,22 @@ mod _tests {
     #[test]
     fn	test_triggers_gate_methods()
     {
-        let  	mut triggers = TriggerWad::New();
-        let  	idF = triggers.Add( "f", Reg::FALSE);
-        let  	idT = triggers.Add( "t", Reg::TRUE);
-        let  	idX = triggers.Add( "x", Reg::X);
+        let  	triggers = {
+            let  	mut t = TriggerWad::New();
+            t.Add( "f", Reg::FALSE);
+            t.Add( "t", Reg::TRUE);
+            t.Add( "x", Reg::X);
+            t
+        };
+        let  	idF = U32( 0);
+        let  	idT = U32( 1);
+        let  	idX = U32( 2);
 
         // NAND
         assert_eq!( triggers.Nand( idT, idT), Reg::FALSE);
         assert_eq!( triggers.Nand( idT, idF), Reg::TRUE);
         assert_eq!( triggers.Nand( idF, idF), Reg::TRUE);
         assert_eq!( triggers.Nand( idF, idX), Reg::TRUE);
-
-        let  	dynBool: &dyn ITriggerWadBool = &triggers;
-        assert_eq!( dynBool.Nand( idT, idT), Reg::FALSE);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -406,17 +399,20 @@ mod _tests {
     #[test]
     fn	test_rs_latch_initialization()
     {
-        let  	mut ctxt = SimContext::New();
-        let  	latch = RSLatch::New( &mut ctxt, "LatchTest");
+        let  	mut layout = Layout::New();
+        let  	latch = RSLatch::New( &mut layout, "LatchTest");
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
 
-        assert_eq!( latch.ReadQ( &ctxt), Reg::FALSE);
-        assert_eq!( latch.ReadQ1( &ctxt), Reg::TRUE);
-        assert_eq!( ctxt.GetValue( latch.S()), Reg::TRUE);
-        assert_eq!( ctxt.GetValue( latch.R()), Reg::TRUE);
+        engine.SetPortBool( latch.S(), Reg::TRUE);
+        engine.SetPortBool( latch.R(), Reg::TRUE);
+        let  	qTrig = engine.GetPortTrigger( latch.Q()).unwrap();
+        let  	q1Trig = engine.GetPortTrigger( latch.Q1()).unwrap();
+        engine.InitSignal( qTrig, RegVal::FALSE);
+        engine.InitSignal( q1Trig, RegVal::TRUE);
+        engine.Tick();
 
-        let  	dynCtxt: &mut dyn ISimContext = &mut ctxt;
-        let  	s = dynCtxt.AddTrigger( "sExtra", Reg::TRUE);
-        assert_eq!( dynCtxt.GetValue( s), Reg::TRUE);
+        assert_eq!( engine.GetPortBool( latch.Q()), Some( Reg::FALSE));
+        assert_eq!( engine.GetPortBool( latch.Q1()), Some( Reg::TRUE));
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -424,18 +420,24 @@ mod _tests {
     #[test]
     fn	test_rs_latch_set_and_hold()
     {
-        let  	mut ctxt = SimContext::New();
-        let  	latch = RSLatch::New( &mut ctxt, "LatchTest");
+        let  	mut layout = Layout::New();
+        let  	latch = RSLatch::New( &mut layout, "LatchTest");
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
 
         // S=0, R=1 -> Set state: Q=1, Q1=0
-        latch.Apply( &mut ctxt, Reg::FromBool( false), Reg::FromBool( true));
-        assert_eq!( latch.ReadQ( &ctxt), Reg::TRUE, "Q should be 1 after Set");
-        assert_eq!( latch.ReadQ1( &ctxt), Reg::FALSE, "Q1 should be 0 after Set");
+        engine.SetPortBool( latch.S(), Reg::FALSE);
+        engine.SetPortBool( latch.R(), Reg::TRUE);
+        engine.Tick();
+        engine.Tick();
+        assert_eq!( engine.GetPortBool( latch.Q()), Some( Reg::TRUE), "Q should be 1 after Set");
+        assert_eq!( engine.GetPortBool( latch.Q1()), Some( Reg::FALSE), "Q1 should be 0 after Set");
 
         // S=1, R=1 -> Hold state: Q remains 1, Q1 remains 0
-        latch.Apply( &mut ctxt, Reg::FromBool( true), Reg::FromBool( true));
-        assert_eq!( latch.ReadQ( &ctxt), Reg::TRUE, "Q must hold 1");
-        assert_eq!( latch.ReadQ1( &ctxt), Reg::FALSE, "Q1 must hold 0");
+        engine.SetPortBool( latch.S(), Reg::TRUE);
+        engine.SetPortBool( latch.R(), Reg::TRUE);
+        engine.Tick();
+        assert_eq!( engine.GetPortBool( latch.Q()), Some( Reg::TRUE), "Q must hold 1");
+        assert_eq!( engine.GetPortBool( latch.Q1()), Some( Reg::FALSE), "Q1 must hold 0");
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -443,65 +445,31 @@ mod _tests {
     #[test]
     fn	test_rs_latch_reset_and_hold()
     {
-        let  	mut ctxt = SimContext::New();
-        let  	latch = RSLatch::New( &mut ctxt, "LatchTest");
+        let  	mut layout = Layout::New();
+        let  	latch = RSLatch::New( &mut layout, "LatchTest");
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
 
         // First Set to 1
-        latch.Apply( &mut ctxt, Reg::FromBool( false), Reg::FromBool( true));
-        assert_eq!( latch.ReadQ( &ctxt), Reg::TRUE);
+        engine.SetPortBool( latch.S(), Reg::FALSE);
+        engine.SetPortBool( latch.R(), Reg::TRUE);
+        engine.Tick();
+        engine.Tick();
+        assert_eq!( engine.GetPortBool( latch.Q()), Some( Reg::TRUE));
 
         // S=1, R=0 -> Reset state: Q=0, Q1=1
-        latch.Apply( &mut ctxt, Reg::FromBool( true), Reg::FromBool( false));
-        assert_eq!( latch.ReadQ( &ctxt), Reg::FALSE, "Q should be 0 after Reset");
-        assert_eq!( latch.ReadQ1( &ctxt), Reg::TRUE, "Q1 should be 1 after Reset");
+        engine.SetPortBool( latch.S(), Reg::TRUE);
+        engine.SetPortBool( latch.R(), Reg::FALSE);
+        engine.Tick();
+        engine.Tick();
+        assert_eq!( engine.GetPortBool( latch.Q()), Some( Reg::FALSE), "Q should be 0 after Reset");
+        assert_eq!( engine.GetPortBool( latch.Q1()), Some( Reg::TRUE), "Q1 should be 1 after Reset");
 
         // S=1, R=1 -> Hold state: Q remains 0, Q1 remains 1
-        latch.Apply( &mut ctxt, Reg::FromBool( true), Reg::FromBool( true));
-        assert_eq!( latch.ReadQ( &ctxt), Reg::FALSE, "Q must hold 0");
-        assert_eq!( latch.ReadQ1( &ctxt), Reg::TRUE, "Q1 must hold 1");
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-    
-    #[test]
-    fn	test_rs_latch_sequence()
-    {
-        let  	mut ctxt = SimContext::New();
-        let  	latch = RSLatch::New( &mut ctxt, "LatchTest");
-
-        let  	sequence = [
-            // ( S, R, expectedQ, expectedQ1)
-            ( true, true, Reg::FALSE, Reg::TRUE),   // initial hold
-            ( false, true, Reg::TRUE, Reg::FALSE),  // set
-            ( true, true, Reg::TRUE, Reg::FALSE),   // hold
-            ( true, false, Reg::FALSE, Reg::TRUE),  // reset
-            ( true, true, Reg::FALSE, Reg::TRUE),   // hold
-            ( false, true, Reg::TRUE, Reg::FALSE),  // set again
-            ( true, true, Reg::TRUE, Reg::FALSE),   // hold
-            ( false, false, Reg::TRUE, Reg::TRUE),  // active-low both active ( disallowed state in basic logic)
-            ( true, false, Reg::FALSE, Reg::TRUE),  // recovery to reset
-            ( true, true, Reg::FALSE, Reg::TRUE),   // hold
-        ];
-
-        for ( step, &( s, r, expQ, expQ1)) in sequence.iter().enumerate() {
-            latch.Apply( &mut ctxt, Reg::FromBool( s), Reg::FromBool( r));
-            assert_eq!(
-                latch.ReadQ( &ctxt),
-                expQ,
-                "Step {}: Q mismatch for S={}, R={}",
-                step,
-                s,
-                r
-            );
-            assert_eq!(
-                latch.ReadQ1( &ctxt),
-                expQ1,
-                "Step {}: Q1 mismatch for S={}, R={}",
-                step,
-                s,
-                r
-            );
-        }
+        engine.SetPortBool( latch.S(), Reg::TRUE);
+        engine.SetPortBool( latch.R(), Reg::TRUE);
+        engine.Tick();
+        assert_eq!( engine.GetPortBool( latch.Q()), Some( Reg::FALSE), "Q must hold 0");
+        assert_eq!( engine.GetPortBool( latch.Q1()), Some( Reg::TRUE), "Q1 must hold 1");
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -519,9 +487,309 @@ mod _tests {
     #[test]
     fn	test_port_basic()
     {
-        let  	port = Port::New( "clk", U32( 42));
+        let  	port = TopologyPort::New( "clk", U32( 42));
         assert_eq!( port.Name(), "clk");
         assert_eq!( port.Trigger(), U32( 42));
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+    // Synchronous Discrete-Event Dataflow Framework Tests
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_layout_declaration_and_wiring()
+    {
+        let  	mut layout = Layout::New();
+
+        let  	modAnd = layout.AddModuleSimple( "And0", &[ "a", "b" ], &[ "out" ], KernelKind::And);
+        let  	modNot = layout.AddModuleSimple( "Not0", &[ "in" ], &[ "out" ], KernelKind::Not);
+
+        let  	andOut = layout.OutPort( modAnd, 0).unwrap();
+        let  	notIn = layout.InPort( modNot, 0).unwrap();
+
+        assert_eq!( layout.Modules().len(), 2);
+        assert_eq!( layout.Ports().len(), 5); // 3 for AND + 2 for NOT
+
+        // Connect AND output to NOT input ( fan-out of 1)
+        assert!( layout.Connect( andOut, notIn).is_ok());
+        assert_eq!( layout.Connections().len(), 1);
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_layout_validation_duplicate_input()
+    {
+        let  	mut layout = Layout::New();
+
+        let  	modAnd1 = layout.AddModuleSimple( "And1", &[ "a", "b" ], &[ "out" ], KernelKind::And);
+        let  	modAnd2 = layout.AddModuleSimple( "And2", &[ "a", "b" ], &[ "out" ], KernelKind::And);
+        let  	modNot = layout.AddModuleSimple( "Not", &[ "in" ], &[ "out" ], KernelKind::Not);
+
+        let  	and1Out = layout.OutPort( modAnd1, 0).unwrap();
+        let  	and2Out = layout.OutPort( modAnd2, 0).unwrap();
+        let  	notIn = layout.InPort( modNot, 0).unwrap();
+
+        // First driver succeeds
+        assert!( layout.Connect( and1Out, notIn).is_ok());
+
+        // Second driver on same input MUST fail ( 1-to-1 input assignment rule)
+        let  	res = layout.Connect( and2Out, notIn);
+        assert!( matches!( res, Err( LayoutError::DuplicateInputDriver { .. })));
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_layout_type_mismatch_rejection()
+    {
+        let  	mut layout = Layout::New();
+
+        let  	modU32 = layout.AddModule(
+            "U32Producer",
+            &[],
+            &[ PortDesc::U32( "data") ],
+            KernelKind::Custom( std::sync::Arc::new( |_, _| {})),
+        );
+        let  	modBool = layout.AddModule(
+            "BoolConsumer",
+            &[ PortDesc::Bool( "flag") ],
+            &[],
+            KernelKind::Custom( std::sync::Arc::new( |_, _| {})),
+        );
+
+        let  	u32Out = layout.OutPort( modU32, 0).unwrap();
+        let  	boolIn = layout.InPort( modBool, 0).unwrap();
+
+        // Connecting U32 to Bool MUST fail with TypeMismatch
+        let  	res = layout.Connect( u32Out, boolIn);
+        assert!( matches!( res, Err( LayoutError::TypeMismatch { .. })));
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_compiled_and_gate_sim_engine()
+    {
+        let  	mut layout = Layout::New();
+        let  	modAnd = layout.AddModuleSimple( "AndGate", &[ "a", "b" ], &[ "out" ], KernelKind::And);
+
+        let  	portA = layout.InPort( modAnd, 0).unwrap();
+        let  	portB = layout.InPort( modAnd, 1).unwrap();
+        let  	portOut = layout.OutPort( modAnd, 0).unwrap();
+
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
+
+        // Cycle 0: Inputs FALSE, FALSE -> Out evaluates to FALSE
+        engine.SetPortBool( portA, Reg::FALSE);
+        engine.SetPortBool( portB, Reg::FALSE);
+        engine.Tick();
+        assert_eq!( engine.GetPortBool( portOut), Some( Reg::FALSE));
+
+        // Cycle 1: Inputs TRUE, FALSE -> Out evaluates to FALSE
+        engine.SetPortBool( portA, Reg::TRUE);
+        engine.SetPortBool( portB, Reg::FALSE);
+        engine.Tick();
+        assert_eq!( engine.GetPortBool( portOut), Some( Reg::FALSE));
+
+        // Cycle 2: Inputs TRUE, TRUE -> Out evaluates to TRUE
+        engine.SetPortBool( portA, Reg::TRUE);
+        engine.SetPortBool( portB, Reg::TRUE);
+        engine.Tick();
+        assert_eq!( engine.GetPortBool( portOut), Some( Reg::TRUE));
+        assert_eq!( engine.CycleCount(), 3);
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_compiled_half_adder_sim_engine()
+    {
+        let  	mut layout = Layout::New();
+
+        let  	modXor = layout.AddModuleSimple( "Xor", &[ "a", "b" ], &[ "sum" ], KernelKind::Xor);
+        let  	modAnd = layout.AddModuleSimple( "And", &[ "a", "b" ], &[ "carry" ], KernelKind::And);
+
+        let  	xorA = layout.InPort( modXor, 0).unwrap();
+        let  	xorB = layout.InPort( modXor, 1).unwrap();
+        let  	sumOut = layout.OutPort( modXor, 0).unwrap();
+
+        let  	andA = layout.InPort( modAnd, 0).unwrap();
+        let  	andB = layout.InPort( modAnd, 1).unwrap();
+        let  	carryOut = layout.OutPort( modAnd, 0).unwrap();
+
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
+
+        let  	truthTable = [
+            ( false, false, false, false), // 0+0 = sum 0, carry 0
+            ( false, true, true, false),   // 0+1 = sum 1, carry 0
+            ( true, false, true, false),   // 1+0 = sum 1, carry 0
+            ( true, true, false, true),    // 1+1 = sum 0, carry 1
+        ];
+
+        for ( a, b, expSum, expCarry) in truthTable {
+            engine.SetPortBool( xorA, Reg::FromBool( a));
+            engine.SetPortBool( xorB, Reg::FromBool( b));
+            engine.SetPortBool( andA, Reg::FromBool( a));
+            engine.SetPortBool( andB, Reg::FromBool( b));
+
+            engine.Tick();
+
+            assert_eq!(
+                engine.GetPortBool( sumOut),
+                Some( Reg::FromBool( expSum)),
+                "Half adder sum mismatch for A={a}, B={b}"
+            );
+            assert_eq!(
+                engine.GetPortBool( carryOut),
+                Some( Reg::FromBool( expCarry)),
+                "Half adder carry mismatch for A={a}, B={b}"
+            );
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_compiled_sr_latch_sequential_clocking()
+    {
+        let  	mut layout = Layout::New();
+
+        // RS Latch built of two cross-coupled NAND gates:
+        // nand1( S, Q1) -> Q
+        // nand2( R, Q) -> Q1
+        let  	nand1 = layout.AddModuleSimple( "Nand1", &[ "s", "q1" ], &[ "q" ], KernelKind::Nand);
+        let  	nand2 = layout.AddModuleSimple( "Nand2", &[ "r", "q" ], &[ "q1" ], KernelKind::Nand);
+
+        let  	sPort = layout.InPort( nand1, 0).unwrap();
+        let  	q1InNand1 = layout.InPort( nand1, 1).unwrap();
+        let  	qPort = layout.OutPort( nand1, 0).unwrap();
+
+        let  	rPort = layout.InPort( nand2, 0).unwrap();
+        let  	qInNand2 = layout.InPort( nand2, 1).unwrap();
+        let  	q1Port = layout.OutPort( nand2, 0).unwrap();
+
+        // Cross-couple wiring ( Output -> Input)
+        assert!( layout.Connect( qPort, qInNand2).is_ok());
+        assert!( layout.Connect( q1Port, q1InNand1).is_ok());
+
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
+
+        // Initialize stable state: S=1, R=1, Q=0, Q1=1
+        engine.SetPortBool( sPort, Reg::TRUE);
+        engine.SetPortBool( rPort, Reg::TRUE);
+        let  	qTrig = engine.GetPortTrigger( qPort).unwrap();
+        let  	q1Trig = engine.GetPortTrigger( q1Port).unwrap();
+        engine.InitSignal( qTrig, RegVal::FALSE);
+        engine.InitSignal( q1Trig, RegVal::TRUE);
+
+        // Step 1: Hold ( S=1, R=1) -> remains Q=0, Q1=1
+        engine.Tick();
+        assert_eq!( engine.GetPortBool( qPort), Some( Reg::FALSE));
+        assert_eq!( engine.GetPortBool( q1Port), Some( Reg::TRUE));
+
+        // Step 2: Set ( S=0, R=1) -> Q transitions to 1
+        engine.SetPortBool( sPort, Reg::FALSE);
+        engine.SetPortBool( rPort, Reg::TRUE);
+        engine.Tick();
+        engine.Tick(); // Settle cross-coupled feedback
+        assert_eq!( engine.GetPortBool( qPort), Some( Reg::TRUE));
+        assert_eq!( engine.GetPortBool( q1Port), Some( Reg::FALSE));
+
+        // Step 3: Hold ( S=1, R=1) -> Q holds 1
+        engine.SetPortBool( sPort, Reg::TRUE);
+        engine.SetPortBool( rPort, Reg::TRUE);
+        engine.Tick();
+        assert_eq!( engine.GetPortBool( qPort), Some( Reg::TRUE));
+        assert_eq!( engine.GetPortBool( q1Port), Some( Reg::FALSE));
+
+        // Step 4: Reset ( S=1, R=0) -> Q transitions to 0
+        engine.SetPortBool( sPort, Reg::TRUE);
+        engine.SetPortBool( rPort, Reg::FALSE);
+        engine.Tick();
+        engine.Tick(); // Settle cross-coupled feedback
+        assert_eq!( engine.GetPortBool( qPort), Some( Reg::FALSE));
+        assert_eq!( engine.GetPortBool( q1Port), Some( Reg::TRUE));
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_compiled_heterogeneous_u32_bus_simulation()
+    {
+        let  	mut layout = Layout::New();
+
+        // 32-bit ALU adder with Enable signal:
+        // Inputs: [ a: U32, b: U32, enable: Bool ]
+        // Outputs: [ sum: U32, overflow: Bool ]
+        let  	aluKernel = std::sync::Arc::new( |inVals: &[RegVal], outVals: &mut [RegVal]| {
+            let  	aVal = inVals[0].Val();
+            let  	bVal = inVals[1].Val();
+            let  	en = inVals[2].IsTrue();
+
+            if en {
+                let  	sum = aVal.wrapping_add( bVal) & 0xFFFF_FFFF;
+                let  	overflow = ( aVal + bVal) > 0xFFFF_FFFF;
+                outVals[0] = RegVal::FromU32( U32( sum as u32));
+                outVals[1] = RegVal::FromBool( overflow);
+            } else {
+                outVals[0] = RegVal::FromU32( U32( 0));
+                outVals[1] = RegVal::FALSE;
+            }
+        });
+
+        let  	aluMod = layout.AddModule(
+            "Alu32",
+            &[ PortDesc::U32( "a"), PortDesc::U32( "b"), PortDesc::Bool( "en") ],
+            &[ PortDesc::U32( "sum"), PortDesc::Bool( "overflow") ],
+            KernelKind::Custom( aluKernel),
+        );
+
+        let  	portA = layout.InPort( aluMod, 0).unwrap();
+        let  	portB = layout.InPort( aluMod, 1).unwrap();
+        let  	portEn = layout.InPort( aluMod, 2).unwrap();
+        let  	portSum = layout.OutPort( aluMod, 0).unwrap();
+        let  	portOverflow = layout.OutPort( aluMod, 1).unwrap();
+
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
+
+        // Cycle 1: en=false -> sum=0, overflow=false
+        engine.SetPortU32( portA, Reg::Known( U32( 100)));
+        engine.SetPortU32( portB, Reg::Known( U32( 200)));
+        engine.SetPortBool( portEn, Reg::FALSE);
+        engine.Tick();
+        assert_eq!( engine.GetPortU32( portSum), Some( Reg::Known( U32( 0))));
+        assert_eq!( engine.GetPortBool( portOverflow), Some( Reg::FALSE));
+
+        // Cycle 2: en=true -> sum=300, overflow=false
+        engine.SetPortBool( portEn, Reg::TRUE);
+        engine.Tick();
+        assert_eq!( engine.GetPortU32( portSum), Some( Reg::Known( U32( 300))));
+        assert_eq!( engine.GetPortBool( portOverflow), Some( Reg::FALSE));
+
+        // Cycle 3: 0xFFFF_FFFF + 1 -> sum=0, overflow=true
+        engine.SetPortU32( portA, Reg::Known( U32( 0xFFFF_FFFF)));
+        engine.SetPortU32( portB, Reg::Known( U32( 1)));
+        engine.Tick();
+        assert_eq!( engine.GetPortU32( portSum), Some( Reg::Known( U32( 0))));
+        assert_eq!( engine.GetPortBool( portOverflow), Some( Reg::TRUE));
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_bus_adder_32_simulation()
+    {
+        let  	mut layout = Layout::New();
+        let  	busAdder = BusAdder32::New( &mut layout, "Adder32");
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
+
+        engine.SetPortU32( busAdder._A, Reg::Known( U32( 12345)));
+        engine.SetPortU32( busAdder._B, Reg::Known( U32( 54321)));
+        engine.Tick();
+
+        assert_eq!( engine.GetPortU32( busAdder._Sum), Some( Reg::Known( U32( 66666))));
+        assert_eq!( engine.GetPortBool( busAdder._Carry), Some( Reg::FALSE));
     }
 }
 

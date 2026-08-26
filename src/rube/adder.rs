@@ -1,339 +1,248 @@
 //-- adder.rs -----------------------------------------------------------------------------------------------------------------------
 
+use	std::sync::Arc;
 use	crate::{
     rube::{
+        engine::SimEngine,
         gates::{ AndGate, OrGate, XorGate },
-        reg::{ IRegBool, Reg },
-        sim_context::SimContext,
-        trigger::TriggerId,
+        layout::Layout,
+        module::KernelKind,
+        port::{ PortDesc, PortId },
+        reg::Reg,
+        regval::RegVal,
     },
     silo::U32,
-}; 
+};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IHalfAdder
-{
-    fn	A( &self) -> TriggerId;
-    fn	B( &self) -> TriggerId;
-    fn	Sum( &self) -> TriggerId;
-    fn	Carry( &self) -> TriggerId;
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-/// Half Adder ( `Fr_HalfAdder`)
-///
-/// Ports:
-/// - `a`: Input A
-/// - `b`: Input B
-/// - `sum`: Output Sum ( A ^ B)
-/// - `carry`: Output Carry ( A & B)
-#[derive( Clone, Debug)]
+/// 1-Bit Half Adder ( XOR + AND)
+#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct HalfAdder
 {
-    pub _Name: String,
-    pub _A: TriggerId,
-    pub _B: TriggerId,
-    pub _Sum: TriggerId,
-    pub _Carry: TriggerId,
-    pub _AndGate: AndGate,
-    pub _XorGate: XorGate,
+    pub _Xor: XorGate,
+    pub _And: AndGate,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl HalfAdder
 {
-    pub fn	New( ctxt: &mut SimContext, name: &str, a: TriggerId, b: TriggerId, sum: TriggerId, carry: TriggerId) -> Self
+    pub fn	New( layout: &mut Layout, name: &str) -> Self
     {
-        let  	andGate = AndGate::New( ctxt, U32( 0), &format!( "{name}.and"), a, b, carry);
-        let  	xorGate = XorGate::New( ctxt, &format!( "{name}.xor"), a, b, sum);
+        let  	xorGate = XorGate::New( layout, &format!( "{name}.Xor"));
+        let  	andGate = AndGate::New( layout, &format!( "{name}.And"));
 
         return Self {
-            _Name: name.to_string(),
-            _A: a,
-            _B: b,
-            _Sum: sum,
-            _Carry: carry,
-            _AndGate: andGate,
-            _XorGate: xorGate,
+            _Xor: xorGate,
+            _And: andGate,
         };
     }
-}
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IHalfAdder for HalfAdder
-{
     #[inline]
-    fn	A( &self) -> TriggerId
+    pub fn	Sum( &self) -> PortId
     {
-        return self._A;
+        return self._Xor.Out();
     }
 
     #[inline]
-    fn	B( &self) -> TriggerId
+    pub fn	Carry( &self) -> PortId
     {
-        return self._B;
+        return self._And.Out();
     }
 
-    #[inline]
-    fn	Sum( &self) -> TriggerId
+    pub fn	SetA( &self, engine: &mut SimEngine, val: Reg< bool>)
     {
-        return self._Sum;
+        engine.SetPortBool( self._Xor.In1(), val);
+        engine.SetPortBool( self._And.In1(), val);
     }
 
-    #[inline]
-    fn	Carry( &self) -> TriggerId
+    pub fn	SetB( &self, engine: &mut SimEngine, val: Reg< bool>)
     {
-        return self._Carry;
+        engine.SetPortBool( self._Xor.In2(), val);
+        engine.SetPortBool( self._And.In2(), val);
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IFullAdder
-{
-    fn	A( &self) -> TriggerId;
-    fn	B( &self) -> TriggerId;
-    fn	CIn( &self) -> TriggerId;
-    fn	Sum( &self) -> TriggerId;
-    fn	Carry( &self) -> TriggerId;
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-/// Full Adder ( `Fr_FullAdder`)
-///
-/// Ports:
-/// - `a`: Input A
-/// - `b`: Input B
-/// - `cIn`: Input Carry
-/// - `sum`: Output Sum
-/// - `carry`: Output Carry
-#[derive( Clone, Debug)]
+/// 1-Bit Full Adder
+#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct FullAdder
 {
-    _Name: String,
-    _A: TriggerId,
-    _B: TriggerId,
-    _CIn: TriggerId,
-    _Sum: TriggerId,
-    _Carry: TriggerId,
-    _H1: HalfAdder,
-    _H2: HalfAdder,
-    _OrGate: OrGate,
+    pub _HA1: HalfAdder,
+    pub _HA2: HalfAdder,
+    pub _Or: OrGate,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl FullAdder
 {
-    pub fn	New( ctxt: &mut SimContext, name: &str, a: TriggerId, b: TriggerId, cIn: TriggerId, sum: TriggerId, carry: TriggerId) -> Self
+    pub fn	New( layout: &mut Layout, name: &str) -> Self
     {
-        let  	h1Sum = ctxt.AddTrigger( &format!( "{name}.h1Sum"), Reg::FALSE);
-        let  	h1Carry = ctxt.AddTrigger( &format!( "{name}.h1Carry"), Reg::FALSE);
-        let  	h1 = HalfAdder::New( ctxt, &format!( "{name}.h1"), a, b, h1Sum, h1Carry);
+        let  	ha1 = HalfAdder::New( layout, &format!( "{name}.HA1"));
+        let  	ha2 = HalfAdder::New( layout, &format!( "{name}.HA2"));
+        let  	orGate = OrGate::New( layout, &format!( "{name}.Or"));
 
-        let  	h2Carry = ctxt.AddTrigger( &format!( "{name}.h2Carry"), Reg::FALSE);
-        let  	h2 = HalfAdder::New( ctxt, &format!( "{name}.h2"), h1Sum, cIn, sum, h2Carry);
-
-        let  	orGate = OrGate::New( ctxt, &format!( "{name}.or"), h1Carry, h2Carry, carry);
+        let _ = layout.Connect( ha1.Sum(), ha2._Xor.In1());
+        let _ = layout.Connect( ha1.Sum(), ha2._And.In1());
+        let _ = layout.Connect( ha1.Carry(), orGate.In1());
+        let _ = layout.Connect( ha2.Carry(), orGate.In2());
 
         return Self {
-            _Name: name.to_string(),
-            _A: a,
-            _B: b,
-            _CIn: cIn,
-            _Sum: sum,
-            _Carry: carry,
-            _H1: h1,
-            _H2: h2,
-            _OrGate: orGate,
+            _HA1: ha1,
+            _HA2: ha2,
+            _Or: orGate,
         };
     }
-}
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IFullAdder for FullAdder
-{
     #[inline]
-    fn	A( &self) -> TriggerId
+    pub fn	Sum( &self) -> PortId
     {
-        return self._A;
+        return self._HA2.Sum();
     }
 
     #[inline]
-    fn	B( &self) -> TriggerId
+    pub fn	Carry( &self) -> PortId
     {
-        return self._B;
+        return self._Or.Out();
     }
 
-    #[inline]
-    fn	CIn( &self) -> TriggerId
+    pub fn	SetA( &self, engine: &mut SimEngine, val: Reg< bool>)
     {
-        return self._CIn;
+        self._HA1.SetA( engine, val);
     }
 
-    #[inline]
-    fn	Sum( &self) -> TriggerId
+    pub fn	SetB( &self, engine: &mut SimEngine, val: Reg< bool>)
     {
-        return self._Sum;
+        self._HA1.SetB( engine, val);
     }
 
-    #[inline]
-    fn	Carry( &self) -> TriggerId
+    pub fn	SetCIn( &self, engine: &mut SimEngine, val: Reg< bool>)
     {
-        return self._Carry;
+        self._HA2.SetB( engine, val);
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IAdder< const N: usize>
-{
-    fn	A( &self) -> &[TriggerId; N];
-    fn	B( &self) -> &[TriggerId; N];
-    fn	Sum( &self) -> &[TriggerId; N];
-    fn	Carry( &self) -> TriggerId;
-    fn	SetA( &self, ctxt: &mut SimContext, val: U32);
-    fn	SetB( &self, ctxt: &mut SimContext, val: U32);
-    fn	GetSum( &self, ctxt: &SimContext) -> U32;
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-/// Ripple Carry Adder ( `Fr_Adder< N>`)
-///
-/// Composed of N full adders ( actually 1 HalfAdder and N-1 FullAdders to mimic Artesa exactly).
+/// N-Bit Ripple Carry Adder
 #[derive( Clone, Debug)]
 pub struct Adder< const N: usize>
 {
-    _Name: String,
-    _A: [TriggerId; N],
-    _B: [TriggerId; N],
-    _Sum: [TriggerId; N],
-    _Carry: TriggerId,
-    _FirstAdder: HalfAdder,
-    _Chain: Vec< FullAdder>,
+    pub _Bits: Vec< FullAdder>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl< const N: usize> Adder< N>
 {
-    pub fn	New( ctxt: &mut SimContext, name: &str) -> Self
+    pub fn	New( layout: &mut Layout, name: &str) -> Self
     {
-        assert!( N > 0, "Adder must have at least 1 bit");
-        let  	mut a = [U32( 0); N];
-        let  	mut b = [U32( 0); N];
-        let  	mut sum = [U32( 0); N];
+        let  	mut bits: Vec< FullAdder> = Vec::with_capacity( N);
         for i in 0..N {
-            a[i] = ctxt.AddTrigger( &format!( "{name}._A[{i}]"), Reg::FALSE);
-            b[i] = ctxt.AddTrigger( &format!( "{name}._B[{i}]"), Reg::FALSE);
-            sum[i] = ctxt.AddTrigger( &format!( "{name}._Sum[{i}]"), Reg::FALSE);
+            let  	fa = FullAdder::New( layout, &format!( "{name}.Bit{i}"));
+            if i > 0 {
+                let _ = layout.Connect( bits[i - 1].Carry(), fa._HA2._Xor.In2());
+                let _ = layout.Connect( bits[i - 1].Carry(), fa._HA2._And.In2());
+            }
+            bits.push( fa);
         }
-        let  	carry = ctxt.AddTrigger( &format!( "{name}.carry_out"), Reg::FALSE);
-        return Self::WithTriggers( ctxt, name, a, b, sum, carry);
+        return Self { _Bits: bits };
     }
 
-    pub fn	WithTriggers( ctxt: &mut SimContext, name: &str, a: [TriggerId; N], b: [TriggerId; N], sum: [TriggerId; N], carry: TriggerId) -> Self
+    #[inline]
+    pub fn	Sum( &self, bit: usize) -> PortId
     {
-        assert!( N > 0, "Adder must have at least 1 bit");
+        return self._Bits[bit].Sum();
+    }
 
-        let  	mut chain = Vec::new();
+    #[inline]
+    pub fn	Carry( &self) -> PortId
+    {
+        return self._Bits[N - 1].Carry();
+    }
 
-        // 1st bit is a HalfAdder ( no carry in)
-        let  	mut prevCarry = if N > 1 {
-            ctxt.AddTrigger( &format!( "{name}.carry_0"), Reg::FALSE)
-        } else {
-            carry
-        };
-
-        let  	firstAdder = HalfAdder::New( ctxt, &format!( "{name}.bit0"), a[0], b[0], sum[0], prevCarry);
-
-        // Remaining bits are FullAdders
-        for i in 1..N {
-            let  	nextCarry = if i == N - 1 {
-                carry
-            } else {
-                ctxt.AddTrigger( &format!( "{name}.carry_{i}"), Reg::FALSE)
-            };
-
-            let  	fa = FullAdder::New( ctxt, &format!( "{name}.bit{i}"), a[i], b[i], prevCarry, sum[i], nextCarry);
-            chain.push( fa);
-            prevCarry = nextCarry;
+    pub fn	SetA( &self, engine: &mut SimEngine, val: U32)
+    {
+        let  	v = u32::from( val);
+        for i in 0..N {
+            let  	bit = ( ( v >> i) & 1) != 0;
+            self._Bits[i].SetA( engine, Reg::FromBool( bit));
         }
+    }
 
-        return Self {
-            _Name: name.to_string(),
-            _A: a,
-            _B: b,
-            _Sum: sum,
-            _Carry: carry,
-            _FirstAdder: firstAdder,
-            _Chain: chain,
-        };
+    pub fn	SetB( &self, engine: &mut SimEngine, val: U32)
+    {
+        let  	v = u32::from( val);
+        for i in 0..N {
+            let  	bit = ( ( v >> i) & 1) != 0;
+            self._Bits[i].SetB( engine, Reg::FromBool( bit));
+        }
+    }
+
+    pub fn	SetCIn( &self, engine: &mut SimEngine, val: Reg< bool>)
+    {
+        if !self._Bits.is_empty() {
+            self._Bits[0].SetCIn( engine, val);
+        }
+    }
+
+    pub fn	GetSum( &self, engine: &SimEngine) -> u32
+    {
+        let  	mut res = 0u32;
+        for i in 0..N {
+            if let Some( bit) = engine.GetPortBool( self.Sum( i)) {
+                if bit.IsTrue() {
+                    res |= 1 << i;
+                }
+            }
+        }
+        return res;
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< const N: usize> IAdder< N> for Adder< N>
+/// Fast 32-bit Bus Adder / ALU Module
+#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct BusAdder32
 {
-    #[inline]
-    fn	A( &self) -> &[TriggerId; N]
-    {
-        return &self._A;
-    }
+    pub _A: PortId,
+    pub _B: PortId,
+    pub _Sum: PortId,
+    pub _Carry: PortId,
+}
 
-    #[inline]
-    fn	B( &self) -> &[TriggerId; N]
-    {
-        return &self._B;
-    }
+//---------------------------------------------------------------------------------------------------------------------------------
 
-    #[inline]
-    fn	Sum( &self) -> &[TriggerId; N]
+impl BusAdder32
+{
+    pub fn	New( layout: &mut Layout, name: &str) -> Self
     {
-        return &self._Sum;
-    }
+        let  	kernel = Arc::new( |inVals: &[RegVal], outVals: &mut [RegVal]| {
+            let  	a = inVals[0]._Val;
+            let  	b = inVals[1]._Val;
+            let  	sum = a.wrapping_add( b) & 0xFFFF_FFFF;
+            let  	carry = ( a + b) > 0xFFFF_FFFF;
+            outVals[0] = RegVal::FromU32( U32( sum as u32));
+            outVals[1] = RegVal::FromBool( carry);
+        });
 
-    #[inline]
-    fn	Carry( &self) -> TriggerId
-    {
-        return self._Carry;
-    }
+        let  	m = layout.AddModule(
+            name,
+            &[ PortDesc::U32( "a"), PortDesc::U32( "b") ],
+            &[ PortDesc::U32( "sum"), PortDesc::Bool( "carry") ],
+            KernelKind::Custom( kernel),
+        );
 
-    fn	SetA( &self, ctxt: &mut SimContext, val: U32)
-    {
-        for i in 0..N {
-            let  	bit = if ( val & ( 1 << i)) != 0 { Reg::TRUE } else { Reg::FALSE };
-            ctxt.SetValue( self._A[i], bit);
-        }
-    }
-
-    fn	SetB( &self, ctxt: &mut SimContext, val: U32)
-    {
-        for i in 0..N {
-            let  	bit = if ( val & ( 1 << i)) != 0 { Reg::TRUE } else { Reg::FALSE };
-            ctxt.SetValue( self._B[i], bit);
-        }
-    }
-
-    fn	GetSum( &self, ctxt: &SimContext) -> U32
-    {
-        let  	mut val = 0;
-        for i in 0..N {
-            let  	bit = ctxt.GetValue( self._Sum[i]);
-            assert!( bit.IsTrue() || bit.IsFalse(), "Output bit is not a valid boolean state: {:?}", bit);
-            if bit.IsTrue() {
-                val |= 1 << i;
-            }
-        }
-        return U32( val);
+        return Self {
+            _A: layout.InPort( m, 0).unwrap(),
+            _B: layout.InPort( m, 1).unwrap(),
+            _Sum: layout.OutPort( m, 0).unwrap(),
+            _Carry: layout.OutPort( m, 1).unwrap(),
+        };
     }
 }
 
