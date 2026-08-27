@@ -6,12 +6,13 @@ mod _tests
     use	std::sync::Arc;
     use	crate::{
         rube::{
+            engine::SimEngine,
             adder::{ Adder, BusAdder32 },
             gates::{ AndGate, NandGate, NotGate, OrGate, XorGate },
             latches::{ CRSLatch, DLatch, RSLatch },
             layout::{ Layout, LayoutError },
             module::KernelKind,
-            port::{ PortDesc, PortDir, PortId, PortType, TopologyPort },
+            port::{ PortDesc, PortDir, PortId, PortType },
             reg::Reg,
             sim_context::{ ActionKind, SimContext, SimError },
             trigger::{ TriggerSense, TriggerWad },
@@ -27,7 +28,8 @@ mod _tests
         let  	mut layout = Layout::New();
         const N: usize = 16;
         let  	adder = Adder::< N>::New( &mut layout, "Adder16");
-        let  	mut engine = layout.Compile().expect( "Compilation failed");
+        layout.Freeze().expect( "Compilation failed");
+        let  	mut engine = SimEngine::Create(&layout);
 
         let  	testCases = [
             ( 0, 0, 0, false),
@@ -61,7 +63,8 @@ mod _tests
     {
         let  	mut layout = Layout::New();
         let  	crs = CRSLatch::New( &mut layout, "CRSLatch");
-        let  	mut engine = layout.Compile().expect( "Compilation failed");
+        layout.Freeze().expect( "Compilation failed");
+        let  	mut engine = SimEngine::Create(&layout);
 
         // clk=0, S=1, R=0 -> no effect
         crs.SetClk( &mut engine, Reg::FALSE);
@@ -101,7 +104,8 @@ mod _tests
     {
         let  	mut layout = Layout::New();
         let  	dLatch = DLatch::New( &mut layout, "DLatch");
-        let  	mut engine = layout.Compile().expect( "Compilation failed");
+        layout.Freeze().expect( "Compilation failed");
+        let  	mut engine = SimEngine::Create(&layout);
 
         // Enable=0: latched
         dLatch.SetE( &mut engine, Reg::FALSE);
@@ -143,7 +147,8 @@ mod _tests
     {
         let  	mut layout = Layout::New();
         let  	gate = make( &mut layout, "Gate");
-        let  	mut engine = layout.Compile().expect( "Compilation failed");
+        layout.Freeze().expect( "Compilation failed");
+        let  	mut engine = SimEngine::Create(&layout);
         for &( a, b, exp) in table {
             engine.SetPortBool( in1( &gate), Reg::FromBool( a));
             engine.SetPortBool( in2( &gate), Reg::FromBool( b));
@@ -193,7 +198,8 @@ mod _tests
     {
         let  	mut layout = Layout::New();
         let  	gate = NotGate::New( &mut layout, "Not");
-        let  	mut engine = layout.Compile().expect( "Compilation failed");
+        layout.Freeze().expect( "Compilation failed");
+        let  	mut engine = SimEngine::Create(&layout);
 
         engine.SetPortBool( gate.In(), Reg::FALSE);
         engine.Tick();
@@ -329,7 +335,8 @@ mod _tests
     {
         let  	mut layout = Layout::New();
         let  	latch = RSLatch::New( &mut layout, "LatchTest");
-        let  	mut engine = layout.Compile().expect( "Compilation failed");
+        layout.Freeze().expect( "Compilation failed");
+        let  	mut engine = SimEngine::Create(&layout);
 
         engine.SetPortBool( latch.S(), Reg::TRUE);
         engine.SetPortBool( latch.R(), Reg::TRUE);
@@ -350,7 +357,8 @@ mod _tests
     {
         let  	mut layout = Layout::New();
         let  	latch = RSLatch::New( &mut layout, "LatchTest");
-        let  	mut engine = layout.Compile().expect( "Compilation failed");
+        layout.Freeze().expect( "Compilation failed");
+        let  	mut engine = SimEngine::Create(&layout);
 
         // Set: S=0, R=1 -> Q=1, Q1=0
         engine.SetPortBool( latch.S(), Reg::FALSE);
@@ -374,7 +382,8 @@ mod _tests
     {
         let  	mut layout = Layout::New();
         let  	latch = RSLatch::New( &mut layout, "LatchTest");
-        let  	mut engine = layout.Compile().expect( "Compilation failed");
+        layout.Freeze().expect( "Compilation failed");
+        let  	mut engine = SimEngine::Create(&layout);
 
         // Set to 1
         engine.SetPortBool( latch.S(), Reg::FALSE);
@@ -413,7 +422,8 @@ mod _tests
         let  	portA = layout.InPort( andMod, 0).unwrap();
         let  	portB = layout.InPort( andMod, 1).unwrap();
         let  	portOut = layout.OutPort( andMod, 0).unwrap();
-        let  	mut engine = layout.Compile().expect( "Compilation failed");
+        layout.Freeze().expect( "Compilation failed");
+        let  	mut engine = SimEngine::Create(&layout);
 
         engine.SetPortU32( portA, Reg::Known( 0x1234_5678));
         engine.SetPortU32( portB, Reg::Known( 0x00FF_00FF));
@@ -449,7 +459,8 @@ mod _tests
         let  	subB = layout.InPort( subMod, 1).unwrap();
         let  	subOut = layout.OutPort( subMod, 0).unwrap();
 
-        let  	mut engine = layout.Compile().expect( "Compilation failed");
+        layout.Freeze().expect( "Compilation failed");
+        let  	mut engine = SimEngine::Create(&layout);
 
         engine.SetPortU32( addA, Reg::Known( 1000));
         engine.SetPortU32( addB, Reg::Known( 250));
@@ -466,10 +477,6 @@ mod _tests
     #[test]
     fn	test_port_basic()
     {
-        let  	port = TopologyPort::New( "clk", U32( 42));
-        assert_eq!( port.Name(), "clk");
-        assert_eq!( port.Trigger(), U32( 42));
-
         // Test PortId In/Out direction encoding
         let  	inPort = PortId::In( U32( 10));
         assert!( inPort.IsIn());
@@ -490,8 +497,8 @@ mod _tests
     fn	test_layout_declaration_and_wiring()
     {
         let  	mut layout = Layout::New();
-        let  	modAnd = layout.AddModuleSimple( "And0", &[ "a", "b" ], &[ "out" ], KernelKind::And);
-        let  	modNot = layout.AddModuleSimple( "Not0", &[ "in" ], &[ "out" ], KernelKind::Not);
+        let  	modAnd = layout.AddStdModule( "And0", &[ "a", "b" ], &[ "out" ], KernelKind::And);
+        let  	modNot = layout.AddStdModule( "Not0", &[ "in" ], &[ "out" ], KernelKind::Not);
 
         let  	andOut = layout.OutPort( modAnd, 0).unwrap();
         let  	notIn = layout.InPort( modNot, 0).unwrap();
@@ -533,9 +540,9 @@ mod _tests
     fn	test_layout_validation_duplicate_input()
     {
         let  	mut layout = Layout::New();
-        let  	modAnd1 = layout.AddModuleSimple( "And1", &[ "a", "b" ], &[ "out" ], KernelKind::And);
-        let  	modAnd2 = layout.AddModuleSimple( "And2", &[ "a", "b" ], &[ "out" ], KernelKind::And);
-        let  	modNot = layout.AddModuleSimple( "Not", &[ "in" ], &[ "out" ], KernelKind::Not);
+        let  	modAnd1 = layout.AddStdModule( "And1", &[ "a", "b" ], &[ "out" ], KernelKind::And);
+        let  	modAnd2 = layout.AddStdModule( "And2", &[ "a", "b" ], &[ "out" ], KernelKind::And);
+        let  	modNot = layout.AddStdModule( "Not", &[ "in" ], &[ "out" ], KernelKind::Not);
 
         let  	and1Out = layout.OutPort( modAnd1, 0).unwrap();
         let  	and2Out = layout.OutPort( modAnd2, 0).unwrap();
@@ -543,7 +550,7 @@ mod _tests
 
         layout.Connect( and1Out, notIn);
         layout.Connect( and2Out, notIn);
-        assert!( matches!( layout.Compile(), Err( LayoutError::DuplicateInputDriver { .. })));
+        assert!( matches!( layout.Freeze(), Err( LayoutError::DuplicateInputDriver { .. })));
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -559,7 +566,7 @@ mod _tests
         let  	boolIn = layout.InPort( modBool, 0).unwrap();
 
         layout.Connect( u32Out, boolIn);
-        assert!( matches!( layout.Compile(), Err( LayoutError::TypeMismatch { .. })));
+        assert!( matches!( layout.Freeze(), Err( LayoutError::TypeMismatch { .. })));
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -568,12 +575,13 @@ mod _tests
     fn	test_compiled_and_gate_sim_engine()
     {
         let  	mut layout = Layout::New();
-        let  	modAnd = layout.AddModuleSimple( "AndGate", &[ "a", "b" ], &[ "out" ], KernelKind::And);
+        let  	modAnd = layout.AddStdModule( "AndGate", &[ "a", "b" ], &[ "out" ], KernelKind::And);
 
         let  	portA = layout.InPort( modAnd, 0).unwrap();
         let  	portB = layout.InPort( modAnd, 1).unwrap();
         let  	portOut = layout.OutPort( modAnd, 0).unwrap();
-        let  	mut engine = layout.Compile().expect( "Compilation failed");
+        layout.Freeze().expect( "Compilation failed");
+        let  	mut engine = SimEngine::Create(&layout);
 
         for ( a, b, exp) in [ ( Reg::FALSE, Reg::FALSE, Reg::FALSE), ( Reg::TRUE, Reg::FALSE, Reg::FALSE), ( Reg::TRUE, Reg::TRUE, Reg::TRUE) ] {
             engine.SetPortBool( portA, a);
@@ -590,8 +598,8 @@ mod _tests
     fn	test_compiled_half_adder_sim_engine()
     {
         let  	mut layout = Layout::New();
-        let  	modXor = layout.AddModuleSimple( "Xor", &[ "a", "b" ], &[ "sum" ], KernelKind::Xor);
-        let  	modAnd = layout.AddModuleSimple( "And", &[ "a", "b" ], &[ "carry" ], KernelKind::And);
+        let  	modXor = layout.AddStdModule( "Xor", &[ "a", "b" ], &[ "sum" ], KernelKind::Xor);
+        let  	modAnd = layout.AddStdModule( "And", &[ "a", "b" ], &[ "carry" ], KernelKind::And);
 
         let  	xorA = layout.InPort( modXor, 0).unwrap();
         let  	xorB = layout.InPort( modXor, 1).unwrap();
@@ -600,7 +608,8 @@ mod _tests
         let  	andB = layout.InPort( modAnd, 1).unwrap();
         let  	carryOut = layout.OutPort( modAnd, 0).unwrap();
 
-        let  	mut engine = layout.Compile().expect( "Compilation failed");
+        layout.Freeze().expect( "Compilation failed");
+        let  	mut engine = SimEngine::Create(&layout);
         let  	truthTable = [
             ( false, false, false, false),
             ( false, true, true, false),
@@ -625,8 +634,8 @@ mod _tests
     fn	test_compiled_sr_latch_sequential_clocking()
     {
         let  	mut layout = Layout::New();
-        let  	nand1 = layout.AddModuleSimple( "Nand1", &[ "s", "q1" ], &[ "q" ], KernelKind::Nand);
-        let  	nand2 = layout.AddModuleSimple( "Nand2", &[ "r", "q" ], &[ "q1" ], KernelKind::Nand);
+        let  	nand1 = layout.AddStdModule( "Nand1", &[ "s", "q1" ], &[ "q" ], KernelKind::Nand);
+        let  	nand2 = layout.AddStdModule( "Nand2", &[ "r", "q" ], &[ "q1" ], KernelKind::Nand);
 
         let  	sPort = layout.InPort( nand1, 0).unwrap();
         let  	q1InNand1 = layout.InPort( nand1, 1).unwrap();
@@ -639,7 +648,8 @@ mod _tests
         layout.Connect( qPort, qInNand2);
         layout.Connect( q1Port, q1InNand1);
 
-        let  	mut engine = layout.Compile().expect( "Compilation failed");
+        layout.Freeze().expect( "Compilation failed");
+        let  	mut engine = SimEngine::Create(&layout);
 
         // S=1, R=1, Init Q=0, Q1=1
         engine.SetPortBool( sPort, Reg::TRUE);
@@ -711,7 +721,8 @@ mod _tests
         let  	portSum = layout.OutPort( aluMod, 0).unwrap();
         let  	portOverflow = layout.OutPort( aluMod, 1).unwrap();
 
-        let  	mut engine = layout.Compile().expect( "Compilation failed");
+        layout.Freeze().expect( "Compilation failed");
+        let  	mut engine = SimEngine::Create(&layout);
 
         // en=false -> sum=0, overflow=false
         engine.SetPortU32( portA, Reg::Known( 100));
@@ -742,7 +753,8 @@ mod _tests
     {
         let  	mut layout = Layout::New();
         let  	busAdder = BusAdder32::New( &mut layout, "Adder32");
-        let  	mut engine = layout.Compile().expect( "Compilation failed");
+        layout.Freeze().expect( "Compilation failed");
+        let  	mut engine = SimEngine::Create(&layout);
 
         engine.SetPortU32( busAdder._A, Reg::Known( 12345));
         engine.SetPortU32( busAdder._B, Reg::Known( 54321));

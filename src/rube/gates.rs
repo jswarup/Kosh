@@ -11,7 +11,7 @@ use	crate::rube::{
 #[inline]
 fn	CreateGate2( layout: &mut Layout, name: &str, kind: KernelKind) -> ( PortId, PortId, PortId)
 {
-    let  	m = layout.AddModuleSimple( name, &[ "in1", "in2" ], &[ "out" ], kind);
+    let  	m = layout.AddStdModule( name, &[ "in1", "in2" ], &[ "out" ], kind);
     return (
         layout.InPort( m, 0).unwrap(),
         layout.InPort( m, 1).unwrap(),
@@ -282,7 +282,7 @@ impl NotGate
     #[inline]
     pub fn	New( layout: &mut Layout, name: &str) -> Self
     {
-        let  	m = layout.AddModuleSimple( name, &[ "in" ], &[ "out" ], KernelKind::Not);
+        let  	m = layout.AddStdModule( name, &[ "in" ], &[ "out" ], KernelKind::Not);
         return Self {
             _In: layout.InPort( m, 0).unwrap(),
             _Out: layout.OutPort( m, 0).unwrap(),

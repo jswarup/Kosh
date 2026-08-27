@@ -3,12 +3,13 @@
 use	std::sync::Arc;
 use	crate::{
     rube::{
-        module::{ KernelOp, ModuleId },
+        layout::Layout,
+        module::{ KernelKind, KernelOp, ModuleId },
         port::PortId,
         reg::Reg,
         trigger::{ TriggerId, TriggerMeta, TriggerState },
     },
-    silo::{ Buff, IAccess, U32, USeg },
+    silo::{ Buff, EdgeBroadcast, IAccess, IEdgeBroadcast, IEdgeConnect, Stash, U32, USeg },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -109,6 +110,86 @@ impl SimEngine
             _PortToTrigger: portToTrigger,
             _CycleCount: 0,
         };
+    }
+
+    pub fn	Create( layout: &Layout) -> Self
+    {
+        let  	portCountU32 = layout._Ports.Size();
+
+        // Step 3: Traverse all connected ports using EdgeBroadcast to partition nets into unique trigger groups
+        let  	mut broadcast = EdgeBroadcast::New( portCountU32);
+        layout._Modules.Arr().Traverse( |module| {
+            module._InPorts.Arr().Traverse( |&portId| {
+                broadcast.DoBroadcast( portId.0, |elemId, _, _, nextStack| {
+                    layout._Connections.NodeTraverse( elemId, |nextElem| {
+                        nextStack.Push( nextElem);
+                    });
+                });
+            });
+            module._OutPorts.Arr().Traverse( |&portId| {
+                broadcast.DoBroadcast( portId.0, |elemId, _, _, nextStack| {
+                    layout._Connections.NodeTraverse( elemId, |nextElem| {
+                        nextStack.Push( nextElem);
+                    });
+                });
+            });
+        });
+
+        let  	groupCount = broadcast.SzGroup();
+        let  	mut triggers = Stash::WithCapacity( groupCount);
+        let  	mut meta = Stash::WithCapacity( groupCount);
+
+        USeg::New( U32::_0, groupCount).Traverse( |grpIdx| {
+            let  	firstPortId = PortId( broadcast.FirstId( grpIdx));
+            let  	rootPort = &layout._Ports[firstPortId.Index()];
+            let  	defaultVal = Reg::DefaultTyped( rootPort._Type);
+
+            triggers.Push( TriggerState::New( defaultVal));
+            meta.Push( TriggerMeta::New( rootPort.Name(), rootPort._Type));
+        });
+
+        let  	portToTrigger = broadcast.SnitchNodeGroupIds();
+
+        // Step 3: Categorize Fast Modules vs Custom Modules
+        let  	modCount = layout._Modules.Size();
+        let  	mut fastModules = Stash::WithCapacity( modCount);
+        let  	mut customModules = Stash::New();
+
+        layout._Modules.Arr().Traverse( |module| {
+            let  	mut inTriggers = Stash::WithCapacity( module._InPorts.Size());
+            module._InPorts.Arr().Traverse( |portId| {
+                inTriggers.Push( portToTrigger[portId.Index()]);
+            });
+
+            let  	mut outTriggers = Stash::WithCapacity( module._OutPorts.Size());
+            module._OutPorts.Arr().Traverse( |portId| {
+                outTriggers.Push( portToTrigger[portId.Index()]);
+            });
+
+            if let Some( op) = module._Kernel.ToFastOp() {
+                let  	in1 = inTriggers[U32( 0)];
+                let  	in2 = if inTriggers.Size() > U32( 1) { inTriggers[U32( 1)] } else { in1 };
+                let  	outTrig = outTriggers[U32( 0)];
+                let  	outPortId = module._OutPorts[U32( 0)];
+                let  	outPortType = layout._Ports[outPortId.Index()]._Type;
+                fastModules.Push( FastModule::New( in1, in2, outTrig, op, outPortType.Mask()));
+            } else if let KernelKind::Custom( ref callback) = module._Kernel {
+                customModules.Push( CustomModule::New(
+                    module._Id,
+                    inTriggers.IntoBuff(),
+                    outTriggers.IntoBuff(),
+                    Arc::clone( callback),
+                ));
+            }
+        });
+
+        return SimEngine::New(
+            triggers.IntoBuff(),
+            meta.IntoBuff(),
+            fastModules.IntoBuff(),
+            customModules.IntoBuff(),
+            portToTrigger,
+        );
     }
 
     /// Executes a single synchronous discrete-event simulation cycle with ZERO heap allocations:

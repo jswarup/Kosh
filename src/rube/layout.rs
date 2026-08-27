@@ -1,15 +1,12 @@
 //-- layout.rs -----------------------------------------------------------------------------------------------------------------------
 
-use	std::{ fmt, sync::Arc };
+use	std::fmt;
 use	crate::{
     rube::{
-        engine::{ CustomModule, FastModule, SimEngine },
         module::{ KernelKind, Module, ModuleId },
         port::{ PortDesc, PortDir, PortId, PortType },
-        reg::Reg,
-        trigger::{ TriggerMeta, TriggerState },
     },
-    silo::{ Arr, Buff, EdgeBroadcast, EdgeConnect, IAccess, IEdgeBroadcast, IEdgeConnect, Stash, U32, USeg },
+    silo::{ Arr, Buff, EdgeConnect, IAccess, IEdgeConnect, Stash, U32 },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -58,10 +55,10 @@ impl std::error::Error for LayoutError {}
 
 pub struct Layout
 {
-    _Modules: Stash< Module>,
-    _Ports: Stash< PortDesc>,
-    _PortOwners: Stash< ModuleId>,
-    _Connections: EdgeConnect,
+    pub _Modules: Stash< Module>,
+    pub _Ports: Stash< PortDesc>,
+    pub _PortOwners: Stash< ModuleId>,
+    pub _Connections: EdgeConnect,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -149,7 +146,7 @@ impl Layout
     //-----------------------------------------------------------------------------------------------------------------------------
 
     #[inline]
-    pub fn	AddModuleSimple< 'a, I, O>(
+    pub fn	AddStdModule< 'a, I, O>(
         &mut self,
         name: &str,
         inPorts: I,
@@ -368,90 +365,15 @@ impl Layout
         self._Connections.DumpDot( ostr);
     }
 
-    pub fn	Compile( &mut self) -> Result< SimEngine, LayoutError>
+    pub fn	Freeze( &mut self) -> Result< (), LayoutError>
     {
-        let  	portCountU32 = self._Ports.Size();
-
         // Step 1: Compact connection graph for CSR binary search / segments
         self._Connections.Compact();
 
         // Step 2: Validate graph connections
         self.Validate()?;
 
-        // Step 3: Traverse all connected ports using EdgeBroadcast to partition nets into unique trigger groups
-        let  	mut broadcast = EdgeBroadcast::New( portCountU32);
-        self._Modules.Arr().Traverse( |module| {
-            module._InPorts.Arr().Traverse( |&portId| {
-                broadcast.DoBroadcast( portId.0, |elemId, _, _, nextStack| {
-                    self._Connections.NodeTraverse( elemId, |nextElem| {
-                        nextStack.Push( nextElem);
-                    });
-                });
-            });
-            module._OutPorts.Arr().Traverse( |&portId| {
-                broadcast.DoBroadcast( portId.0, |elemId, _, _, nextStack| {
-                    self._Connections.NodeTraverse( elemId, |nextElem| {
-                        nextStack.Push( nextElem);
-                    });
-                });
-            });
-        });
-
-        let  	groupCount = broadcast.SzGroup();
-        let  	mut triggers = Stash::WithCapacity( groupCount);
-        let  	mut meta = Stash::WithCapacity( groupCount);
-
-        USeg::New( U32::_0, groupCount).Traverse( |grpIdx| {
-            let  	firstPortId = PortId( broadcast.FirstId( grpIdx));
-            let  	rootPort = &self._Ports[firstPortId.Index()];
-            let  	defaultVal = Reg::DefaultTyped( rootPort._Type);
-
-            triggers.Push( TriggerState::New( defaultVal));
-            meta.Push( TriggerMeta::New( rootPort.Name(), rootPort._Type));
-        });
-
-        let  	portToTrigger = broadcast.SnitchNodeGroupIds();
-
-        // Step 3: Categorize Fast Modules vs Custom Modules
-        let  	modCount = self._Modules.Size();
-        let  	mut fastModules = Stash::WithCapacity( modCount);
-        let  	mut customModules = Stash::New();
-
-        self._Modules.Arr().Traverse( |module| {
-            let  	mut inTriggers = Stash::WithCapacity( module._InPorts.Size());
-            module._InPorts.Arr().Traverse( |portId| {
-                inTriggers.Push( portToTrigger[portId.Index()]);
-            });
-
-            let  	mut outTriggers = Stash::WithCapacity( module._OutPorts.Size());
-            module._OutPorts.Arr().Traverse( |portId| {
-                outTriggers.Push( portToTrigger[portId.Index()]);
-            });
-
-            if let Some( op) = module._Kernel.ToFastOp() {
-                let  	in1 = inTriggers[U32( 0)];
-                let  	in2 = if inTriggers.Size() > U32( 1) { inTriggers[U32( 1)] } else { in1 };
-                let  	outTrig = outTriggers[U32( 0)];
-                let  	outPortId = module._OutPorts[U32( 0)];
-                let  	outPortType = self._Ports[outPortId.Index()]._Type;
-                fastModules.Push( FastModule::New( in1, in2, outTrig, op, outPortType.Mask()));
-            } else if let KernelKind::Custom( ref callback) = module._Kernel {
-                customModules.Push( CustomModule::New(
-                    module._Id,
-                    inTriggers.IntoBuff(),
-                    outTriggers.IntoBuff(),
-                    Arc::clone( callback),
-                ));
-            }
-        });
-
-        return Ok( SimEngine::New(
-            triggers.IntoBuff(),
-            meta.IntoBuff(),
-            fastModules.IntoBuff(),
-            customModules.IntoBuff(),
-            portToTrigger,
-        ));
+        return Ok( ());
     }
 }
 
