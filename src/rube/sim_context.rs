@@ -10,7 +10,7 @@ use	crate::{
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub type ActionId = usize;
+pub type ActionId = U32;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -29,15 +29,7 @@ pub enum ActionKind
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum SimError
-{
-    Oscillation,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[derive( Clone, Copy, Debug)]
+#[derive( Clone, Copy)]
 pub struct TriggerTarget
 {
     pub _Sense: TriggerSense,
@@ -46,12 +38,12 @@ pub struct TriggerTarget
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Clone, Debug)]
-pub struct Sensitivity
+#[derive( Debug, PartialEq, Eq)]
+pub enum SimError
 {
-    pub _TriggerId: TriggerId,
-    pub _Sense: TriggerSense,
-    pub _ActionId: ActionId,
+    Oscillation,
+    Timeout,
+    InvalidTrigger( TriggerId),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -59,11 +51,11 @@ pub struct Sensitivity
 pub struct SimContext
 {
     pub _Triggers: TriggerWad,
-    _Actions: Stash< ActionKind>,
     _TriggerSensitivities: Buff< Stash< TriggerTarget>>,
+    _Actions: Stash< ActionKind>,
     _ArmedMask: Stash< u64>,
-    _ArmedQueue: Stash< TriggerId>,
     _PendingMask: Stash< u64>,
+    _ArmedQueue: Stash< TriggerId>,
     _PendingQueue: Stash< ActionId>,
     _CurrArmed: Stash< TriggerId>,
     _CurrPending: Stash< ActionId>,
@@ -87,11 +79,11 @@ impl SimContext
     {
         return Self {
             _Triggers: TriggerWad::New(),
-            _Actions: Stash::New(),
             _TriggerSensitivities: Buff::New(),
+            _Actions: Stash::New(),
             _ArmedMask: Stash::New(),
-            _ArmedQueue: Stash::New(),
             _PendingMask: Stash::New(),
+            _ArmedQueue: Stash::New(),
             _PendingQueue: Stash::New(),
             _CurrArmed: Stash::New(),
             _CurrPending: Stash::New(),
@@ -103,12 +95,12 @@ impl SimContext
     pub fn	AddTrigger( &mut self, name: &str, initial: Reg) -> TriggerId
     {
         let  	id = self._Triggers.Add( name, initial);
-        let  	idx = usize::from( id);
-        if idx >= self._TriggerSensitivities.len() {
-            let  	newSize = U32( ( idx + 1) as u32);
+        let  	idx = id;
+        if idx >= self._TriggerSensitivities.Size() {
+            let  	newSize = idx + U32( 1);
             self._TriggerSensitivities.Resize( newSize, |_| Stash::New());
         }
-        let  	word = idx / 64;
+        let  	word = ( idx.0 / 64) as usize;
         while word >= self._ArmedMask.Size().AsUsize() {
             self._ArmedMask.Push( 0);
         }
@@ -149,14 +141,14 @@ impl SimContext
     #[inline]
     fn	_ArmTrigger( &mut self, id: TriggerId)
     {
-        let  	idx = usize::from( id);
+        let  	idx = id.0 as usize;
         let  	word = idx / 64;
         let  	bit = 1u64 << ( idx % 64);
         while word >= self._ArmedMask.Size().AsUsize() {
             self._ArmedMask.Push( 0);
         }
-        if ( self._ArmedMask.Slice()[word] & bit) == 0 {
-            self._ArmedMask.SliceMut()[word] |= bit;
+        if ( self._ArmedMask[U32( word as u32)] & bit) == 0 {
+            self._ArmedMask[U32( word as u32)] |= bit;
             self._ArmedQueue.Push( id);
         }
     }
@@ -164,24 +156,24 @@ impl SimContext
     #[inline]
     fn	_DisarmTrigger( &mut self, id: TriggerId)
     {
-        let  	idx = usize::from( id);
+        let  	idx = id.0 as usize;
         let  	word = idx / 64;
         let  	bit = 1u64 << ( idx % 64);
         if word < self._ArmedMask.Size().AsUsize() {
-            self._ArmedMask.SliceMut()[word] &= !bit;
+            self._ArmedMask[U32( word as u32)] &= !bit;
         }
     }
 
     #[inline]
     fn	_QueueAction( &mut self, actId: ActionId)
     {
-        let  	word = actId / 64;
-        let  	bit = 1u64 << ( actId % 64);
+        let  	word = ( actId.0 / 64) as usize;
+        let  	bit = 1u64 << ( actId.0 % 64);
         while word >= self._PendingMask.Size().AsUsize() {
             self._PendingMask.Push( 0);
         }
-        if ( self._PendingMask.Slice()[word] & bit) == 0 {
-            self._PendingMask.SliceMut()[word] |= bit;
+        if ( self._PendingMask[U32( word as u32)] & bit) == 0 {
+            self._PendingMask[U32( word as u32)] |= bit;
             self._PendingQueue.Push( actId);
         }
     }
@@ -191,12 +183,12 @@ impl SimContext
     where
         S: Into< Arr< 'a, ( TriggerId, TriggerSense)>>,
     {
-        let  	actId = self._Actions.Size().AsUsize();
+        let  	actId = self._Actions.Size();
         self._Actions.Push( action);
         for &( triggerId, sense) in sensitivities.into() {
-            let  	idx = usize::from( triggerId);
-            if idx >= self._TriggerSensitivities.len() {
-                let  	newSize = U32( ( idx + 1) as u32);
+            let  	idx = triggerId;
+            if idx >= self._TriggerSensitivities.Size() {
+                let  	newSize = idx + U32( 1);
                 self._TriggerSensitivities.Resize( newSize, |_| Stash::New());
             }
             self._TriggerSensitivities[idx].Push( TriggerTarget {
@@ -204,7 +196,7 @@ impl SimContext
                 _ActionId: actId,
             });
         }
-        let  	word = actId / 64;
+        let  	word = ( actId.0 / 64) as usize;
         while word >= self._PendingMask.Size().AsUsize() {
             self._PendingMask.Push( 0);
         }
@@ -230,22 +222,22 @@ impl SimContext
             // Step 1: Advance armed triggers and collect triggered actions
             std::mem::swap( &mut self._ArmedQueue, &mut self._CurrArmed);
 
-            let  	numArmed = self._CurrArmed.Size().AsUsize();
+            let  	numArmed = self._CurrArmed.Size().0;
             for i in 0..numArmed {
-                let  	triggerId = self._CurrArmed.Slice()[i];
-                let  	idx = usize::from( triggerId);
+                let  	triggerId = self._CurrArmed[U32( i)];
+                let  	idx = triggerId.0 as usize;
                 let  	word = idx / 64;
                 let  	bit = 1u64 << ( idx % 64);
-                if word < self._ArmedMask.Size().AsUsize() && ( self._ArmedMask.Slice()[word] & bit) != 0 {
-                    self._ArmedMask.SliceMut()[word] &= !bit;
+                if word < self._ArmedMask.Size().AsUsize() && ( self._ArmedMask[U32( word as u32)] & bit) != 0 {
+                    self._ArmedMask[U32( word as u32)] &= !bit;
 
                     if self._Triggers.IsArmed( triggerId) {
                         self._Triggers.Advance( triggerId);
 
-                        if idx < self._TriggerSensitivities.len() {
-                            let  	numTargets = self._TriggerSensitivities[idx].Size().AsUsize();
+                        if triggerId < self._TriggerSensitivities.Size() {
+                            let  	numTargets = self._TriggerSensitivities[triggerId].Size().0;
                             for t in 0..numTargets {
-                                let  	target = self._TriggerSensitivities[idx].Slice()[t];
+                                let  	target = self._TriggerSensitivities[triggerId][U32( t)];
                                 if target._Sense.Matches( &self._Triggers, triggerId) {
                                     self._QueueAction( target._ActionId);
                                 }
@@ -259,13 +251,13 @@ impl SimContext
             // Step 2: Fire all pending actions
             std::mem::swap( &mut self._PendingQueue, &mut self._CurrPending);
 
-            let  	numPending = self._CurrPending.Size().AsUsize();
+            let  	numPending = self._CurrPending.Size().0;
             for i in 0..numPending {
-                let  	actId = self._CurrPending.Slice()[i];
-                let  	word = actId / 64;
-                let  	bit = 1u64 << ( actId % 64);
+                let  	actId = self._CurrPending[U32( i)];
+                let  	word = ( actId.0 / 64) as usize;
+                let  	bit = 1u64 << ( actId.0 % 64);
                 if word < self._PendingMask.Size().AsUsize() {
-                    self._PendingMask.SliceMut()[word] &= !bit;
+                    self._PendingMask[U32( word as u32)] &= !bit;
                 }
                 self._FireAction( actId);
             }
@@ -278,7 +270,7 @@ impl SimContext
     /// Internal evaluation of an action
     fn	_FireAction( &mut self, actId: ActionId)
     {
-        match self._Actions.Slice()[actId] {
+        match self._Actions[actId] {
             ActionKind::Nand { _In1: in1, _In2: in2, _Out: out } => self.SetValue( out, self._Triggers.Nand( in1, in2)),
             ActionKind::And { _In1: in1, _In2: in2, _Out: out } => self.SetValue( out, self._Triggers.And( in1, in2)),
             ActionKind::Or { _In1: in1, _In2: in2, _Out: out } => self.SetValue( out, self._Triggers.Or( in1, in2)),

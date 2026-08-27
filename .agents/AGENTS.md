@@ -6,6 +6,7 @@
 
 ## Typing Guidelines
 - **Use Project-Defined Numeric Types**: Throughout the project, use the custom numeric types defined in `uint.rs` (e.g. `U8`, `U16`, `U32`, `USz`) instead of Rust's native primitive types (`u8`, `u16`, `u32`, `usize`) as far as possible.
+- **Avoid `usize` for Indexing**: Standardize on `U32` for all indexing, counts, and sizes throughout the codebase. Avoid back-and-forth casting/conversions between `U32` and `usize` (e.g., `usize::from`, `.AsUsize()`), keeping `U32` as the native indexing type across data structures, APIs, and algorithms.
 - **Struct Data Members**: All struct fields (data members) must be named in PascalCase preceded by an underscore `_` (e.g. `_Data`, `_Size`, `_Points`, `_BBoxMin`).
 
 ## Implementation Plan Policy

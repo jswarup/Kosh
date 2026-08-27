@@ -1,10 +1,10 @@
 //-- arr.rs -----------------------------------------------------------------------------------------------------------------------
-use	std::{ fmt, ptr::{ swap, swap_nonoverlapping }, slice::{ from_raw_parts, from_raw_parts_mut }, str::from_utf8_unchecked };
+use	std::{ fmt, ptr::{ swap, swap_nonoverlapping }, slice::{ from_raw_parts, from_raw_parts_mut, SliceIndex }, str::from_utf8_unchecked };
 use	crate::silo::cast::ICastExt;
 use	crate::silo::{ IAccess, AccessIter, U8, U32 };
 use	crate::stalks::DynIWorker;
 use	std::marker::PhantomData;
-use	std::ops::{ Deref, DerefMut };
+use	std::ops::{ Deref, DerefMut, Index, IndexMut };
 use	std::ptr::NonNull;
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -226,6 +226,58 @@ impl< 'a, T> DerefMut for Arr< 'a, T>
     fn	deref_mut( &mut self) -> &mut Self::Target
     {
         unsafe { from_raw_parts_mut( self._Ptr.as_ptr(), usize::from( self._Size)) }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, T, I> Index< I> for Arr< 'a, T>
+where
+    I: SliceIndex< [T]>,
+{
+    type Output = I::Output;
+
+    #[inline]
+    fn	index( &self, index: I) -> &Self::Output
+    {
+        return &self.deref()[index];
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, T, I> IndexMut< I> for Arr< 'a, T>
+where
+    I: SliceIndex< [T]>,
+{
+    #[inline]
+    fn	index_mut( &mut self, index: I) -> &mut Self::Output
+    {
+        return &mut self.deref_mut()[index];
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, T> Index< U32> for Arr< 'a, T>
+{
+    type Output = T;
+
+    #[inline]
+    fn	index( &self, index: U32) -> &Self::Output
+    {
+        return &self.deref()[index.0 as usize];
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, T> IndexMut< U32> for Arr< 'a, T>
+{
+    #[inline]
+    fn	index_mut( &mut self, index: U32) -> &mut Self::Output
+    {
+        return &mut self.deref_mut()[index.0 as usize];
     }
 }
 

@@ -4,8 +4,9 @@ use	std::{
     fmt,
     marker::PhantomData,
     mem::{ forget, size_of, swap },
-    ops::{ Deref, DerefMut },
+    ops::{ Deref, DerefMut, Index, IndexMut },
     ptr::{ copy_nonoverlapping, drop_in_place, NonNull, read, slice_from_raw_parts_mut, write },
+    slice::SliceIndex,
 };
 use	serde::{
     de::{ SeqAccess, Visitor },
@@ -546,6 +547,58 @@ impl< T> Default for Buff< T>
     fn	default() -> Self
     {
         Self::New()
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T, I> Index< I> for Buff< T>
+where
+    I: SliceIndex< [T]>,
+{
+    type Output = I::Output;
+
+    #[inline]
+    fn	index( &self, index: I) -> &Self::Output
+    {
+        return &self.deref()[index];
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T, I> IndexMut< I> for Buff< T>
+where
+    I: SliceIndex< [T]>,
+{
+    #[inline]
+    fn	index_mut( &mut self, index: I) -> &mut Self::Output
+    {
+        return &mut self.deref_mut()[index];
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T> Index< U32> for Buff< T>
+{
+    type Output = T;
+
+    #[inline]
+    fn	index( &self, index: U32) -> &Self::Output
+    {
+        return &self.deref()[index.0 as usize];
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T> IndexMut< U32> for Buff< T>
+{
+    #[inline]
+    fn	index_mut( &mut self, index: U32) -> &mut Self::Output
+    {
+        return &mut self.deref_mut()[index.0 as usize];
     }
 }
 

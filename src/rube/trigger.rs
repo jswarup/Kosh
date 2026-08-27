@@ -182,7 +182,7 @@ impl TriggerWad
     pub fn	AddTyped( &mut self, name: &str, portType: PortType, initial: Reg) -> TriggerId
     {
         let  	nameStr = name.to_string();
-        let  	id = U32( self._Triggers.len() as u32);
+        let  	id = self._Triggers.Size();
         let  	newSize = id + U32( 1);
         self._Triggers.Resize( newSize, |_| TriggerState::New( initial));
         self._Meta.Resize( newSize, |_| TriggerMeta::New( nameStr.clone(), portType));
@@ -190,85 +190,90 @@ impl TriggerWad
     }
 
     #[inline]
-    pub fn	Len( &self) -> usize
+    pub fn	Len( &self) -> U32
     {
-        return self._Triggers.len();
+        return self._Triggers.Size();
+    }
+
+    #[inline]
+    pub fn	Size( &self) -> U32
+    {
+        return self._Triggers.Size();
     }
 
     #[inline]
     pub fn	IsEmpty( &self) -> bool
     {
-        return self._Triggers.is_empty();
+        return self._Triggers.Size() == U32( 0);
     }
 
     #[inline]
     pub fn	Get( &self, id: TriggerId) -> Reg
     {
-        return self._Triggers[usize::from( id)].Current();
+        return self._Triggers[id].Current();
     }
 
     #[inline]
     pub fn	GetFuture( &self, id: TriggerId) -> Reg
     {
-        return self._Triggers[usize::from( id)].Future();
+        return self._Triggers[id].Future();
     }
 
     #[inline]
     pub fn	Name( &self, id: TriggerId) -> &str
     {
-        return self._Meta[usize::from( id)].Name();
+        return self._Meta[id].Name();
     }
 
     #[inline]
     pub fn	PortType( &self, id: TriggerId) -> PortType
     {
-        return self._Meta[usize::from( id)].PortType();
+        return self._Meta[id].PortType();
     }
 
     #[inline]
     pub fn	IsArmed( &self, id: TriggerId) -> bool
     {
-        let  	trig = &self._Triggers[usize::from( id)];
+        let  	trig = &self._Triggers[id];
         return trig._Current != trig._Future;
     }
 
     #[inline]
     pub fn	InitValue( &mut self, id: TriggerId, val: Reg)
     {
-        self._Triggers[usize::from( id)].Init( val);
+        self._Triggers[id].Init( val);
     }
 
     #[inline]
     pub fn	SetFutureValue( &mut self, id: TriggerId, val: Reg) -> bool
     {
-        let  	idx = usize::from( id);
-        let  	changed = self._Triggers[idx]._Current != val;
-        self._Triggers[idx].SetFuture( val);
+        let  	changed = self._Triggers[id]._Current != val;
+        self._Triggers[id].SetFuture( val);
         return changed;
     }
 
     #[inline]
     pub fn	Advance( &mut self, id: TriggerId) -> ( Reg, Reg)
     {
-        return self._Triggers[usize::from( id)].Advance();
+        return self._Triggers[id].Advance();
     }
 
     #[inline]
     pub fn	IsEdge( &self, id: TriggerId) -> bool
     {
-        return self._Triggers[usize::from( id)].IsEdge();
+        return self._Triggers[id].IsEdge();
     }
 
     #[inline]
     pub fn	IsPosedge( &self, id: TriggerId) -> bool
     {
-        return self._Triggers[usize::from( id)].IsPosedge();
+        return self._Triggers[id].IsPosedge();
     }
 
     #[inline]
     pub fn	IsNegedge( &self, id: TriggerId) -> bool
     {
-        return self._Triggers[usize::from( id)].IsNegedge();
+        return self._Triggers[id].IsNegedge();
     }
 
     #[inline]

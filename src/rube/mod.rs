@@ -21,7 +21,7 @@ pub use	layout::{ Layout, LayoutError };
 pub use	module::{ KernelKind, KernelOp, ModuleDescriptor, ModuleId };
 pub use	port::{ Port, PortDesc, PortDir, PortId, PortType, TopologyPort };
 pub use	reg::{ Reg, RegVal };
-pub use	sim_context::{ ActionId, ActionKind, Sensitivity, SimContext, SimError };
+pub use	sim_context::{ ActionId, ActionKind, SimContext, SimError, TriggerTarget };
 pub use	trigger::{ TriggerId, TriggerMeta, TriggerSense, TriggerState, TriggerWad };
 
 //---------------------------------------------------------------------------------------------------------------------------------

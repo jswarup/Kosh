@@ -8,7 +8,7 @@ use	crate::{
         reg::Reg,
         trigger::{ TriggerId, TriggerMeta, TriggerState },
     },
-    silo::Buff,
+    silo::{ Buff, U32 },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -119,50 +119,50 @@ impl SimEngine
     pub fn	Tick( &mut self) -> usize
     {
         // Phase 1: Evaluate Fast Gates ( zero-heap-allocation, direct streaming write to _Future)
-        for i in 0..self._FastModules.len() {
-            let  	fm = self._FastModules[i];
-            let  	in1 = self._Triggers[usize::from( fm._In1)]._Current;
-            let  	in2 = self._Triggers[usize::from( fm._In2)]._Current;
-            self._Triggers[usize::from( fm._Out)]._Future = fm._Op.Eval( in1, in2, fm._Mask);
+        for i in 0..self._FastModules.Size().0 {
+            let  	fm = self._FastModules[U32( i)];
+            let  	in1 = self._Triggers[fm._In1]._Current;
+            let  	in2 = self._Triggers[fm._In2]._Current;
+            self._Triggers[fm._Out]._Future = fm._Op.Eval( in1, in2, fm._Mask);
         }
 
         // Phase 2: Evaluate Custom Modules
-        for i in 0..self._CustomModules.len() {
-            let  	cm = &self._CustomModules[i];
-            let  	inLen = cm._InTriggers.len();
-            let  	outLen = cm._OutTriggers.len();
+        for i in 0..self._CustomModules.Size().0 {
+            let  	cm = &self._CustomModules[U32( i)];
+            let  	inLen = cm._InTriggers.Size();
+            let  	outLen = cm._OutTriggers.Size();
 
             // Stack-allocated buffers for modules with up to 16 inputs/outputs
-            if inLen <= 16 && outLen <= 16 {
+            if inLen.0 <= 16 && outLen.0 <= 16 {
                 let  	mut inBuf = [Reg::default(); 16];
                 let  	mut outBuf = [Reg::default(); 16];
-                for k in 0..inLen {
-                    inBuf[k] = self._Triggers[usize::from( cm._InTriggers[k])]._Current;
+                for k in 0..inLen.0 {
+                    inBuf[k as usize] = self._Triggers[cm._InTriggers[U32( k)]]._Current;
                 }
-                for k in 0..outLen {
-                    outBuf[k] = self._Triggers[usize::from( cm._OutTriggers[k])]._Future;
+                for k in 0..outLen.0 {
+                    outBuf[k as usize] = self._Triggers[cm._OutTriggers[U32( k)]]._Future;
                 }
 
-                ( cm._Callback)( &inBuf[..inLen], &mut outBuf[..outLen]);
+                ( cm._Callback)( &inBuf[..inLen.0 as usize], &mut outBuf[..outLen.0 as usize]);
 
-                for k in 0..outLen {
-                    self._Triggers[usize::from( cm._OutTriggers[k])]._Future = outBuf[k];
+                for k in 0..outLen.0 {
+                    self._Triggers[cm._OutTriggers[U32( k)]]._Future = outBuf[k as usize];
                 }
             } else {
-                let  	inVals = Buff::Create( crate::silo::U32( inLen as u32), |k| self._Triggers[usize::from( cm._InTriggers[k.AsUsize()])]._Current);
-                let  	mut outVals = Buff::Create( crate::silo::U32( outLen as u32), |k| self._Triggers[usize::from( cm._OutTriggers[k.AsUsize()])]._Future);
+                let  	inVals = Buff::Create( inLen, |k| self._Triggers[cm._InTriggers[k]]._Current);
+                let  	mut outVals = Buff::Create( outLen, |k| self._Triggers[cm._OutTriggers[k]]._Future);
 
                 ( cm._Callback)( &inVals, &mut outVals);
 
-                for k in 0..outLen {
-                    self._Triggers[usize::from( cm._OutTriggers[k])]._Future = outVals[k];
+                for k in 0..outLen.0 {
+                    self._Triggers[cm._OutTriggers[U32( k)]]._Future = outVals[U32( k)];
                 }
             }
         }
 
         // Phase 3: Clock Tick ( Advance contiguous slice of AoS cells)
-        for i in 0..self._Triggers.len() {
-            self._Triggers[i].Advance();
+        for i in 0..self._Triggers.Size().0 {
+            self._Triggers[U32( i)].Advance();
         }
 
         self._CycleCount += 1;
@@ -190,38 +190,38 @@ impl SimEngine
     #[inline]
     pub fn	GetTrigger( &self, id: TriggerId) -> Reg
     {
-        return self._Triggers[usize::from( id)]._Current;
+        return self._Triggers[id]._Current;
     }
 
     #[inline]
     pub fn	GetPastTrigger( &self, id: TriggerId) -> Reg
     {
-        return self._Triggers[usize::from( id)]._Past;
+        return self._Triggers[id]._Past;
     }
 
     #[inline]
     pub fn	GetFutureTrigger( &self, id: TriggerId) -> Reg
     {
-        return self._Triggers[usize::from( id)]._Future;
+        return self._Triggers[id]._Future;
     }
 
     #[inline]
     pub fn	SetTrigger( &mut self, id: TriggerId, val: Reg)
     {
-        self._Triggers[usize::from( id)]._Future = val;
+        self._Triggers[id]._Future = val;
     }
 
     #[inline]
     pub fn	InitTrigger( &mut self, id: TriggerId, val: Reg)
     {
-        self._Triggers[usize::from( id)].Init( val);
+        self._Triggers[id].Init( val);
     }
 
     #[inline]
     pub fn	GetPortTrigger( &self, portId: PortId) -> Option< TriggerId>
     {
-        let  	idx = usize::from( portId.0);
-        if idx >= self._PortToTrigger.len() {
+        let  	idx = portId.0;
+        if idx >= self._PortToTrigger.Size() {
             return None;
         }
         return Some( self._PortToTrigger[idx]);
@@ -281,19 +281,19 @@ impl SimEngine
     #[inline]
     pub fn	IsPosedge( &self, id: TriggerId) -> bool
     {
-        return self._Triggers[usize::from( id)].IsPosedge();
+        return self._Triggers[id].IsPosedge();
     }
 
     #[inline]
     pub fn	IsNegedge( &self, id: TriggerId) -> bool
     {
-        return self._Triggers[usize::from( id)].IsNegedge();
+        return self._Triggers[id].IsNegedge();
     }
 
     #[inline]
     pub fn	IsEdge( &self, id: TriggerId) -> bool
     {
-        return self._Triggers[usize::from( id)].IsEdge();
+        return self._Triggers[id].IsEdge();
     }
 }
 
