@@ -5,7 +5,7 @@ use	crate::{
         reg::Reg,
         trigger::{ TriggerId, TriggerSense, TriggerWad },
     },
-    silo::{ Buff, Stash, U32 },
+    silo::{ Arr, Buff, Stash, U32 },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -187,11 +187,13 @@ impl SimContext
     }
 
     /// Register a gate or action along with its input sensitivities
-    pub fn	AddAction( &mut self, action: ActionKind, sensitivities: &[( TriggerId, TriggerSense)]) -> ActionId
+    pub fn	AddAction< 'a, S>( &mut self, action: ActionKind, sensitivities: S) -> ActionId
+    where
+        S: Into< Arr< 'a, ( TriggerId, TriggerSense)>>,
     {
         let  	actId = self._Actions.Size().AsUsize();
         self._Actions.Push( action);
-        for &( triggerId, sense) in sensitivities {
+        for &( triggerId, sense) in sensitivities.into() {
             let  	idx = usize::from( triggerId);
             if idx >= self._TriggerSensitivities.len() {
                 let  	newSize = U32( ( idx + 1) as u32);

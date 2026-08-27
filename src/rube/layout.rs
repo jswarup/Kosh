@@ -8,7 +8,7 @@ use	crate::{
         module::{ KernelKind, ModuleDescriptor, ModuleId },
         port::{ Port, PortDesc, PortDir, PortId, PortType },
     },
-    silo::{ Buff, Stash, U32 },
+    silo::{ Arr, Buff, IAccess, Stash, U32 },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -88,50 +88,84 @@ impl Layout
         };
     }
 
-    pub fn	AddModule( &mut self, name: &str, inPorts: &[PortDesc], outPorts: &[PortDesc], kernel: KernelKind) -> ModuleId
+    fn	AddPorts< 'a, T, F>(
+        &mut self,
+        modId: ModuleId,
+        moduleName: &str,
+        ports: Arr< 'a, T>,
+        dir: PortDir,
+        extract: F,
+    ) -> Buff< PortId>
+    where
+        F: Fn( &'a T) -> ( &str, PortType),
     {
-        let  	modIdx = self._Modules.Size().AsUsize();
-        let  	modId = ModuleId( U32( modIdx as u32));
-
-        let  	mut inPortIds = Stash::WithCapacity( U32( inPorts.len() as u32));
-        for inDesc in inPorts {
+        let  	mut portIds = Stash::WithCapacity( ports.Size());
+        for item in ports {
+            let  	( portName, portType) = extract( item);
             let  	portIdx = self._Ports.Size().AsUsize();
             let  	portId = PortId( U32( portIdx as u32));
-            let  	fullName = format!( "{name}.{}", inDesc._Name);
-            let  	port = Port::New( portId, modId.0, &fullName, PortDir::In, inDesc._Type);
+            let  	fullName = format!( "{moduleName}.{portName}");
+            let  	port = Port::New( portId, modId.0, &fullName, dir, portType);
             self._Ports.Push( port);
             self._InDrivers.Push( None);
-            inPortIds.Push( portId);
+            portIds.Push( portId);
         }
+        return portIds.IntoBuff();
+    }
 
-        let  	mut outPortIds = Stash::WithCapacity( U32( outPorts.len() as u32));
-        for outDesc in outPorts {
-            let  	portIdx = self._Ports.Size().AsUsize();
-            let  	portId = PortId( U32( portIdx as u32));
-            let  	fullName = format!( "{name}.{}", outDesc._Name);
-            let  	port = Port::New( portId, modId.0, &fullName, PortDir::Out, outDesc._Type);
-            self._Ports.Push( port);
-            self._InDrivers.Push( None);
-            outPortIds.Push( portId);
-        }
+    //-----------------------------------------------------------------------------------------------------------------------------
 
+    pub fn	AddModule< 'a, I, O>(
+        &mut self,
+        name: &str,
+        inPorts: I,
+        outPorts: O,
+        kernel: KernelKind,
+    ) -> ModuleId
+    where
+        I: Into< Arr< 'a, PortDesc>>,
+        O: Into< Arr< 'a, PortDesc>>,
+    {
+        let  	modId = ModuleId( self._Modules.Size());
+        let  	inPortIds = self.AddPorts( modId, name, inPorts.into(), PortDir::In, |d| ( &d._Name, d._Type));
+        let  	outPortIds = self.AddPorts( modId, name, outPorts.into(), PortDir::Out, |d| ( &d._Name, d._Type));
         let  	module = ModuleDescriptor::New(
             modId,
             name,
-            inPortIds.IntoBuff(),
-            outPortIds.IntoBuff(),
+            inPortIds,
+            outPortIds,
             kernel,
         );
         self._Modules.Push( module);
         return modId;
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     #[inline]
-    pub fn	AddModuleSimple( &mut self, name: &str, inPorts: &[&str], outPorts: &[&str], kernel: KernelKind) -> ModuleId
+    pub fn	AddModuleSimple< 'a, I, O>(
+        &mut self,
+        name: &str,
+        inPorts: I,
+        outPorts: O,
+        kernel: KernelKind,
+    ) -> ModuleId
+    where
+        I: Into< Arr< 'a, &'a str>>,
+        O: Into< Arr< 'a, &'a str>>,
     {
-        let  	inDescs = Buff::Create( U32( inPorts.len() as u32), |i| PortDesc::Bool( inPorts[i.AsUsize()]));
-        let  	outDescs = Buff::Create( U32( outPorts.len() as u32), |i| PortDesc::Bool( outPorts[i.AsUsize()]));
-        return self.AddModule( name, &inDescs, &outDescs, kernel);
+        let  	modId = ModuleId( self._Modules.Size());
+        let  	inPortIds = self.AddPorts( modId, name, inPorts.into(), PortDir::In, |&name| ( name, PortType::Bool));
+        let  	outPortIds = self.AddPorts( modId, name, outPorts.into(), PortDir::Out, |&name| ( name, PortType::Bool));
+        let  	module = ModuleDescriptor::New(
+            modId,
+            name,
+            inPortIds,
+            outPortIds,
+            kernel,
+        );
+        self._Modules.Push( module);
+        return modId;
     }
 
     #[inline]

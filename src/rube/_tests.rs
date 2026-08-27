@@ -10,7 +10,7 @@ mod _tests
             gates::{ AndGate, NandGate, NotGate, OrGate, XorGate },
             latches::{ CRSLatch, DLatch, RSLatch },
             layout::{ Layout, LayoutError },
-            module::{ KernelKind, KernelOp },
+            module::KernelKind,
             port::{ PortDesc, PortId, PortType, TopologyPort },
             reg::Reg,
             sim_context::{ ActionKind, SimContext, SimError },
