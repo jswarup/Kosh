@@ -220,7 +220,7 @@ impl SimEngine
     #[inline]
     pub fn	GetPortTrigger( &self, portId: PortId) -> Option< TriggerId>
     {
-        let  	idx = portId.0;
+        let  	idx = portId.Index();
         if idx >= self._PortToTrigger.Size() {
             return None;
         }

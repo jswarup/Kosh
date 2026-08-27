@@ -105,7 +105,12 @@ impl Layout
         let  	mut portIds = Stash::WithCapacity( arr.Size());
         for item in arr {
             let  	( portName, portType) = extract( item);
-            let  	portId = PortId( self._Ports.Size());
+            let  	rawIdx = self._Ports.Size();
+            let  	portId = if dir == PortDir::Out {
+                PortId::Out( rawIdx)
+            } else {
+                PortId::In( rawIdx)
+            };
             let  	fullName = format!( "{moduleName}.{portName}");
             let  	port = Port::New( portId, modId.0, &fullName, dir, portType);
             self._Ports.Push( port);
@@ -202,8 +207,23 @@ impl Layout
 
     pub fn	Connect( &mut self, srcOut: PortId, dstIn: PortId) -> Result< (), LayoutError>
     {
-        let  	srcIdx = srcOut.0;
-        let  	dstIdx = dstIn.0;
+        if !srcOut.IsOut() {
+            return Err( LayoutError::InvalidPortDirection {
+                _Port: srcOut,
+                _Expected: PortDir::Out,
+                _Actual: PortDir::In,
+            });
+        }
+        if !dstIn.IsIn() {
+            return Err( LayoutError::InvalidPortDirection {
+                _Port: dstIn,
+                _Expected: PortDir::In,
+                _Actual: PortDir::Out,
+            });
+        }
+
+        let  	srcIdx = srcOut.Index();
+        let  	dstIdx = dstIn.Index();
         let  	portCount = self._Ports.Size();
 
         if srcIdx >= portCount {
@@ -214,22 +234,7 @@ impl Layout
         }
 
         let  	srcPort = &self._Ports[srcIdx];
-        if srcPort._Dir != PortDir::Out {
-            return Err( LayoutError::InvalidPortDirection {
-                _Port: srcOut,
-                _Expected: PortDir::Out,
-                _Actual: srcPort._Dir,
-            });
-        }
-
         let  	dstPort = &self._Ports[dstIdx];
-        if dstPort._Dir != PortDir::In {
-            return Err( LayoutError::InvalidPortDirection {
-                _Port: dstIn,
-                _Expected: PortDir::In,
-                _Actual: dstPort._Dir,
-            });
-        }
 
         // Check Type Matching rule
         if srcPort._PortType != dstPort._PortType {
@@ -251,7 +256,7 @@ impl Layout
         }
 
         self._InDrivers[dstIdx] = Some( srcOut);
-        self._Connections.RegisterEdge( srcOut.0, dstIn.0, false);
+        self._Connections.RegisterEdge( srcIdx, dstIdx, false);
         return Ok( ());
     }
 
@@ -344,14 +349,14 @@ impl Layout
             let  	mut inTriggers = Stash::WithCapacity( module._InPorts.Size());
             for i in 0..module._InPorts.Size().0 {
                 let  	portId = module._InPorts[U32( i)];
-                let  	trigId = portToTrigger[portId.0];
+                let  	trigId = portToTrigger[portId.Index()];
                 inTriggers.Push( trigId);
             }
 
             let  	mut outTriggers = Stash::WithCapacity( module._OutPorts.Size());
             for i in 0..module._OutPorts.Size().0 {
                 let  	portId = module._OutPorts[U32( i)];
-                let  	trigId = portToTrigger[portId.0];
+                let  	trigId = portToTrigger[portId.Index()];
                 outTriggers.Push( trigId);
             }
 
@@ -360,7 +365,7 @@ impl Layout
                 let  	in2 = if inTriggers.Size() > U32( 1) { inTriggers[U32( 1)] } else { in1 };
                 let  	outTrig = outTriggers[U32( 0)];
                 let  	outPortId = module._OutPorts[U32( 0)];
-                let  	outPortType = self._Ports[outPortId.0]._PortType;
+                let  	outPortType = self._Ports[outPortId.Index()]._PortType;
                 fastModules.Push( FastModule::New( in1, in2, outTrig, op, outPortType.Mask()));
             } else if let KernelKind::Custom( ref callback) = module._Kernel {
                 customModules.Push( CustomModule::New(

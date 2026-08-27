@@ -10,6 +10,47 @@ use	crate::{
 #[derive( Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct PortId( pub U32);
 
+impl PortId
+{
+    pub const DIR_BIT: u32 = 31;
+
+    #[inline]
+    pub const fn	In( index: U32) -> Self
+    {
+        return Self( index.SetBit( Self::DIR_BIT, false));
+    }
+
+    #[inline]
+    pub const fn	Out( index: U32) -> Self
+    {
+        return Self( index.SetBit( Self::DIR_BIT, true));
+    }
+
+    #[inline]
+    pub const fn	IsOut( self) -> bool
+    {
+        return self.0.GetBit( Self::DIR_BIT);
+    }
+
+    #[inline]
+    pub const fn	IsIn( self) -> bool
+    {
+        return !self.IsOut();
+    }
+
+    #[inline]
+    pub const fn	Index( self) -> U32
+    {
+        return self.0.Grab( 0, Self::DIR_BIT);
+    }
+
+    #[inline]
+    pub const fn	Dir( self) -> PortDir
+    {
+        if self.IsOut() { PortDir::Out } else { PortDir::In }
+    }
+}
+
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]

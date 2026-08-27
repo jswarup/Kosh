@@ -1,9 +1,12 @@
-//-- _tests.rs ----------------------------------------------------------------------------------------------------------------------
-use	std::thread::spawn;
-use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, Stk, USeg, U8, U16, U32, U64 };
-use	crate::stalks::{ Atm, Worker };
-use	std::sync::Arc;
-use	std::thread;
+use	std::{
+    sync::Arc,
+    thread::{ self, spawn },
+};
+use	crate::{
+    silo::{ Arr, Buff, IAccess, IArr, Stash, Stk, USeg, U8, U16, U32, U64 },
+    stalks::{ Atm, Worker },
+    Stash as StashMacro,
+};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -353,6 +356,41 @@ fn	UInt64TestNegNot()
     assert_eq!( ( -b), 0u64.wrapping_sub( 5));
     assert_eq!( ( !b), !5u64);
 }
+fn	UIntBitwiseOps()
+{
+    // Mask tests
+    assert_eq!( U32::Mask( 0), 0);
+    assert_eq!( U32::Mask( 4), 0x0F);
+    assert_eq!( U32::Mask( 31), 0x7FFF_FFFF);
+    assert_eq!( U32::Mask( 32), 0xFFFF_FFFF);
+    assert_eq!( U32::Mask( 64), 0xFFFF_FFFF);
+    assert_eq!( U8::Mask( 3), 0x07);
+    assert_eq!( U16::Mask( 8), 0x00FF);
+    assert_eq!( U64::Mask( 40), 0x0000_00FF_FFFF_FFFF);
+
+    // GetBit / SetBit tests
+    let  	val = U32( 0);
+    let  	valWithBit = val.SetBit( 31, true);
+    assert_eq!( valWithBit, 0x8000_0000);
+    assert!( valWithBit.GetBit( 31));
+    assert!( !valWithBit.GetBit( 30));
+    assert!( !valWithBit.GetBit( 0));
+
+    let  	cleared = valWithBit.SetBit( 31, false);
+    assert_eq!( cleared, 0);
+    assert!( !cleared.GetBit( 31));
+
+    // Grab tests
+    let  	sample = U32( 0b1011_0100);
+    assert_eq!( sample.Grab( 2, 4), 0b1101);
+    assert_eq!( sample.Grab( 0, 3), 0b100);
+    assert_eq!( sample.Grab( 7, 1), 0b1);
+
+    let  	portIdU32 = U32( 42).SetBit( 31, true);
+    assert!( portIdU32.GetBit( 31));
+    assert_eq!( portIdU32.Grab( 0, 31), 42);
+}
+
 #[test]
 fn	UIntBasicOps()
 {
@@ -368,6 +406,7 @@ fn	UIntBasicOps()
     UInt64TestFrom();
     UInt64TestArith();
     UInt64TestNegNot();
+    UIntBitwiseOps();
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -652,7 +691,7 @@ fn	TestBuffResize()
 #[test]
 fn	TestStashC()
 {
-    let  	v = crate::Stash![x * x; for x in 1..10; if x % 2 == 0];
+    let  	v = StashMacro![x * x; for x in 1..10; if x % 2 == 0];
     println!( "{}", v.Stk().Arr());
 }
 

@@ -1,11 +1,16 @@
-//-- uint.rs -------------------------------------------------------------------------------------------------------------------------
-//!  thin wrappers around unsigned integers providing seamless operations.
-use	std::{ cmp, fmt, ops::{ AddAssign, SubAssign } };
-use	crate::silo::cast::ICastExt;
-use	crate::stalks::atm::AtomicInt;
-use	std::ops::{ Add, BitAnd, BitOr, BitXor, Deref, Div, Mul, Neg, Not, Rem, Shl, Shr, Sub };
-use	std::sync::atomic::{ AtomicU8, AtomicU16, AtomicU32, AtomicU64, Ordering };
-use	crate::silo::Arr;
+use	std::{
+    cmp, fmt,
+    ops::{
+        Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign,
+        Deref, Div, DivAssign, Mul, MulAssign, Neg, Not, Rem, RemAssign, Shl, ShlAssign,
+        Shr, ShrAssign, Sub, SubAssign,
+    },
+    sync::atomic::{ AtomicU8, AtomicU16, AtomicU32, AtomicU64, Ordering },
+};
+use	crate::{
+    silo::{ Arr, ICastExt },
+    stalks::{ Atm, AtomicInt },
+};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -93,9 +98,58 @@ macro_rules! ImplUIntTraits {
                 self.0
             }
             #[inline]
-            pub const fn	IntoAtm( self) -> crate::stalks::Atm< $type>
+            pub const fn	IntoAtm( self) -> Atm< $type>
             {
-                crate::stalks::Atm::FromAtomic( <$atomic>::new( self.0))
+                Atm::FromAtomic( <$atomic>::new( self.0))
+            }
+
+            /// Generate a mask of `count` low bits (e.g. Mask(31) -> 0x7FFF_FFFF)
+            #[inline]
+            pub const fn	Mask( count: u32) -> Self
+            {
+                if count >= <$prim>::BITS {
+                    return $type( <$prim>::MAX);
+                } else if count == 0 {
+                    return $type( 0);
+                } else {
+                    return $type( ( ( 1 as $prim) << count).wrapping_sub( 1));
+                }
+            }
+
+            /// Test whether the bit at `pos` is set (1)
+            #[inline]
+            pub const fn	GetBit( self, pos: u32) -> bool
+            {
+                if pos >= <$prim>::BITS {
+                    return false;
+                }
+                return ( self.0 & ( ( 1 as $prim) << pos)) != 0;
+            }
+
+            /// Return a new value with the bit at `pos` set to `bitVal` (true=1, false=0)
+            #[inline]
+            pub const fn	SetBit( self, pos: u32, bitVal: bool) -> Self
+            {
+                if pos >= <$prim>::BITS {
+                    return self;
+                }
+                let  	bitMask = ( 1 as $prim) << pos;
+                if bitVal {
+                    return $type( self.0 | bitMask);
+                } else {
+                    return $type( self.0 & !bitMask);
+                }
+            }
+
+            /// Extract `count` bits starting at `pos` shifted down to LSB
+            #[inline]
+            pub const fn	Grab( self, pos: u32, count: u32) -> Self
+            {
+                if pos >= <$prim>::BITS {
+                    return $type( 0);
+                }
+                let  	shifted = self.0 >> pos;
+                return $type( shifted & Self::Mask( count).0);
             }
         }
         
@@ -303,7 +357,7 @@ macro_rules! ImplUIntTraits {
         }
         macro_rules! impl_assignop {
             ( $trait:ident, $method:ident, $op:tt) => {
-                impl< T> std::ops::$trait< T> for $type
+                impl< T> $trait< T> for $type
                 where
                     T: Into< $type>,
                 {

@@ -11,7 +11,7 @@ mod _tests
             latches::{ CRSLatch, DLatch, RSLatch },
             layout::{ Layout, LayoutError },
             module::KernelKind,
-            port::{ PortDesc, PortId, PortType, TopologyPort },
+            port::{ PortDesc, PortDir, PortId, PortType, TopologyPort },
             reg::Reg,
             sim_context::{ ActionKind, SimContext, SimError },
             trigger::{ TriggerSense, TriggerWad },
@@ -469,6 +469,19 @@ mod _tests
         let  	port = TopologyPort::New( "clk", U32( 42));
         assert_eq!( port.Name(), "clk");
         assert_eq!( port.Trigger(), U32( 42));
+
+        // Test PortId In/Out direction encoding
+        let  	inPort = PortId::In( U32( 10));
+        assert!( inPort.IsIn());
+        assert!( !inPort.IsOut());
+        assert_eq!( inPort.Index(), U32( 10));
+        assert_eq!( inPort.Dir(), PortDir::In);
+
+        let  	outPort = PortId::Out( U32( 10));
+        assert!( outPort.IsOut());
+        assert!( !outPort.IsIn());
+        assert_eq!( outPort.Index(), U32( 10));
+        assert_eq!( outPort.Dir(), PortDir::Out);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
