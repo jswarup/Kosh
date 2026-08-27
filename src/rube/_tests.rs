@@ -3,19 +3,17 @@
 #[cfg( test)]
 mod _tests
 {
-    use	std::sync::Arc;
     use	crate::{
         rube::{
             engine::SimEngine,
-            adder::{ Adder, BusAdder32 },
+            adder::Adder,
             gates::{ AndGate, NandGate, NotGate, OrGate, XorGate },
-            latches::{ CRSLatch, DLatch, RSLatch },
-            layout::{ Layout, LayoutError },
-            module::KernelKind,
-            port::{ PortDesc, PortDir, PortId, PortType },
+            latches::{ CRSLatch, DLatch },
+            layout::Layout,
+            port::PortId,
             reg::Reg,
         },
-        silo::{ IEdgeConnect, Stash, U32 },
+        silo::U32,
     };
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -42,7 +40,7 @@ mod _tests
         for ( aVal, bVal, expectedSum, expectedCarry) in testCases {
             adder.SetA( &mut engine, U32( aVal));
             adder.SetB( &mut engine, U32( bVal));
-            for _ in 0..( N * 3) { engine.Tick(); }
+            for _ in 0..( N * 3) { engine.Drive(); }
 
             let  	sumVal = adder.GetSum( &engine);
             let  	carryVal = engine.GetPortBool( adder.Carry()).unwrap().IsTrue();
@@ -68,29 +66,29 @@ mod _tests
         crs.SetClk( &mut engine, Reg::FALSE);
         crs.SetS( &mut engine, Reg::TRUE);
         crs.SetR( &mut engine, Reg::FALSE);
-        for _ in 0..4 { engine.Tick(); }
+        for _ in 0..4 { engine.Drive(); }
         assert_eq!( engine.GetPortBool( crs.Q()), Some( Reg::FALSE));
 
         // Pulse clk=1 -> Q becomes 1, Q1 becomes 0
         crs.SetClk( &mut engine, Reg::TRUE);
-        for _ in 0..4 { engine.Tick(); }
+        for _ in 0..4 { engine.Drive(); }
         assert_eq!( engine.GetPortBool( crs.Q()), Some( Reg::TRUE));
         assert_eq!( engine.GetPortBool( crs.Q1()), Some( Reg::FALSE));
 
         // clk=0 -> holds Q=1
         crs.SetClk( &mut engine, Reg::FALSE);
-        for _ in 0..4 { engine.Tick(); }
+        for _ in 0..4 { engine.Drive(); }
         assert_eq!( engine.GetPortBool( crs.Q()), Some( Reg::TRUE));
 
         // S=0, R=1, clk=0 -> still holds Q=1
         crs.SetS( &mut engine, Reg::FALSE);
         crs.SetR( &mut engine, Reg::TRUE);
-        for _ in 0..4 { engine.Tick(); }
+        for _ in 0..4 { engine.Drive(); }
         assert_eq!( engine.GetPortBool( crs.Q()), Some( Reg::TRUE));
 
         // Pulse clk=1 -> Q resets to 0, Q1 to 1
         crs.SetClk( &mut engine, Reg::TRUE);
-        for _ in 0..4 { engine.Tick(); }
+        for _ in 0..4 { engine.Drive(); }
         assert_eq!( engine.GetPortBool( crs.Q()), Some( Reg::FALSE));
         assert_eq!( engine.GetPortBool( crs.Q1()), Some( Reg::TRUE));
     }
@@ -108,28 +106,28 @@ mod _tests
         // Enable=0: latched
         dLatch.SetE( &mut engine, Reg::FALSE);
         dLatch.SetD( &mut engine, Reg::TRUE);
-        for _ in 0..4 { engine.Tick(); }
+        for _ in 0..4 { engine.Drive(); }
         assert_eq!( engine.GetPortBool( dLatch.Q()), Some( Reg::FALSE));
 
         // Enable=1: transparent ( D=1 -> Q=1)
         dLatch.SetE( &mut engine, Reg::TRUE);
         dLatch.SetD( &mut engine, Reg::TRUE);
-        for _ in 0..4 { engine.Tick(); }
+        for _ in 0..4 { engine.Drive(); }
         assert_eq!( engine.GetPortBool( dLatch.Q()), Some( Reg::TRUE));
         assert_eq!( engine.GetPortBool( dLatch.Q1()), Some( Reg::FALSE));
 
         // D=0 -> Q=0
         dLatch.SetD( &mut engine, Reg::FALSE);
-        for _ in 0..4 { engine.Tick(); }
+        for _ in 0..4 { engine.Drive(); }
         assert_eq!( engine.GetPortBool( dLatch.Q()), Some( Reg::FALSE));
         assert_eq!( engine.GetPortBool( dLatch.Q1()), Some( Reg::TRUE));
 
         // Set D=1, latch with E=0, change D=0 -> Q stays 1
         dLatch.SetD( &mut engine, Reg::TRUE);
-        for _ in 0..4 { engine.Tick(); }
+        for _ in 0..4 { engine.Drive(); }
         dLatch.SetE( &mut engine, Reg::FALSE);
         dLatch.SetD( &mut engine, Reg::FALSE);
-        for _ in 0..4 { engine.Tick(); }
+        for _ in 0..4 { engine.Drive(); }
         assert_eq!( engine.GetPortBool( dLatch.Q()), Some( Reg::TRUE));
     }
 
@@ -150,7 +148,7 @@ mod _tests
         for &( a, b, exp) in table {
             engine.SetPortBool( in1( &gate), Reg::FromBool( a));
             engine.SetPortBool( in2( &gate), Reg::FromBool( b));
-            engine.Tick();
+            engine.Drive();
             assert_eq!( engine.GetPortBool( out( &gate)), Some( exp));
         }
     }
@@ -200,11 +198,11 @@ mod _tests
         let  	mut engine = SimEngine::Create(&layout);
 
         engine.SetPortBool( gate.In(), Reg::FALSE);
-        engine.Tick();
+        engine.Drive();
         assert_eq!( engine.GetPortBool( gate.Out()), Some( Reg::TRUE));
 
         engine.SetPortBool( gate.In(), Reg::TRUE);
-        engine.Tick();
+        engine.Drive();
         assert_eq!( engine.GetPortBool( gate.Out()), Some( Reg::FALSE));
     }
 

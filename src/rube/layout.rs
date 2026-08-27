@@ -4,7 +4,7 @@ use	std::fmt;
 use	crate::{
     rube::{
         module::{ KernelKind, Module, ModuleId },
-        port::{ PortDesc, PortDir, PortId, PortType },
+        port::{ PortDesc, PortDir, PortId, PortSensitivity, PortType },
     },
     silo::{ Arr, Buff, EdgeConnect, IAccess, IEdgeConnect, Stash, U32 },
 };
@@ -95,21 +95,20 @@ impl Layout
     ) -> Buff< PortId>
     where
         P: Into< Arr< 'a, T>>,
-        F: Fn( &T) -> ( &str, PortType),
+        F: Fn( &T) -> PortDesc,
     {
         let  	arr: Arr< 'a, T> = ports.into();
         let  	mut portIds = Stash::WithCapacity( arr.Size());
         arr.Traverse( |item| {
-            let  	( portName, portType) = extract( item);
+            let  	mut desc = extract( item);
             let  	rawIdx = self._Ports.Size();
             let  	portId = if dir == PortDir::Out {
                 PortId::Out( rawIdx)
             } else {
                 PortId::In( rawIdx)
             };
-            let  	fullName = format!( "{moduleName}.{portName}");
-            let  	portDesc = PortDesc::New( fullName, portType);
-            self._Ports.Push( portDesc);
+            desc._Name = format!( "{moduleName}.{}", desc._Name);
+            self._Ports.Push( desc);
             self._PortOwners.Push( modId);
             portIds.Push( portId);
         });
@@ -130,12 +129,15 @@ impl Layout
         O: Into< Arr< 'a, PortDesc>>,
     {
         let  	modId = ModuleId( self._Modules.Size());
-        let  	inPortIds = self.AddPorts( modId, name, inPorts, PortDir::In, |d| ( &d._Name, d._Type));
-        let  	outPortIds = self.AddPorts( modId, name, outPorts, PortDir::Out, |d| ( &d._Name, d._Type));
+        let  	inArr: Arr< 'a, PortDesc> = inPorts.into();
+        let  	inSensitivities = Buff::Create( inArr.Size(), |i| inArr[i]._Sensitivity);
+        let  	inPortIds = self.AddPorts( modId, name, inArr, PortDir::In, |d| d.clone());
+        let  	outPortIds = self.AddPorts( modId, name, outPorts, PortDir::Out, |d| d.clone());
         let  	module = Module::New(
             modId,
             name,
             inPortIds,
+            inSensitivities,
             outPortIds,
             kernel,
         );
@@ -158,12 +160,14 @@ impl Layout
         O: Into< Arr< 'a, &'a str>>,
     {
         let  	modId = ModuleId( self._Modules.Size());
-        let  	inPortIds = self.AddPorts( modId, name, inPorts, PortDir::In, |&name| ( name, PortType::Bool));
-        let  	outPortIds = self.AddPorts( modId, name, outPorts, PortDir::Out, |&name| ( name, PortType::Bool));
+        let  	inPortIds = self.AddPorts( modId, name, inPorts, PortDir::In, |&name| PortDesc::Bool( name));
+        let  	inSensitivities = Buff::Create( inPortIds.Size(), |_| PortSensitivity::Any);
+        let  	outPortIds = self.AddPorts( modId, name, outPorts, PortDir::Out, |&name| PortDesc::Bool( name));
         let  	module = Module::New(
             modId,
             name,
             inPortIds,
+            inSensitivities,
             outPortIds,
             kernel,
         );

@@ -89,7 +89,7 @@ classDiagram
         -Buff~CustomModule~ _CustomModules
         -Buff~TriggerId~ _PortToTrigger
         -usize _CycleCount
-        +Tick() usize
+        +Drive() usize
         +SetPortBool(port, val)
         +SetPortU32(port, val)
         +GetPortBool(port) Option~Reg~
@@ -140,7 +140,7 @@ classDiagram
 4. **Fast Kernel Inlining**: Standard logic gates (`Nand`, `And`, `Or`, `Not`, `Xor`, `Nor`, `Xnor`) are compiled into flat `FastModule` records containing direct `TriggerId` indices.
 
 ### 3.3 Synchronous Simulation Engine (`SimEngine`)
-During `SimEngine::Tick()`:
+During `SimEngine::Drive()`:
 - **Phase 1 (Fast Gate Streaming)**: Iterates over contiguous `FastModule` structs in L1 cache and evaluates `KernelOp::Eval(in1, in2, 1)`, streaming results directly to `_Triggers[out]._Future`.
 - **Phase 2 (Custom Module Evaluation)**: Dispatches user-defined custom kernels with stack-allocated input/output buffers (for $\le 16$ ports) or `silo::Buff` (for $> 16$ ports).
 - **Phase 3 (Synchronous Advance)**: Updates all trigger state cells in contiguous memory:
@@ -194,7 +194,7 @@ adder.SetB(&mut engine, U32(5678));
 
 // Advance clock ticks for ripple carry propagation
 for _ in 0..48 {
-    engine.Tick();
+    engine.Drive();
 }
 
 assert_eq!(adder.GetSum(&engine), 6912);

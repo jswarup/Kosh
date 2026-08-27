@@ -7,7 +7,7 @@ use	crate::{
         module::{ KernelKind, KernelOp, ModuleId },
         port::PortId,
         reg::Reg,
-        trigger::{ TriggerId, TriggerMeta, TriggerState },
+        trigger::{ ITriggerWad, TriggerId, TriggerSubscriber, TriggerWad },
     },
     silo::{ Buff, EdgeBroadcast, IAccess, IEdgeBroadcast, IEdgeConnect, Stash, U32, USeg },
 };
@@ -18,6 +18,7 @@ use	crate::{
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct FastModule
 {
+    pub _ModuleId: ModuleId,
     pub _In1: TriggerId,
     pub _In2: TriggerId,
     pub _Out: TriggerId,
@@ -30,9 +31,10 @@ pub struct FastModule
 impl FastModule
 {
     #[inline]
-    pub const fn	New( in1: TriggerId, in2: TriggerId, out: TriggerId, op: KernelOp, mask: u64) -> Self
+    pub const fn	New( modId: ModuleId, in1: TriggerId, in2: TriggerId, out: TriggerId, op: KernelOp, mask: u64) -> Self
     {
         return Self {
+            _ModuleId: modId,
             _In1: in1,
             _In2: in2,
             _Out: out,
@@ -82,36 +84,18 @@ impl CustomModule
 #[derive( Clone)]
 pub struct SimEngine
 {
-    pub _Triggers: Buff< TriggerState>,
-    pub _Meta: Buff< TriggerMeta>,
+    pub _Triggers: TriggerWad,
     pub _FastModules: Buff< FastModule>,
     pub _CustomModules: Buff< CustomModule>,
     pub _PortToTrigger: Buff< TriggerId>,
+    pub _ModuleReady: Buff< bool>,
     pub _CycleCount: usize,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl SimEngine
-{
-    pub fn	New(
-        triggers: Buff< TriggerState>,
-        meta: Buff< TriggerMeta>,
-        fastModules: Buff< FastModule>,
-        customModules: Buff< CustomModule>,
-        portToTrigger: Buff< TriggerId>,
-    ) -> Self
-    {
-        return Self {
-            _Triggers: triggers,
-            _Meta: meta,
-            _FastModules: fastModules,
-            _CustomModules: customModules,
-            _PortToTrigger: portToTrigger,
-            _CycleCount: 0,
-        };
-    }
-
+{ 
     pub fn	Create( layout: &Layout) -> Self
     {
         let  	portCountU32 = layout._Ports.Size();
@@ -136,19 +120,60 @@ impl SimEngine
         });
 
         let  	groupCount = broadcast.SzGroup();
-        let  	mut triggers = Stash::WithCapacity( groupCount);
-        let  	mut meta = Stash::WithCapacity( groupCount);
+        let  	mut pastVals = Stash::WithCapacity( groupCount);
+        let  	mut currentVals = Stash::WithCapacity( groupCount);
+        let  	mut futureVals = Stash::WithCapacity( groupCount);
 
         USeg::New( U32::_0, groupCount).Traverse( |grpIdx| {
             let  	firstPortId = PortId( broadcast.FirstId( grpIdx));
             let  	rootPort = &layout._Ports[firstPortId.Index()];
             let  	defaultVal = Reg::DefaultTyped( rootPort._Type);
 
-            triggers.Push( TriggerState::New( defaultVal));
-            meta.Push( TriggerMeta::New( rootPort.Name(), rootPort._Type));
+            pastVals.Push( defaultVal);
+            currentVals.Push( defaultVal);
+            futureVals.Push( defaultVal);
         });
 
         let  	portToTrigger = broadcast.SnitchNodeGroupIds();
+
+        // Build adjacency list for TriggerWad subscribers
+        let  	mut subscribersLists = std::vec::Vec::new();
+        subscribersLists.resize( groupCount.AsUsize(), std::vec::Vec::new());
+
+        layout._Modules.Arr().Traverse( |module| {
+            let  	inLen = module._InPorts.Size();
+            crate::silo::USeg::New( U32::_0, inLen).Traverse( |i| {
+                let  	portId = module._InPorts[i];
+                let  	trigId = portToTrigger[portId.Index()];
+                let  	sens = module._InSensitivities[i];
+                if sens != crate::rube::port::PortSensitivity::None {
+                    subscribersLists[trigId.AsUsize()].push( TriggerSubscriber {
+                        _ModIndex: module._Id.0,
+                        _Sensitivity: sens,
+                    });
+                }
+            });
+        });
+
+        let  	mut subscriberSpans = Stash::WithCapacity( groupCount);
+        let  	mut subscribers = Stash::New();
+
+        for list in subscribersLists {
+            let  	start = subscribers.Size();
+            for sub in list {
+                subscribers.Push( sub);
+            }
+            let  	sz = subscribers.Size() - start;
+            subscriberSpans.Push( USeg::New( start, sz));
+        }
+
+        let  	triggers = TriggerWad::New(
+            pastVals.IntoBuff(),
+            currentVals.IntoBuff(),
+            futureVals.IntoBuff(),
+            subscriberSpans.IntoBuff(),
+            subscribers.IntoBuff(),
+        );
 
         // Step 3: Categorize Fast Modules vs Custom Modules
         let  	modCount = layout._Modules.Size();
@@ -172,7 +197,7 @@ impl SimEngine
                 let  	outTrig = outTriggers[U32( 0)];
                 let  	outPortId = module._OutPorts[U32( 0)];
                 let  	outPortType = layout._Ports[outPortId.Index()]._Type;
-                fastModules.Push( FastModule::New( in1, in2, outTrig, op, outPortType.Mask()));
+                fastModules.Push( FastModule::New( module._Id, in1, in2, outTrig, op, outPortType.Mask()));
             } else if let KernelKind::Custom( ref callback) = module._Kernel {
                 customModules.Push( CustomModule::New(
                     module._Id,
@@ -183,13 +208,16 @@ impl SimEngine
             }
         });
 
-        return SimEngine::New(
-            triggers.IntoBuff(),
-            meta.IntoBuff(),
-            fastModules.IntoBuff(),
-            customModules.IntoBuff(),
-            portToTrigger,
-        );
+        let  	moduleReady = Buff::Create( modCount, |_| false);
+
+        return  Self {
+            _Triggers: triggers,
+            _FastModules:fastModules.IntoBuff(),
+            _CustomModules: customModules.IntoBuff(),
+            _PortToTrigger: portToTrigger,
+            _ModuleReady: moduleReady,
+            _CycleCount: 0
+        };
     }
 
     /// Executes a single synchronous discrete-event simulation cycle with ZERO heap allocations:
@@ -197,52 +225,91 @@ impl SimEngine
     /// 2. Phase 2: Custom module evaluations.
     /// 3. Phase 3: Clock tick latching ( Past <- Present, Present <- Future).
     #[inline]
-    pub fn	Tick( &mut self) -> usize
+    pub fn	Drive( &mut self) -> usize
     {
-        // Phase 1: Evaluate Fast Gates ( zero-heap-allocation, direct streaming write to _Future)
-        self._FastModules.Arr().Traverse( |fm| {
-            let  	in1 = self._Triggers[fm._In1]._Current;
-            let  	in2 = self._Triggers[fm._In2]._Current;
-            self._Triggers[fm._Out]._Future = fm._Op.Eval( in1, in2, fm._Mask);
-        });
+        let  	mut readyCount = 0;
 
-        // Phase 2: Evaluate Custom Modules
-        self._CustomModules.Arr().Traverse( |cm| {
-            let  	inLen = cm._InTriggers.Size();
-            let  	outLen = cm._OutTriggers.Size();
+        if self._CycleCount == 0 {
+            // First cycle: evaluate all modules to initialize combinational logic
+            let  	sz = self._ModuleReady.Size();
+            crate::silo::USeg::New( U32::_0, sz).Traverse( |i| {
+                self._ModuleReady[i.AsUsize()] = true;
+            });
+            readyCount = sz.0;
+        } else {
+            // Reset readiness
+            let  	sz = self._ModuleReady.Size();
+            crate::silo::USeg::New( U32::_0, sz).Traverse( |i| {
+                self._ModuleReady[i.AsUsize()] = false;
+            });
 
-            // Stack-allocated buffers for modules with up to 16 inputs/outputs
-            if inLen.0 <= 16 && outLen.0 <= 16 {
-                let  	mut inBuf = [Reg::default(); 16];
-                let  	mut outBuf = [Reg::default(); 16];
-                USeg::New( U32::_0, inLen).Traverse( |k| {
-                    inBuf[k.AsUsize()] = self._Triggers[cm._InTriggers[k]]._Current;
-                });
-                USeg::New( U32::_0, outLen).Traverse( |k| {
-                    outBuf[k.AsUsize()] = self._Triggers[cm._OutTriggers[k]]._Future;
-                });
+            // Find triggers that changed and mark sensitive modules
+            crate::silo::USeg::New( U32::_0, self._Triggers.Size()).Traverse( |tIdx| {
+                let  	trigId = tIdx;
+                if self._Triggers.IsEdge( trigId) {
+                    let  	spans = self._Triggers._SubscriberSpans[tIdx];
+                    crate::silo::USeg::New( spans.First(), spans.Size()).Traverse( |sIdx| {
+                        let  	sub = self._Triggers._Subscribers[sIdx];
+                        if self._Triggers.IsSensitive( trigId, sub._Sensitivity) {
+                            let  	mIdx = sub._ModIndex.AsUsize();
+                            if !self._ModuleReady[mIdx] {
+                                self._ModuleReady[mIdx] = true;
+                                readyCount += 1;
+                            }
+                        }
+                    });
+                }
+            });
+        }
 
-                ( cm._Callback)( &inBuf[..inLen.AsUsize()], &mut outBuf[..outLen.AsUsize()]);
+        if readyCount > 0 {
+            // Phase 1: Evaluate Fast Gates ( zero-heap-allocation, direct streaming write to _Future)
+            self._FastModules.Arr().Traverse( |fm| {
+                if self._ModuleReady[fm._ModuleId.0.AsUsize()] {
+                    let  	in1 = self._Triggers._CurrentVals[fm._In1];
+                    let  	in2 = self._Triggers._CurrentVals[fm._In2];
+                    self._Triggers._FutureVals[fm._Out] = fm._Op.Eval( in1, in2, fm._Mask);
+                }
+            });
 
-                USeg::New( U32::_0, outLen).Traverse( |k| {
-                    self._Triggers[cm._OutTriggers[k]]._Future = outBuf[k.AsUsize()];
-                });
-            } else {
-                let  	inVals = Buff::Create( inLen, |k| self._Triggers[cm._InTriggers[k]]._Current);
-                let  	mut outVals = Buff::Create( outLen, |k| self._Triggers[cm._OutTriggers[k]]._Future);
+            // Phase 2: Evaluate Custom Modules
+            self._CustomModules.Arr().Traverse( |cm| {
+                if self._ModuleReady[cm._ModuleId.0.AsUsize()] {
+                    let  	inLen = cm._InTriggers.Size();
+                    let  	outLen = cm._OutTriggers.Size();
 
-                ( cm._Callback)( &inVals, &mut outVals);
+                    // Stack-allocated buffers for modules with up to 16 inputs/outputs
+                    if inLen.0 <= 16 && outLen.0 <= 16 {
+                        let  	mut inBuf = [Reg::default(); 16];
+                        let  	mut outBuf = [Reg::default(); 16];
+                        USeg::New( U32::_0, inLen).Traverse( |k| {
+                            inBuf[k.AsUsize()] = self._Triggers._CurrentVals[cm._InTriggers[k]];
+                        });
+                        USeg::New( U32::_0, outLen).Traverse( |k| {
+                            outBuf[k.AsUsize()] = self._Triggers._FutureVals[cm._OutTriggers[k]];
+                        });
 
-                USeg::New( U32::_0, outLen).Traverse( |k| {
-                    self._Triggers[cm._OutTriggers[k]]._Future = outVals[k];
-                });
-            }
-        });
+                        ( cm._Callback)( &inBuf[..inLen.AsUsize()], &mut outBuf[..outLen.AsUsize()]);
 
-        // Phase 3: Clock Tick ( Advance contiguous slice of AoS cells)
-        USeg::New( U32::_0, self._Triggers.Size()).Traverse( |i| {
-            self._Triggers[i].Advance();
-        });
+                        USeg::New( U32::_0, outLen).Traverse( |k| {
+                            self._Triggers._FutureVals[cm._OutTriggers[k]] = outBuf[k.AsUsize()];
+                        });
+                    } else {
+                        let  	inVals = Buff::Create( inLen, |k| self._Triggers._CurrentVals[cm._InTriggers[k]]);
+                        let  	mut outVals = Buff::Create( outLen, |k| self._Triggers._FutureVals[cm._OutTriggers[k]]);
+
+                        ( cm._Callback)( &inVals, &mut outVals);
+
+                        USeg::New( U32::_0, outLen).Traverse( |k| {
+                            self._Triggers._FutureVals[cm._OutTriggers[k]] = outVals[k];
+                        });
+                    }
+                }
+            });
+        }
+
+        // Phase 3: Clock Drive ( Advance contiguous slice of AoS cells)
+        self._Triggers.AdvanceAll();
 
         self._CycleCount += 1;
         return self._CycleCount;
@@ -255,13 +322,13 @@ impl SimEngine
     }
 
     #[inline]
-    pub fn	Triggers( &self) -> &Buff< TriggerState>
+    pub fn	Triggers( &self) -> &TriggerWad
     {
         return &self._Triggers;
     }
 
     #[inline]
-    pub fn	TriggersMut( &mut self) -> &mut Buff< TriggerState>
+    pub fn	TriggersMut( &mut self) -> &mut TriggerWad
     {
         return &mut self._Triggers;
     }
@@ -269,31 +336,37 @@ impl SimEngine
     #[inline]
     pub fn	GetTrigger( &self, id: TriggerId) -> Reg
     {
-        return self._Triggers[id]._Current;
+        return self._Triggers.Current( id);
     }
 
     #[inline]
     pub fn	GetPastTrigger( &self, id: TriggerId) -> Reg
     {
-        return self._Triggers[id]._Past;
+        return self._Triggers.Past( id);
     }
 
     #[inline]
     pub fn	GetFutureTrigger( &self, id: TriggerId) -> Reg
     {
-        return self._Triggers[id]._Future;
+        return self._Triggers.Future( id);
     }
 
     #[inline]
     pub fn	SetTrigger( &mut self, id: TriggerId, val: Reg)
     {
-        self._Triggers[id]._Future = val;
+        self._Triggers.SetFuture( id, val);
     }
 
     #[inline]
     pub fn	InitTrigger( &mut self, id: TriggerId, val: Reg)
     {
-        self._Triggers[id].Init( val);
+        self._Triggers.Init( id, val);
+    }
+
+    #[inline]
+    pub fn	SetTriggerImmediate( &mut self, id: TriggerId, val: Reg)
+    {
+        self._Triggers.SetImmediate( id, val);
     }
 
     #[inline]
@@ -317,7 +390,7 @@ impl SimEngine
     pub fn	SetPortValue( &mut self, portId: PortId, val: Reg) -> bool
     {
         if let Some( trigId) = self.GetPortTrigger( portId) {
-            self.InitTrigger( trigId, val);
+            self.SetTriggerImmediate( trigId, val);
             return true;
         }
         return false;
@@ -360,19 +433,19 @@ impl SimEngine
     #[inline]
     pub fn	IsPosedge( &self, id: TriggerId) -> bool
     {
-        return self._Triggers[id].IsPosedge();
+        return self._Triggers.IsPosedge( id);
     }
 
     #[inline]
     pub fn	IsNegedge( &self, id: TriggerId) -> bool
     {
-        return self._Triggers[id].IsNegedge();
+        return self._Triggers.IsNegedge( id);
     }
 
     #[inline]
     pub fn	IsEdge( &self, id: TriggerId) -> bool
     {
-        return self._Triggers[id].IsEdge();
+        return self._Triggers.IsEdge( id);
     }
 }
 

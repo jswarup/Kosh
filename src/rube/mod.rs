@@ -17,9 +17,9 @@ pub use	gates::{ AndGate, NandGate, NotGate, OrGate, XorGate };
 pub use	latches::{ CRSLatch, DLatch, RSLatch };
 pub use	layout::{ Layout, LayoutError };
 pub use	module::{ KernelKind, KernelOp, Module, ModuleId };
-pub use	port::{ PortDesc, PortDir, PortId, PortType };
+pub use	port::{ PortDesc, PortDir, PortId, PortSensitivity, PortType };
 pub use	reg::{ Reg, RegVal };
 
-pub use	trigger::{ TriggerId, TriggerMeta, TriggerState };
+pub use	trigger::{ ITriggerWad, TriggerId, TriggerWad };
 
 //---------------------------------------------------------------------------------------------------------------------------------

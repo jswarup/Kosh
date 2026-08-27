@@ -1,12 +1,7 @@
 //-- trigger.rs -------------------------------------------------------------------------------------------------------------------
-use	std::ops::BitOr;
 use	crate::{
-    rube::{
-        module::KernelOp,
-        port::PortType,
-        reg::Reg,
-    },
-    silo::{ Buff, U32, U8 },
+    rube::reg::Reg,
+    silo::U32,
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -15,128 +10,168 @@ pub type TriggerId = U32;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Hot temporal state cell for a single trigger in AoS layout.
-/// Exactly 48 bytes ( 3 x 16-byte Reg), fitting inside a single 64-byte L1 cache line.
-/// Zero pointers, zero heap allocations, Copy-able.
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
-pub struct TriggerState
+/// Hot temporal state cell for a single trigger in SoA layout.
+#[derive( Clone, Debug)]
+pub struct TriggerWad
 {
-    pub _Past: Reg,
-    pub _Current: Reg,
-    pub _Future: Reg,
+    pub _PastVals: crate::silo::Buff< Reg>,
+    pub _CurrentVals: crate::silo::Buff< Reg>,
+    pub _FutureVals: crate::silo::Buff< Reg>,
+    pub _SubscriberSpans: crate::silo::Buff< crate::silo::USeg>,
+    pub _Subscribers: crate::silo::Buff< TriggerSubscriber>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl TriggerState
+#[derive( Clone, Copy, Debug)]
+pub struct TriggerSubscriber
+{
+    pub _ModIndex: crate::silo::U32,
+    pub _Sensitivity: crate::rube::port::PortSensitivity,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait ITriggerWad
+{
+    fn	Size( &self) -> U32;
+    fn	Advance( &mut self, idx: TriggerId) -> ( Reg, Reg);
+    fn	AdvanceAll( &mut self);
+    fn	Init( &mut self, idx: TriggerId, val: Reg);
+    fn	IsEdge( &self, idx: TriggerId) -> bool;
+    fn	IsPosedge( &self, idx: TriggerId) -> bool;
+    fn	IsNegedge( &self, idx: TriggerId) -> bool;
+    fn	Past( &self, idx: TriggerId) -> Reg;
+    fn	Current( &self, idx: TriggerId) -> Reg;
+    fn	Future( &self, idx: TriggerId) -> Reg;
+    fn	SetFuture( &mut self, idx: TriggerId, val: Reg);
+    fn	SetImmediate( &mut self, idx: TriggerId, val: Reg);
+    fn	IsSensitive( &self, idx: TriggerId, sens: crate::rube::port::PortSensitivity) -> bool;
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl TriggerWad
 {
     #[inline]
-    pub const fn	New( initVal: Reg) -> Self
+    pub fn	New(
+        pastVals: crate::silo::Buff< Reg>,
+        currentVals: crate::silo::Buff< Reg>,
+        futureVals: crate::silo::Buff< Reg>,
+        subscriberSpans: crate::silo::Buff< crate::silo::USeg>,
+        subscribers: crate::silo::Buff< TriggerSubscriber>,
+    ) -> Self
     {
         return Self {
-            _Past: initVal,
-            _Current: initVal,
-            _Future: initVal,
+            _PastVals: pastVals,
+            _CurrentVals: currentVals,
+            _FutureVals: futureVals,
+            _SubscriberSpans: subscriberSpans,
+            _Subscribers: subscribers,
         };
     }
+}
 
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl ITriggerWad for TriggerWad
+{
     #[inline]
-    pub const fn	Past( &self) -> Reg
+    fn	Size( &self) -> U32
     {
-        return self._Past;
+        return self._PastVals.Size();
     }
 
     #[inline]
-    pub const fn	Current( &self) -> Reg
+    fn	Advance( &mut self, idx: TriggerId) -> ( Reg, Reg)
     {
-        return self._Current;
-    }
-
-    #[inline]
-    pub const fn	Future( &self) -> Reg
-    {
-        return self._Future;
-    }
-
-    #[inline]
-    pub fn	SetFuture( &mut self, val: Reg)
-    {
-        self._Future = val;
-    }
-
-    #[inline]
-    pub fn	Init( &mut self, val: Reg)
-    {
-        self._Past = val;
-        self._Current = val;
-        self._Future = val;
-    }
-
-    #[inline]
-    pub fn	Advance( &mut self) -> ( Reg, Reg)
-    {
-        let  	past = self._Current;
-        let  	current = self._Future;
-        self._Past = past;
-        self._Current = current;
+        let  	past = self._CurrentVals[idx];
+        let  	current = self._FutureVals[idx];
+        self._PastVals[idx] = past;
+        self._CurrentVals[idx] = current;
         return ( past, current);
     }
 
     #[inline]
-    pub const fn	IsEdge( &self) -> bool
+    fn	AdvanceAll( &mut self)
     {
-        return self._Past._Val != self._Current._Val || self._Past._X != self._Current._X;
+        crate::silo::USeg::New( U32::_0, self.Size()).Traverse( |i| {
+            let  	past = self._CurrentVals[i];
+            let  	current = self._FutureVals[i];
+            self._PastVals[i] = past;
+            self._CurrentVals[i] = current;
+        });
     }
 
     #[inline]
-    pub const fn	IsPosedge( &self) -> bool
+    fn	Init( &mut self, idx: TriggerId, val: Reg)
     {
-        return self._Past.IsFalse() && self._Current.IsTrue();
+        self._PastVals[idx] = val;
+        self._CurrentVals[idx] = val;
+        self._FutureVals[idx] = val;
     }
 
     #[inline]
-    pub const fn	IsNegedge( &self) -> bool
+    fn	IsEdge( &self, idx: TriggerId) -> bool
     {
-        return self._Past.IsTrue() && self._Current.IsFalse();
+        let  	past = self._PastVals[idx];
+        let  	current = self._CurrentVals[idx];
+        return past._Val != current._Val || past._X != current._X;
+    }
+
+    #[inline]
+    fn	IsPosedge( &self, idx: TriggerId) -> bool
+    {
+        return self._PastVals[idx].IsFalse() && self._CurrentVals[idx].IsTrue();
+    }
+
+    #[inline]
+    fn	IsNegedge( &self, idx: TriggerId) -> bool
+    {
+        return self._PastVals[idx].IsTrue() && self._CurrentVals[idx].IsFalse();
+    }
+
+    #[inline]
+    fn	Past( &self, idx: TriggerId) -> Reg
+    {
+        return self._PastVals[idx];
+    }
+
+    #[inline]
+    fn	Current( &self, idx: TriggerId) -> Reg
+    {
+        return self._CurrentVals[idx];
+    }
+
+    #[inline]
+    fn	Future( &self, idx: TriggerId) -> Reg
+    {
+        return self._FutureVals[idx];
+    }
+
+    #[inline]
+    fn	SetFuture( &mut self, idx: TriggerId, val: Reg)
+    {
+        self._FutureVals[idx] = val;
+    }
+
+    #[inline]
+    fn	SetImmediate( &mut self, idx: TriggerId, val: Reg)
+    {
+        self._CurrentVals[idx] = val;
+        self._FutureVals[idx] = val;
+    }
+
+    #[inline]
+    fn	IsSensitive( &self, idx: TriggerId, sens: crate::rube::port::PortSensitivity) -> bool
+    {
+        match sens {
+            crate::rube::port::PortSensitivity::Up => self.IsPosedge( idx),
+            crate::rube::port::PortSensitivity::Down => self.IsNegedge( idx),
+            crate::rube::port::PortSensitivity::Any => self.IsEdge( idx),
+            crate::rube::port::PortSensitivity::None => false,
+        }
     }
 }
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-/// Cold metadata stored separately from hot simulation arrays.
-#[derive( Clone, Debug)]
-pub struct TriggerMeta
-{
-    pub _Name: String,
-    pub _Type: PortType,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl TriggerMeta
-{
-    #[inline]
-    pub fn	New( name: impl Into< String>, portType: PortType) -> Self
-    {
-        return Self {
-            _Name: name.into(),
-            _Type: portType,
-        };
-    }
-
-    #[inline]
-    pub fn	Name( &self) -> &str
-    {
-        return &self._Name;
-    }
-
-    #[inline]
-    pub const fn	PortType( &self) -> PortType
-    {
-        return self._Type;
-    }
-}
-
-
 
 //---------------------------------------------------------------------------------------------------------------------------------
