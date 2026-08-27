@@ -33,7 +33,7 @@ fn	CompileWindowsManifest()
     let  	resOutput = std::path::Path::new( &outDir).join( "kosh.res");
 
     let  	mut rcPath: Option< std::path::PathBuf> = None;
-    let  	kitsBin = std::path::PathBuf::from( r"C:").join( "Program Files (x86)").join( "Windows Kits").join( "10").join( "bin");
+    let  	kitsBin = std::path::PathBuf::from( r"C:\").join( "Program Files (x86)").join( "Windows Kits").join( "10").join( "bin");
     if kitsBin.exists() {
         if let Ok( entries) = std::fs::read_dir( &kitsBin) {
             let  	mut versions: Vec< _> = entries.flatten().map( |e| e.path()).collect();
