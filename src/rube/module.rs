@@ -145,7 +145,7 @@ impl KernelKind
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Clone, Debug)]
-pub struct ModuleDescriptor
+pub struct Module
 {
     pub _Id: ModuleId,
     pub _Name: String,
@@ -156,7 +156,7 @@ pub struct ModuleDescriptor
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl ModuleDescriptor
+impl Module
 {
     pub fn	New( id: ModuleId, name: &str, inPorts: Buff< PortId>, outPorts: Buff< PortId>, kernel: KernelKind) -> Self
     {

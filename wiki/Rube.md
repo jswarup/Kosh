@@ -55,18 +55,15 @@ classDiagram
     }
 
     class Layout {
-        +Stash~ModuleDescriptor~ _Modules
+        +Stash~Module~ _Modules
         +Stash~Port~ _Ports
-        +Stash~PortId, PortId~ _Connections
+        +EdgeConnect _Connections
         +Stash~Option~PortId~~ _InDrivers
         +AddModule(name, inPorts, outPorts, kernel) ModuleId
         +AddModuleSimple(name, inPorts, outPorts, kernel) ModuleId
         +Connect(srcOut, dstIn) Result
+        +DumpDot(ostr) void
         +Compile() Result~SimEngine, LayoutError~
-    }
-
-    class NetCompiler {
-        +Compile(layout) Result~SimEngine, LayoutError~
     }
 
     class FastModule {

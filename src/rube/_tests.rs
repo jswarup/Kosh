@@ -16,7 +16,7 @@ mod _tests
             sim_context::{ ActionKind, SimContext, SimError },
             trigger::{ TriggerSense, TriggerWad },
         },
-        silo::U32,
+        silo::{ IEdgeConnect, U32 },
     };
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -486,7 +486,11 @@ mod _tests
         assert_eq!( layout.Modules().len(), 2);
         assert_eq!( layout.Ports().len(), 5);
         assert!( layout.Connect( andOut, notIn).is_ok());
-        assert_eq!( layout.Connections().len(), 1);
+        assert_eq!( layout.Connections().SzEdge(), U32( 1));
+
+        let  	mut dot = String::new();
+        layout.DumpDot( &mut dot);
+        assert!( dot.contains( "digraph"));
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

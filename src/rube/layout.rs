@@ -4,12 +4,12 @@ use	std::{ fmt, sync::Arc };
 use	crate::{
     rube::{
         engine::{ CustomModule, FastModule, SimEngine },
-        module::{ KernelKind, ModuleDescriptor, ModuleId },
+        module::{ KernelKind, Module, ModuleId },
         port::{ Port, PortDesc, PortDir, PortId, PortType },
         reg::Reg,
         trigger::{ TriggerId, TriggerMeta, TriggerState },
     },
-    silo::{ Arr, Buff, IAccess, Stash, U32 },
+    silo::{ Arr, Buff, EdgeConnect, IAccess, IEdgeConnect, Stash, U32 },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -32,19 +32,19 @@ impl fmt::Display for LayoutError
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         match self {
-            Self::DuplicateInputDriver { _DstIn, _ExistingSrc, _AttemptedSrc } => {
-                write!( f, "Input port {:?} already driven by {:?}; cannot connect {:?}", _DstIn, _ExistingSrc, _AttemptedSrc)
+            Self::DuplicateInputDriver { _DstIn: dst, _ExistingSrc: src1, _AttemptedSrc: src2 } => {
+                write!( f, "Input port {:?} already driven by {:?}, cannot also connect to {:?}", dst, src1, src2)
             }
-            Self::InvalidPortDirection { _Port, _Expected, _Actual } => {
-                write!( f, "Port {:?} has direction {:?}, expected {:?}", _Port, _Actual, _Expected)
+            Self::InvalidPortDirection { _Port: p, _Expected: exp, _Actual: act } => {
+                write!( f, "Port {:?} direction mismatch: expected {:?}, got {:?}", p, exp, act)
             }
-            Self::PortNotFound( id) => write!( f, "Port {:?} not found", id),
-            Self::ModuleNotFound( id) => write!( f, "Module {:?} not found", id),
-            Self::UnconnectedInput { _ModuleId, _PortId } => {
-                write!( f, "Input port {:?} on module {:?} is unconnected", _PortId, _ModuleId)
+            Self::PortNotFound( p) => write!( f, "Port {:?} not found", p),
+            Self::ModuleNotFound( m) => write!( f, "Module {:?} not found", m),
+            Self::UnconnectedInput { _ModuleId: m, _PortId: p } => {
+                write!( f, "Module {:?} has unconnected input port {:?}", m, p)
             }
-            Self::TypeMismatch { _Src, _SrcType, _Dst, _DstType } => {
-                write!( f, "Type mismatch connecting {:?} ({:?}) to {:?} ({:?})", _Src, _SrcType, _Dst, _DstType)
+            Self::TypeMismatch { _Src: src, _SrcType: st, _Dst: dst, _DstType: dt } => {
+                write!( f, "Type mismatch connecting {:?} ({:?}) to {:?} ({:?})", src, st, dst, dt)
             }
         }
     }
@@ -58,9 +58,9 @@ impl std::error::Error for LayoutError {}
 
 pub struct Layout
 {
-    pub _Modules: Stash< ModuleDescriptor>,
+    pub _Modules: Stash< Module>,
     pub _Ports: Stash< Port>,
-    pub _Connections: Stash<( PortId, PortId)>,
+    pub _Connections: EdgeConnect,
     pub _InDrivers: Stash< Option< PortId>>,
 }
 
@@ -84,7 +84,7 @@ impl Layout
         return Self {
             _Modules: Stash::New(),
             _Ports: Stash::New(),
-            _Connections: Stash::New(),
+            _Connections: EdgeConnect::New(),
             _InDrivers: Stash::New(),
         };
     }
@@ -131,7 +131,7 @@ impl Layout
         let  	modId = ModuleId( self._Modules.Size());
         let  	inPortIds = self.AddPorts( modId, name, inPorts, PortDir::In, |d| ( &d._Name, d._Type));
         let  	outPortIds = self.AddPorts( modId, name, outPorts, PortDir::Out, |d| ( &d._Name, d._Type));
-        let  	module = ModuleDescriptor::New(
+        let  	module = Module::New(
             modId,
             name,
             inPortIds,
@@ -159,7 +159,7 @@ impl Layout
         let  	modId = ModuleId( self._Modules.Size());
         let  	inPortIds = self.AddPorts( modId, name, inPorts, PortDir::In, |&name| ( name, PortType::Bool));
         let  	outPortIds = self.AddPorts( modId, name, outPorts, PortDir::Out, |&name| ( name, PortType::Bool));
-        let  	module = ModuleDescriptor::New(
+        let  	module = Module::New(
             modId,
             name,
             inPortIds,
@@ -251,12 +251,12 @@ impl Layout
         }
 
         self._InDrivers[dstIdx] = Some( srcOut);
-        self._Connections.Push(( srcOut, dstIn));
+        self._Connections.RegisterEdge( srcOut.0, dstIn.0, false);
         return Ok( ());
     }
 
     #[inline]
-    pub fn	Modules( &self) -> &[ModuleDescriptor]
+    pub fn	Modules( &self) -> &[Module]
     {
         return self._Modules.Slice();
     }
@@ -268,9 +268,15 @@ impl Layout
     }
 
     #[inline]
-    pub fn	Connections( &self) -> &[( PortId, PortId)]
+    pub fn	Connections( &self) -> &EdgeConnect
     {
-        return self._Connections.Slice();
+        return &self._Connections;
+    }
+
+    #[inline]
+    pub fn	DumpDot( &self, ostr: &mut String)
+    {
+        self._Connections.DumpDot( ostr);
     }
 
     pub fn	Compile( &self) -> Result< SimEngine, LayoutError>
@@ -299,9 +305,9 @@ impl Layout
             }
         }
 
-        for &( srcOut, dstIn) in self._Connections.Slice() {
-            union( &mut parent, srcOut.0, dstIn.0);
-        }
+        self._Connections.TraverseAll( |_, srcOut, dstIn, _| {
+            union( &mut parent, srcOut, dstIn);
+        });
 
         // Step 2: Map canonical net roots to AoS TriggerState & TriggerMeta via direct indexed array
         let  	mut rootToTrigger = Buff::< Option< TriggerId>>::Create( portCountU32, |_| None);

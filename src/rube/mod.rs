@@ -16,7 +16,7 @@ pub use	engine::{ CustomModule, FastModule, SimEngine };
 pub use	gates::{ AndGate, NandGate, NotGate, OrGate, XorGate };
 pub use	latches::{ CRSLatch, DLatch, RSLatch };
 pub use	layout::{ Layout, LayoutError };
-pub use	module::{ KernelKind, KernelOp, ModuleDescriptor, ModuleId };
+pub use	module::{ KernelKind, KernelOp, Module, ModuleId };
 pub use	port::{ Port, PortDesc, PortDir, PortId, PortType, TopologyPort };
 pub use	reg::{ Reg, RegVal };
 pub use	sim_context::{ ActionId, ActionKind, SimContext, SimError, TriggerTarget };
