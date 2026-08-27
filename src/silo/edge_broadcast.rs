@@ -1,5 +1,5 @@
 //--- EdgeBroadcast --------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Buff, EdgeConnect, IEdgeConnect, Stash, U32 };
+use	crate::silo::{ Buff, EdgeConnect, IEdgeConnect, Stash, U32, USeg };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -110,17 +110,16 @@ impl IEdgeBroadcast for EdgeBroadcast
 
             let  	newSz = nextStack.Size();
             let  	mut cur_idx = curSz;
-            for i in curSz.0..newSz.0 {
-                let  	node = nextStack[ U32( i)];
+            USeg::New( curSz, newSz - curSz).Traverse( |i| {
+                let  	node = nextStack[ i];
                 let  	grId = self.GroupId( node);
-                if grId == curGroup {
-                    continue;
+                if grId != curGroup {
+                    assert!( grId == U32::_X);
+                    nextStack[ cur_idx] = node;
+                    self._NodeGroupIds[ node.Grab( 0, 31)] = curGroup;
+                    cur_idx = cur_idx + U32::_1;
                 }
-                assert!( grId == U32::_X);
-                nextStack[ cur_idx] = node;
-                self._NodeGroupIds[ node.Grab( 0, 31)] = curGroup;
-                cur_idx = cur_idx + U32::_1;
-            }
+            });
             nextStack.PopToSize( cur_idx);
         }
     }
@@ -130,8 +129,8 @@ impl IEdgeBroadcast for EdgeBroadcast
         Self: Sized,
         F: FnMut( U32, U32, bool, &mut Stash< U32>),
     {
-        for i in 0..self._NodeGroupIds.len() {
-            self.DoBroadcast( U32( i as u32), &mut nextDests);
-        }
+        USeg::New( U32::_0, self._NodeGroupIds.Size()).Traverse( |i| {
+            self.DoBroadcast( i, &mut nextDests);
+        });
     }
 }

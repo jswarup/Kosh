@@ -8,7 +8,7 @@ use	crate::{
         reg::Reg,
         trigger::{ TriggerId, TriggerMeta, TriggerState },
     },
-    silo::{ Buff, U32 },
+    silo::{ Buff, IAccess, U32, USeg },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -119,16 +119,14 @@ impl SimEngine
     pub fn	Tick( &mut self) -> usize
     {
         // Phase 1: Evaluate Fast Gates ( zero-heap-allocation, direct streaming write to _Future)
-        for i in 0..self._FastModules.Size().0 {
-            let  	fm = self._FastModules[U32( i)];
+        self._FastModules.Arr().Traverse( |fm| {
             let  	in1 = self._Triggers[fm._In1]._Current;
             let  	in2 = self._Triggers[fm._In2]._Current;
             self._Triggers[fm._Out]._Future = fm._Op.Eval( in1, in2, fm._Mask);
-        }
+        });
 
         // Phase 2: Evaluate Custom Modules
-        for i in 0..self._CustomModules.Size().0 {
-            let  	cm = &self._CustomModules[U32( i)];
+        self._CustomModules.Arr().Traverse( |cm| {
             let  	inLen = cm._InTriggers.Size();
             let  	outLen = cm._OutTriggers.Size();
 
@@ -136,34 +134,34 @@ impl SimEngine
             if inLen.0 <= 16 && outLen.0 <= 16 {
                 let  	mut inBuf = [Reg::default(); 16];
                 let  	mut outBuf = [Reg::default(); 16];
-                for k in 0..inLen.0 {
-                    inBuf[k as usize] = self._Triggers[cm._InTriggers[U32( k)]]._Current;
-                }
-                for k in 0..outLen.0 {
-                    outBuf[k as usize] = self._Triggers[cm._OutTriggers[U32( k)]]._Future;
-                }
+                USeg::New( U32::_0, inLen).Traverse( |k| {
+                    inBuf[k.AsUsize()] = self._Triggers[cm._InTriggers[k]]._Current;
+                });
+                USeg::New( U32::_0, outLen).Traverse( |k| {
+                    outBuf[k.AsUsize()] = self._Triggers[cm._OutTriggers[k]]._Future;
+                });
 
-                ( cm._Callback)( &inBuf[..inLen.0 as usize], &mut outBuf[..outLen.0 as usize]);
+                ( cm._Callback)( &inBuf[..inLen.AsUsize()], &mut outBuf[..outLen.AsUsize()]);
 
-                for k in 0..outLen.0 {
-                    self._Triggers[cm._OutTriggers[U32( k)]]._Future = outBuf[k as usize];
-                }
+                USeg::New( U32::_0, outLen).Traverse( |k| {
+                    self._Triggers[cm._OutTriggers[k]]._Future = outBuf[k.AsUsize()];
+                });
             } else {
                 let  	inVals = Buff::Create( inLen, |k| self._Triggers[cm._InTriggers[k]]._Current);
                 let  	mut outVals = Buff::Create( outLen, |k| self._Triggers[cm._OutTriggers[k]]._Future);
 
                 ( cm._Callback)( &inVals, &mut outVals);
 
-                for k in 0..outLen.0 {
-                    self._Triggers[cm._OutTriggers[U32( k)]]._Future = outVals[U32( k)];
-                }
+                USeg::New( U32::_0, outLen).Traverse( |k| {
+                    self._Triggers[cm._OutTriggers[k]]._Future = outVals[k];
+                });
             }
-        }
+        });
 
         // Phase 3: Clock Tick ( Advance contiguous slice of AoS cells)
-        for i in 0..self._Triggers.Size().0 {
-            self._Triggers[U32( i)].Advance();
-        }
+        USeg::New( U32::_0, self._Triggers.Size()).Traverse( |i| {
+            self._Triggers[i].Advance();
+        });
 
         self._CycleCount += 1;
         return self._CycleCount;

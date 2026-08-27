@@ -1,5 +1,5 @@
 //-- scene.rs ---------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Buff, Stash, U32 };
+use	crate::silo::{ Arr, Buff, IAccess, Stash, U32, USeg };
 use	crate::swarm::{ SwarmEngine, SwarmCluster, SwarmError };
 use	serde::{ Serialize, Deserialize };
 
@@ -254,9 +254,9 @@ impl SceneGraph
     pub fn	ProjectPoints( &self, width: f32, height: f32, dpr: f32) -> Buff< ( f32, f32, f32, f32, f32)>
     {
         let  	( center, scaleNorm) = self.CalcNormalization();
-        let  	mut resultStash = Stash::WithCapacity( U32( self._Points.len() as u32));
+        let  	mut resultStash = Stash::WithCapacity( self._Points.Size());
 
-        for pt in &self._Points {
+        self._Points.Arr().Traverse( |pt| {
             let  	nx = ( pt[0] - center[0]) * scaleNorm;
             let  	ny = ( pt[1] - center[1]) * scaleNorm;
             let  	nz = ( pt[2] - center[2]) * scaleNorm;
@@ -269,7 +269,7 @@ impl SceneGraph
             let  	alpha = 0.5 + depthFactor * 0.5;
 
             resultStash.Push( ( px, py, radius, coreRadius, alpha));
-        }
+        });
 
         resultStash.IntoBuff()
     }
@@ -301,17 +301,18 @@ impl SceneGraph
         ];
 
         let  	mut projectedVerts = [ ( 0.0f32, 0.0f32); 8 ];
-        for ( idx, v) in verts.iter().enumerate() {
+        USeg::New( U32::_0, U32( 8)).Traverse( |idx| {
+            let  	v = verts[idx.AsUsize()];
             let  	( px, py, _) = self._Camera.Project( v[0], v[1], v[2], width, height);
-            projectedVerts[idx] = ( px, py);
-        }
+            projectedVerts[idx.AsUsize()] = ( px, py);
+        });
 
         let  	mut linesStash = Stash::WithCapacity( U32( 12));
-        for ( i, j) in &edges {
-            let  	p1 = projectedVerts[*i];
-            let  	p2 = projectedVerts[*j];
+        ( &edges).Traverse( |&( i, j)| {
+            let  	p1 = projectedVerts[i];
+            let  	p2 = projectedVerts[j];
             linesStash.Push( ( p1, p2));
-        }
+        });
 
         linesStash.IntoBuff()
     }
@@ -355,15 +356,15 @@ impl SceneGraph
         let  	camParams = self.CameraParams( width, height);
         let  	rawProjected = engine.RunCameraTransform( &self._Points, &camParams, spirvBytes)?;
 
-        let  	mut resultStash = Stash::WithCapacity( U32( rawProjected.len() as u32));
-        for proj in &rawProjected {
+        let  	mut resultStash = Stash::WithCapacity( rawProjected.Size());
+        rawProjected.Arr().Traverse( |proj| {
             let  	px = proj[0];
             let  	py = proj[1];
             let  	radius = proj[2] * dpr;
             let  	coreRadius = proj[3] * dpr;
             let  	alpha = proj[4];
             resultStash.Push( ( px, py, radius, coreRadius, alpha));
-        }
+        });
 
         Ok( resultStash.IntoBuff())
     }
@@ -403,12 +404,12 @@ impl SceneGraph
         ];
 
         let  	mut linesStash = Stash::WithCapacity( U32( 12));
-        if rawProjected.len() >= 8 {
-            for ( i, j) in &edges {
-                let  	p1 = ( rawProjected[*i][0], rawProjected[*i][1]);
-                let  	p2 = ( rawProjected[*j][0], rawProjected[*j][1]);
+        if rawProjected.Size() >= U32( 8) {
+            ( &edges).Traverse( |&( i, j)| {
+                let  	p1 = ( rawProjected[U32( i as u32)][0], rawProjected[U32( i as u32)][1]);
+                let  	p2 = ( rawProjected[U32( j as u32)][0], rawProjected[U32( j as u32)][1]);
                 linesStash.Push( ( p1, p2));
-            }
+            });
         }
 
         Ok( linesStash.IntoBuff())
@@ -451,15 +452,15 @@ impl SceneGraph
         let  	camParams = self.CameraParams( width, height);
         let  	rawProjected = cluster.RunCameraTransformSharded( &self._Points, &camParams, spirvBytes)?;
 
-        let  	mut resultStash = Stash::WithCapacity( U32( rawProjected.len() as u32));
-        for proj in &rawProjected {
+        let  	mut resultStash = Stash::WithCapacity( rawProjected.Size());
+        rawProjected.Arr().Traverse( |proj| {
             let  	px = proj[0];
             let  	py = proj[1];
             let  	radius = proj[2] * dpr;
             let  	coreRadius = proj[3] * dpr;
             let  	alpha = proj[4];
             resultStash.Push( ( px, py, radius, coreRadius, alpha));
-        }
+        });
 
         Ok( resultStash.IntoBuff())
     }

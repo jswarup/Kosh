@@ -3,6 +3,7 @@
 ## Performance Guidelines
 - **Avoid Box Allocation in AST Trees**: When designing tree-based data structures (like ASTs, shard trees, term trees), prefer stack-allocated references (`&'a DynINode<'a>`) rather than owned heap allocations (`Box<DynINode<'a>>`) to eliminate heap allocation overhead and maximize CPU cache locality.
 - **Inline Shard Construction**: Implement AST node constructor logic via macro expansions or direct inline struct declarations to trigger temporary lifetime extension in the caller's stack frame. Avoid helper functions that return references to local variables/temporaries.
+- **Prefer `Traverse` / `USeg` Over `for` Loops**: Prefer using `.Arr().Traverse( |item| { ... })`, `arr.Traverse( |item| { ... })`, or `USeg::New( U32::_0, count).Traverse( |i| { ... })` instead of native Rust `for ... in ...` loops and index conversions (`0..count.0`). This keeps `U32` as the native indexing type and adheres to the project's zero-allocation iteration patterns.
 
 ## Typing Guidelines
 - **Use Project-Defined Numeric Types**: Throughout the project, use the custom numeric types defined in `uint.rs` (e.g. `U8`, `U16`, `U32`, `USz`) instead of Rust's native primitive types (`u8`, `u16`, `u32`, `usize`) as far as possible.

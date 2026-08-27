@@ -5,7 +5,7 @@ use	crate::{
         reg::Reg,
         trigger::{ TriggerId, TriggerSense, TriggerWad },
     },
-    silo::{ Arr, Buff, Stash, U32 },
+    silo::{ Arr, Buff, IAccess, Stash, U32, USeg },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -185,7 +185,7 @@ impl SimContext
     {
         let  	actId = self._Actions.Size();
         self._Actions.Push( action);
-        for &( triggerId, sense) in sensitivities.into() {
+        sensitivities.into().Traverse( |&( triggerId, sense)| {
             let  	idx = triggerId;
             if idx >= self._TriggerSensitivities.Size() {
                 let  	newSize = idx + U32( 1);
@@ -195,7 +195,7 @@ impl SimContext
                 _Sense: sense,
                 _ActionId: actId,
             });
-        }
+        });
         let  	word = ( actId.0 / 64) as usize;
         while word >= self._PendingMask.Size().AsUsize() {
             self._PendingMask.Push( 0);
@@ -222,9 +222,8 @@ impl SimContext
             // Step 1: Advance armed triggers and collect triggered actions
             std::mem::swap( &mut self._ArmedQueue, &mut self._CurrArmed);
 
-            let  	numArmed = self._CurrArmed.Size().0;
-            for i in 0..numArmed {
-                let  	triggerId = self._CurrArmed[U32( i)];
+            USeg::New( U32::_0, self._CurrArmed.Size()).Traverse( |i| {
+                let  	triggerId = self._CurrArmed[i];
                 let  	idx = triggerId.0 as usize;
                 let  	word = idx / 64;
                 let  	bit = 1u64 << ( idx % 64);
@@ -235,32 +234,30 @@ impl SimContext
                         self._Triggers.Advance( triggerId);
 
                         if triggerId < self._TriggerSensitivities.Size() {
-                            let  	numTargets = self._TriggerSensitivities[triggerId].Size().0;
-                            for t in 0..numTargets {
-                                let  	target = self._TriggerSensitivities[triggerId][U32( t)];
+                            USeg::New( U32::_0, self._TriggerSensitivities[triggerId].Size()).Traverse( |t| {
+                                let  	target = self._TriggerSensitivities[triggerId][t];
                                 if target._Sense.Matches( &self._Triggers, triggerId) {
                                     self._QueueAction( target._ActionId);
                                 }
-                            }
+                            });
                         }
                     }
                 }
-            }
+            });
             self._CurrArmed.Clear();
 
             // Step 2: Fire all pending actions
             std::mem::swap( &mut self._PendingQueue, &mut self._CurrPending);
 
-            let  	numPending = self._CurrPending.Size().0;
-            for i in 0..numPending {
-                let  	actId = self._CurrPending[U32( i)];
+            USeg::New( U32::_0, self._CurrPending.Size()).Traverse( |i| {
+                let  	actId = self._CurrPending[i];
                 let  	word = ( actId.0 / 64) as usize;
                 let  	bit = 1u64 << ( actId.0 % 64);
                 if word < self._PendingMask.Size().AsUsize() {
                     self._PendingMask[U32( word as u32)] &= !bit;
                 }
                 self._FireAction( actId);
-            }
+            });
             self._CurrPending.Clear();
         }
 

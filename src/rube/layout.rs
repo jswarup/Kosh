@@ -7,9 +7,9 @@ use	crate::{
         module::{ KernelKind, Module, ModuleId },
         port::{ Port, PortDesc, PortDir, PortId, PortType },
         reg::Reg,
-        trigger::{ TriggerId, TriggerMeta, TriggerState },
+        trigger::{ TriggerMeta, TriggerState },
     },
-    silo::{ Arr, Buff, EdgeBroadcast, EdgeConnect, IAccess, IEdgeBroadcast, IEdgeConnect, Stash, U32 },
+    silo::{ Arr, Buff, EdgeBroadcast, EdgeConnect, IAccess, IEdgeBroadcast, IEdgeConnect, Stash, U32, USeg },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -32,19 +32,19 @@ impl fmt::Display for LayoutError
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         match self {
-            Self::DuplicateInputDriver { _DstIn: dst, _ExistingSrc: src1, _AttemptedSrc: src2 } => {
-                write!( f, "Input port {:?} already driven by {:?}, cannot also connect to {:?}", dst, src1, src2)
+            LayoutError::DuplicateInputDriver { _DstIn, _ExistingSrc, _AttemptedSrc } => {
+                write!( f, "Input port {:?} already driven by {:?}, cannot connect from {:?}", _DstIn, _ExistingSrc, _AttemptedSrc)
             }
-            Self::InvalidPortDirection { _Port: p, _Expected: exp, _Actual: act } => {
-                write!( f, "Port {:?} direction mismatch: expected {:?}, got {:?}", p, exp, act)
+            LayoutError::InvalidPortDirection { _Port, _Expected, _Actual } => {
+                write!( f, "Port {:?} expected {:?} but is {:?}", _Port, _Expected, _Actual)
             }
-            Self::PortNotFound( p) => write!( f, "Port {:?} not found", p),
-            Self::ModuleNotFound( m) => write!( f, "Module {:?} not found", m),
-            Self::UnconnectedInput { _ModuleId: m, _PortId: p } => {
-                write!( f, "Module {:?} has unconnected input port {:?}", m, p)
+            LayoutError::PortNotFound( portId) => write!( f, "Port {:?} not found", portId),
+            LayoutError::ModuleNotFound( modId) => write!( f, "Module {:?} not found", modId),
+            LayoutError::UnconnectedInput { _ModuleId, _PortId } => {
+                write!( f, "Module {:?} has unconnected input port {:?}", _ModuleId, _PortId)
             }
-            Self::TypeMismatch { _Src: src, _SrcType: st, _Dst: dst, _DstType: dt } => {
-                write!( f, "Type mismatch connecting {:?} ({:?}) to {:?} ({:?})", src, st, dst, dt)
+            LayoutError::TypeMismatch { _Src, _SrcType, _Dst, _DstType } => {
+                write!( f, "Type mismatch connecting {:?} ({:?}) to {:?} ({:?})", _Src, _SrcType, _Dst, _DstType)
             }
         }
     }
@@ -58,10 +58,10 @@ impl std::error::Error for LayoutError {}
 
 pub struct Layout
 {
-    pub _Modules: Stash< Module>,
-    pub _Ports: Stash< Port>,
-    pub _Connections: EdgeConnect,
-    pub _InDrivers: Stash< Option< PortId>>,
+    _Modules: Stash< Module>,
+    _Ports: Stash< Port>,
+    _Connections: EdgeConnect,
+    _InDrivers: Stash< Option< PortId>>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -70,7 +70,7 @@ impl Default for Layout
 {
     fn	default() -> Self
     {
-        return Self::New();
+        Self::New()
     }
 }
 
@@ -78,15 +78,14 @@ impl Default for Layout
 
 impl Layout
 {
-    #[inline]
     pub fn	New() -> Self
     {
-        return Self {
+        Self {
             _Modules: Stash::New(),
             _Ports: Stash::New(),
             _Connections: EdgeConnect::New(),
             _InDrivers: Stash::New(),
-        };
+        }
     }
 
     fn	AddPorts< 'a, T: 'a, P, F>(
@@ -99,11 +98,11 @@ impl Layout
     ) -> Buff< PortId>
     where
         P: Into< Arr< 'a, T>>,
-        F: Fn( &'a T) -> ( &str, PortType),
+        F: Fn( &T) -> ( &str, PortType),
     {
         let  	arr: Arr< 'a, T> = ports.into();
         let  	mut portIds = Stash::WithCapacity( arr.Size());
-        for item in arr {
+        arr.Traverse( |item| {
             let  	( portName, portType) = extract( item);
             let  	rawIdx = self._Ports.Size();
             let  	portId = if dir == PortDir::Out {
@@ -116,7 +115,7 @@ impl Layout
             self._Ports.Push( port);
             self._InDrivers.Push( None);
             portIds.Push( portId);
-        }
+        });
         return portIds.IntoBuff();
     }
 
@@ -299,26 +298,26 @@ impl Layout
 
         // Step 2: Traverse all connected ports using EdgeBroadcast to partition nets into unique trigger groups
         let  	mut broadcast = EdgeBroadcast::New( portCountU32);
-        for port in self._Ports.Slice() {
+        self._Ports.Arr().Traverse( |port| {
             broadcast.DoBroadcast( port._Id.0, |elemId, _, _, nextStack| {
                 self._Connections.NodeTraverse( elemId, |nextElem| {
                     nextStack.Push( nextElem);
                 });
             });
-        }
+        });
 
         let  	groupCount = broadcast.SzGroup();
         let  	mut triggers = Stash::WithCapacity( groupCount);
         let  	mut meta = Stash::WithCapacity( groupCount);
 
-        for grpIdx in 0..groupCount.0 {
-            let  	firstPortId = PortId( broadcast.FirstId( U32( grpIdx)));
+        USeg::New( U32::_0, groupCount).Traverse( |grpIdx| {
+            let  	firstPortId = PortId( broadcast.FirstId( grpIdx));
             let  	rootPort = &self._Ports[firstPortId.Index()];
             let  	defaultVal = Reg::DefaultTyped( rootPort._PortType);
 
             triggers.Push( TriggerState::New( defaultVal));
             meta.Push( TriggerMeta::New( rootPort.Name(), rootPort._PortType));
-        }
+        });
 
         let  	portToTrigger = broadcast.SnitchNodeGroupIds();
 
@@ -327,22 +326,16 @@ impl Layout
         let  	mut fastModules = Stash::WithCapacity( modCount);
         let  	mut customModules = Stash::New();
 
-        for modIdx in 0..modCount.0 {
-            let  	module = &self._Modules[U32( modIdx)];
-
+        self._Modules.Arr().Traverse( |module| {
             let  	mut inTriggers = Stash::WithCapacity( module._InPorts.Size());
-            for i in 0..module._InPorts.Size().0 {
-                let  	portId = module._InPorts[U32( i)];
-                let  	trigId = portToTrigger[portId.Index()];
-                inTriggers.Push( trigId);
-            }
+            module._InPorts.Arr().Traverse( |portId| {
+                inTriggers.Push( portToTrigger[portId.Index()]);
+            });
 
             let  	mut outTriggers = Stash::WithCapacity( module._OutPorts.Size());
-            for i in 0..module._OutPorts.Size().0 {
-                let  	portId = module._OutPorts[U32( i)];
-                let  	trigId = portToTrigger[portId.Index()];
-                outTriggers.Push( trigId);
-            }
+            module._OutPorts.Arr().Traverse( |portId| {
+                outTriggers.Push( portToTrigger[portId.Index()]);
+            });
 
             if let Some( op) = module._Kernel.ToFastOp() {
                 let  	in1 = inTriggers[U32( 0)];
@@ -359,7 +352,7 @@ impl Layout
                     Arc::clone( callback),
                 ));
             }
-        }
+        });
 
         return Ok( SimEngine::New(
             triggers.IntoBuff(),

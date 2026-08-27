@@ -23,6 +23,7 @@ This project has strict, non-standard Rust formatting rules defined in `FORMATTI
    - **Function / Method Arguments**: `camelCase` (e.g. `val`, `initialVal`, `mxVert`, `biDirFlg`, `inSig`).
    - **Local Variables**: `camelCase` preceded by `let  \t` (two spaces + tab, e.g. `let  \tnameStr = `, `let  \tnewSize = `).
    - **Struct Data Members (Fields)**: Preceded by an underscore `_` followed by `PascalCase` (e.g. `_Data`, `_Size`, `_Names`, `_PastVal`, `_CurrentVal`, `_FutureVal`, `_X`).
+10. **Iteration & Loops**: Prefer `.Arr().Traverse( |item| { ... })`, `arr.Traverse( |item| { ... })`, or `USeg::New( U32::_0, count).Traverse( |i| { ... })` over native `for ... in ...` loops and integer range conversions (`0..count.0`).
 
 When modifying files, please ensure you don't inadvertently reformat existing code that already complies with these rules. Be extremely careful when using automated formatting tools like `rustfmt`, as they will likely destroy these custom formatting rules.
 
