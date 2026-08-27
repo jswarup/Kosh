@@ -67,12 +67,12 @@ impl IEdgeBroadcast for EdgeBroadcast
  
     fn	GroupId( &self, c1: U32) -> U32
     {
-        self._NodeGroupIds[ c1.0 as usize]
+        self._NodeGroupIds[ c1.Grab( 0, 31)]
     }
 
     fn	FirstId( &self, g1: U32) -> U32
     {
-        self._FirstNodeIds.Slice()[ g1.0 as usize]
+        self._FirstNodeIds[ g1]
     }
 
     fn	SnitchNodeGroupIds( &mut self) -> Buff< U32>
@@ -104,21 +104,21 @@ impl IEdgeBroadcast for EdgeBroadcast
                 self._FirstNodeIds.Push( cId);
                 curGroup = self._FirstNodeIds.Size() - U32::_1;
             }
-            self._NodeGroupIds[ cId.0 as usize] = curGroup;
+            self._NodeGroupIds[ cId.Grab( 0, 31)] = curGroup;
 
             nextDests( cId, curGroup, newFlg, &mut nextStack);
 
             let  	newSz = nextStack.Size();
             let  	mut cur_idx = curSz;
             for i in curSz.0..newSz.0 {
-                let  	node = nextStack.Slice()[ i as usize];
+                let  	node = nextStack[ U32( i)];
                 let  	grId = self.GroupId( node);
                 if grId == curGroup {
                     continue;
                 }
                 assert!( grId == U32::_X);
-                nextStack.SliceMut()[ cur_idx.0 as usize] = node;
-                self._NodeGroupIds[ node.0 as usize] = curGroup;
+                nextStack[ cur_idx] = node;
+                self._NodeGroupIds[ node.Grab( 0, 31)] = curGroup;
                 cur_idx = cur_idx + U32::_1;
             }
             nextStack.PopToSize( cur_idx);

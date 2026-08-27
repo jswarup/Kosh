@@ -9,7 +9,7 @@ use	crate::{
         reg::Reg,
         trigger::{ TriggerId, TriggerMeta, TriggerState },
     },
-    silo::{ Arr, Buff, EdgeConnect, IAccess, IEdgeConnect, Stash, U32 },
+    silo::{ Arr, Buff, EdgeBroadcast, EdgeConnect, IAccess, IEdgeBroadcast, IEdgeConnect, Stash, U32 },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -256,7 +256,7 @@ impl Layout
         }
 
         self._InDrivers[dstIdx] = Some( srcOut);
-        self._Connections.RegisterEdge( srcIdx, dstIdx, false);
+        self._Connections.RegisterEdge( srcOut.0, dstIn.0, true);
         return Ok( ());
     }
 
@@ -279,64 +279,48 @@ impl Layout
     }
 
     #[inline]
+    pub fn	ConnectionsMut( &mut self) -> &mut EdgeConnect
+    {
+        return &mut self._Connections;
+    }
+
+    #[inline]
     pub fn	DumpDot( &self, ostr: &mut String)
     {
         self._Connections.DumpDot( ostr);
     }
 
-    pub fn	Compile( &self) -> Result< SimEngine, LayoutError>
+    pub fn	Compile( &mut self) -> Result< SimEngine, LayoutError>
     {
         let  	portCountU32 = self._Ports.Size();
 
-        // Step 1: Disjoint Set Union ( DSU / Union-Find) to merge connected nets with path compression
-        let  	mut parent = Buff::Create( portCountU32, |i| i);
+        // Step 1: Compact connection graph for CSR binary search / segments
+        self._Connections.Compact();
 
-        fn	find( p: &mut Buff< U32>, i: U32) -> U32
-        {
-            if p[i] == i {
-                return i;
-            }
-            let  	root = find( p, p[i]);
-            p[i] = root;
-            return root;
+        // Step 2: Traverse all connected ports using EdgeBroadcast to partition nets into unique trigger groups
+        let  	mut broadcast = EdgeBroadcast::New( portCountU32);
+        for port in self._Ports.Slice() {
+            broadcast.DoBroadcast( port._Id.0, |elemId, _, _, nextStack| {
+                self._Connections.NodeTraverse( elemId, |nextElem| {
+                    nextStack.Push( nextElem);
+                });
+            });
         }
 
-        fn	union( p: &mut Buff< U32>, a: U32, b: U32)
-        {
-            let  	rootA = find( p, a);
-            let  	rootB = find( p, b);
-            if rootA != rootB {
-                p[rootB] = rootA;
-            }
+        let  	groupCount = broadcast.SzGroup();
+        let  	mut triggers = Stash::WithCapacity( groupCount);
+        let  	mut meta = Stash::WithCapacity( groupCount);
+
+        for grpIdx in 0..groupCount.0 {
+            let  	firstPortId = PortId( broadcast.FirstId( U32( grpIdx)));
+            let  	rootPort = &self._Ports[firstPortId.Index()];
+            let  	defaultVal = Reg::DefaultTyped( rootPort._PortType);
+
+            triggers.Push( TriggerState::New( defaultVal));
+            meta.Push( TriggerMeta::New( rootPort.Name(), rootPort._PortType));
         }
 
-        self._Connections.TraverseAll( |_, srcOut, dstIn, _| {
-            union( &mut parent, srcOut, dstIn);
-        });
-
-        // Step 2: Map canonical net roots to AoS TriggerState & TriggerMeta via direct indexed array
-        let  	mut rootToTrigger = Buff::< Option< TriggerId>>::Create( portCountU32, |_| None);
-        let  	mut triggers = Stash::WithCapacity( portCountU32);
-        let  	mut meta = Stash::WithCapacity( portCountU32);
-        let  	mut portToTrigger = Stash::WithCapacity( portCountU32);
-
-        for portIdx in 0..portCountU32.0 {
-            let  	pId = U32( portIdx);
-            let  	root = find( &mut parent, pId);
-            let  	trigId = if let Some( existingId) = rootToTrigger[root] {
-                existingId
-            } else {
-                let  	rootPort = &self._Ports[root];
-                let  	newId = triggers.Size();
-                let  	defaultVal = Reg::DefaultTyped( rootPort._PortType);
-
-                triggers.Push( TriggerState::New( defaultVal));
-                meta.Push( TriggerMeta::New( rootPort.Name(), rootPort._PortType));
-                rootToTrigger[root] = Some( newId);
-                newId
-            };
-            portToTrigger.Push( trigId);
-        }
+        let  	portToTrigger = broadcast.SnitchNodeGroupIds();
 
         // Step 3: Categorize Fast Modules vs Custom Modules
         let  	modCount = self._Modules.Size();
@@ -382,7 +366,7 @@ impl Layout
             meta.IntoBuff(),
             fastModules.IntoBuff(),
             customModules.IntoBuff(),
-            portToTrigger.IntoBuff(),
+            portToTrigger,
         ));
     }
 }
