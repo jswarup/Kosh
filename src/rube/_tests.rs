@@ -10,13 +10,13 @@ mod _tests
             gates::{ AndGate, NandGate, NotGate, OrGate, XorGate },
             latches::{ CRSLatch, DLatch, RSLatch },
             layout::{ Layout, LayoutError },
-            module::KernelKind,
-            port::{ PortDesc, PortId, PortLayout, PortType, TopologyPort },
+            module::{ KernelKind, KernelOp },
+            port::{ PortDesc, PortId, PortType, TopologyPort },
             reg::Reg,
-            sim_context::{ ActionKind, SimContext },
+            sim_context::{ ActionKind, SimContext, SimError },
             trigger::{ TriggerSense, TriggerWad },
         },
-        silo::{ IEdgeBroadcast, IEdgeConnect, U32 },
+        silo::U32,
     };
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -400,11 +400,65 @@ mod _tests
     //-----------------------------------------------------------------------------------------------------------------------------
 
     #[test]
-    fn	test_port_layout()
+    fn	test_multibit_fast_module_u32()
     {
-        let  	layout = PortLayout::New( U32( 10));
-        assert_eq!( layout.PortCast().SzGroup(), U32( 0));
-        assert_eq!( layout.PortConn().SzEdge(), U32( 0));
+        let  	mut layout = Layout::New();
+        let  	andMod = layout.AddModule(
+            "And32",
+            &[ PortDesc::U32( "a"), PortDesc::U32( "b") ],
+            &[ PortDesc::U32( "out") ],
+            KernelKind::And,
+        );
+
+        let  	portA = layout.InPort( andMod, 0).unwrap();
+        let  	portB = layout.InPort( andMod, 1).unwrap();
+        let  	portOut = layout.OutPort( andMod, 0).unwrap();
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
+
+        engine.SetPortU32( portA, Reg::Known( 0x1234_5678));
+        engine.SetPortU32( portB, Reg::Known( 0x00FF_00FF));
+        engine.Tick();
+
+        assert_eq!( engine.GetPortU32( portOut), Some( Reg::Known( 0x0034_0078)));
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_native_word_arithmetic()
+    {
+        let  	mut layout = Layout::New();
+        let  	addMod = layout.AddModule(
+            "Add32",
+            &[ PortDesc::U32( "a"), PortDesc::U32( "b") ],
+            &[ PortDesc::U32( "sum") ],
+            KernelKind::Add,
+        );
+        let  	subMod = layout.AddModule(
+            "Sub32",
+            &[ PortDesc::U32( "a"), PortDesc::U32( "b") ],
+            &[ PortDesc::U32( "diff") ],
+            KernelKind::Sub,
+        );
+
+        let  	addA = layout.InPort( addMod, 0).unwrap();
+        let  	addB = layout.InPort( addMod, 1).unwrap();
+        let  	addOut = layout.OutPort( addMod, 0).unwrap();
+
+        let  	subA = layout.InPort( subMod, 0).unwrap();
+        let  	subB = layout.InPort( subMod, 1).unwrap();
+        let  	subOut = layout.OutPort( subMod, 0).unwrap();
+
+        let  	mut engine = layout.Compile().expect( "Compilation failed");
+
+        engine.SetPortU32( addA, Reg::Known( 1000));
+        engine.SetPortU32( addB, Reg::Known( 250));
+        engine.SetPortU32( subA, Reg::Known( 1000));
+        engine.SetPortU32( subB, Reg::Known( 250));
+        engine.Tick();
+
+        assert_eq!( engine.GetPortU32( addOut), Some( Reg::Known( 1250)));
+        assert_eq!( engine.GetPortU32( subOut), Some( Reg::Known( 750)));
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -674,7 +728,7 @@ mod _tests
 
         ctx.SetValue( in0, Reg::TRUE);
 
-        let  	cycles = ctx.Drive();
+        let  	cycles = ctx.Drive().expect( "Drive failed");
         assert_eq!( cycles, 3);
         assert_eq!( ctx.GetValue( in0), Reg::TRUE);
         assert_eq!( ctx.GetValue( in1), Reg::FALSE);
@@ -699,10 +753,28 @@ mod _tests
         ctx.InitValue( d, Reg::TRUE);
         ctx.SetValue( clk, Reg::TRUE);
 
-        let  	cycles = ctx.Drive();
+        let  	cycles = ctx.Drive().expect( "Drive failed");
         assert_eq!( cycles, 2);
         assert_eq!( ctx.GetValue( q1), Reg::TRUE);
         assert_eq!( ctx.GetValue( q2), Reg::TRUE);
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_sim_context_oscillation_detection()
+    {
+        let  	mut ctx = SimContext::New();
+
+        let  	in0 = ctx.AddTrigger( "ring0", Reg::FALSE);
+
+        // Ring oscillator feedback loop: in0 -> not(in0) -> in0 -> ...
+        ctx.AddAction( ActionKind::Not { _In: in0, _Out: in0 }, &[ ( in0, TriggerSense::EDGE) ]);
+
+        ctx.SetValue( in0, Reg::TRUE);
+
+        let  	res = ctx.Drive();
+        assert_eq!( res, Err( SimError::Oscillation));
     }
 }
 

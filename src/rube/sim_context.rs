@@ -29,6 +29,14 @@ pub enum ActionKind
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum SimError
+{
+    Oscillation,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 #[derive( Clone, Copy, Debug)]
 pub struct TriggerTarget
 {
@@ -99,6 +107,10 @@ impl SimContext
         if idx >= self._TriggerSensitivities.len() {
             let  	newSize = U32( ( idx + 1) as u32);
             self._TriggerSensitivities.Resize( newSize, |_| Stash::New());
+        }
+        let  	word = idx / 64;
+        while word >= self._ArmedMask.Size().AsUsize() {
+            self._ArmedMask.Push( 0);
         }
         return id;
     }
@@ -190,11 +202,15 @@ impl SimContext
                 _ActionId: actId,
             });
         }
+        let  	word = actId / 64;
+        while word >= self._PendingMask.Size().AsUsize() {
+            self._PendingMask.Push( 0);
+        }
         return actId;
     }
 
     /// Perform delta-cycle propagation until all triggers reach steady state
-    pub fn	Drive( &mut self) -> usize
+    pub fn	Drive( &mut self) -> Result< usize, SimError>
     {
         let  	mut deltaCycles = 0;
         const MAX_DELTA_CYCLES: usize = 10_000;
@@ -206,8 +222,7 @@ impl SimContext
 
             deltaCycles += 1;
             if deltaCycles > MAX_DELTA_CYCLES {
-                eprintln!( "[SimContext::Drive] Warning: Maximum delta cycles ( {}) reached, possible oscillation/metastability.", MAX_DELTA_CYCLES);
-                break;
+                return Err( SimError::Oscillation);
             }
 
             // Step 1: Advance armed triggers and collect triggered actions
@@ -255,7 +270,7 @@ impl SimContext
             self._CurrPending.Clear();
         }
 
-        return deltaCycles;
+        return Ok( deltaCycles);
     }
 
     /// Internal evaluation of an action

@@ -2,7 +2,7 @@
 
 use	crate::{
     rube::trigger::TriggerId,
-    silo::{ EdgeBroadcast, EdgeConnect, U32 },
+    silo::U32,
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -172,40 +172,6 @@ impl TopologyPort
     pub fn	Trigger( &self) -> TriggerId
     {
         return self._Trigger;
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-pub struct PortLayout
-{
-    pub _PortConn: EdgeConnect,
-    pub _PortCast: EdgeBroadcast,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl PortLayout
-{
-    #[inline]
-    pub fn	New( mxVert: U32) -> Self
-    {
-        return Self {
-            _PortConn: EdgeConnect::New(),
-            _PortCast: EdgeBroadcast::New( mxVert),
-        };
-    }
-
-    #[inline]
-    pub fn	PortConn( &self) -> &EdgeConnect
-    {
-        return &self._PortConn;
-    }
-
-    #[inline]
-    pub fn	PortCast( &self) -> &EdgeBroadcast
-    {
-        return &self._PortCast;
     }
 }
 

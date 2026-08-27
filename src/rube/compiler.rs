@@ -33,24 +33,24 @@ impl NetCompiler
         let  	portCountU32 = layout._Ports.Size();
 
         // Step 1: Disjoint Set Union ( DSU / Union-Find) to merge connected nets with path compression
-        let  	mut parent = Buff::Create( portCountU32, |i| i.AsUsize());
+        let  	mut parent = Buff::Create( portCountU32, |i| i);
 
-        fn	find( p: &mut [usize], i: usize) -> usize
+        fn	find( p: &mut [U32], i: usize) -> usize
         {
-            if p[i] == i {
+            if p[i].AsUsize() == i {
                 return i;
             }
-            let  	root = find( p, p[i]);
-            p[i] = root;
+            let  	root = find( p, p[i].AsUsize());
+            p[i] = U32( root as u32);
             return root;
         }
 
-        fn	union( p: &mut [usize], a: usize, b: usize)
+        fn	union( p: &mut [U32], a: usize, b: usize)
         {
             let  	rootA = find( p, a);
             let  	rootB = find( p, b);
             if rootA != rootB {
-                p[rootB] = rootA;
+                p[rootB] = U32( rootA as u32);
             }
         }
 
@@ -107,7 +107,10 @@ impl NetCompiler
             if let Some( op) = module._Kernel.ToFastOp() {
                 let  	in1 = inTriggers.Slice()[0];
                 let  	in2 = if inTriggers.Size().0 > 1 { inTriggers.Slice()[1] } else { in1 };
-                fastModules.Push( FastModule::New( in1, in2, outTriggers.Slice()[0], op));
+                let  	outTrig = outTriggers.Slice()[0];
+                let  	outPortId = module._OutPorts[0];
+                let  	outPortType = layout._Ports.Slice()[usize::from( outPortId.0)]._PortType;
+                fastModules.Push( FastModule::New( in1, in2, outTrig, op, outPortType.Mask()));
             } else if let KernelKind::Custom( ref callback) = module._Kernel {
                 customModules.Push( CustomModule::New(
                     module._Id,

@@ -13,7 +13,7 @@ use	crate::{
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Compact 16-byte Copy struct for standard 2-in/1-out ( and 1-in/1-out) gates.
+/// Compact 24-byte Copy struct for standard 2-in/1-out ( and 1-in/1-out) gates and bus arithmetic.
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct FastModule
 {
@@ -21,6 +21,7 @@ pub struct FastModule
     pub _In2: TriggerId,
     pub _Out: TriggerId,
     pub _Op: KernelOp,
+    pub _Mask: u64,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -28,13 +29,14 @@ pub struct FastModule
 impl FastModule
 {
     #[inline]
-    pub const fn	New( in1: TriggerId, in2: TriggerId, out: TriggerId, op: KernelOp) -> Self
+    pub const fn	New( in1: TriggerId, in2: TriggerId, out: TriggerId, op: KernelOp, mask: u64) -> Self
     {
         return Self {
             _In1: in1,
             _In2: in2,
             _Out: out,
             _Op: op,
+            _Mask: mask,
         };
     }
 }
@@ -121,7 +123,7 @@ impl SimEngine
             let  	fm = self._FastModules[i];
             let  	in1 = self._Triggers[usize::from( fm._In1)]._Current;
             let  	in2 = self._Triggers[usize::from( fm._In2)]._Current;
-            self._Triggers[usize::from( fm._Out)]._Future = fm._Op.Eval( in1, in2, 1);
+            self._Triggers[usize::from( fm._Out)]._Future = fm._Op.Eval( in1, in2, fm._Mask);
         }
 
         // Phase 2: Evaluate Custom Modules

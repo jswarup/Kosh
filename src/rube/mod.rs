@@ -19,9 +19,9 @@ pub use	gates::{ AndGate, NandGate, NotGate, OrGate, XorGate };
 pub use	latches::{ CRSLatch, DLatch, RSLatch };
 pub use	layout::{ Layout, LayoutError };
 pub use	module::{ KernelKind, KernelOp, ModuleDescriptor, ModuleId };
-pub use	port::{ Port, PortDesc, PortDir, PortId, PortLayout, PortType, TopologyPort };
+pub use	port::{ Port, PortDesc, PortDir, PortId, PortType, TopologyPort };
 pub use	reg::{ Reg, RegVal };
-pub use	sim_context::{ ActionId, ActionKind, Sensitivity, SimContext };
+pub use	sim_context::{ ActionId, ActionKind, Sensitivity, SimContext, SimError };
 pub use	trigger::{ TriggerId, TriggerMeta, TriggerSense, TriggerState, TriggerWad };
 
 //---------------------------------------------------------------------------------------------------------------------------------
