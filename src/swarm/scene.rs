@@ -1,5 +1,5 @@
 //-- scene.rs ---------------------------------------------------------------------------------------------------------------------
-use	crate::silo::{ Arr, Buff, IAccess, Stash, U32, USeg };
+use	crate::silo::{ Buff, IAccess, Stash, U32, USeg };
 use	crate::swarm::{ SwarmEngine, SwarmCluster, SwarmError };
 use	serde::{ Serialize, Deserialize };
 

@@ -498,7 +498,12 @@ mod _tests
 
         assert_eq!( layout.Modules().len(), 2);
         assert_eq!( layout.Ports().len(), 5);
-        assert!( layout.Connect( andOut, notIn).is_ok());
+        assert_eq!( layout.PortOwners().len(), 5);
+        assert_eq!( layout.PortOwner( andOut), Some( modAnd));
+        assert_eq!( layout.PortOwner( notIn), Some( modNot));
+        assert_eq!( layout.Port( andOut).unwrap().Name(), "And0.out");
+        assert_eq!( layout.Port( notIn).unwrap().Name(), "Not0.in");
+        layout.Connect( andOut, notIn);
         assert_eq!( layout.Connections().SzEdge(), U32( 2));
 
         // Test bidirectional edge navigation
@@ -536,8 +541,9 @@ mod _tests
         let  	and2Out = layout.OutPort( modAnd2, 0).unwrap();
         let  	notIn = layout.InPort( modNot, 0).unwrap();
 
-        assert!( layout.Connect( and1Out, notIn).is_ok());
-        assert!( matches!( layout.Connect( and2Out, notIn), Err( LayoutError::DuplicateInputDriver { .. })));
+        layout.Connect( and1Out, notIn);
+        layout.Connect( and2Out, notIn);
+        assert!( matches!( layout.Compile(), Err( LayoutError::DuplicateInputDriver { .. })));
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -552,7 +558,8 @@ mod _tests
         let  	u32Out = layout.OutPort( modU32, 0).unwrap();
         let  	boolIn = layout.InPort( modBool, 0).unwrap();
 
-        assert!( matches!( layout.Connect( u32Out, boolIn), Err( LayoutError::TypeMismatch { .. })));
+        layout.Connect( u32Out, boolIn);
+        assert!( matches!( layout.Compile(), Err( LayoutError::TypeMismatch { .. })));
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -629,8 +636,8 @@ mod _tests
         let  	qInNand2 = layout.InPort( nand2, 1).unwrap();
         let  	q1Port = layout.OutPort( nand2, 0).unwrap();
 
-        assert!( layout.Connect( qPort, qInNand2).is_ok());
-        assert!( layout.Connect( q1Port, q1InNand1).is_ok());
+        layout.Connect( qPort, qInNand2);
+        layout.Connect( q1Port, q1InNand1);
 
         let  	mut engine = layout.Compile().expect( "Compilation failed");
 

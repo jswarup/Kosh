@@ -56,12 +56,13 @@ classDiagram
 
     class Layout {
         +Stash~Module~ _Modules
-        +Stash~Port~ _Ports
+        +Stash~PortDesc~ _Ports
+        +Stash~ModuleId~ _PortOwners
         +EdgeConnect _Connections
-        +Stash~Option~PortId~~ _InDrivers
         +AddModule(name, inPorts, outPorts, kernel) ModuleId
         +AddModuleSimple(name, inPorts, outPorts, kernel) ModuleId
-        +Connect(srcOut, dstIn) Result
+        +Connect(srcOut, dstIn) Layout
+        +Validate() Result~(), LayoutError~
         +DumpDot(ostr) void
         +Compile() Result~SimEngine, LayoutError~
     }

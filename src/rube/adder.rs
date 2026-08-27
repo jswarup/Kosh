@@ -10,7 +10,7 @@ use	crate::{
         port::{ PortDesc, PortId },
         reg::Reg,
     },
-    silo::{ Buff, Stash, U32 },
+    silo::{ Buff, Stash, U32, USeg },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -98,10 +98,10 @@ impl FullAdder
         let  	ha2 = HalfAdder::New( layout, &format!( "{name}.HA2"));
         let  	orGate = OrGate::New( layout, &format!( "{name}.Or"));
 
-        let _ = layout.Connect( ha1.Sum(), ha2._Xor.In1());
-        let _ = layout.Connect( ha1.Sum(), ha2._And.In1());
-        let _ = layout.Connect( ha1.Carry(), orGate.In1());
-        let _ = layout.Connect( ha2.Carry(), orGate.In2());
+        layout.Connect( ha1.Sum(), ha2._Xor.In1());
+        layout.Connect( ha1.Sum(), ha2._And.In1());
+        layout.Connect( ha1.Carry(), orGate.In1());
+        layout.Connect( ha2.Carry(), orGate.In2());
 
         return Self {
             _HA1: ha1,
@@ -157,15 +157,15 @@ impl< const N: usize> Adder< N>
     pub fn	New( layout: &mut Layout, name: &str) -> Self
     {
         let  	mut bits: Stash< FullAdder> = Stash::WithCapacity( U32( N as u32));
-        for i in 0..N {
-            let  	bit = FullAdder::New( layout, &format!( "{name}.Bit{i}"));
-            if i > 0 {
-                let  	prevCarry = bits.Slice()[i - 1].Carry();
-                let _ = layout.Connect( prevCarry, bit._HA2._Xor.In2());
-                let _ = layout.Connect( prevCarry, bit._HA2._And.In2());
+        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
+            let  	bit = FullAdder::New( layout, &format!( "{name}.Bit{}", i.0));
+            if i > U32::_0 {
+                let  	prevCarry = bits.Slice()[i.AsUsize() - 1].Carry();
+                layout.Connect( prevCarry, bit._HA2._Xor.In2());
+                layout.Connect( prevCarry, bit._HA2._And.In2());
             }
             bits.Push( bit);
-        }
+        });
 
         return Self { _Bits: bits.IntoBuff() };
     }

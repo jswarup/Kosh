@@ -27,8 +27,8 @@ impl RSLatch
         let  	nand1 = NandGate::New( layout, &format!( "{name}.Nand1"));
         let  	nand2 = NandGate::New( layout, &format!( "{name}.Nand2"));
 
-        let _ = layout.Connect( nand1.Out(), nand2.In2());
-        let _ = layout.Connect( nand2.Out(), nand1.In2());
+        layout.Connect( nand1.Out(), nand2.In2());
+        layout.Connect( nand2.Out(), nand1.In2());
 
         return Self {
             _Nand1: nand1,
@@ -76,7 +76,7 @@ impl RSLatch
 //---------------------------------------------------------------------------------------------------------------------------------
 
 /// Clocked RS Latch
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive( Clone, Debug)]
 pub struct CRSLatch
 {
     pub _GateS: NandGate,
@@ -94,8 +94,8 @@ impl CRSLatch
         let  	gateR = NandGate::New( layout, &format!( "{name}.GateR"));
         let  	rs = RSLatch::New( layout, &format!( "{name}.RS"));
 
-        let _ = layout.Connect( gateS.Out(), rs.S());
-        let _ = layout.Connect( gateR.Out(), rs.R());
+        layout.Connect( gateS.Out(), rs.S());
+        layout.Connect( gateR.Out(), rs.R());
 
         return Self {
             _GateS: gateS,
@@ -163,7 +163,7 @@ impl CRSLatch
 //---------------------------------------------------------------------------------------------------------------------------------
 
 /// Transparent D-Latch
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive( Clone, Debug)]
 pub struct DLatch
 {
     pub _CRS: CRSLatch,
@@ -179,7 +179,7 @@ impl DLatch
         let  	crs = CRSLatch::New( layout, &format!( "{name}.CRS"));
         let  	inv = NotGate::New( layout, &format!( "{name}.Inv"));
 
-        let _ = layout.Connect( inv.Out(), crs.R());
+        layout.Connect( inv.Out(), crs.R());
 
         return Self {
             _CRS: crs,

@@ -5,7 +5,7 @@ use	crate::{
     rube::{
         engine::{ CustomModule, FastModule, SimEngine },
         module::{ KernelKind, Module, ModuleId },
-        port::{ Port, PortDesc, PortDir, PortId, PortType },
+        port::{ PortDesc, PortDir, PortId, PortType },
         reg::Reg,
         trigger::{ TriggerMeta, TriggerState },
     },
@@ -59,9 +59,9 @@ impl std::error::Error for LayoutError {}
 pub struct Layout
 {
     _Modules: Stash< Module>,
-    _Ports: Stash< Port>,
+    _Ports: Stash< PortDesc>,
+    _PortOwners: Stash< ModuleId>,
     _Connections: EdgeConnect,
-    _InDrivers: Stash< Option< PortId>>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -83,8 +83,8 @@ impl Layout
         Self {
             _Modules: Stash::New(),
             _Ports: Stash::New(),
+            _PortOwners: Stash::New(),
             _Connections: EdgeConnect::New(),
-            _InDrivers: Stash::New(),
         }
     }
 
@@ -111,9 +111,9 @@ impl Layout
                 PortId::In( rawIdx)
             };
             let  	fullName = format!( "{moduleName}.{portName}");
-            let  	port = Port::New( portId, modId.0, &fullName, dir, portType);
-            self._Ports.Push( port);
-            self._InDrivers.Push( None);
+            let  	portDesc = PortDesc::New( fullName, portType);
+            self._Ports.Push( portDesc);
+            self._PortOwners.Push( modId);
             portIds.Push( portId);
         });
         return portIds.IntoBuff();
@@ -204,58 +204,111 @@ impl Layout
         return Some( module._OutPorts[pIdx]);
     }
 
-    pub fn	Connect( &mut self, srcOut: PortId, dstIn: PortId) -> Result< (), LayoutError>
+    #[inline]
+    pub fn	Connect( &mut self, srcOut: PortId, dstIn: PortId) -> &mut Self
     {
-        if !srcOut.IsOut() {
-            return Err( LayoutError::InvalidPortDirection {
-                _Port: srcOut,
-                _Expected: PortDir::Out,
-                _Actual: PortDir::In,
-            });
-        }
-        if !dstIn.IsIn() {
-            return Err( LayoutError::InvalidPortDirection {
-                _Port: dstIn,
-                _Expected: PortDir::In,
-                _Actual: PortDir::Out,
-            });
-        }
-
-        let  	srcIdx = srcOut.Index();
-        let  	dstIdx = dstIn.Index();
-        let  	portCount = self._Ports.Size();
-
-        if srcIdx >= portCount {
-            return Err( LayoutError::PortNotFound( srcOut));
-        }
-        if dstIdx >= portCount {
-            return Err( LayoutError::PortNotFound( dstIn));
-        }
-
-        let  	srcPort = &self._Ports[srcIdx];
-        let  	dstPort = &self._Ports[dstIdx];
-
-        // Check Type Matching rule
-        if srcPort._PortType != dstPort._PortType {
-            return Err( LayoutError::TypeMismatch {
-                _Src: srcOut,
-                _SrcType: srcPort._PortType,
-                _Dst: dstIn,
-                _DstType: dstPort._PortType,
-            });
-        }
-
-        // Check 1-to-1 input assignment rule
-        if let Some( existingSrc) = self._InDrivers[dstIdx] {
-            return Err( LayoutError::DuplicateInputDriver {
-                _DstIn: dstIn,
-                _ExistingSrc: existingSrc,
-                _AttemptedSrc: srcOut,
-            });
-        }
-
-        self._InDrivers[dstIdx] = Some( srcOut);
         self._Connections.RegisterEdge( srcOut.0, dstIn.0, true);
+        return self;
+    }
+
+    pub fn	Validate( &self) -> Result< (), LayoutError>
+    {
+        let  	portCount = self._Ports.Size();
+        let  	mut err = None;
+
+        self._Modules.Arr().Traverse( |module| {
+            if err.is_some() {
+                return;
+            }
+            module._InPorts.Arr().Traverse( |&inPort| {
+                if err.is_some() {
+                    return;
+                }
+                let  	dstIdx = inPort.Index();
+                if dstIdx >= portCount {
+                    err = Some( LayoutError::PortNotFound( inPort));
+                    return;
+                }
+
+                let  	edSeg = self._Connections.EdgeSeg( inPort.0);
+                let  	driverCount = edSeg.Size();
+
+                if driverCount > U32( 1) {
+                    let  	e0 = self._Connections.EdgeAt( edSeg.First());
+                    let  	e1 = self._Connections.EdgeAt( edSeg.First() + U32( 1));
+                    err = Some( LayoutError::DuplicateInputDriver {
+                        _DstIn: inPort,
+                        _ExistingSrc: PortId( e0[1]),
+                        _AttemptedSrc: PortId( e1[1]),
+                    });
+                    return;
+                }
+
+                if driverCount == U32( 1) {
+                    let  	e = self._Connections.EdgeAt( edSeg.First());
+                    let  	srcOut = PortId( e[1]);
+                    if !srcOut.IsOut() {
+                        err = Some( LayoutError::InvalidPortDirection {
+                            _Port: srcOut,
+                            _Expected: PortDir::Out,
+                            _Actual: PortDir::In,
+                        });
+                        return;
+                    }
+                    let  	srcIdx = srcOut.Index();
+                    if srcIdx >= portCount {
+                        err = Some( LayoutError::PortNotFound( srcOut));
+                        return;
+                    }
+                    let  	srcPort = &self._Ports[srcIdx];
+                    let  	dstPort = &self._Ports[dstIdx];
+                    if srcPort._Type != dstPort._Type {
+                        err = Some( LayoutError::TypeMismatch {
+                            _Src: srcOut,
+                            _SrcType: srcPort._Type,
+                            _Dst: inPort,
+                            _DstType: dstPort._Type,
+                        });
+                        return;
+                    }
+                }
+            });
+
+            if err.is_some() {
+                return;
+            }
+
+            module._OutPorts.Arr().Traverse( |&outPort| {
+                if err.is_some() {
+                    return;
+                }
+                let  	srcIdx = outPort.Index();
+                if srcIdx >= portCount {
+                    err = Some( LayoutError::PortNotFound( outPort));
+                    return;
+                }
+
+                let  	edSeg = self._Connections.EdgeSeg( outPort.0);
+                edSeg.Traverse( |edIdx| {
+                    if err.is_some() {
+                        return;
+                    }
+                    let  	e = self._Connections.EdgeAt( edIdx);
+                    let  	dstIn = PortId( e[1]);
+                    if !dstIn.IsIn() {
+                        err = Some( LayoutError::InvalidPortDirection {
+                            _Port: dstIn,
+                            _Expected: PortDir::In,
+                            _Actual: PortDir::Out,
+                        });
+                    }
+                });
+            });
+        });
+
+        if let Some( e) = err {
+            return Err( e);
+        }
         return Ok( ());
     }
 
@@ -266,9 +319,35 @@ impl Layout
     }
 
     #[inline]
-    pub fn	Ports( &self) -> &[Port]
+    pub fn	Ports( &self) -> &[PortDesc]
     {
         return self._Ports.Slice();
+    }
+
+    #[inline]
+    pub fn	Port( &self, portId: PortId) -> Option< &PortDesc>
+    {
+        let  	idx = portId.Index();
+        if idx < self._Ports.Size() {
+            return Some( &self._Ports[idx]);
+        }
+        return None;
+    }
+
+    #[inline]
+    pub fn	PortOwners( &self) -> &[ModuleId]
+    {
+        return self._PortOwners.Slice();
+    }
+
+    #[inline]
+    pub fn	PortOwner( &self, portId: PortId) -> Option< ModuleId>
+    {
+        let  	idx = portId.Index();
+        if idx < self._PortOwners.Size() {
+            return Some( self._PortOwners[idx]);
+        }
+        return None;
     }
 
     #[inline]
@@ -296,12 +375,24 @@ impl Layout
         // Step 1: Compact connection graph for CSR binary search / segments
         self._Connections.Compact();
 
-        // Step 2: Traverse all connected ports using EdgeBroadcast to partition nets into unique trigger groups
+        // Step 2: Validate graph connections
+        self.Validate()?;
+
+        // Step 3: Traverse all connected ports using EdgeBroadcast to partition nets into unique trigger groups
         let  	mut broadcast = EdgeBroadcast::New( portCountU32);
-        self._Ports.Arr().Traverse( |port| {
-            broadcast.DoBroadcast( port._Id.0, |elemId, _, _, nextStack| {
-                self._Connections.NodeTraverse( elemId, |nextElem| {
-                    nextStack.Push( nextElem);
+        self._Modules.Arr().Traverse( |module| {
+            module._InPorts.Arr().Traverse( |&portId| {
+                broadcast.DoBroadcast( portId.0, |elemId, _, _, nextStack| {
+                    self._Connections.NodeTraverse( elemId, |nextElem| {
+                        nextStack.Push( nextElem);
+                    });
+                });
+            });
+            module._OutPorts.Arr().Traverse( |&portId| {
+                broadcast.DoBroadcast( portId.0, |elemId, _, _, nextStack| {
+                    self._Connections.NodeTraverse( elemId, |nextElem| {
+                        nextStack.Push( nextElem);
+                    });
                 });
             });
         });
@@ -313,10 +404,10 @@ impl Layout
         USeg::New( U32::_0, groupCount).Traverse( |grpIdx| {
             let  	firstPortId = PortId( broadcast.FirstId( grpIdx));
             let  	rootPort = &self._Ports[firstPortId.Index()];
-            let  	defaultVal = Reg::DefaultTyped( rootPort._PortType);
+            let  	defaultVal = Reg::DefaultTyped( rootPort._Type);
 
             triggers.Push( TriggerState::New( defaultVal));
-            meta.Push( TriggerMeta::New( rootPort.Name(), rootPort._PortType));
+            meta.Push( TriggerMeta::New( rootPort.Name(), rootPort._Type));
         });
 
         let  	portToTrigger = broadcast.SnitchNodeGroupIds();
@@ -342,7 +433,7 @@ impl Layout
                 let  	in2 = if inTriggers.Size() > U32( 1) { inTriggers[U32( 1)] } else { in1 };
                 let  	outTrig = outTriggers[U32( 0)];
                 let  	outPortId = module._OutPorts[U32( 0)];
-                let  	outPortType = self._Ports[outPortId.Index()]._PortType;
+                let  	outPortType = self._Ports[outPortId.Index()]._Type;
                 fastModules.Push( FastModule::New( in1, in2, outTrig, op, outPortType.Mask()));
             } else if let KernelKind::Custom( ref callback) = module._Kernel {
                 customModules.Push( CustomModule::New(

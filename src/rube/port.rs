@@ -123,6 +123,18 @@ impl PortDesc
     }
 
     #[inline]
+    pub fn	Name( &self) -> &str
+    {
+        return &self._Name;
+    }
+
+    #[inline]
+    pub fn	PortType( &self) -> PortType
+    {
+        return self._Type;
+    }
+
+    #[inline]
     pub fn	Bool( name: impl Into< String>) -> Self
     {
         return Self::New( name, PortType::Bool);
@@ -143,41 +155,6 @@ impl< 'a> From< &'a str> for PortDesc
     fn	from( name: &'a str) -> Self
     {
         return Self::Bool( name);
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[derive( Clone, Debug)]
-pub struct Port
-{
-    pub _Id: PortId,
-    pub _ModuleId: U32,
-    pub _Name: String,
-    pub _Dir: PortDir,
-    pub _PortType: PortType,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl Port
-{
-    #[inline]
-    pub fn	New( id: PortId, moduleId: U32, name: &str, dir: PortDir, portType: PortType) -> Self
-    {
-        return Self {
-            _Id: id,
-            _ModuleId: moduleId,
-            _Name: name.to_string(),
-            _Dir: dir,
-            _PortType: portType,
-        };
-    }
-
-    #[inline]
-    pub fn	Name( &self) -> &str
-    {
-        return &self._Name;
     }
 }
 
