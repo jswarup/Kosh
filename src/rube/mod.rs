@@ -1,6 +1,5 @@
 //-- mod.rs -------------------------------------------------------------------------------------------------------------------------
 pub mod adder;
-pub mod compiler;
 pub mod engine;
 pub mod gates;
 pub mod latches;
@@ -13,7 +12,6 @@ pub mod trigger;
 mod _tests;
 
 pub use	adder::{ Adder, BusAdder32, FullAdder, HalfAdder };
-pub use	compiler::NetCompiler;
 pub use	engine::{ CustomModule, FastModule, SimEngine };
 pub use	gates::{ AndGate, NandGate, NotGate, OrGate, XorGate };
 pub use	latches::{ CRSLatch, DLatch, RSLatch };
