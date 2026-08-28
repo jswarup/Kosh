@@ -5,7 +5,7 @@ use	crate::{
     rube::{
         layout::Layout,
         module::{ KernelKind, KernelOp, ModuleId },
-        port::PortId,
+        port::{ PortId, PortSensitivity },
         reg::Reg,
         trigger::{ ITriggerWad, TriggerId, TriggerSubscriber, TriggerWad },
     },
@@ -137,17 +137,16 @@ impl SimEngine
         let  	portToTrigger = broadcast.SnitchNodeGroupIds();
 
         // Build adjacency list for TriggerWad subscribers
-        let  	mut subscribersLists = std::vec::Vec::new();
-        subscribersLists.resize( groupCount.AsUsize(), std::vec::Vec::new());
+        let  	mut subscribersLists = Buff::Create( groupCount, |_| { Stash::New()});
 
         layout._Modules.Arr().Traverse( |module| {
             let  	inLen = module._InPorts.Size();
-            crate::silo::USeg::New( U32::_0, inLen).Traverse( |i| {
+            USeg::New( U32::_0, inLen).Traverse( |i| {
                 let  	portId = module._InPorts[i];
                 let  	trigId = portToTrigger[portId.Index()];
                 let  	sens = module._InSensitivities[i];
-                if sens != crate::rube::port::PortSensitivity::None {
-                    subscribersLists[trigId.AsUsize()].push( TriggerSubscriber {
+                if sens != PortSensitivity::None {
+                    subscribersLists[ trigId].Push( TriggerSubscriber {
                         _ModIndex: module._Id.0,
                         _Sensitivity: sens,
                     });
@@ -158,14 +157,14 @@ impl SimEngine
         let  	mut subscriberSpans = Stash::WithCapacity( groupCount);
         let  	mut subscribers = Stash::New();
 
-        for list in subscribersLists {
+        subscribersLists.Arr().Traverse( | list|  {
             let  	start = subscribers.Size();
-            for sub in list {
-                subscribers.Push( sub);
-            }
+            list.Arr().Traverse( |  sub| {
+                subscribers.Push( *sub);
+            });
             let  	sz = subscribers.Size() - start;
             subscriberSpans.Push( USeg::New( start, sz));
-        }
+        });
 
         let  	triggers = TriggerWad::New(
             pastVals.IntoBuff(),
@@ -232,23 +231,23 @@ impl SimEngine
         if self._CycleCount == 0 {
             // First cycle: evaluate all modules to initialize combinational logic
             let  	sz = self._ModuleReady.Size();
-            crate::silo::USeg::New( U32::_0, sz).Traverse( |i| {
+            USeg::New( U32::_0, sz).Traverse( |i| {
                 self._ModuleReady[i.AsUsize()] = true;
             });
             readyCount = sz.0;
         } else {
             // Reset readiness
             let  	sz = self._ModuleReady.Size();
-            crate::silo::USeg::New( U32::_0, sz).Traverse( |i| {
+            USeg::New( U32::_0, sz).Traverse( |i| {
                 self._ModuleReady[i.AsUsize()] = false;
             });
 
             // Find triggers that changed and mark sensitive modules
-            crate::silo::USeg::New( U32::_0, self._Triggers.Size()).Traverse( |tIdx| {
+            USeg::New( U32::_0, self._Triggers.Size()).Traverse( |tIdx| {
                 let  	trigId = tIdx;
                 if self._Triggers.IsEdge( trigId) {
                     let  	spans = self._Triggers._SubscriberSpans[tIdx];
-                    crate::silo::USeg::New( spans.First(), spans.Size()).Traverse( |sIdx| {
+                    USeg::New( spans.First(), spans.Size()).Traverse( |sIdx| {
                         let  	sub = self._Triggers._Subscribers[sIdx];
                         if self._Triggers.IsSensitive( trigId, sub._Sensitivity) {
                             let  	mIdx = sub._ModIndex.AsUsize();

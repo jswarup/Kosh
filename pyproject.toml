@@ -1,0 +1,14 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "pykosh"
+version = "0.1.0"
+description = "A demo Python plugin written in Rust"
+requires-python = ">=3.9"
+
+[tool.maturin]
+# Build a Python extension module from the cdylib
+features = ["pyo3/extension-module"]
+

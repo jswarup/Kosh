@@ -1,0 +1,14 @@
+[package]
+name = "pykosh"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+# "cdylib" produces a shared library (.so / .dll / .dylib) that Python can load
+name = "pykosh"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.23", features = ["extension-module"] }
+kosh = { path = "../../" }
+

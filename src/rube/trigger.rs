@@ -1,7 +1,7 @@
 //-- trigger.rs -------------------------------------------------------------------------------------------------------------------
 use	crate::{
-    rube::reg::Reg,
-    silo::U32,
+    rube::{ reg::Reg, port::PortSensitivity},
+    silo::{ U32, USeg, Buff}
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -14,11 +14,11 @@ pub type TriggerId = U32;
 #[derive( Clone, Debug)]
 pub struct TriggerWad
 {
-    pub _PastVals: crate::silo::Buff< Reg>,
-    pub _CurrentVals: crate::silo::Buff< Reg>,
-    pub _FutureVals: crate::silo::Buff< Reg>,
-    pub _SubscriberSpans: crate::silo::Buff< crate::silo::USeg>,
-    pub _Subscribers: crate::silo::Buff< TriggerSubscriber>,
+    pub _PastVals: Buff< Reg>,
+    pub _CurrentVals: Buff< Reg>,
+    pub _FutureVals: Buff< Reg>,
+    pub _SubscriberSpans: Buff< USeg>,
+    pub _Subscribers: Buff< TriggerSubscriber>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -26,8 +26,8 @@ pub struct TriggerWad
 #[derive( Clone, Copy, Debug)]
 pub struct TriggerSubscriber
 {
-    pub _ModIndex: crate::silo::U32,
-    pub _Sensitivity: crate::rube::port::PortSensitivity,
+    pub _ModIndex: U32,
+    pub _Sensitivity: PortSensitivity,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ pub trait ITriggerWad
     fn	Future( &self, idx: TriggerId) -> Reg;
     fn	SetFuture( &mut self, idx: TriggerId, val: Reg);
     fn	SetImmediate( &mut self, idx: TriggerId, val: Reg);
-    fn	IsSensitive( &self, idx: TriggerId, sens: crate::rube::port::PortSensitivity) -> bool;
+    fn	IsSensitive( &self, idx: TriggerId, sens: PortSensitivity) -> bool;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -55,11 +55,11 @@ impl TriggerWad
 {
     #[inline]
     pub fn	New(
-        pastVals: crate::silo::Buff< Reg>,
-        currentVals: crate::silo::Buff< Reg>,
-        futureVals: crate::silo::Buff< Reg>,
-        subscriberSpans: crate::silo::Buff< crate::silo::USeg>,
-        subscribers: crate::silo::Buff< TriggerSubscriber>,
+        pastVals: Buff< Reg>,
+        currentVals: Buff< Reg>,
+        futureVals: Buff< Reg>,
+        subscriberSpans: Buff< USeg>,
+        subscribers: Buff< TriggerSubscriber>,
     ) -> Self
     {
         return Self {
@@ -95,7 +95,7 @@ impl ITriggerWad for TriggerWad
     #[inline]
     fn	AdvanceAll( &mut self)
     {
-        crate::silo::USeg::New( U32::_0, self.Size()).Traverse( |i| {
+        USeg::New( U32::_0, self.Size()).Traverse( |i| {
             let  	past = self._CurrentVals[i];
             let  	current = self._FutureVals[i];
             self._PastVals[i] = past;
@@ -163,13 +163,13 @@ impl ITriggerWad for TriggerWad
     }
 
     #[inline]
-    fn	IsSensitive( &self, idx: TriggerId, sens: crate::rube::port::PortSensitivity) -> bool
+    fn	IsSensitive( &self, idx: TriggerId, sens: PortSensitivity) -> bool
     {
         match sens {
-            crate::rube::port::PortSensitivity::Up => self.IsPosedge( idx),
-            crate::rube::port::PortSensitivity::Down => self.IsNegedge( idx),
-            crate::rube::port::PortSensitivity::Any => self.IsEdge( idx),
-            crate::rube::port::PortSensitivity::None => false,
+            PortSensitivity::Up => self.IsPosedge( idx),
+            PortSensitivity::Down => self.IsNegedge( idx),
+            PortSensitivity::Any => self.IsEdge( idx),
+            PortSensitivity::None => false,
         }
     }
 }
