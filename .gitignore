@@ -1,5 +1,4 @@
-/target
-.vscode/
+/target 
 .idea/
 *.rs.bk
 tools/__pycache__/*
