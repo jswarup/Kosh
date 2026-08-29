@@ -26,6 +26,10 @@ esac
 unset PYTHONHOME
 hash -r 2>/dev/null
 
+if ! python -m pip --version &> /dev/null; then
+    python -m ensurepip --upgrade 2>/dev/null || python -m ensurepip
+fi
+
 if ! command -v maturin &> /dev/null; then
     python -m pip install maturin
 fi
