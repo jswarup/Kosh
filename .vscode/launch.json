@@ -1,0 +1,93 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Kosh: Debug Binary (CodeLLDB)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/debug/kosh.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "cargo build",
+            "visualizerFile": "${workspaceFolder}/tools/kosh.natvis"
+        },
+        {
+            "name": "Kosh: Debug Frieze 3D GUI (CodeLLDB)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/debug/kosh.exe",
+            "args": ["--frieze"],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "cargo build",
+            "visualizerFile": "${workspaceFolder}/tools/kosh.natvis"
+        },
+        {
+            "name": "Kosh: Debug Verbose Mode (CodeLLDB)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/debug/kosh.exe",
+            "args": ["-v"],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "cargo build",
+            "visualizerFile": "${workspaceFolder}/tools/kosh.natvis"
+        },
+        {
+            "name": "Kosh: Debug Unit Tests (CodeLLDB)",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": ["test", "--no-run", "--lib"]
+            },
+            "args": ["${input:testFilter}", "--nocapture"],
+            "cwd": "${workspaceFolder}",
+            "visualizerFile": "${workspaceFolder}/tools/kosh.natvis"
+        },
+        {
+            "name": "Kosh: Debug Binary (MSVC cppvsdbg)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/debug/kosh.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "preLaunchTask": "cargo build",
+            "visualizerFile": "${workspaceFolder}/tools/kosh.natvis"
+        },
+        {
+            "name": "Kosh: Debug Frieze 3D GUI (MSVC cppvsdbg)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/debug/kosh.exe",
+            "args": ["--frieze"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "preLaunchTask": "cargo build",
+            "visualizerFile": "${workspaceFolder}/tools/kosh.natvis"
+        },
+        {
+            "name": "Kosh: Debug Test Runner (MSVC cppvsdbg)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/debug/kosh.exe",
+            "args": ["-g", "--test", "${input:testFilter}"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "preLaunchTask": "cargo build",
+            "visualizerFile": "${workspaceFolder}/tools/kosh.natvis"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "testFilter",
+            "type": "promptString",
+            "description": "Specify test filter (e.g. all, fenst, rube, swarm, silo, TestCpuPointCloud):",
+            "default": "all"
+        }
+    ]
+}

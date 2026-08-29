@@ -1,0 +1,71 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "cargo build",
+            "type": "shell",
+            "command": "cargo",
+            "args": ["build"],
+            "problemMatcher": ["$rustc"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "cargo build (release)",
+            "type": "shell",
+            "command": "cargo",
+            "args": ["build", "--release"],
+            "problemMatcher": ["$rustc"],
+            "group": "build"
+        },
+        {
+            "label": "cargo test (build only)",
+            "type": "shell",
+            "command": "cargo",
+            "args": ["test", "--no-run"],
+            "problemMatcher": ["$rustc"],
+            "group": "build"
+        },
+        {
+            "label": "cargo test",
+            "type": "shell",
+            "command": "cargo",
+            "args": ["test", "--", "--nocapture"],
+            "problemMatcher": ["$rustc"],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "cargo rtest",
+            "type": "shell",
+            "command": "cargo",
+            "args": ["run", "--", "-g", "--test"],
+            "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "cargo check",
+            "type": "shell",
+            "command": "cargo",
+            "args": ["check"],
+            "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "format",
+            "type": "shell",
+            "command": "python",
+            "args": ["tools/format.py"],
+            "problemMatcher": []
+        },
+        {
+            "label": "pybuild",
+            "type": "shell",
+            "command": "bash",
+            "args": ["tools/pybuild.bash"],
+            "problemMatcher": []
+        }
+    ]
+}

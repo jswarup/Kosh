@@ -206,6 +206,42 @@
   </Type>
 
   <!-- ===================================================================================================================== -->
+  <!-- SILO: EdgeConnect                                                                                                     -->
+  <!-- ===================================================================================================================== -->
+
+  <Type Name="kosh::silo::edge_connect::EdgeConnect">
+    <DisplayString Optional="true">{{ edges={_EdgeStk} }}</DisplayString>
+    <Expand>
+      <Item Name="[edge_count]">_EdgeStk</Item>
+    </Expand>
+  </Type>
+  <Type Name="EdgeConnect">
+    <DisplayString Optional="true">{{ edges={_EdgeStk} }}</DisplayString>
+    <Expand>
+      <Item Name="[edge_count]">_EdgeStk</Item>
+    </Expand>
+  </Type>
+
+  <!-- ===================================================================================================================== -->
+  <!-- SILO: EdgeBroadcast                                                                                                   -->
+  <!-- ===================================================================================================================== -->
+
+  <Type Name="kosh::silo::edge_broadcast::EdgeBroadcast">
+    <DisplayString Optional="true">{{ groups={_FirstNodeIds} }}</DisplayString>
+    <Expand>
+      <Item Name="[first_nodes]">_FirstNodeIds</Item>
+      <Item Name="[node_groups]">_NodeGroupIds</Item>
+    </Expand>
+  </Type>
+  <Type Name="EdgeBroadcast">
+    <DisplayString Optional="true">{{ groups={_FirstNodeIds} }}</DisplayString>
+    <Expand>
+      <Item Name="[first_nodes]">_FirstNodeIds</Item>
+      <Item Name="[node_groups]">_NodeGroupIds</Item>
+    </Expand>
+  </Type>
+
+  <!-- ===================================================================================================================== -->
   <!-- FLUX: FixedStream                                                                                                     -->
   <!-- ===================================================================================================================== -->
 
@@ -268,6 +304,196 @@
     <Expand>
       <Item Name="[cached]" Optional="true">_Buff._Ptr.pointer.length</Item>
       <ExpandedItem>_Buff</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <!-- ===================================================================================================================== -->
+  <!-- FLECK: Points, Directions, Bounding Boxes, & Vectors                                                                  -->
+  <!-- ===================================================================================================================== -->
+
+  <Type Name="kosh::fleck::point::Pt3f">
+    <DisplayString>({_X}, {_Y}, {_Z})</DisplayString>
+    <Expand>
+      <Item Name="x">_X</Item>
+      <Item Name="y">_Y</Item>
+      <Item Name="z">_Z</Item>
+    </Expand>
+  </Type>
+  <Type Name="Pt3f">
+    <DisplayString>({_X}, {_Y}, {_Z})</DisplayString>
+    <Expand>
+      <Item Name="x">_X</Item>
+      <Item Name="y">_Y</Item>
+      <Item Name="z">_Z</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="kosh::fleck::point::WPt3f">
+    <DisplayString>({_X}, {_Y}, {_Z}, w={_W})</DisplayString>
+    <Expand>
+      <Item Name="x">_X</Item>
+      <Item Name="y">_Y</Item>
+      <Item Name="z">_Z</Item>
+      <Item Name="w">_W</Item>
+    </Expand>
+  </Type>
+  <Type Name="WPt3f">
+    <DisplayString>({_X}, {_Y}, {_Z}, w={_W})</DisplayString>
+    <Expand>
+      <Item Name="x">_X</Item>
+      <Item Name="y">_Y</Item>
+      <Item Name="z">_Z</Item>
+      <Item Name="w">_W</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="kosh::fleck::point::Dir3f">
+    <DisplayString>dir({_X}, {_Y}, {_Z})</DisplayString>
+    <Expand>
+      <Item Name="x">_X</Item>
+      <Item Name="y">_Y</Item>
+      <Item Name="z">_Z</Item>
+    </Expand>
+  </Type>
+  <Type Name="Dir3f">
+    <DisplayString>dir({_X}, {_Y}, {_Z})</DisplayString>
+    <Expand>
+      <Item Name="x">_X</Item>
+      <Item Name="y">_Y</Item>
+      <Item Name="z">_Z</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="kosh::fleck::point::WPt2f">
+    <DisplayString>({_U}, {_V}, w={_W})</DisplayString>
+    <Expand>
+      <Item Name="u">_U</Item>
+      <Item Name="v">_V</Item>
+      <Item Name="w">_W</Item>
+    </Expand>
+  </Type>
+  <Type Name="WPt2f">
+    <DisplayString>({_U}, {_V}, w={_W})</DisplayString>
+    <Expand>
+      <Item Name="u">_U</Item>
+      <Item Name="v">_V</Item>
+      <Item Name="w">_W</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="kosh::fleck::point::BBox3f">
+    <DisplayString>{{ min=({_Min._X}, {_Min._Y}, {_Min._Z}) max=({_Max._X}, {_Max._Y}, {_Max._Z}) }}</DisplayString>
+    <Expand>
+      <Item Name="[min]">_Min</Item>
+      <Item Name="[max]">_Max</Item>
+    </Expand>
+  </Type>
+  <Type Name="BBox3f">
+    <DisplayString>{{ min=({_Min._X}, {_Min._Y}, {_Min._Z}) max=({_Max._X}, {_Max._Y}, {_Max._Z}) }}</DisplayString>
+    <Expand>
+      <Item Name="[min]">_Min</Item>
+      <Item Name="[max]">_Max</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="kosh::fleck::vex::Vex&lt;*,*&gt;">
+    <DisplayString Optional="true">{_Data}</DisplayString>
+    <Expand>
+      <ExpandedItem>_Data</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="Vex&lt;*,*&gt;">
+    <DisplayString Optional="true">{_Data}</DisplayString>
+    <Expand>
+      <ExpandedItem>_Data</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <!-- ===================================================================================================================== -->
+  <!-- RUBE: Logic Registers, Ports, and Descriptors                                                                         -->
+  <!-- ===================================================================================================================== -->
+
+  <Type Name="kosh::rube::reg::Reg">
+    <DisplayString Condition="_X != 0">Reg(Val: 0x{_Val,X}, X: 0x{_X,X})</DisplayString>
+    <DisplayString Condition="_X == 0">Reg(0x{_Val,X})</DisplayString>
+    <Expand>
+      <Item Name="[value]">_Val,X</Item>
+      <Item Name="[unknown_mask]">_X,X</Item>
+      <Item Name="[is_valid]">_X == 0</Item>
+      <Item Name="[as_bool]" Condition="_X == 0">(_Val &amp; 1) != 0</Item>
+    </Expand>
+  </Type>
+  <Type Name="Reg">
+    <DisplayString Condition="_X != 0">Reg(Val: 0x{_Val,X}, X: 0x{_X,X})</DisplayString>
+    <DisplayString Condition="_X == 0">Reg(0x{_Val,X})</DisplayString>
+    <Expand>
+      <Item Name="[value]">_Val,X</Item>
+      <Item Name="[unknown_mask]">_X,X</Item>
+      <Item Name="[is_valid]">_X == 0</Item>
+      <Item Name="[as_bool]" Condition="_X == 0">(_Val &amp; 1) != 0</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="kosh::rube::port::PortId">
+    <DisplayString Condition="(__0.__0 &amp; 0x80000000) != 0" Optional="true">PortId(Out, {__0.__0 &amp; 0x7FFFFFFF})</DisplayString>
+    <DisplayString Condition="(0.0 &amp; 0x80000000) != 0" Optional="true">PortId(Out, {0.0 &amp; 0x7FFFFFFF})</DisplayString>
+    <DisplayString Optional="true">PortId(In, {__0.__0 &amp; 0x7FFFFFFF})</DisplayString>
+    <DisplayString Optional="true">PortId(In, {0.0 &amp; 0x7FFFFFFF})</DisplayString>
+    <Expand>
+      <Item Name="[direction]" Condition="(__0.__0 &amp; 0x80000000) != 0" Optional="true">"Out"</Item>
+      <Item Name="[direction]" Condition="(0.0 &amp; 0x80000000) != 0" Optional="true">"Out"</Item>
+      <Item Name="[direction]" Optional="true">"In"</Item>
+      <Item Name="[index]" Optional="true">__0.__0 &amp; 0x7FFFFFFF</Item>
+      <Item Name="[index]" Optional="true">0.0 &amp; 0x7FFFFFFF</Item>
+    </Expand>
+  </Type>
+  <Type Name="PortId">
+    <DisplayString Condition="(__0.__0 &amp; 0x80000000) != 0" Optional="true">PortId(Out, {__0.__0 &amp; 0x7FFFFFFF})</DisplayString>
+    <DisplayString Condition="(0.0 &amp; 0x80000000) != 0" Optional="true">PortId(Out, {0.0 &amp; 0x7FFFFFFF})</DisplayString>
+    <DisplayString Optional="true">PortId(In, {__0.__0 &amp; 0x7FFFFFFF})</DisplayString>
+    <DisplayString Optional="true">PortId(In, {0.0 &amp; 0x7FFFFFFF})</DisplayString>
+    <Expand>
+      <Item Name="[direction]" Condition="(__0.__0 &amp; 0x80000000) != 0" Optional="true">"Out"</Item>
+      <Item Name="[direction]" Condition="(0.0 &amp; 0x80000000) != 0" Optional="true">"Out"</Item>
+      <Item Name="[direction]" Optional="true">"In"</Item>
+      <Item Name="[index]" Optional="true">__0.__0 &amp; 0x7FFFFFFF</Item>
+      <Item Name="[index]" Optional="true">0.0 &amp; 0x7FFFFFFF</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="kosh::rube::port::PortDesc">
+    <DisplayString>{_Name} ({_Type})</DisplayString>
+    <Expand>
+      <Item Name="name">_Name</Item>
+      <Item Name="type">_Type</Item>
+      <Item Name="sensitivity">_Sensitivity</Item>
+    </Expand>
+  </Type>
+  <Type Name="PortDesc">
+    <DisplayString>{_Name} ({_Type})</DisplayString>
+    <Expand>
+      <Item Name="name">_Name</Item>
+      <Item Name="type">_Type</Item>
+      <Item Name="sensitivity">_Sensitivity</Item>
+    </Expand>
+  </Type>
+
+  <!-- ===================================================================================================================== -->
+  <!-- SWARM: Compute Engine                                                                                                 -->
+  <!-- ===================================================================================================================== -->
+
+  <Type Name="kosh::swarm::engine::SwarmEngine">
+    <DisplayString>SwarmEngine({_Backend})</DisplayString>
+    <Expand>
+      <Item Name="backend">_Backend</Item>
+      <Item Name="cluster">_Cluster</Item>
+    </Expand>
+  </Type>
+  <Type Name="SwarmEngine">
+    <DisplayString>SwarmEngine({_Backend})</DisplayString>
+    <Expand>
+      <Item Name="backend">_Backend</Item>
+      <Item Name="cluster">_Cluster</Item>
     </Expand>
   </Type>
 
