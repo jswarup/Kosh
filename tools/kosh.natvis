@@ -4,7 +4,7 @@
   <!-- ===================================================================================================================== -->
   <!-- SILO: Primitive Integer Wrappers (U8, U16, U32, U64)                                                                  -->
   <!-- ===================================================================================================================== -->
-  
+
   <Type Name="kosh::silo::uint::U8">
     <DisplayString Optional="true">{__0}</DisplayString>
     <DisplayString Optional="true">{0}</DisplayString>
@@ -206,28 +206,67 @@
   </Type>
 
   <!-- ===================================================================================================================== -->
-  <!-- SILO: InStream                                                                                                        -->
+  <!-- FLUX: FixedStream                                                                                                     -->
   <!-- ===================================================================================================================== -->
 
-  <Type Name="kosh::silo::instream::InStream">
-    <DisplayString Optional="true">{{ pos={_Marker.__0}, remaining={_Buff._Ptr.pointer.length - _Marker.__0} }}</DisplayString>
-    <DisplayString Optional="true">{{ pos={_Marker.0}, remaining={_Buff._Ptr.pointer.length - _Marker.0} }}</DisplayString>
+  <Type Name="kosh::flux::instream::FixedStream&lt;*&gt;">
+    <DisplayString Optional="true">{{ size={_Arr._Size.__0} }}</DisplayString>
+    <DisplayString Optional="true">{{ size={_Arr._Size.0} }}</DisplayString>
     <Expand>
-      <Item Name="[pos]" Optional="true">_Marker.__0</Item>
-      <Item Name="[pos]" Optional="true">_Marker.0</Item>
-      <Item Name="[remaining]" Optional="true">_Buff._Ptr.pointer.length - _Marker.__0</Item>
-      <Item Name="[remaining]" Optional="true">_Buff._Ptr.pointer.length - _Marker.0</Item>
+      <ExpandedItem>_Arr</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="FixedStream&lt;*&gt;">
+    <DisplayString Optional="true">{{ size={_Arr._Size.__0} }}</DisplayString>
+    <DisplayString Optional="true">{{ size={_Arr._Size.0} }}</DisplayString>
+    <Expand>
+      <ExpandedItem>_Arr</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="kosh::flux::instream::FixedStream">
+    <DisplayString Optional="true">{{ size={_Arr._Size.__0} }}</DisplayString>
+    <DisplayString Optional="true">{{ size={_Arr._Size.0} }}</DisplayString>
+    <Expand>
+      <ExpandedItem>_Arr</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="FixedStream">
+    <DisplayString Optional="true">{{ size={_Arr._Size.__0} }}</DisplayString>
+    <DisplayString Optional="true">{{ size={_Arr._Size.0} }}</DisplayString>
+    <Expand>
+      <ExpandedItem>_Arr</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <!-- ===================================================================================================================== -->
+  <!-- FLUX: BuffStream                                                                                                      -->
+  <!-- ===================================================================================================================== -->
+
+  <Type Name="kosh::flux::instream::BuffStream&lt;*&gt;">
+    <DisplayString Optional="true">{{ cached={_Buff._Ptr.pointer.length} }}</DisplayString>
+    <Expand>
+      <Item Name="[cached]" Optional="true">_Buff._Ptr.pointer.length</Item>
       <ExpandedItem>_Buff</ExpandedItem>
     </Expand>
   </Type>
-  <Type Name="InStream">
-    <DisplayString Optional="true">{{ pos={_Marker.__0}, remaining={_Buff._Ptr.pointer.length - _Marker.__0} }}</DisplayString>
-    <DisplayString Optional="true">{{ pos={_Marker.0}, remaining={_Buff._Ptr.pointer.length - _Marker.0} }}</DisplayString>
+  <Type Name="BuffStream&lt;*&gt;">
+    <DisplayString Optional="true">{{ cached={_Buff._Ptr.pointer.length} }}</DisplayString>
     <Expand>
-      <Item Name="[pos]" Optional="true">_Marker.__0</Item>
-      <Item Name="[pos]" Optional="true">_Marker.0</Item>
-      <Item Name="[remaining]" Optional="true">_Buff._Ptr.pointer.length - _Marker.__0</Item>
-      <Item Name="[remaining]" Optional="true">_Buff._Ptr.pointer.length - _Marker.0</Item>
+      <Item Name="[cached]" Optional="true">_Buff._Ptr.pointer.length</Item>
+      <ExpandedItem>_Buff</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="kosh::flux::instream::BuffStream">
+    <DisplayString Optional="true">{{ cached={_Buff._Ptr.pointer.length} }}</DisplayString>
+    <Expand>
+      <Item Name="[cached]" Optional="true">_Buff._Ptr.pointer.length</Item>
+      <ExpandedItem>_Buff</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="BuffStream">
+    <DisplayString Optional="true">{{ cached={_Buff._Ptr.pointer.length} }}</DisplayString>
+    <Expand>
+      <Item Name="[cached]" Optional="true">_Buff._Ptr.pointer.length</Item>
       <ExpandedItem>_Buff</ExpandedItem>
     </Expand>
   </Type>
