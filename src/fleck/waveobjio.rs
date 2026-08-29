@@ -354,40 +354,25 @@ impl WaveObjModel
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-fn	ParseFaceVertexToken( token: &str, numVerts: U32, numTex: U32, numNorm: U32) -> Option< FaceVertex>
-{
-    let  	mut parts = token.split( '/');
-    let  	vRaw: i32 = parts.next()?.parse().ok()?;
-    let  	vIdx = if vRaw < 0 { ( numVerts.0 as i32) + vRaw + 1 } else { vRaw };
+struct MutVal< T>( *mut T);
 
-    let  	vtIdx = if let Some( part) = parts.next() {
-        if !part.is_empty() {
-            let  	vtRaw: i32 = part.parse().ok()?;
-            Some( if vtRaw < 0 { ( numTex.0 as i32) + vtRaw + 1 } else { vtRaw })
-        } else {
-            None
-        }
-    } else {
-        None
-    };
-
-    let  	vnIdx = if let Some( part) = parts.next() {
-        if !part.is_empty() {
-            let  	vnRaw: i32 = part.parse().ok()?;
-            Some( if vnRaw < 0 { ( numNorm.0 as i32) + vnRaw + 1 } else { vnRaw })
-        } else {
-            None
-        }
-    } else {
-        None
-    };
-
-    Some( FaceVertex {
-        _VertexIdx:   vIdx,
-        _TexCoordIdx: vtIdx,
-        _NormalIdx:   vnIdx,
-    })
+impl< T> Clone for MutVal< T> {
+    #[inline( always)]
+    fn clone( &self) -> Self { *self }
 }
+
+impl< T> Copy for MutVal< T> {}
+
+impl< T> MutVal< T> {
+    #[inline( always)]
+    fn	New( r: &mut T) -> Self { Self( r as *mut T) }
+
+    #[inline( always)]
+    #[allow( clippy::mut_from_ref)]
+    fn	Get( &self) -> &mut T { unsafe { &mut *self.0 } }
+}
+
+
 
 #[inline( always)]
 fn	PushReal( arr: Arr< '_, U8>, vals: MultiMut< f32>) -> bool
@@ -447,6 +432,9 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
         let  	nonWs = *Charset::NonSpace();
         let  	nonEnd = Charset::EndLine().Negative();
 
+        let  	mut curFaceVert = FaceVertex { _VertexIdx: 0, _TexCoordIdx: None, _NormalIdx: None };
+        let  	fvPtr = MutVal::New( &mut curFaceVert);
+
         let  	objGrammar = ShardTree!(
             *(
                 *[ " \t" ]
@@ -483,14 +471,36 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
                         vals.PopToSize( U32( 0));
                         true
                     } ] )
-                    | ( ( "f" < +( +[ " \t" ] < ( Int < ?( "/" < ?Int < ?( "/" < Int ) ) )[ |arr| {
-                        let  	token = <&str>::from( arr);
-                        let  	numV = vStash.Size();
-                        let  	numT = vtStash.Size();
-                        let  	numN = vnStash.Size();
-                        if let Some( fv) = ParseFaceVertexToken( token, numV, numT, numN) {
-                            faceVerts.Push( fv);
-                        }
+                    | ( ( "f" < +( +[ " \t" ] < ( 
+                        Int[ |arr| {
+                            if let Ok( v) = <&str>::from( arr).parse::< i32>() {
+                                let  	numV = vStash.Size().0 as i32;
+                                fvPtr.Get()._VertexIdx = if v < 0 { numV + v + 1 } else { v };
+                            }
+                            true
+                        } ] 
+                        < ?( "/" 
+                             < ?Int[ |arr| {
+                                 if let Ok( v) = <&str>::from( arr).parse::< i32>() {
+                                     let  	numT = vtStash.Size().0 as i32;
+                                     fvPtr.Get()._TexCoordIdx = Some( if v < 0 { numT + v + 1 } else { v });
+                                 }
+                                 true
+                             } ] 
+                             < ?( "/" 
+                                  < Int[ |arr| {
+                                      if let Ok( v) = <&str>::from( arr).parse::< i32>() {
+                                          let  	numN = vnStash.Size().0 as i32;
+                                          fvPtr.Get()._NormalIdx = Some( if v < 0 { numN + v + 1 } else { v });
+                                      }
+                                      true
+                                  } ] 
+                             ) 
+                        ) 
+                    )[ |arr| {
+                        let  	_ = arr;
+                        faceVerts.Push( *fvPtr.Get());
+                        *fvPtr.Get() = FaceVertex { _VertexIdx: 0, _TexCoordIdx: None, _NormalIdx: None };
                         true
                     } ] ) )[ |arr| {
                         let  	_ = arr;

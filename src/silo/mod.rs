@@ -6,7 +6,7 @@ pub mod arr;
 pub mod buff;
 pub mod stash;
 pub mod stk;
-pub mod uint; 
+pub mod uint;
 pub mod useg;
 pub mod cast;
 pub mod edge_connect;
