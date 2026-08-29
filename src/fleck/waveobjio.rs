@@ -4,8 +4,8 @@ use	crate::{
     fenst::{ PtsPointsDto, WaveObjMeshDto },
     fleck::{ BBox3f, Dir3f, Pt3f, WPt2f, WPt3f },
     flux::instream::{ FixedStream, IStream },
-    shard::{ IGrammar, Parser, Charset, Real, Int },
-    silo::{ Buff, Stash, IAccess, U32, U8, cast::IConstPtrMutRefExt },
+    shard::{ Charset, IGrammar, Int, Parser, Real },
+    silo::{ cast::IConstPtrMutRefExt, Arr, Buff, IAccess, Stash, U32, U8 },
     ShardTree,
 };
 
@@ -358,31 +358,33 @@ impl WaveObjModel
 /// Returns the number of floats successfully parsed. Advances `p` past consumed tokens.
 fn	ParseFloatsOnLine( p: &mut Parser, nums: &mut [f32], maxCount: usize) -> usize
 {
-    let  	numGrammar = ShardTree!( Real );
+    let  	numCount = 0usize;
+    let  	countPtr = &numCount as *const usize;
+    let  	numsPtr = nums as *const [f32];
+    let  	captureReal = |arr: Arr< U8>| {
+        if let Ok( val) = <&str>::from( arr).parse::< f32>() {
+            let  	cnt = countPtr.MutRef();
+            if *cnt < maxCount {
+                numsPtr.MutRef()[*cnt] = val;
+                *cnt += 1;
+            }
+        }
+        true
+    };
+    let  	realGrammar = ShardTree!( Real[ captureReal] );
     let  	hspc = ShardTree!( +[" \t"] );
-    let  	mut numCount = 0usize;
     let  	mut mCur = p.CurrMark();
 
-    while numCount < maxCount && mCur < p.InStream().Size() {
-        let  	b = p.GetAt( mCur);
-        if b == U8( b'\r') || b == U8( b'\n') { break; }
-
-        let  	tokenMark = mCur;
-        if let Some( nextM) = p.ParseGrammar( &numGrammar, tokenMark) {
-            let  	bytes = p.InStream().BytesAt( tokenMark, nextM - tokenMark);
-            if let Ok( val) = <&str>::from( bytes).parse::< f32>() {
-                nums[numCount] = val;
-                numCount += 1;
+    while numCount < maxCount {
+        if let Some( nextM) = p.ParseGrammar( &realGrammar, mCur) {
+            mCur = nextM;
+            if let Some( nextSpc) = p.ParseGrammar( &hspc, mCur) {
+                mCur = nextSpc;
+            } else {
+                break;
             }
-            mCur = nextM;
-        } else if let Some( nextM) = p.Incr( mCur) {
-            mCur = nextM;
         } else {
             break;
-        }
-
-        if let Some( nextM) = p.ParseGrammar( &hspc, mCur) {
-            mCur = nextM;
         }
     }
 
@@ -465,64 +467,66 @@ fn	ParseFaceLine( p: &mut Parser, vertPtr: *const Stash< WPt3f>, texPtr: *const 
     let Some( mAfterTag) = p.ParseGrammar( &fTag, mStart) else {
         return false;
     };
+    p.SetCurrMark( mAfterTag);
 
-    let  	intGrammar = ShardTree!( Int );
-    let  	hspc = ShardTree!( +[" \t"] );
     let  	numV = vertPtr.MutRef().Size().AsUsize();
     let  	numT = texPtr.MutRef().Size().AsUsize();
     let  	numN = normPtr.MutRef().Size().AsUsize();
 
-    let  	mut faceVerts = Stash::< FaceVertex>::WithCapacity( U32( 4));
-    let  	mut mCur = mAfterTag;
+    let  	faceVerts = Stash::< FaceVertex>::WithCapacity( U32( 4));
+    let  	faceVertsPtr = &faceVerts as *const Stash< FaceVertex>;
+    let  	hspc = ShardTree!( +[" \t"] );
 
-    while mCur < p.InStream().Size() {
-        let  	b = p.GetAt( mCur);
-        if b == U8( b'\r') || b == U8( b'\n') { break; }
+    let  	parseFaceVertex = |tp: &mut Parser| -> bool {
+        let  	vIdx = 0i32;
+        let  	vtIdx: Option< i32> = None;
+        let  	vnIdx: Option< i32> = None;
 
-        let  	tokenMark = mCur;
-        if let Some( mAfterV) = p.ParseGrammar( &intGrammar, tokenMark) {
-            let  	vBytes = p.InStream().BytesAt( tokenMark, mAfterV - tokenMark);
-            let  	vRaw: i32 = <&str>::from( vBytes).parse().unwrap_or( 0);
-            let  	vIdx = if vRaw < 0 { (numV as i32) + vRaw + 1 } else { vRaw };
+        let  	vPtr = &vIdx as *const i32;
+        let  	vtPtr = &vtIdx as *const Option< i32>;
+        let  	vnPtr = &vnIdx as *const Option< i32>;
 
-            let  	mut vtIdx: Option< i32> = None;
-            let  	mut vnIdx: Option< i32> = None;
-            let  	mut mFV = mAfterV;
+        let  	captureV = |arr: Arr< U8>| {
+            let  	raw: i32 = <&str>::from( arr).parse().unwrap_or( 0);
+            *vPtr.MutRef() = if raw < 0 { (numV as i32) + raw + 1 } else { raw };
+            true
+        };
+        let  	captureVt = |arr: Arr< U8>| {
+            let  	raw: i32 = <&str>::from( arr).parse().unwrap_or( 0);
+            *vtPtr.MutRef() = Some( if raw < 0 { (numT as i32) + raw + 1 } else { raw });
+            true
+        };
+        let  	captureVn = |arr: Arr< U8>| {
+            let  	raw: i32 = <&str>::from( arr).parse().unwrap_or( 0);
+            *vnPtr.MutRef() = Some( if raw < 0 { (numN as i32) + raw + 1 } else { raw });
+            true
+        };
 
-            let  	slashGrammar = ShardTree!( '/' );
-            if let Some( mAfterSlash1) = p.ParseGrammar( &slashGrammar, mFV) {
-                mFV = mAfterSlash1;
-                if let Some( mAfterVt) = p.ParseGrammar( &intGrammar, mFV) {
-                    let  	vtBytes = p.InStream().BytesAt( mFV, mAfterVt - mFV);
-                    let  	vtRaw: i32 = <&str>::from( vtBytes).parse().unwrap_or( 0);
-                    vtIdx = Some( if vtRaw < 0 { (numT as i32) + vtRaw + 1 } else { vtRaw });
-                    mFV = mAfterVt;
-                }
-                if let Some( mAfterSlash2) = p.ParseGrammar( &slashGrammar, mFV) {
-                    mFV = mAfterSlash2;
-                    if let Some( mAfterVn) = p.ParseGrammar( &intGrammar, mFV) {
-                        let  	vnBytes = p.InStream().BytesAt( mFV, mAfterVn - mFV);
-                        let  	vnRaw: i32 = <&str>::from( vnBytes).parse().unwrap_or( 0);
-                        vnIdx = Some( if vnRaw < 0 { (numN as i32) + vnRaw + 1 } else { vnRaw });
-                        mFV = mAfterVn;
-                    }
-                }
-            }
+        let  	fvGrammar = ShardTree!(
+            Int[ captureV] < ?( ("//" < Int[ captureVn]) | ('/' < Int[ captureVt] < ?('/' < Int[ captureVn])) )
+        );
 
-            faceVerts.Push( FaceVertex {
+        let  	m = tp.CurrMark();
+        if let Some( nextM) = tp.ParseGrammar( &fvGrammar, m) {
+            faceVertsPtr.MutRef().Push( FaceVertex {
                 _VertexIdx:   vIdx,
                 _TexCoordIdx: vtIdx,
                 _NormalIdx:   vnIdx,
             });
-            mCur = mFV;
-        } else if let Some( nextM) = p.Incr( mCur) {
-            mCur = nextM;
+            tp.SetCurrMark( nextM);
+            true
+        } else {
+            false
+        }
+    };
+
+    let  	mut mCur = p.CurrMark();
+    while let Some( nextM) = p.ParseGrammar( &parseFaceVertex, mCur) {
+        mCur = nextM;
+        if let Some( nextSpc) = p.ParseGrammar( &hspc, mCur) {
+            mCur = nextSpc;
         } else {
             break;
-        }
-
-        if let Some( nextM) = p.ParseGrammar( &hspc, mCur) {
-            mCur = nextM;
         }
     }
 
@@ -539,57 +543,21 @@ fn	ParseFaceLine( p: &mut Parser, vertPtr: *const Stash< WPt3f>, texPtr: *const 
 
 fn	ParseMetaLine( p: &mut Parser, objPtr: *const Stash< String>, grpPtr: *const Stash< String>, mtlPtr: *const Stash< String>, usePtr: *const Stash< String>) -> bool
 {
+    let  	name = ShardTree!( +( Charset::EndLine().Negative()) );
+    let  	metaGrammar = ShardTree!(
+        ( "mtllib" < +[" \t"] < name[ |arr: Arr< U8>| { mtlPtr.MutRef().PushVal( <&str>::from( arr).trim().to_string()); true } ] )
+        | ( "usemtl" < +[" \t"] < name[ |arr: Arr< U8>| { usePtr.MutRef().PushVal( <&str>::from( arr).trim().to_string()); true } ] )
+        | ( "o" < +[" \t"] < name[ |arr: Arr< U8>| { objPtr.MutRef().PushVal( <&str>::from( arr).trim().to_string()); true } ] )
+        | ( "g" < +[" \t"] < name[ |arr: Arr< U8>| { grpPtr.MutRef().PushVal( <&str>::from( arr).trim().to_string()); true } ] )
+    );
+
     let  	mStart = p.CurrMark();
-    let  	tags: [(&str, u8); 4] = [
-        ( "mtllib", 0), ( "usemtl", 1), ( "o", 2), ( "g", 3),
-    ];
-
-    let  	mut tagId = 0u8;
-    let  	mut mAfterTag = mStart;
-    let  	mut matched = false;
-    let  	mut tIdx = 0usize;
-    while tIdx < tags.len() {
-        let  	( tag, id) = tags[tIdx];
-        let  	tagWithSpc = |tp: &mut Parser| -> bool {
-            let  	tM = tp.CurrMark();
-            if let Some( mTag) = tp.ParseGrammar( &tag, tM) {
-                let  	spcGrammar = ShardTree!( +[" \t"] );
-                if let Some( mSpc) = tp.ParseGrammar( &spcGrammar, mTag) {
-                    tp.SetCurrMark( mSpc);
-                    return true;
-                }
-            }
-            false
-        };
-        if let Some( mTag) = p.ParseGrammar( &tagWithSpc, mStart) {
-            tagId = id;
-            mAfterTag = mTag;
-            matched = true;
-            break;
-        }
-        tIdx += 1;
+    if let Some( nextM) = p.ParseGrammar( &metaGrammar, mStart) {
+        p.SetCurrMark( nextM);
+        true
+    } else {
+        false
     }
-
-    if !matched {
-        return false;
-    }
-
-    let  	nameGrammar = ShardTree!( +( Charset::EndLine().Negative()) );
-    let  	mut mCur = mAfterTag;
-    if let Some( mAfterName) = p.ParseGrammar( &nameGrammar, mCur) {
-        let  	nameBytes = p.InStream().BytesAt( mCur, mAfterName - mCur);
-        let  	name = <&str>::from( nameBytes).trim().to_string();
-        match tagId {
-            0 => mtlPtr.MutRef().PushVal( name),
-            1 => usePtr.MutRef().PushVal( name),
-            2 => objPtr.MutRef().PushVal( name),
-            3 => grpPtr.MutRef().PushVal( name),
-            _ => {}
-        }
-        mCur = mAfterName;
-    }
-    p.SetCurrMark( mCur);
-    true
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
