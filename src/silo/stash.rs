@@ -334,6 +334,61 @@ impl Stash< U8>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+/// A zero-cost raw pointer wrapper over `Stash<T>` that safely bypasses strict XOR mutability 
+/// by implementing `Copy`. This allows multiple closures within a single synchronous parser 
+/// (like `ShardTree!`) to share concurrent mutable access to the same local stack buffer.
+pub struct MultiMut< T>( *mut Stash< T>);
+
+impl< T> Clone for MultiMut< T> {
+    #[inline( always)]
+    fn clone( &self) -> Self { *self }
+}
+
+impl< T> Copy for MultiMut< T> {}
+
+impl< T> MultiMut< T> {
+    #[inline( always)]
+    pub fn New( stash: &mut Stash< T>) -> Self {
+        Self( stash as *mut _)
+    }
+
+    #[inline( always)]
+    #[allow( clippy::mut_from_ref)]
+    pub fn Get( &self) -> &mut Stash< T> {
+        unsafe { &mut *self.0 }
+    }
+
+    #[inline( always)]
+    pub fn Push( &self, val: T) {
+        unsafe { (*self.0).Push( val) }
+    }
+
+    #[inline( always)]
+    pub fn Size( &self) -> U32 {
+        unsafe { (*self.0).Size() }
+    }
+
+    #[inline( always)]
+    pub fn PopToSize( &self, targetSz: U32) {
+        unsafe { (*self.0).PopToSize( targetSz) }
+    }
+
+    #[inline( always)]
+    pub fn Arr( &self) -> Arr< '_, T> {
+        unsafe { (*self.0).Arr() }
+    }
+
+    #[inline( always)]
+    pub fn ToBuff( &self) -> Buff< T>
+    where
+        T: Clone,
+    {
+        unsafe { (*self.0).ToBuff() }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 #[macro_export]
 macro_rules! Stash {
     (@__ $acc:ident, $exp:expr; for $item:pat in $iter:expr; if $cond:expr) => (

@@ -17,7 +17,7 @@ pub use	access::{ IAccess, AccessIter};
 pub use	arr::{Arr, IArr};
 pub use	buff::Buff;
 pub use	crate::Buff;
-pub use	stash::Stash;
+pub use	stash::{ MultiMut, Stash };
 pub use	crate::Stash;
 pub use	stk::Stk;
 pub use	uint::{ U8, U16, U32, U64 };
