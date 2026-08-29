@@ -337,16 +337,16 @@ impl Stash< U8>
 /// A zero-cost raw pointer wrapper over `Stash<T>` that safely bypasses strict XOR mutability
 /// by implementing `Copy`. This allows multiple closures within a single synchronous parser
 /// (like `ShardTree!`) to share concurrent mutable access to the same local stack buffer.
-pub struct MultiMut< T>( *mut Stash< T>);
+pub struct StashMM< T>( *mut Stash< T>);
 
-impl< T> Clone for MultiMut< T> {
+impl< T> Clone for StashMM< T> {
     #[inline( always)]
     fn clone( &self) -> Self { *self }
 }
 
-impl< T> Copy for MultiMut< T> {}
+impl< T> Copy for StashMM< T> {}
 
-impl< T> MultiMut< T> {
+impl< T> StashMM< T> {
     #[inline( always)]
     pub fn New( stash: &mut Stash< T>) -> Self {
         Self( stash as *mut _)

@@ -5,7 +5,7 @@ use	crate::{
     fleck::{ BBox3f, Dir3f, Pt3f, WPt2f, WPt3f },
     flux::instream::{ FixedStream, IStream },
     shard::{ Charset, IGrammar, Int, Parser, Real },
-    silo::{ Buff, IAccess, MultiMut, Stash, U32 },
+    silo::{ Buff, IAccess, StashMM, Stash, U32 },
     ShardTree,
 };
 
@@ -409,16 +409,16 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
         let  	mut valsStash = Stash::< f32>::WithCapacity( U32( 4));
         let  	mut faceVertsBuff = Stash::< FaceVertex>::WithCapacity( U32( 4));
 
-        let  	vStash = MultiMut::New( &mut verticesStash);
-        let  	vtStash = MultiMut::New( &mut texCoordsStash);
-        let  	vnStash = MultiMut::New( &mut normalsStash);
-        let  	fStash = MultiMut::New( &mut facesStash);
-        let  	objStash = MultiMut::New( &mut objectsStash);
-        let  	grpStash = MultiMut::New( &mut groupsStash);
-        let  	mtlStash = MultiMut::New( &mut mtlLibsStash);
-        let  	useMtlStash = MultiMut::New( &mut useMtlsStash);
-        let  	vals = MultiMut::New( &mut valsStash);
-        let  	faceVerts = MultiMut::New( &mut faceVertsBuff);
+        let  	vStash = StashMM::New( &mut verticesStash);
+        let  	vtStash = StashMM::New( &mut texCoordsStash);
+        let  	vnStash = StashMM::New( &mut normalsStash);
+        let  	fStash = StashMM::New( &mut facesStash);
+        let  	objStash = StashMM::New( &mut objectsStash);
+        let  	grpStash = StashMM::New( &mut groupsStash);
+        let  	mtlStash = StashMM::New( &mut mtlLibsStash);
+        let  	useMtlStash = StashMM::New( &mut useMtlsStash);
+        let  	vals = StashMM::New( &mut valsStash);
+        let  	faceVerts = StashMM::New( &mut faceVertsBuff);
 
         let  	nonWs = *Charset::NonSpace();
         let  	nonEnd = Charset::EndLine().Negative();
