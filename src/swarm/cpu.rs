@@ -1,4 +1,4 @@
-﻿//-- swarm/cpu.rs --------------------------------------------------------------------------------------------------------------------
+//-- swarm/cpu.rs --------------------------------------------------------------------------------------------------------------------
 
 use	std::sync::{ Arc, RwLock };
 use	crate::silo::{ Buff, Stash, U32, U64 };
@@ -322,7 +322,7 @@ impl IComputeDevice for CpuDevice
         // Read all buffers into CPU memory
         let  	mut rawDataStash: Stash< Buff< u8>> = Stash::WithCapacity( U32( buffers.len() as u32));
         for b in buffers {
-            rawDataStash.PushVal( b.Read()?);
+            rawDataStash.Push( b.Read()?);
         }
         let  	rawData = rawDataStash.IntoBuff();
 

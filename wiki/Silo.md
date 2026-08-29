@@ -26,7 +26,6 @@ classDiagram
         +Reserve(newCap)
         +Clear()
         +Push(val)
-        +PushVal(val)
         +PushX(valRef)
         +Pop() Option~T~
         +PopToSize(targetSz)

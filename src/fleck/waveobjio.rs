@@ -472,8 +472,8 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
             *(
                 *[ " \t" ]
                 < (
-                    ( "mtllib" < +[ " \t" ] < (+nonWs)[ |arr| { mtlStash.Get().PushVal( <&str>::from( arr).to_string()); true } ] )
-                    | ( "usemtl" < +[ " \t" ] < (+nonWs)[ |arr| { useMtlStash.Get().PushVal( <&str>::from( arr).to_string()); true } ] )
+                    ( "mtllib" < +[ " \t" ] < (+nonWs)[ |arr| { mtlStash.Get().Push( <&str>::from( arr).to_string()); true } ] )
+                    | ( "usemtl" < +[ " \t" ] < (+nonWs)[ |arr| { useMtlStash.Get().Push( <&str>::from( arr).to_string()); true } ] )
                     | ( ( "vt" < +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] < ?( +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] < ?( +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] ) ) )[ |arr| {
                         let  	_ = arr;
                         let  	stash = vals.Get();
@@ -520,13 +520,13 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
                         let  	_ = arr;
                         let  	fvStash = faceVerts.Get();
                         if fvStash.Size() > U32( 0) {
-                            fStash.Get().PushVal( Face { _Vertices: fvStash.ToBuff() });
+                            fStash.Get().Push( Face { _Vertices: fvStash.ToBuff() });
                             fvStash.PopToSize( U32( 0));
                         }
                         true
                     } ] )
-                    | ( "o" < +[ " \t" ] < (+nonWs)[ |arr| { objStash.Get().PushVal( <&str>::from( arr).to_string()); true } ] )
-                    | ( "g" < +[ " \t" ] < (+nonWs)[ |arr| { grpStash.Get().PushVal( <&str>::from( arr).to_string()); true } ] )
+                    | ( "o" < +[ " \t" ] < (+nonWs)[ |arr| { objStash.Get().Push( <&str>::from( arr).to_string()); true } ] )
+                    | ( "g" < +[ " \t" ] < (+nonWs)[ |arr| { grpStash.Get().Push( <&str>::from( arr).to_string()); true } ] )
                     | *nonEnd
                 )
                 < *[ " \t" ]

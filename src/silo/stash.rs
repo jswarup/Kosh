@@ -140,11 +140,6 @@ impl< T> Stash< T>
         self._Sz.Store( sz + U32( 1), Ordering::Release);
     }
 
-    pub fn	PushVal( &mut self, val: T)
-    {
-        self.Push( val);
-    }
-
     pub fn	Stk( &self) -> Stk< '_, '_, T>
     {
         let  	arr = Arr::New( self._Ptr, self._Cap);
@@ -170,7 +165,7 @@ impl< T> Stash< T>
             Some( read( self._Ptr.as_ptr().add( newSz.AsUsize())))
         }
     }
-    
+
     pub fn	PopToSize( &mut self, targetSz: U32)
     {
         while self.Size() > targetSz {
@@ -228,7 +223,7 @@ impl< T> Stash< T>
         self._Sz.Store( U32( 0), Ordering::Release); // Prevent drop
         buff
     }
-    
+
     pub fn	ToBuff( &self) -> Buff< T>
     where
         T: Clone,
@@ -258,7 +253,7 @@ impl< T> Stash< T>
         }
         self._Sz.Store( startSz + n, Ordering::Release);
     }
-    
+
     pub fn	TopMut( &self) -> Option< &mut T>
     {
         let  	sz = self.Size();
@@ -268,7 +263,7 @@ impl< T> Stash< T>
             None
         }
     }
-    
+
     pub fn	Slice( &self) -> &[T]
     {
         if self.Size() == U32( 0) {
