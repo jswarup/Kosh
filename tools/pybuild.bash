@@ -7,10 +7,8 @@ THIS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export WorkSpace="${THIS_DIR}/.."
 cd "${WorkSpace}"
 export VIRTUAL_ENV="${WorkSpace}/.venv"
-INITIAL_SETUP=0
 if [[ ! -d "${VIRTUAL_ENV}" ]]; then
     python -m venv "${VIRTUAL_ENV}"
-    INITIAL_SETUP=1
 fi
 
 if [[ -d "${VIRTUAL_ENV}/Scripts" ]]; then
@@ -28,7 +26,7 @@ esac
 unset PYTHONHOME
 hash -r 2>/dev/null
 
-if [[ "${INITIAL_SETUP}" == "1" ]]; then
+if ! command -v maturin &> /dev/null; then
     python -m pip install maturin
 fi
 

@@ -9,6 +9,13 @@ def main():
     print("greet('World') =", pykosh.greet("World"))
     print("fibonacci(10) =", pykosh.fibonacci(10))
 
+    # Hardware Simulated Adder (Rube)
+    print("\n--- Rube Hardware Simulation ---")
+    print("add_via_rube(10, 20) =", pykosh.add_via_rube(10, 20))
+    print("add_via_rube(100, 255) =", pykosh.add_via_rube(100, 255))
+    print("add_via_rube(12345, 54321) =", pykosh.add_via_rube(12345, 54321))
+
+
     # Class
     c = pykosh.Counter(start=10)
     print(f"\n{c}")
