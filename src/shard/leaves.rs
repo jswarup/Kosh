@@ -56,6 +56,9 @@ impl IGrammar for Charset
     fn	Match( &self, parser: &mut Parser) -> bool
     {
         let  	mark = parser.CurrMark();
+        if mark >= parser.InStream().Size() {
+            return false;
+        }
         let  	curr = parser.GetAt( mark);
         if self.Get( curr.0) {
             parser.SetCurrMark( mark + U32( 1));
@@ -66,13 +69,16 @@ impl IGrammar for Charset
     }
 }
 
-
+//---------------------------------------------------------------------------------------------------------------------------------
 
 impl IGrammar for char
 {
     fn	Match( &self, parser: &mut Parser) -> bool
     {
         let  	mark = parser.CurrMark();
+        if mark >= parser.InStream().Size() {
+            return false;
+        }
         let  	curr = parser.GetAt( mark);
         if curr == U8( *self as u8) {
             parser.SetCurrMark( mark + U32( 1));
@@ -146,7 +152,7 @@ impl IGrammar for Str
                 } else if c == U8( b'\\') {
                     escape = true;
                 } else if c == U8( b'"') {
-                    if let  	Some( nxt) = parser.Incr( m) { 
+                    if let  	Some( nxt) = parser.Incr( m) {
                         parser.SetCurrMark( nxt);
                         return true;
                     } else {

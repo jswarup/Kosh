@@ -5,7 +5,7 @@ use	crate::{
     fleck::{ BBox3f, Dir3f, Pt3f, WPt2f, WPt3f },
     flux::instream::{ FixedStream, IStream },
     shard::{ Charset, IGrammar, Int, Parser, Real },
-    silo::{ cast::IConstPtrMutRefExt, Arr, Buff, IAccess, Stash, U32, U8 },
+    silo::{ Arr, Buff, IAccess, Stash, U32, U8 },
     ShardTree,
 };
 
@@ -354,210 +354,56 @@ impl WaveObjModel
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Parses up to `maxCount` floats from the current line, storing into `nums`.
-/// Returns the number of floats successfully parsed. Advances `p` past consumed tokens.
-fn	ParseFloatsOnLine( p: &mut Parser, nums: &mut [f32], maxCount: usize) -> usize
+fn	ParseFaceVertexToken( token: &str, numVerts: usize, numTex: usize, numNorm: usize) -> Option< FaceVertex>
 {
-    let  	numCount = 0usize;
-    let  	countPtr = &numCount as *const usize;
-    let  	numsPtr = nums as *const [f32];
-    let  	captureReal = |arr: Arr< U8>| {
-        if let Ok( val) = <&str>::from( arr).parse::< f32>() {
-            let  	cnt = countPtr.MutRef();
-            if *cnt < maxCount {
-                numsPtr.MutRef()[*cnt] = val;
-                *cnt += 1;
+    let  	mut parts = token.split( '/');
+    let  	vRaw: i32 = parts.next()?.parse().ok()?;
+    let  	vIdx = if vRaw < 0 { ( numVerts as i32) + vRaw + 1 } else { vRaw };
+
+    let  	vtIdx = if let Some( part) = parts.next() {
+        if !part.is_empty() {
+            let  	vtRaw: i32 = part.parse().ok()?;
+            Some( if vtRaw < 0 { ( numTex as i32) + vtRaw + 1 } else { vtRaw })
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let  	vnIdx = if let Some( part) = parts.next() {
+        if !part.is_empty() {
+            let  	vnRaw: i32 = part.parse().ok()?;
+            Some( if vnRaw < 0 { ( numNorm as i32) + vnRaw + 1 } else { vnRaw })
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    Some( FaceVertex {
+        _VertexIdx:   vIdx,
+        _TexCoordIdx: vtIdx,
+        _NormalIdx:   vnIdx,
+    })
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[inline( always)]
+fn	PushReal( arr: Arr< '_, U8>, valsPtr: *mut [f32; 4], valCountPtr: *mut usize) -> bool
+{
+    if let Ok( v) = <&str>::from( arr).parse::< f32>() {
+        let  	cnt = unsafe { *valCountPtr };
+        if cnt < 4 {
+            unsafe {
+                (*valsPtr)[cnt] = v;
+                *valCountPtr = cnt + 1;
             }
         }
-        true
-    };
-    let  	realGrammar = ShardTree!( Real[ captureReal] );
-    let  	hspc = ShardTree!( +[" \t"] );
-    let  	mut mCur = p.CurrMark();
-
-    while numCount < maxCount {
-        if let Some( nextM) = p.ParseGrammar( &realGrammar, mCur) {
-            mCur = nextM;
-            if let Some( nextSpc) = p.ParseGrammar( &hspc, mCur) {
-                mCur = nextSpc;
-            } else {
-                break;
-            }
-        } else {
-            break;
-        }
     }
-
-    p.SetCurrMark( mCur);
-    numCount
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-fn	ParseVertexLine( p: &mut Parser, vertPtr: *const Stash< WPt3f>) -> bool
-{
-    let  	mStart = p.CurrMark();
-    let  	vTag = ShardTree!( "v" < +[" \t"] );
-    let Some( mAfterTag) = p.ParseGrammar( &vTag, mStart) else {
-        return false;
-    };
-    p.SetCurrMark( mAfterTag);
-
-    let  	mut nums: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
-    let  	numCount = ParseFloatsOnLine( p, &mut nums, 4);
-    if numCount >= 3 {
-        vertPtr.MutRef().Push( WPt3f::WithW( nums[0], nums[1], nums[2], nums[3]));
-        true
-    } else {
-        false
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-fn	ParseTexCoordLine( p: &mut Parser, texPtr: *const Stash< WPt2f>) -> bool
-{
-    let  	mStart = p.CurrMark();
-    let  	vtTag = ShardTree!( "vt" < +[" \t"] );
-    let Some( mAfterTag) = p.ParseGrammar( &vtTag, mStart) else {
-        return false;
-    };
-    p.SetCurrMark( mAfterTag);
-
-    let  	mut nums: [f32; 3] = [0.0, 0.0, 0.0];
-    let  	numCount = ParseFloatsOnLine( p, &mut nums, 3);
-    if numCount >= 2 {
-        texPtr.MutRef().Push( WPt2f::WithW( nums[0], nums[1], nums[2]));
-        true
-    } else if numCount == 1 {
-        texPtr.MutRef().Push( WPt2f::New( nums[0], 0.0));
-        true
-    } else {
-        false
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-fn	ParseNormalLine( p: &mut Parser, normPtr: *const Stash< Dir3f>) -> bool
-{
-    let  	mStart = p.CurrMark();
-    let  	vnTag = ShardTree!( "vn" < +[" \t"] );
-    let Some( mAfterTag) = p.ParseGrammar( &vnTag, mStart) else {
-        return false;
-    };
-    p.SetCurrMark( mAfterTag);
-
-    let  	mut nums: [f32; 3] = [0.0, 0.0, 0.0];
-    let  	numCount = ParseFloatsOnLine( p, &mut nums, 3);
-    if numCount >= 3 {
-        normPtr.MutRef().Push( Dir3f::New( nums[0], nums[1], nums[2]));
-        true
-    } else {
-        false
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-fn	ParseFaceLine( p: &mut Parser, vertPtr: *const Stash< WPt3f>, texPtr: *const Stash< WPt2f>, normPtr: *const Stash< Dir3f>, facePtr: *const Stash< Face>) -> bool
-{
-    let  	mStart = p.CurrMark();
-    let  	fTag = ShardTree!( "f" < +[" \t"] );
-    let Some( mAfterTag) = p.ParseGrammar( &fTag, mStart) else {
-        return false;
-    };
-    p.SetCurrMark( mAfterTag);
-
-    let  	numV = vertPtr.MutRef().Size().AsUsize();
-    let  	numT = texPtr.MutRef().Size().AsUsize();
-    let  	numN = normPtr.MutRef().Size().AsUsize();
-
-    let  	faceVerts = Stash::< FaceVertex>::WithCapacity( U32( 4));
-    let  	faceVertsPtr = &faceVerts as *const Stash< FaceVertex>;
-    let  	hspc = ShardTree!( +[" \t"] );
-
-    let  	parseFaceVertex = |tp: &mut Parser| -> bool {
-        let  	vIdx = 0i32;
-        let  	vtIdx: Option< i32> = None;
-        let  	vnIdx: Option< i32> = None;
-
-        let  	vPtr = &vIdx as *const i32;
-        let  	vtPtr = &vtIdx as *const Option< i32>;
-        let  	vnPtr = &vnIdx as *const Option< i32>;
-
-        let  	captureV = |arr: Arr< U8>| {
-            let  	raw: i32 = <&str>::from( arr).parse().unwrap_or( 0);
-            *vPtr.MutRef() = if raw < 0 { (numV as i32) + raw + 1 } else { raw };
-            true
-        };
-        let  	captureVt = |arr: Arr< U8>| {
-            let  	raw: i32 = <&str>::from( arr).parse().unwrap_or( 0);
-            *vtPtr.MutRef() = Some( if raw < 0 { (numT as i32) + raw + 1 } else { raw });
-            true
-        };
-        let  	captureVn = |arr: Arr< U8>| {
-            let  	raw: i32 = <&str>::from( arr).parse().unwrap_or( 0);
-            *vnPtr.MutRef() = Some( if raw < 0 { (numN as i32) + raw + 1 } else { raw });
-            true
-        };
-
-        let  	fvGrammar = ShardTree!(
-            Int[ captureV] < ?( ("//" < Int[ captureVn]) | ('/' < Int[ captureVt] < ?('/' < Int[ captureVn])) )
-        );
-
-        let  	m = tp.CurrMark();
-        if let Some( nextM) = tp.ParseGrammar( &fvGrammar, m) {
-            faceVertsPtr.MutRef().Push( FaceVertex {
-                _VertexIdx:   vIdx,
-                _TexCoordIdx: vtIdx,
-                _NormalIdx:   vnIdx,
-            });
-            tp.SetCurrMark( nextM);
-            true
-        } else {
-            false
-        }
-    };
-
-    let  	mut mCur = p.CurrMark();
-    while let Some( nextM) = p.ParseGrammar( &parseFaceVertex, mCur) {
-        mCur = nextM;
-        if let Some( nextSpc) = p.ParseGrammar( &hspc, mCur) {
-            mCur = nextSpc;
-        } else {
-            break;
-        }
-    }
-
-    if faceVerts.Size() > U32( 0) {
-        facePtr.MutRef().PushVal( Face { _Vertices: faceVerts.IntoBuff() });
-        p.SetCurrMark( mCur);
-        true
-    } else {
-        false
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-fn	ParseMetaLine( p: &mut Parser, objPtr: *const Stash< String>, grpPtr: *const Stash< String>, mtlPtr: *const Stash< String>, usePtr: *const Stash< String>) -> bool
-{
-    let  	name = ShardTree!( +( Charset::EndLine().Negative()) );
-    let  	metaGrammar = ShardTree!(
-        ( "mtllib" < +[" \t"] < name[ |arr: Arr< U8>| { mtlPtr.MutRef().PushVal( <&str>::from( arr).trim().to_string()); true } ] )
-        | ( "usemtl" < +[" \t"] < name[ |arr: Arr< U8>| { usePtr.MutRef().PushVal( <&str>::from( arr).trim().to_string()); true } ] )
-        | ( "o" < +[" \t"] < name[ |arr: Arr< U8>| { objPtr.MutRef().PushVal( <&str>::from( arr).trim().to_string()); true } ] )
-        | ( "g" < +[" \t"] < name[ |arr: Arr< U8>| { grpPtr.MutRef().PushVal( <&str>::from( arr).trim().to_string()); true } ] )
-    );
-
-    let  	mStart = p.CurrMark();
-    if let Some( nextM) = p.ParseGrammar( &metaGrammar, mStart) {
-        p.SetCurrMark( nextM);
-        true
-    } else {
-        false
-    }
+    true
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -574,71 +420,111 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
 {
     fn	Match( &self, parser: &mut Parser) -> bool
     {
-        let  	modelPtr = &self._Model as *const &mut WaveObjModel;
-        let  	model = modelPtr.MutRef();
+        let  	modelPtr = self._Model as *const WaveObjModel as *mut WaveObjModel;
+        let  	model = unsafe { &mut *modelPtr };
 
         let  	streamSz = parser.InStream().Size().AsUsize();
         let  	estVerts = (streamSz / 40).max( 128) as u32;
         let  	estFaces = (streamSz / 50).max( 128) as u32;
 
-        let  	verticesStash = Stash::< WPt3f>::WithCapacity( U32( estVerts));
-        let  	texCoordsStash = Stash::< WPt2f>::WithCapacity( U32( (estVerts / 2).max( 64)));
-        let  	normalsStash = Stash::< Dir3f>::WithCapacity( U32( (estVerts / 2).max( 64)));
-        let  	facesStash = Stash::< Face>::WithCapacity( U32( estFaces));
-        let  	objectsStash = Stash::< String>::New();
-        let  	groupsStash = Stash::< String>::New();
-        let  	mtlLibsStash = Stash::< String>::New();
-        let  	useMtlsStash = Stash::< String>::New();
+        let  	mut verticesStash = Stash::< WPt3f>::WithCapacity( U32( estVerts));
+        let  	mut texCoordsStash = Stash::< WPt2f>::WithCapacity( U32( (estVerts / 2).max( 64)));
+        let  	mut normalsStash = Stash::< Dir3f>::WithCapacity( U32( (estVerts / 2).max( 64)));
+        let  	mut facesStash = Stash::< Face>::WithCapacity( U32( estFaces));
+        let  	mut objectsStash = Stash::< String>::New();
+        let  	mut groupsStash = Stash::< String>::New();
+        let  	mut mtlLibsStash = Stash::< String>::New();
+        let  	mut useMtlsStash = Stash::< String>::New();
 
-        // Raw pointers for interior mutability in Fn closures (IConstPtrMutRefExt pattern)
-        let  	vertPtr = &verticesStash as *const Stash< WPt3f>;
-        let  	texPtr = &texCoordsStash as *const Stash< WPt2f>;
-        let  	normPtr = &normalsStash as *const Stash< Dir3f>;
-        let  	facePtr = &facesStash as *const Stash< Face>;
-        let  	objPtr = &objectsStash as *const Stash< String>;
-        let  	grpPtr = &groupsStash as *const Stash< String>;
-        let  	mtlPtr = &mtlLibsStash as *const Stash< String>;
-        let  	usePtr = &useMtlsStash as *const Stash< String>;
+        let  	mut vals = [0.0f32; 4];
+        let  	mut valCount = 0usize;
+        let  	mut faceVerts = Stash::< FaceVertex>::WithCapacity( U32( 4));
 
-        let  	mut m = parser.CurrMark();
-        let  	nlGrammar = ShardTree!( ( ?'\r' < '\n' ) | '\r' );
-        let  	commentLine = ShardTree!( '#' < *( Charset::EndLine().Negative()) < nlGrammar );
+        let  	vStashPtr = &mut verticesStash as *mut Stash< WPt3f>;
+        let  	vtStashPtr = &mut texCoordsStash as *mut Stash< WPt2f>;
+        let  	vnStashPtr = &mut normalsStash as *mut Stash< Dir3f>;
+        let  	fStashPtr = &mut facesStash as *mut Stash< Face>;
+        let  	objStashPtr = &mut objectsStash as *mut Stash< String>;
+        let  	grpStashPtr = &mut groupsStash as *mut Stash< String>;
+        let  	mtlStashPtr = &mut mtlLibsStash as *mut Stash< String>;
+        let  	useMtlStashPtr = &mut useMtlsStash as *mut Stash< String>;
+        let  	valsPtr = &mut vals as *mut [f32; 4];
+        let  	valCountPtr = &mut valCount as *mut usize;
+        let  	faceVertsPtr = &mut faceVerts as *mut Stash< FaceVertex>;
 
-        //--- Top-level: skip whitespace/comments, dispatch directives ---
+        let  	nonWs = *Charset::NonSpace();
+        let  	nonEnd = Charset::EndLine().Negative();
 
-        let  	skippable = ShardTree!( *( commentLine | [" \r\n\t"] ) );
-
-        let  	directive = ShardTree!(
-            (|p: &mut Parser| ParseTexCoordLine( p, texPtr))
-            | (|p: &mut Parser| ParseNormalLine( p, normPtr))
-            | (|p: &mut Parser| ParseVertexLine( p, vertPtr))
-            | (|p: &mut Parser| ParseFaceLine( p, vertPtr, texPtr, normPtr, facePtr))
-            | (|p: &mut Parser| ParseMetaLine( p, objPtr, grpPtr, mtlPtr, usePtr))
+        let  	objGrammar = ShardTree!(
+            *(
+                *[ " \t" ]
+                < (
+                    ( "mtllib" < +[ " \t" ] < (+nonWs)[ |arr| { unsafe { (*mtlStashPtr).PushVal( <&str>::from( arr).to_string()); } true } ] )
+                    | ( "usemtl" < +[ " \t" ] < (+nonWs)[ |arr| { unsafe { (*useMtlStashPtr).PushVal( <&str>::from( arr).to_string()); } true } ] )
+                    | ( ( "vt" < +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] < ?( +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] < ?( +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] ) ) )[ |arr| {
+                        let  	_ = arr;
+                        let  	cnt = unsafe { *valCountPtr };
+                        if cnt >= 2 {
+                            let  	vals = unsafe { *valsPtr };
+                            let  	w = if cnt >= 3 { vals[2] } else { 0.0 };
+                            unsafe { (*vtStashPtr).Push( WPt2f::WithW( vals[0], vals[1], w)); }
+                        } else if cnt == 1 {
+                            let  	vals = unsafe { *valsPtr };
+                            unsafe { (*vtStashPtr).Push( WPt2f::New( vals[0], 0.0)); }
+                        }
+                        unsafe { *valCountPtr = 0; }
+                        true
+                    } ] )
+                    | ( ( "vn" < +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] < +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] < +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] )[ |arr| {
+                        let  	_ = arr;
+                        let  	cnt = unsafe { *valCountPtr };
+                        if cnt >= 3 {
+                            let  	vals = unsafe { *valsPtr };
+                            unsafe { (*vnStashPtr).Push( Dir3f::New( vals[0], vals[1], vals[2])); }
+                        }
+                        unsafe { *valCountPtr = 0; }
+                        true
+                    } ] )
+                    | ( ( "v" < +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] < +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] < +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] < ?( +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] ) )[ |arr| {
+                        let  	_ = arr;
+                        let  	cnt = unsafe { *valCountPtr };
+                        if cnt >= 3 {
+                            let  	vals = unsafe { *valsPtr };
+                            let  	w = if cnt >= 4 { vals[3] } else { 1.0 };
+                            unsafe { (*vStashPtr).Push( WPt3f::WithW( vals[0], vals[1], vals[2], w)); }
+                        }
+                        unsafe { *valCountPtr = 0; }
+                        true
+                    } ] )
+                    | ( ( "f" < +( +[ " \t" ] < ( Int < ?( "/" < ?Int < ?( "/" < Int ) ) )[ |arr| {
+                        let  	token = <&str>::from( arr);
+                        let  	numV = unsafe { (*vStashPtr).Size().AsUsize() };
+                        let  	numT = unsafe { (*vtStashPtr).Size().AsUsize() };
+                        let  	numN = unsafe { (*vnStashPtr).Size().AsUsize() };
+                        if let Some( fv) = ParseFaceVertexToken( token, numV, numT, numN) {
+                            unsafe { (*faceVertsPtr).Push( fv); }
+                        }
+                        true
+                    } ] ) )[ |arr| {
+                        let  	_ = arr;
+                        let  	fvStash = unsafe { &mut *faceVertsPtr };
+                        if fvStash.Size() > U32( 0) {
+                            unsafe { (*fStashPtr).PushVal( Face { _Vertices: fvStash.ToBuff() }); }
+                            fvStash.PopToSize( U32( 0));
+                        }
+                        true
+                    } ] )
+                    | ( "o" < +[ " \t" ] < (+nonWs)[ |arr| { unsafe { (*objStashPtr).PushVal( <&str>::from( arr).to_string()); } true } ] )
+                    | ( "g" < +[ " \t" ] < (+nonWs)[ |arr| { unsafe { (*grpStashPtr).PushVal( <&str>::from( arr).to_string()); } true } ] )
+                    | *nonEnd
+                )
+                < *[ " \t" ]
+                < ?( ( ?'\r' < '\n' ) | '\r' )
+            )
         );
 
-        while m < parser.InStream().Size() {
-            if let Some( nextM) = parser.ParseGrammar( &skippable, m) {
-                m = nextM;
-            }
-            if m >= parser.InStream().Size() { break; }
-
-            if let Some( nextM) = parser.ParseGrammar( &directive, m) {
-                m = nextM;
-            } else {
-                // Unknown line — skip to end of line
-                while m < parser.InStream().Size() {
-                    let  	b = parser.GetAt( m);
-                    if b == U8( b'\r') || b == U8( b'\n') { break; }
-                    if let Some( nextM) = parser.Incr( m) {
-                        m = nextM;
-                    } else {
-                        break;
-                    }
-                }
-                if let Some( nextM) = parser.ParseGrammar( &nlGrammar, m) {
-                    m = nextM;
-                }
-            }
+        if parser.ParseGrammar( &objGrammar, parser.CurrMark() ).is_none() {
+            return false;
         }
 
         model._Vertices = verticesStash.IntoBuff();
@@ -650,7 +536,6 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
         model._MtlLibs = mtlLibsStash.IntoBuff();
         model._UseMtls = useMtlsStash.IntoBuff();
 
-        parser.SetCurrMark( m);
         true
     }
 }
