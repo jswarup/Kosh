@@ -374,6 +374,11 @@ impl< T> MultiMut< T> {
     }
 
     #[inline( always)]
+    pub fn Clear( &self) {
+        unsafe { (*self.0).Clear() }
+    }
+
+    #[inline( always)]
     pub fn Arr( &self) -> Arr< '_, T> {
         unsafe { (*self.0).Arr() }
     }

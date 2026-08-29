@@ -5,7 +5,7 @@ use	crate::{
     fleck::{ BBox3f, Dir3f, Pt3f, WPt2f, WPt3f },
     flux::instream::{ FixedStream, IStream },
     shard::{ Charset, IGrammar, Int, Parser, Real },
-    silo::{ Arr, Buff, IAccess, MultiMut, Stash, U32, U8 },
+    silo::{ Buff, IAccess, MultiMut, Stash, U32 },
     ShardTree,
 };
 
@@ -106,7 +106,7 @@ impl Face
         let  	mut stash = Stash::WithCapacity( self._Vertices.Size() + U32( 1));
         let  	arr = self._Vertices.Arr();
         for i in 0..self._Vertices.Size().AsUsize() {
-            stash.Push( *arr.At( U32( i as u32)));
+            stash.Push( *arr.At( i as u32));
         }
         stash.Push( vert);
         self._Vertices = stash.IntoBuff();
@@ -199,7 +199,7 @@ impl WaveObjModel
         let  	arr = self._Vertices.Arr();
         let  	mut bbox = BBox3f::Empty();
         for i in 0..self._Vertices.Size().AsUsize() {
-            let  	v = arr.At( U32( i as u32));
+            let  	v = arr.At( i as u32);
             bbox.Extend( Pt3f::New( v._X, v._Y, v._Z));
         }
         ( bbox.Min(), bbox.Max())
@@ -250,16 +250,16 @@ impl WaveObjModel
         let  	facesArr = self._Faces.Arr();
 
         for fIdx in 0..numFaces {
-            let  	face = facesArr.At( U32( fIdx as u32));
+            let  	face = facesArr.At( fIdx as u32);
             let  	faceVertCount = face.Len();
             if faceVertCount >= 3 {
                 let  	vertsArr = face._Vertices.Arr();
-                let  	v0Raw = vertsArr.At( U32( 0))._VertexIdx;
+                let  	v0Raw = vertsArr.At( 0)._VertexIdx;
                 let  	v0 = if v0Raw > 0 { ( v0Raw - 1) as u32 } else { 0 };
 
                 for i in 1..( faceVertCount - 1) {
-                    let  	v1Raw = vertsArr.At( U32( i as u32))._VertexIdx;
-                    let  	v2Raw = vertsArr.At( U32( ( i + 1) as u32))._VertexIdx;
+                    let  	v1Raw = vertsArr.At( i as u32)._VertexIdx;
+                    let  	v2Raw = vertsArr.At( ( i + 1) as u32)._VertexIdx;
                     let  	v1 = if v1Raw > 0 { ( v1Raw - 1) as u32 } else { 0 };
                     let  	v2 = if v2Raw > 0 { ( v2Raw - 1) as u32 } else { 0 };
                     trianglesStash.Push( [v0, v1, v2]);
@@ -268,8 +268,8 @@ impl WaveObjModel
                 // Collect polygon boundary edges for wireframe
                 for i in 0..faceVertCount {
                     let  	nextI = ( i + 1) % faceVertCount;
-                    let  	eaRaw = vertsArr.At( U32( i as u32))._VertexIdx;
-                    let  	ebRaw = vertsArr.At( U32( nextI as u32))._VertexIdx;
+                    let  	eaRaw = vertsArr.At( i as u32)._VertexIdx;
+                    let  	ebRaw = vertsArr.At( nextI as u32)._VertexIdx;
                     let  	ea = if eaRaw > 0 { ( eaRaw - 1) as u32 } else { 0 };
                     let  	eb = if ebRaw > 0 { ( ebRaw - 1) as u32 } else { 0 };
                     let  	edge = if ea < eb { ( ea, eb) } else { ( eb, ea) };
@@ -295,9 +295,9 @@ impl WaveObjModel
             let  	p1Idx = tri[1] as usize;
             let  	p2Idx = tri[2] as usize;
             if p0Idx < vertCount.AsUsize() && p1Idx < vertCount.AsUsize() && p2Idx < vertCount.AsUsize() {
-                let  	p0 = arr.At( U32( p0Idx as u32));
-                let  	p1 = arr.At( U32( p1Idx as u32));
-                let  	p2 = arr.At( U32( p2Idx as u32));
+                let  	p0 = arr.At( p0Idx as u32);
+                let  	p1 = arr.At( p1Idx as u32);
+                let  	p2 = arr.At( p2Idx as u32);
                 let  	ux = p1._X - p0._X;
                 let  	uy = p1._Y - p0._Y;
                 let  	uz = p1._Z - p0._Z;
@@ -336,14 +336,14 @@ impl WaveObjModel
         let  	mut trianglesStash = Stash::< [FaceVertex; 3]>::WithCapacity( U32( (numFaces * 2).max( 16) as u32));
         let  	facesArr = self._Faces.Arr();
         for fIdx in 0..numFaces {
-            let  	face = facesArr.At( U32( fIdx as u32));
+            let  	face = facesArr.At( fIdx as u32);
             let  	vertCount = face.Len();
             if vertCount >= 3 {
                 let  	vertsArr = face._Vertices.Arr();
-                let  	v0 = *vertsArr.At( U32( 0));
+                let  	v0 = *vertsArr.At( 0);
                 for i in 1..( vertCount - 1) {
-                    let  	v1 = *vertsArr.At( U32( i as u32));
-                    let  	v2 = *vertsArr.At( U32( ( i + 1) as u32));
+                    let  	v1 = *vertsArr.At( i as u32);
+                    let  	v2 = *vertsArr.At( ( i + 1) as u32);
                     trianglesStash.Push( [v0, v1, v2]);
                 }
             }
@@ -374,16 +374,7 @@ impl< T> MutVal< T> {
 
 
 
-#[inline( always)]
-fn	PushReal( arr: Arr< '_, U8>, vals: MultiMut< f32>) -> bool
-{
-    if let Ok( v) = <&str>::from( arr).parse::< f32>() {
-        if vals.Size() < U32( 4) {
-            vals.Push( v);
-        }
-    }
-    true
-}
+
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -439,64 +430,61 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
             *(
                 *[ " \t" ]
                 < (
-                    ( "mtllib" < +[ " \t" ] < (+nonWs)[ |arr| { mtlStash.Push( <&str>::from( arr).to_string()); true } ] )
-                    | ( "usemtl" < +[ " \t" ] < (+nonWs)[ |arr| { useMtlStash.Push( <&str>::from( arr).to_string()); true } ] )
-                    | ( ( "vt" < +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] < ?( +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] < ?( +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] ) ) )[ |arr| {
+                    ( "mtllib" < +[ " \t" ] < (+nonWs)[ |arr| { mtlStash.Push( arr.AsStr().to_string()); true } ] )
+                    | ( "usemtl" < +[ " \t" ] < (+nonWs)[ |arr| { useMtlStash.Push( arr.AsStr().to_string()); true } ] )
+                    | ( ( "vt" < +[ " \t" ] < Real[ |arr| { vals.Push( arr.ParseF32()); true } ] < ?( +[ " \t" ] < Real[ |arr| { vals.Push( arr.ParseF32()); true } ] < ?( +[ " \t" ] < Real[ |arr| { vals.Push( arr.ParseF32()); true } ] ) ) )[ |arr| {
                         let  	_ = arr;
                         let  	cnt = vals.Size();
                         if cnt >= U32( 2) {
-                            let  	w = if cnt >= U32( 3) { *vals.Arr().At( U32( 2)) } else { 0.0 };
-                            vtStash.Push( WPt2f::WithW( *vals.Arr().At( U32( 0)), *vals.Arr().At( U32( 1)), w));
+                            let  	w = if cnt >= U32( 3) { *vals.Arr().At( 2) } else { 0.0 };
+                            vtStash.Push( WPt2f::WithW( *vals.Arr().At( 0), *vals.Arr().At( 1), w));
                         } else if cnt == U32( 1) {
-                            vtStash.Push( WPt2f::New( *vals.Arr().At( U32( 0)), 0.0));
+                            vtStash.Push( WPt2f::New( *vals.Arr().At( 0), 0.0));
                         }
-                        vals.PopToSize( U32( 0));
+                        vals.Clear();
                         true
                     } ] )
-                    | ( ( "vn" < +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] < +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] < +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] )[ |arr| {
+                    | ( ( "vn" < +[ " \t" ] < Real[ |arr| { vals.Push( arr.ParseF32()); true } ] < +[ " \t" ] < Real[ |arr| { vals.Push( arr.ParseF32()); true } ] < +[ " \t" ] < Real[ |arr| { vals.Push( arr.ParseF32()); true } ] )[ |arr| {
                         let  	_ = arr;
                         if vals.Size() >= U32( 3) {
-                            vnStash.Push( Dir3f::New( *vals.Arr().At( U32( 0)), *vals.Arr().At( U32( 1)), *vals.Arr().At( U32( 2))));
+                            vnStash.Push( Dir3f::New( *vals.Arr().At( 0), *vals.Arr().At( 1), *vals.Arr().At( 2)));
                         }
-                        vals.PopToSize( U32( 0));
+                        vals.Clear();
                         true
                     } ] )
-                    | ( ( "v" < +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] < +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] < +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] < ?( +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] ) )[ |arr| {
+                    | ( ( "v" < +[ " \t" ] < Real[ |arr| { vals.Push( arr.ParseF32()); true } ] < +[ " \t" ] < Real[ |arr| { vals.Push( arr.ParseF32()); true } ] < +[ " \t" ] < Real[ |arr| { vals.Push( arr.ParseF32()); true } ] < ?( +[ " \t" ] < Real[ |arr| { vals.Push( arr.ParseF32()); true } ] ) )[ |arr| {
                         let  	_ = arr;
                         let  	cnt = vals.Size();
                         if cnt >= U32( 3) {
-                            let  	w = if cnt >= U32( 4) { *vals.Arr().At( U32( 3)) } else { 1.0 };
-                            vStash.Push( WPt3f::WithW( *vals.Arr().At( U32( 0)), *vals.Arr().At( U32( 1)), *vals.Arr().At( U32( 2)), w));
+                            let  	w = if cnt >= U32( 4) { *vals.Arr().At( 3) } else { 1.0 };
+                            vStash.Push( WPt3f::WithW( *vals.Arr().At( 0), *vals.Arr().At( 1), *vals.Arr().At( 2), w));
                         }
-                        vals.PopToSize( U32( 0));
+                        vals.Clear();
                         true
                     } ] )
-                    | ( ( "f" < +( +[ " \t" ] < ( 
+                    | ( ( "f" < +( +[ " \t" ] < (
                         Int[ |arr| {
-                            if let Ok( v) = <&str>::from( arr).parse::< i32>() {
-                                let  	numV = vStash.Size().0 as i32;
-                                fvPtr.Get()._VertexIdx = if v < 0 { numV + v + 1 } else { v };
-                            }
+                            let  	v = arr.ParseI32();
+                            let  	numV = vStash.Size().0 as i32;
+                            fvPtr.Get()._VertexIdx = if v < 0 { numV + v + 1 } else { v };
                             true
-                        } ] 
-                        < ?( "/" 
+                        } ]
+                        < ?( "/"
                              < ?Int[ |arr| {
-                                 if let Ok( v) = <&str>::from( arr).parse::< i32>() {
-                                     let  	numT = vtStash.Size().0 as i32;
-                                     fvPtr.Get()._TexCoordIdx = Some( if v < 0 { numT + v + 1 } else { v });
-                                 }
+                                 let  	v = arr.ParseI32();
+                                 let  	numT = vtStash.Size().0 as i32;
+                                 fvPtr.Get()._TexCoordIdx = Some( if v < 0 { numT + v + 1 } else { v });
                                  true
-                             } ] 
-                             < ?( "/" 
+                             } ]
+                             < ?( "/"
                                   < Int[ |arr| {
-                                      if let Ok( v) = <&str>::from( arr).parse::< i32>() {
-                                          let  	numN = vnStash.Size().0 as i32;
-                                          fvPtr.Get()._NormalIdx = Some( if v < 0 { numN + v + 1 } else { v });
-                                      }
+                                      let  	v = arr.ParseI32();
+                                      let  	numN = vnStash.Size().0 as i32;
+                                      fvPtr.Get()._NormalIdx = Some( if v < 0 { numN + v + 1 } else { v });
                                       true
-                                  } ] 
-                             ) 
-                        ) 
+                                  } ]
+                             )
+                        )
                     )[ |arr| {
                         let  	_ = arr;
                         faceVerts.Push( *fvPtr.Get());
@@ -506,12 +494,12 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
                         let  	_ = arr;
                         if faceVerts.Size() > U32( 0) {
                             fStash.Push( Face { _Vertices: faceVerts.ToBuff() });
-                            faceVerts.PopToSize( U32( 0));
+                            faceVerts.Clear();
                         }
                         true
                     } ] )
-                    | ( "o" < +[ " \t" ] < (+nonWs)[ |arr| { objStash.Push( <&str>::from( arr).to_string()); true } ] )
-                    | ( "g" < +[ " \t" ] < (+nonWs)[ |arr| { grpStash.Push( <&str>::from( arr).to_string()); true } ] )
+                    | ( "o" < +[ " \t" ] < (+nonWs)[ |arr| { objStash.Push( arr.AsStr().to_string()); true } ] )
+                    | ( "g" < +[ " \t" ] < (+nonWs)[ |arr| { grpStash.Push( arr.AsStr().to_string()); true } ] )
                     | *nonEnd
                 )
                 < *[ " \t" ]
