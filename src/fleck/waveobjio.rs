@@ -354,16 +354,16 @@ impl WaveObjModel
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-fn	ParseFaceVertexToken( token: &str, numVerts: usize, numTex: usize, numNorm: usize) -> Option< FaceVertex>
+fn	ParseFaceVertexToken( token: &str, numVerts: U32, numTex: U32, numNorm: U32) -> Option< FaceVertex>
 {
     let  	mut parts = token.split( '/');
     let  	vRaw: i32 = parts.next()?.parse().ok()?;
-    let  	vIdx = if vRaw < 0 { ( numVerts as i32) + vRaw + 1 } else { vRaw };
+    let  	vIdx = if vRaw < 0 { ( numVerts.0 as i32) + vRaw + 1 } else { vRaw };
 
     let  	vtIdx = if let Some( part) = parts.next() {
         if !part.is_empty() {
             let  	vtRaw: i32 = part.parse().ok()?;
-            Some( if vtRaw < 0 { ( numTex as i32) + vtRaw + 1 } else { vtRaw })
+            Some( if vtRaw < 0 { ( numTex.0 as i32) + vtRaw + 1 } else { vtRaw })
         } else {
             None
         }
@@ -374,7 +374,7 @@ fn	ParseFaceVertexToken( token: &str, numVerts: usize, numTex: usize, numNorm: u
     let  	vnIdx = if let Some( part) = parts.next() {
         if !part.is_empty() {
             let  	vnRaw: i32 = part.parse().ok()?;
-            Some( if vnRaw < 0 { ( numNorm as i32) + vnRaw + 1 } else { vnRaw })
+            Some( if vnRaw < 0 { ( numNorm.0 as i32) + vnRaw + 1 } else { vnRaw })
         } else {
             None
         }
@@ -389,18 +389,33 @@ fn	ParseFaceVertexToken( token: &str, numVerts: usize, numTex: usize, numNorm: u
     })
 }
 
+struct MutPtr< T>( *mut T);
+
+impl< T> Clone for MutPtr< T> {
+    #[inline( always)]
+    fn clone( &self) -> Self { *self }
+}
+
+impl< T> Copy for MutPtr< T> {}
+
+impl< T> MutPtr< T> {
+    #[inline( always)]
+    fn	New( r: &mut T) -> Self { Self( r as *mut T) }
+
+    #[inline( always)]
+    #[allow( clippy::mut_from_ref)]
+    fn	Get( &self) -> &mut T { unsafe { &mut *self.0 } }
+}
+
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[inline( always)]
-fn	PushReal( arr: Arr< '_, U8>, valsPtr: *mut [f32; 4], valCountPtr: *mut usize) -> bool
+fn	PushReal( arr: Arr< '_, U8>, vals: MutPtr< Stash< f32>>) -> bool
 {
     if let Ok( v) = <&str>::from( arr).parse::< f32>() {
-        let  	cnt = unsafe { *valCountPtr };
-        if cnt < 4 {
-            unsafe {
-                (*valsPtr)[cnt] = v;
-                *valCountPtr = cnt + 1;
-            }
+        let  	stash = vals.Get();
+        if stash.Size() < U32( 4) {
+            stash.Push( v);
         }
     }
     true
@@ -423,9 +438,9 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
         let  	modelPtr = self._Model as *const WaveObjModel as *mut WaveObjModel;
         let  	model = unsafe { &mut *modelPtr };
 
-        let  	streamSz = parser.InStream().Size().AsUsize();
-        let  	estVerts = (streamSz / 40).max( 128) as u32;
-        let  	estFaces = (streamSz / 50).max( 128) as u32;
+        let  	streamSz = parser.InStream().Size();
+        let  	estVerts = (streamSz.0 / 40).max( 128);
+        let  	estFaces = (streamSz.0 / 50).max( 128);
 
         let  	mut verticesStash = Stash::< WPt3f>::WithCapacity( U32( estVerts));
         let  	mut texCoordsStash = Stash::< WPt2f>::WithCapacity( U32( (estVerts / 2).max( 64)));
@@ -436,21 +451,19 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
         let  	mut mtlLibsStash = Stash::< String>::New();
         let  	mut useMtlsStash = Stash::< String>::New();
 
-        let  	mut vals = [0.0f32; 4];
-        let  	mut valCount = 0usize;
-        let  	mut faceVerts = Stash::< FaceVertex>::WithCapacity( U32( 4));
+        let  	mut valsStash = Stash::< f32>::WithCapacity( U32( 4));
+        let  	mut faceVertsBuff = Stash::< FaceVertex>::WithCapacity( U32( 4));
 
-        let  	vStashPtr = &mut verticesStash as *mut Stash< WPt3f>;
-        let  	vtStashPtr = &mut texCoordsStash as *mut Stash< WPt2f>;
-        let  	vnStashPtr = &mut normalsStash as *mut Stash< Dir3f>;
-        let  	fStashPtr = &mut facesStash as *mut Stash< Face>;
-        let  	objStashPtr = &mut objectsStash as *mut Stash< String>;
-        let  	grpStashPtr = &mut groupsStash as *mut Stash< String>;
-        let  	mtlStashPtr = &mut mtlLibsStash as *mut Stash< String>;
-        let  	useMtlStashPtr = &mut useMtlsStash as *mut Stash< String>;
-        let  	valsPtr = &mut vals as *mut [f32; 4];
-        let  	valCountPtr = &mut valCount as *mut usize;
-        let  	faceVertsPtr = &mut faceVerts as *mut Stash< FaceVertex>;
+        let  	vStash = MutPtr::New( &mut verticesStash);
+        let  	vtStash = MutPtr::New( &mut texCoordsStash);
+        let  	vnStash = MutPtr::New( &mut normalsStash);
+        let  	fStash = MutPtr::New( &mut facesStash);
+        let  	objStash = MutPtr::New( &mut objectsStash);
+        let  	grpStash = MutPtr::New( &mut groupsStash);
+        let  	mtlStash = MutPtr::New( &mut mtlLibsStash);
+        let  	useMtlStash = MutPtr::New( &mut useMtlsStash);
+        let  	vals = MutPtr::New( &mut valsStash);
+        let  	faceVerts = MutPtr::New( &mut faceVertsBuff);
 
         let  	nonWs = *Charset::NonSpace();
         let  	nonEnd = Charset::EndLine().Negative();
@@ -459,63 +472,61 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
             *(
                 *[ " \t" ]
                 < (
-                    ( "mtllib" < +[ " \t" ] < (+nonWs)[ |arr| { unsafe { (*mtlStashPtr).PushVal( <&str>::from( arr).to_string()); } true } ] )
-                    | ( "usemtl" < +[ " \t" ] < (+nonWs)[ |arr| { unsafe { (*useMtlStashPtr).PushVal( <&str>::from( arr).to_string()); } true } ] )
-                    | ( ( "vt" < +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] < ?( +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] < ?( +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] ) ) )[ |arr| {
+                    ( "mtllib" < +[ " \t" ] < (+nonWs)[ |arr| { mtlStash.Get().PushVal( <&str>::from( arr).to_string()); true } ] )
+                    | ( "usemtl" < +[ " \t" ] < (+nonWs)[ |arr| { useMtlStash.Get().PushVal( <&str>::from( arr).to_string()); true } ] )
+                    | ( ( "vt" < +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] < ?( +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] < ?( +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] ) ) )[ |arr| {
                         let  	_ = arr;
-                        let  	cnt = unsafe { *valCountPtr };
-                        if cnt >= 2 {
-                            let  	vals = unsafe { *valsPtr };
-                            let  	w = if cnt >= 3 { vals[2] } else { 0.0 };
-                            unsafe { (*vtStashPtr).Push( WPt2f::WithW( vals[0], vals[1], w)); }
-                        } else if cnt == 1 {
-                            let  	vals = unsafe { *valsPtr };
-                            unsafe { (*vtStashPtr).Push( WPt2f::New( vals[0], 0.0)); }
+                        let  	stash = vals.Get();
+                        let  	cnt = stash.Size();
+                        if cnt >= U32( 2) {
+                            let  	w = if cnt >= U32( 3) { *stash.Arr().At( U32( 2)) } else { 0.0 };
+                            vtStash.Get().Push( WPt2f::WithW( *stash.Arr().At( U32( 0)), *stash.Arr().At( U32( 1)), w));
+                        } else if cnt == U32( 1) {
+                            vtStash.Get().Push( WPt2f::New( *stash.Arr().At( U32( 0)), 0.0));
                         }
-                        unsafe { *valCountPtr = 0; }
+                        stash.PopToSize( U32( 0));
                         true
                     } ] )
-                    | ( ( "vn" < +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] < +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] < +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] )[ |arr| {
+                    | ( ( "vn" < +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] < +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] < +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] )[ |arr| {
                         let  	_ = arr;
-                        let  	cnt = unsafe { *valCountPtr };
-                        if cnt >= 3 {
-                            let  	vals = unsafe { *valsPtr };
-                            unsafe { (*vnStashPtr).Push( Dir3f::New( vals[0], vals[1], vals[2])); }
+                        let  	stash = vals.Get();
+                        if stash.Size() >= U32( 3) {
+                            vnStash.Get().Push( Dir3f::New( *stash.Arr().At( U32( 0)), *stash.Arr().At( U32( 1)), *stash.Arr().At( U32( 2))));
                         }
-                        unsafe { *valCountPtr = 0; }
+                        stash.PopToSize( U32( 0));
                         true
                     } ] )
-                    | ( ( "v" < +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] < +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] < +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] < ?( +[ " \t" ] < Real[ |arr| PushReal( arr, valsPtr, valCountPtr) ] ) )[ |arr| {
+                    | ( ( "v" < +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] < +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] < +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] < ?( +[ " \t" ] < Real[ |arr| PushReal( arr, vals) ] ) )[ |arr| {
                         let  	_ = arr;
-                        let  	cnt = unsafe { *valCountPtr };
-                        if cnt >= 3 {
-                            let  	vals = unsafe { *valsPtr };
-                            let  	w = if cnt >= 4 { vals[3] } else { 1.0 };
-                            unsafe { (*vStashPtr).Push( WPt3f::WithW( vals[0], vals[1], vals[2], w)); }
+                        let  	stash = vals.Get();
+                        let  	cnt = stash.Size();
+                        if cnt >= U32( 3) {
+                            let  	w = if cnt >= U32( 4) { *stash.Arr().At( U32( 3)) } else { 1.0 };
+                            vStash.Get().Push( WPt3f::WithW( *stash.Arr().At( U32( 0)), *stash.Arr().At( U32( 1)), *stash.Arr().At( U32( 2)), w));
                         }
-                        unsafe { *valCountPtr = 0; }
+                        stash.PopToSize( U32( 0));
                         true
                     } ] )
                     | ( ( "f" < +( +[ " \t" ] < ( Int < ?( "/" < ?Int < ?( "/" < Int ) ) )[ |arr| {
                         let  	token = <&str>::from( arr);
-                        let  	numV = unsafe { (*vStashPtr).Size().AsUsize() };
-                        let  	numT = unsafe { (*vtStashPtr).Size().AsUsize() };
-                        let  	numN = unsafe { (*vnStashPtr).Size().AsUsize() };
+                        let  	numV = vStash.Get().Size();
+                        let  	numT = vtStash.Get().Size();
+                        let  	numN = vnStash.Get().Size();
                         if let Some( fv) = ParseFaceVertexToken( token, numV, numT, numN) {
-                            unsafe { (*faceVertsPtr).Push( fv); }
+                            faceVerts.Get().Push( fv);
                         }
                         true
                     } ] ) )[ |arr| {
                         let  	_ = arr;
-                        let  	fvStash = unsafe { &mut *faceVertsPtr };
+                        let  	fvStash = faceVerts.Get();
                         if fvStash.Size() > U32( 0) {
-                            unsafe { (*fStashPtr).PushVal( Face { _Vertices: fvStash.ToBuff() }); }
+                            fStash.Get().PushVal( Face { _Vertices: fvStash.ToBuff() });
                             fvStash.PopToSize( U32( 0));
                         }
                         true
                     } ] )
-                    | ( "o" < +[ " \t" ] < (+nonWs)[ |arr| { unsafe { (*objStashPtr).PushVal( <&str>::from( arr).to_string()); } true } ] )
-                    | ( "g" < +[ " \t" ] < (+nonWs)[ |arr| { unsafe { (*grpStashPtr).PushVal( <&str>::from( arr).to_string()); } true } ] )
+                    | ( "o" < +[ " \t" ] < (+nonWs)[ |arr| { objStash.Get().PushVal( <&str>::from( arr).to_string()); true } ] )
+                    | ( "g" < +[ " \t" ] < (+nonWs)[ |arr| { grpStash.Get().PushVal( <&str>::from( arr).to_string()); true } ] )
                     | *nonEnd
                 )
                 < *[ " \t" ]
