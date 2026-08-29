@@ -34,6 +34,12 @@ if ! command -v maturin &> /dev/null; then
     python -m pip install maturin
 fi
 
+if ! python -c "import ipykernel" &> /dev/null; then
+    echo "Installing and registering Jupyter kernel..."
+    python -m pip install ipykernel
+    python -m ipykernel install --user --name=kosh_venv --display-name "Kosh_venv"
+fi
+
 echo "Building Rust project..."
 cargo build
 
