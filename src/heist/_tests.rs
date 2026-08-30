@@ -28,13 +28,13 @@ fn	BuffBasicAtelierTest()
         jobId = maestro.ConstructJob( jobId, |w2: &DynIWorker< '_>| {
             println!( "Trial2 {}", Maestro::FromWorker( w2).MaestroIndex());
         }, "TestJob2");
-        maestro.EnqueRunJob( &mut jobId);
+        maestro.EnqueueJob( jobId);
         println!( "Trial {}", maestro.MaestroIndex());
     }
     let  	atelier = Atelier::New( 4);
     let  	mainMaestro = atelier.MainMaestro();
-    let  	mut jobId = mainMaestro.ConstructJob( 0, trialJob, "TrialJob");
-    mainMaestro.EnqueRunJob( &mut jobId);
+    let  	jobId = mainMaestro.ConstructJob( 0, trialJob, "TrialJob");
+    mainMaestro.EnqueueJob( jobId);
     atelier.DoLaunch();
 }
 
@@ -79,7 +79,7 @@ fn	TestMaestroBasicOps()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 fn	TestChoreHelper() -> impl IChoreNode
-{ 
+{
     let  	aChore = Chore!( "10S", |_m| {
         print!( "{} ", 10);
     });
@@ -102,7 +102,7 @@ fn	TestChoreHelper() -> impl IChoreNode
 
 #[test]
 fn	TestChoreBuds()
-{ 
+{
     let  	choreTree  = TestChoreHelper();
     let  	atelier = Atelier::New( U32( 4));
     let  	mainMaestro = atelier.MainMaestro();

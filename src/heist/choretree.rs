@@ -2,7 +2,7 @@
 
 use	std::fmt;
 use	crate::{
-    heist::{ IMaestro, Maestro },
+    heist::IMaestro,
     silo::{ Stash, U16 },
     stalks::{ BinNode, BinOp, DynIWorker, IntoWorkPtr, IWork },
     swarm::BackendKind,
@@ -224,14 +224,14 @@ macro_rules! ChoreTree {
 
 pub trait IChoreNode
 {
-    fn	Post( &self, maestro: &Maestro, tails: &mut Stash< U16>) -> U16;
+    fn	Post< 'a, M: IMaestro< 'a>>( &self, maestro: &M, tails: &mut Stash< U16>) -> U16;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T: IChoreNode + ?Sized> IChoreNode for &T
+impl< T: IChoreNode> IChoreNode for &T
 {
-    fn	Post( &self, maestro: &Maestro, tails: &mut Stash< U16>) -> U16
+    fn	Post< 'a, M: IMaestro< 'a>>( &self, maestro: &M, tails: &mut Stash< U16>) -> U16
     {
         return ( **self).Post( maestro, tails);
     }
@@ -241,7 +241,7 @@ impl< T: IChoreNode + ?Sized> IChoreNode for &T
 
 impl IChoreNode for Chore
 {
-    fn	Post( &self, maestro: &Maestro, tails: &mut Stash< U16>) -> U16
+    fn	Post< 'a, M: IMaestro< 'a>>( &self, maestro: &M, tails: &mut Stash< U16>) -> U16
     {
         let  	jobId = maestro.ConstructJob( U16::_0, IntoWorkPtr::IntoWorkPtr( *self), self._DocStr);
         tails.Push( jobId);
@@ -256,7 +256,7 @@ where
     L: IChoreNode,
     R: IChoreNode,
 {
-    fn	Post( &self, maestro: &Maestro, tails: &mut Stash< U16>) -> U16
+    fn	Post< 'a, M: IMaestro< 'a>>( &self, maestro: &M, tails: &mut Stash< U16>) -> U16
     {
         match self._Op {
             BinOp::Bor => {
