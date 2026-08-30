@@ -2,11 +2,13 @@
 
 ## 1. Overview & Purpose
 
-The `heist` module is Kosh's **asynchronous workflow DAG orchestrator and work-stealing job runtime**. It provides:
+The `heist` module is Kosh's **asynchronous workflow DAG orchestrator, data-parallel map-reduce engine, and work-stealing job runtime**. It provides:
 1. **The `Atelier` Master Workspace**: Manages worker thread pools (`Maestro`), global job allocators, predecessor counter arrays (`_SzPreds: Buff<Atm<U16>>`), and successor routing tables (`_SuccIds: Buff<U16>`).
 2. **The `Maestro` Worker**: Thread-local execution agent managing local job caches (`_JobCache`), run queues (`_RunQueue`), temporary enqueue queues (`_TempQueue`), and work-stealing from peer Maestros.
 3. **Chore DAG DSL (`ChoreTree!`)**: Construct parallel (`|`) and sequential (`<`) execution graphs with automatic predecessor and successor resolution.
-4. **Target Hardware Affinity (`ChoreTarget`)**: Directs individual chore tasks to host CPU worker threads, specific GPU backends (`Gpu(BackendKind)`), or auto-selected GPU compute (`GpuAuto`).
+4. **Chore-Weight & Automatic Sequential Fusion**: Evaluates DAG subtrees using static/dynamic weights (`_Weight: U32`). If the aggregated weight of a sequence falls at or below `CHORE_FUSION_THRESHOLD` (1000), it is automatically coalesced into a single `FusedChore` job to bypass scheduler queue overhead.
+5. **Data-Parallel `MapCollectNode`**: Distributes large array workloads across available worker threads (`maestro.Size() * 2`) with adaptive chunking, syncing at a final collector step.
+6. **Target Hardware Affinity (`ChoreTarget`)**: Directs individual chore tasks to host CPU worker threads, specific GPU backends (`Gpu(BackendKind)`), or auto-selected GPU compute (`GpuAuto`).
 
 ---
 
@@ -74,11 +76,14 @@ classDiagram
     class Chore {
         +&'static str _DocStr
         +ChoreTarget _Target
+        +U32 _Weight
         -fn(&DynIWorker) _Closure
         +New(f) Chore
         +Cpu(doc, f) Chore
         +Gpu(doc, backend, f) Chore
         +GpuAuto(doc, f) Chore
+        +WithWeight(weight) Chore
+        +Weight() U32
         +DoWork(worker)
     }
 
@@ -91,7 +96,30 @@ classDiagram
 
     class IChoreNode {
         <<trait>>
+        +Weight() U32
         +Post(maestro: &impl IMaestro, tails: &mut Stash~U16~) U16
+        +Exec(worker: &DynIWorker)
+    }
+
+    class FusedChore~T~ {
+        +T _Node
+        +DoWork(worker)
+    }
+
+    class MapCollectNode~'a, T~ {
+        +Arr~'a, T~ _Data
+        +ChoreTarget _Target
+        +&'static str _DocStr
+        +U32 _ItemWeight
+        +fn(USeg, &DynIWorker) _MapFn
+        +fn(&DynIWorker) _CollectFn
+        +New(data, target, itemWeight, docStr, mapFn, collectFn) MapCollectNode
+    }
+
+    class MapChunkWork {
+        +USeg _Seg
+        +fn(USeg, &DynIWorker) _MapFn
+        +DoWork(worker)
     }
 
     class JobInfo {
@@ -113,6 +141,9 @@ classDiagram
     IChore <|.. Chore : implements
     IChoreNode <|.. Chore : implements
     IChoreNode <|.. BinNode : implements
+    IChoreNode <|.. MapCollectNode : implements
+    IWork <|.. FusedChore : implements
+    IWork <|.. MapChunkWork : implements
     Atelier *-- Maestro : owns
     Maestro o-- Atelier : references
     Atelier ..> AtelierInfo : generates trace
@@ -203,34 +234,51 @@ Worker thread executor managing local queues and work-stealing:
 - `PostChoreTree<T: IChoreNode>(&self, node: &T)`: Recursively traverses and posts a `ChoreTree` into the scheduler.
 
 ### `Chore` (implements `IChore`, `IWork`, `IChoreNode`)
-A runnable unit of work with documentation and hardware affinity:
-- `New(f: fn(&DynIWorker<'_>)) -> Self`: Default CPU chore.
+A runnable unit of work with documentation, weight complexity, and hardware affinity:
+- `New(f: fn(&DynIWorker<'_>)) -> Self`: Default CPU chore with default weight of 1.
+- `NewDoc(docStr: &'static str, f: fn(&DynIWorker<'_>)) -> Self`: CPU chore with documentation string.
 - `Cpu(docStr: &'static str, f: fn(&DynIWorker<'_>)) -> Self`: Explicit CPU chore.
 - `Gpu(docStr: &'static str, backend: BackendKind, f: fn(&DynIWorker<'_>)) -> Self`: Chore bound to specific compute backend.
 - `GpuAuto(docStr: &'static str, f: fn(&DynIWorker<'_>)) -> Self`: Chore dispatched to auto-selected compute device.
+- `WithWeight<W: Into<U32>>(mut self, weight: W) -> Self`: Builder pattern setting expected time-complexity weight.
+- `Weight(&self) -> U32`: Returns assigned task weight.
 - `Target(&self) -> ChoreTarget`: Returns target execution affinity.
 - `DocStr(&self) -> &'static str`: Returns documentation label.
 
+### `MapCollectNode<'a, T>` (implements `IChoreNode`)
+Data-parallel split-apply-combine node for high-throughput memory slicing:
+- `New<W: Into<U32>>(data: Arr<'a, T>, target: ChoreTarget, itemWeight: W, docStr: &'static str, mapFn: fn(USeg, &DynIWorker<'_>), collectFn: fn(&DynIWorker<'_>)) -> Self`: Constructs a data-parallel node.
+- Automatically calculates total workload weight ($N \times W_{item}$). If below `CHORE_FUSION_THRESHOLD` (1000) or non-CPU, executes in a single coalesced chunk; otherwise dynamically partitions across $2 \times N_{maestros}$ segments with work-stealing and synchronizes at the collect barrier.
+
 ---
 
-## 6. The `ChoreTree!` Macro Syntax
+## 6. The `ChoreTree!` and `MapCollect!` Macro Syntax
 
 ```rust
-use kosh::{ChoreTree, CpuChore, GpuAutoChore};
+use kosh::{ChoreTree, CpuChore, GpuAutoChore, WeightedChore, CpuMapCollect};
 use kosh::heist::Atelier;
-use kosh::silo::U32;
+use kosh::silo::{Buff, U32};
 
 let atelier = Atelier::New(U32(4));
 let maestro = atelier.MainMaestro();
 
-// Define a DAG: Run Step1 and Step2 in parallel, then aggregate in Step3, then output in Step4
+let dataBuff = Buff::Create(U32(100_000), |i| i.0);
+
+// Define a hybrid DAG:
+// 1. Run parallel CPU & GPU preparation tasks.
+// 2. Execute parallel MapCollect over array slice with auto-chunking.
+// 3. Finalize with a weighted chore.
 let pipeline = ChoreTree!(
     (
-        CpuChore!("Step1", |w| { /* CPU processing */ })
-        | GpuAutoChore!("Step2", |w| { /* GPU processing */ })
+        CpuChore!("PrepCPU", |w| { /* CPU prep */ })
+        | GpuAutoChore!("PrepGPU", |w| { /* GPU prep */ })
     )
-    < CpuChore!("Step3", |w| { /* Aggregation */ })
-    < CpuChore!("Step4", |w| { /* Finalize */ })
+    < CpuMapCollect!(
+        dataBuff.Arr(),
+        |seg, w| { /* Map over sub-slice */ },
+        |w| { /* Collect reduction */ }
+    )
+    < WeightedChore!(U32(50), "Finalize", |w| { /* Finalize */ })
 );
 
 maestro.PostChoreTree(&pipeline);

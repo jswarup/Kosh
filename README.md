@@ -83,7 +83,7 @@ flowchart TD
 | **`flux`** | Dynamic visitor serialization, streaming I/O buffers | `FixedStream<'a>`, `BuffStream<R>`, `OutStream<'a, W>`, `JsonOutStream<W>`, `FieldExp<'a>`, `FieldImp<'a>` | `IStream`, `IFluxExportSource`, `IFluxImportSource`, `ImplFluxSource!` | [Flux.md](wiki/Flux.md) |
 | **`swarm`** | Hardware compute engine across CPU, WebGPU, and CUDA | `SwarmEngine`, `SwarmDevice`, `SwarmBuffer`, `SwarmKernel`, `StandardOp`, `SwarmMath` | `IComputeDevice`, `IComputeBuffer`, `IComputeKernel`, `IGpuOp` | [Swarm.md](wiki/Swarm.md) |
 | **`symph`** | Rust-GPU SPIR-V compute kernels and algorithms (`no_std` for SPIR-V builds) | Pure SIMT functions (`wang_hash`, `collatz`, `pointcloud_elem`, `double_elem`, `vector_add_elem`) | SPIR-V Shaders (`pts_pointcloud_cs`, `camera_transform_cs`, `frustum_cull_cs`, `scene_vs`, `scene_fs`) | [Swarm.md](wiki/Swarm.md) |
-| **`heist`** | Asynchronous workflow DAG orchestrator and scheduler | `Atelier<'a>`, `Maestro<'a>`, `Chore`, `ChoreTarget`, `JobInfo`, `AtelierInfo` | `IChoreNode`, `ChoreTree!`, `Chore!`, `CpuChore!`, `GpuAutoChore!` | [Heist.md](wiki/Heist.md) |
+| **`heist`** | Asynchronous workflow DAG orchestrator, data-parallel map-reduce and work-stealing scheduler | `Atelier<'a>`, `Maestro<'a>`, `Chore`, `MapCollectNode<'a, T>`, `ChoreTarget`, `JobInfo`, `AtelierInfo` | `IAtelier`, `IMaestro`, `IChore`, `IChoreNode`, `ChoreTree!`, `Chore!`, `CpuChore!`, `GpuAutoChore!`, `WeightedChore!`, `MapCollect!`, `CpuMapCollect!`, `GpuMapCollect!` | [Heist.md](wiki/Heist.md) |
 | **`rube`** | Synchronous digital logic simulation and discrete-event dataflow framework | `Reg`, `TriggerState`, `TriggerWad`, `Layout`, `NetCompiler`, `SimEngine`, `SimContext`, `FastModule`, `CustomModule`, `Adder<N>` | `NandGate`, `AndGate`, `OrGate`, `NotGate`, `XorGate`, `CRSLatch`, `DLatch`, `RSLatch` | [Rube.md](wiki/Rube.md) |
 | **`fleck`** | 3D Point Cloud (.pts) & Wavefront (.obj) mesh parsing, spatial bounding boxes, `Vex` | `PtsPoint`, `PtsCloud`, `WaveObjMesh`, `WaveObjFace`, `Vex<N, T>`, `Pt3f`, `WPt3f`, `Point32`, `RGB` | `ParsePts`, `ParsePtsStream`, `ParseWaveObj`, `ToDto` | [Fleck.md](wiki/Fleck.md) |
 | **`fenst`** | Virtual data provider framework, graphics session & camera orchestrator | `XplrEntry`, `XplrContent`, `XplrLeafInfo`, `FsBranch`, `FsLeaf`, `FrescoBranch`, `ShardBranch`, `XplrRegistry`, `PtsSessionState`, `PtsFrameDto` | `Xplr`, `LeafXplr`, `BranchXplr`, `XplrProvider`, `CreateDefaultRegistry` | [Fenst.md](wiki/Fenst.md) |
@@ -114,11 +114,12 @@ Compute algorithms in `symph` are implemented once in Rust. The crate uses `#![n
 - When running on CUDA backends (`CudaOxideDevice`), they execute with CUDA driver / PTX headers.
 - When falling back to CPU (`CpuDevice`), they execute across multithreaded SIMT thread pools using 64-element workgroup chunks.
 
-### 5. Work-Stealing Chore DAG Engine (`heist`)
-Asynchronous workflows are represented as DAG expressions via `ChoreTree!`.
-- Sequential execution: `A < B` guarantees that job `B` will only run after `A` decrements `B`'s atomic predecessor counter (`_SzPreds`) to zero.
-- Parallel branches: `A | B` posts tasks simultaneously across worker threads.
-- Worker threads (`Maestro`) execute pending jobs from thread-local queues and dynamically steal tasks from peers using Knuth multiplicative hash pseudo-random distribution.
+### 5. Work-Stealing Chore DAG Engine & Data-Parallel MapCollect (`heist`)
+Asynchronous workflows and high-throughput data streams are represented as DAG expressions via `ChoreTree!` and `MapCollect!`:
+- **Sequential & Parallel DSL**: `A < B` guarantees that job `B` will only run after `A` decrements `B`'s atomic predecessor counter (`_SzPreds`) to zero; `A | B` posts tasks simultaneously across worker threads.
+- **Chore-Weight & Automatic Sequential Fusion**: Nodes carry estimated execution weights (`_Weight: U32`). Sequences whose cumulative weight is $\le \text{CHORE\_FUSION\_THRESHOLD}$ (1000) are automatically fused into a single contiguous task (`FusedChore`), avoiding scheduler queue round-trips.
+- **Adaptive Data-Parallel Slicing**: `MapCollectNode` splits contiguous `Arr<'a, T>` payloads dynamically across $2 \times N_{maestros}$ chunks with automatic work-stealing, joining at an explicit collect synchronization barrier.
+- **Work Stealing**: Worker threads (`Maestro`) execute pending jobs from thread-local queues and dynamically steal tasks from peers using Knuth multiplicative hash pseudo-random distribution.
 
 ### 6. Strict Graphics Ownership Pipeline
 - **`wxfrieze` is Presentation Only**: `wxfrieze` manages native window events, user input, dockable AUI layout panes, and paints backend-projected primitives. It strictly does not parse raw geometry, compute camera matrices, cull primitives, or execute heavy graphics shaders.
