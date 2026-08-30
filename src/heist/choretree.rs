@@ -44,8 +44,8 @@ impl Default for Chore
     fn	default() -> Self
     {
         Self {
-            _DocStr: "",
-            _Target: ChoreTarget::Cpu,
+            _DocStr:  "",
+            _Target:  ChoreTarget::Cpu,
             _Closure: |_| {},
         }
     }
@@ -58,8 +58,8 @@ impl Chore
     pub fn	New( f: fn( &DynIWorker< '_>)) -> Self
     {
         Self {
-            _DocStr: "",
-            _Target: ChoreTarget::Cpu,
+            _DocStr:  "",
+            _Target:  ChoreTarget::Cpu,
             _Closure: f,
         }
     }
@@ -67,8 +67,8 @@ impl Chore
     pub fn	NewDoc( docStr: &'static str, f: fn( &DynIWorker< '_>)) -> Self
     {
         Self {
-            _DocStr: docStr,
-            _Target: ChoreTarget::Cpu,
+            _DocStr:  docStr,
+            _Target:  ChoreTarget::Cpu,
             _Closure: f,
         }
     }
@@ -76,8 +76,8 @@ impl Chore
     pub fn	Cpu( docStr: &'static str, f: fn( &DynIWorker< '_>)) -> Self
     {
         Self {
-            _DocStr: docStr,
-            _Target: ChoreTarget::Cpu,
+            _DocStr:  docStr,
+            _Target:  ChoreTarget::Cpu,
             _Closure: f,
         }
     }
@@ -85,8 +85,8 @@ impl Chore
     pub fn	Gpu( docStr: &'static str, backend: BackendKind, f: fn( &DynIWorker< '_>)) -> Self
     {
         Self {
-            _DocStr: docStr,
-            _Target: ChoreTarget::Gpu( backend),
+            _DocStr:  docStr,
+            _Target:  ChoreTarget::Gpu( backend),
             _Closure: f,
         }
     }
@@ -94,8 +94,8 @@ impl Chore
     pub fn	GpuAuto( docStr: &'static str, f: fn( &DynIWorker< '_>)) -> Self
     {
         Self {
-            _DocStr: docStr,
-            _Target: ChoreTarget::GpuAuto,
+            _DocStr:  docStr,
+            _Target:  ChoreTarget::GpuAuto,
             _Closure: f,
         }
     }

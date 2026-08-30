@@ -27,7 +27,12 @@ impl JobInfo
             let  	succId = *( *atelier).SuccIds().At( jobId);
             let  	szPred = ( *atelier).SzPred( jobId).Load( Ordering::SeqCst);
             let  	docStr = *( *atelier).JobDocBuff().Arr().At( jobId);
-            Self { _JobId: jobId, _SuccId: succId, _SzPred: szPred, _DocStr: docStr }
+            Self {
+                _JobId:  jobId,
+                _SuccId: succId,
+                _SzPred: szPred,
+                _DocStr: docStr,
+            }
         }
     }
 }
@@ -69,7 +74,7 @@ impl AtelierInfo
         let  	freeDoc = atelier.FreeDocStr();
         let  	mut info = AtelierInfo {
             _HookedStash: Stash::Create( U32( 1024), U32::_0, |_| JobInfo::default()),
-            _JobRefBuff: Buff::Create( U32::_16Sz, |i| if ( *docArr.At( i)).as_ptr() == ( *freeDoc).as_ptr() { i.Xplod()[ 0] } else { U16::_X }),
+            _JobRefBuff:  Buff::Create( U32::_16Sz, |i| if ( *docArr.At( i)).as_ptr() == ( *freeDoc).as_ptr() { i.Xplod()[ 0] } else { U16::_X }),
         };
 
         let  	maestros = atelier.Maestros();

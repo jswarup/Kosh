@@ -31,4 +31,5 @@ All Rust source files (`.rs`) in this project must adhere to the following forma
 ## 8. Struct Data Members
 - **Naming Convention**: All struct fields (data members) must be named in PascalCase preceded by an underscore `_` (e.g. `_Data`, `_Size`, `_Points`, `_BBoxMin`).
 - **Type Alignment**: All type definitions for struct data members must be vertically aligned into consistent columns across field declarations.
+- **Initialization Alignment**: The RHS (right-hand side) in struct field initializations must also be vertically column-aligned.
 

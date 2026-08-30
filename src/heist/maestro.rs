@@ -83,14 +83,14 @@ impl< 'a> Maestro< 'a>
     pub fn	New< I: Into< U32>>( maestroInd: I) -> Self
     {
         Self {
-            _Index: maestroInd.into(),
-            _Atelier: null(),
+            _Index:       maestroInd.into(),
+            _Atelier:     null(),
             _SzProcessed: U32::_0,
-            _JobCache: Stash::< U16>::Create( U32( 256), U32::_0, |_| U16::_0),
-            _RunQueue: Stash::< U16>::Create( U32( 1024), U32::_0, |_| U16::_0),
-            _RunQlock: Spinlock::New(),
-            _CurSuccId: Atm::New( U16::_0),
-            _TempQueue: Stash::< U16>::Create( U32( 64), U32::_0, |_| U16::_0),
+            _JobCache:    Stash::< U16>::Create( U32( 256), U32::_0, |_| U16::_0),
+            _RunQueue:    Stash::< U16>::Create( U32( 1024), U32::_0, |_| U16::_0),
+            _RunQlock:    Spinlock::New(),
+            _CurSuccId:   Atm::New( U16::_0),
+            _TempQueue:   Stash::< U16>::Create( U32( 64), U32::_0, |_| U16::_0),
         }
     }
 

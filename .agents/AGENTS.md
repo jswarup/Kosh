@@ -36,6 +36,6 @@
   - **Methods & Functions**: `PascalCase` (e.g. `fn\tNew()`, `fn\tAdd()`, `fn\tGet()`, `fn\tAdvance()`, `fn\tIsEdge()`, `fn\tSize()`).
   - **Function / Method Arguments**: `camelCase` (e.g. `val`, `initialVal`, `mxVert`, `biDirFlg`, `inSig`).
   - **Local Variables**: `camelCase` preceded by `let  \t` (two spaces + tab, e.g. `let  \tnameStr = `, `let  \tnewSize = `).
-  - **Struct Data Members (Fields)**: Preceded by an underscore `_` followed by `PascalCase` (e.g. `_Data`, `_Size`, `_Names`, `_PastVal`, `_CurrentVal`, `_FutureVal`, `_X`). Field type definitions should be column-aligned.
+  - **Struct Data Members (Fields)**: Preceded by an underscore `_` followed by `PascalCase` (e.g. `_Data`, `_Size`, `_Names`, `_PastVal`, `_CurrentVal`, `_FutureVal`, `_X`). Field type definitions and the RHS (right-hand side) in struct field initializations must be column-aligned.
 
 
