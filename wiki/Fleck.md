@@ -6,7 +6,7 @@ The `fleck` module provides high-throughput **3D geometric representations, vect
 1. **Multidimensional Vector Math (`Vex<N, T>`)**: Generic N-dimensional vector algebra with compile-time dimension checking, vector space operations, scalar multiplication, inner products, normalization, and coordinate projections.
 2. **Specialized 3D & 2D Types (`Pt3f`, `WPt3f`, `WPt2f`, `Dir3f`, `Point32`, `RGB`)**: High-performance representations for Euclidean positions, homogeneous coordinates, direction vectors, and colors.
 3. **3D Point Cloud Processing (`PtsCloud`, `PtsPoint`, `PtsShard`)**: Parsing, bounding box calculation, intensity mapping, and streaming parsing for `.pts` point cloud files.
-4. **Wavefront Mesh Processing (`WaveObjMesh`, `WaveObjFace`, `WaveObjMaterial`, `WaveObjShard`)**: Streaming parser for 3D polygonal `.obj` meshes with support for negative indexing, normals, texture coordinates, and DTO conversion.
+4. **Wavefront Mesh Processing (`WaveObjModel`, `WaveObjFace`, `WaveObjMaterial`, `WaveObjShard`, `WaveObjParserCtx`)**: Streaming parser for 3D polygonal `.obj` meshes with support for negative indexing, normals, texture coordinates, and DTO conversion.
 
 ---
 
@@ -47,14 +47,14 @@ classDiagram
         +ToDto() PtsPointsDto
     }
 
-    class WaveObjMesh {
+    class WaveObjModel {
         +Buff~Pt3f~ _Vertices
         +Buff~Pt3f~ _Normals
         +Buff~WPt2f~ _TexCoords
         +Buff~WaveObjFace~ _Faces
         +Point32 _BBoxMin
         +Point32 _BBoxMax
-        +New() WaveObjMesh
+        +New() WaveObjModel
         +ToDto() WaveObjMeshDto
     }
 
@@ -64,9 +64,25 @@ classDiagram
         +Buff~U32~ _TexIndices
     }
 
+
+    class WaveObjParserCtx {
+        +Stash~WPt3f~ _VStash
+        +Stash~Face~ _FStash
+        +Stash~FaceVertex~ _FaceVerts
+        +New(streamSz) WaveObjParserCtx
+    }
+
+    class WaveObjParserCtxMM {
+        +Get() WaveObjParserCtx
+        +PushVal(arr) bool
+        +EndV() bool
+        +EndFace() bool
+    }
+    WaveObjParserCtxMM --> WaveObjParserCtx : mutates
+
     PtsPoint *-- Point32 : coordinates
     PtsCloud o-- PtsPoint : stores in Buff
-    WaveObjMesh o-- WaveObjFace : stores in Buff
+    WaveObjModel o-- WaveObjFace : stores in Buff
 ```
 
 ---
@@ -90,12 +106,13 @@ Zero-allocation streaming parser for `.pts` point cloud data:
 - Extracts 3D coordinates, radar/lidar intensity floats, and 24-bit RGB color tuples.
 - Dynamically maintains axis-aligned minimum and maximum bounding boxes (`_BBoxMin`, `_BBoxMax`).
 
-### 3.3 Wavefront OBJ Parser (`WaveObjMesh`, `WaveObjShard`)
+### 3.3 Wavefront OBJ Parser (`WaveObjModel`, `WaveObjShard`)
 Grammar-based parser for polygonal 3D models:
 - **Geometry Tokens**: Geometric vertices (`v`), vertex normals (`vn`), texture coordinates (`vt`), parameter space vertices (`vp`).
 - **Polygonal Faces (`f`)**: Supports variable-valence faces (triangles, quads, polygons), `v/vt/vn` vertex triplets, and relative/negative indexing.
 - **Materials & Groups**: Handles group identifiers (`g`), smoothing groups (`s`), and material library bindings (`usemtl`, `mtllib`).
 - **Triangulation**: Convex fan triangulation converts arbitrary N-sided polygons into GPU-ready triangle lists.
+- **Zero-Overhead Context (WaveObjParserCtx)**: Uses a tightly packed WaveObjParserCtx struct to manage dynamic Stash allocations. A lightweight WaveObjParserCtxMM copy-wrapper provides interior mutability for the ShardTree! action blocks without requiring heavy refcells or boxing.
 
 ---
 
@@ -107,6 +124,7 @@ Grammar-based parser for polygonal 3D models:
 - **`ParsePtsStream(stream: &mut dyn IStream) -> Result<PtsCloud, String>`**: Parses stream implementing `IStream`.
 
 ### Wavefront OBJ I/O (`waveobjio.rs`)
-- **`ParseWaveObj(path: &str) -> Result<WaveObjMesh, String>`**: Parses `.obj` file from disk using `BuffStream`.
-- **`ParseWaveObjBytes(bytes: &[u8]) -> Result<WaveObjMesh, String>`**: Parses in-memory byte slice using `FixedStream`.
-- **`ParseWaveObjStream(stream: &mut dyn IStream) -> Result<WaveObjMesh, String>`**: Parses stream implementing `IStream`.
+- **`ParseWaveObj(path: &str) -> Result<WaveObjModel, String>`**: Parses `.obj` file from disk using `BuffStream`.
+- **`ParseWaveObjBytes(bytes: &[u8]) -> Result<WaveObjModel, String>`**: Parses in-memory byte slice using `FixedStream`.
+- **`ParseWaveObjStream(stream: &mut dyn IStream) -> Result<WaveObjModel, String>`**: Parses stream implementing `IStream`.
+

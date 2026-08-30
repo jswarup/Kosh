@@ -5,7 +5,7 @@ use	crate::{
     fleck::{ BBox3f, Dir3f, Pt3f, WPt2f, WPt3f },
     flux::instream::{ FixedStream, IStream },
     shard::{ Charset, IGrammar, Int, Parser, Real },
-    silo::{ Arr, U8, Buff, IAccess, StashMM, Stash, U32 },
+    silo::{ Arr, U8, Buff, IAccess, Stash, U32 },
     ShardTree,
 };
 
@@ -353,129 +353,137 @@ impl WaveObjModel
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
-struct MutVal< T>( *mut T);
-
-impl< T> Clone for MutVal< T> {
-    #[inline( always)]
-    fn clone( &self) -> Self { *self }
-}
-
-impl< T> Copy for MutVal< T> {}
-
-impl< T> MutVal< T> {
-    #[inline( always)]
-    fn	New( r: &mut T) -> Self { Self( r as *mut T) }
-
-    #[inline( always)]
-    #[allow( clippy::mut_from_ref)]
-    fn	Get( &self) -> &mut T { unsafe { &mut *self.0 } }
-}
-
-
-
-
-
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Shard grammar struct that parses a Wavefront .obj stream into a WaveObjModel using Stash.
-//---------------------------------------------------------------------------------------------------------------------------------
+struct WaveObjParserCtx {
+    _VStash: Stash< WPt3f>,
+    _VtStash: Stash< WPt2f>,
+    _VnStash: Stash< Dir3f>,
+    _FStash: Stash< Face>,
+    _ObjStash: Stash< String>,
+    _GrpStash: Stash< String>,
+    _MtlStash: Stash< String>,
+    _UseMtlStash: Stash< String>,
+    _Vals: Stash< f32>,
+    _FaceVerts: Stash< FaceVertex>,
+    _CurFaceVert: FaceVertex,
+}
+
+impl WaveObjParserCtx {
+    fn	New( streamSz: U32) -> Self {
+        let  	estVerts = (streamSz.0 / 40).max( 128);
+        let  	estFaces = (streamSz.0 / 50).max( 128);
+        Self {
+            _VStash: Stash::< WPt3f>::WithCapacity( U32( estVerts)),
+            _VtStash: Stash::< WPt2f>::WithCapacity( U32( (estVerts / 2).max( 64))),
+            _VnStash: Stash::< Dir3f>::WithCapacity( U32( (estVerts / 2).max( 64))),
+            _FStash: Stash::< Face>::WithCapacity( U32( estFaces)),
+            _ObjStash: Stash::< String>::New(),
+            _GrpStash: Stash::< String>::New(),
+            _MtlStash: Stash::< String>::New(),
+            _UseMtlStash: Stash::< String>::New(),
+            _Vals: Stash::< f32>::WithCapacity( U32( 4)),
+            _FaceVerts: Stash::< FaceVertex>::WithCapacity( U32( 4)),
+            _CurFaceVert: FaceVertex { _VertexIdx: 0, _TexCoordIdx: None, _NormalIdx: None },
+        }
+    }
+}
 
 #[derive( Clone, Copy)]
-struct ParserCtx {
-    _VStash: StashMM< WPt3f>,
-    _VtStash: StashMM< WPt2f>,
-    _VnStash: StashMM< Dir3f>,
-    _FStash: StashMM< Face>,
-    _ObjStash: StashMM< String>,
-    _GrpStash: StashMM< String>,
-    _MtlStash: StashMM< String>,
-    _UseMtlStash: StashMM< String>,
-    _Vals: StashMM< f32>,
-    _FaceVerts: StashMM< FaceVertex>,
-    _FvPtr: MutVal< FaceVertex>,
-}
+struct WaveObjParserCtxMM( *mut WaveObjParserCtx);
 
-impl ParserCtx {
+impl WaveObjParserCtxMM {
     #[inline( always)]
-    fn PushMtlLib( &self, arr: Arr< '_, U8>) { self._MtlStash.Push( arr.AsStr().to_string()); }
+    #[allow( clippy::mut_from_ref)]
+    fn	Get( &self) -> &mut WaveObjParserCtx { unsafe { &mut *self.0 } }
+
+    #[inline( always)]
+    fn	PushMtlLib( &self, arr: Arr< '_, U8>) -> bool { self.Get()._MtlStash.Push( arr.AsStr().to_string()); true }
     
     #[inline( always)]
-    fn PushUseMtl( &self, arr: Arr< '_, U8>) { self._UseMtlStash.Push( arr.AsStr().to_string()); }
+    fn	PushUseMtl( &self, arr: Arr< '_, U8>) -> bool { self.Get()._UseMtlStash.Push( arr.AsStr().to_string()); true }
     
     #[inline( always)]
-    fn PushVal( &self, arr: Arr< '_, U8>) { self._Vals.Push( arr.ParseF32()); }
+    fn	PushVal( &self, arr: Arr< '_, U8>) -> bool { self.Get()._Vals.Push( arr.ParseF32()); true }
     
     #[inline( always)]
-    fn EndVt( &self) {
-        let cnt = self._Vals.Size();
+    fn	EndVt( &self) -> bool {
+        let  	cnt = self.Get()._Vals.Size();
         if cnt >= U32( 2) {
-            let w = if cnt >= U32( 3) { *self._Vals.Arr().At( 2) } else { 0.0 };
-            self._VtStash.Push( WPt2f::WithW( *self._Vals.Arr().At( 0), *self._Vals.Arr().At( 1), w));
+            let  	w = if cnt >= U32( 3) { *self.Get()._Vals.Arr().At( 2) } else { 0.0 };
+            self.Get()._VtStash.Push( WPt2f::WithW( *self.Get()._Vals.Arr().At( 0), *self.Get()._Vals.Arr().At( 1), w));
         } else if cnt == U32( 1) {
-            self._VtStash.Push( WPt2f::New( *self._Vals.Arr().At( 0), 0.0));
+            self.Get()._VtStash.Push( WPt2f::New( *self.Get()._Vals.Arr().At( 0), 0.0));
         }
-        self._Vals.Clear();
+        self.Get()._Vals.Clear();
+        true
     }
     
     #[inline( always)]
-    fn EndVn( &self) {
-        if self._Vals.Size() >= U32( 3) {
-            self._VnStash.Push( Dir3f::New( *self._Vals.Arr().At( 0), *self._Vals.Arr().At( 1), *self._Vals.Arr().At( 2)));
+    fn	EndVn( &self) -> bool {
+        if self.Get()._Vals.Size() >= U32( 3) {
+            self.Get()._VnStash.Push( Dir3f::New( *self.Get()._Vals.Arr().At( 0), *self.Get()._Vals.Arr().At( 1), *self.Get()._Vals.Arr().At( 2)));
         }
-        self._Vals.Clear();
+        self.Get()._Vals.Clear();
+        true
     }
     
     #[inline( always)]
-    fn EndV( &self) {
-        let cnt = self._Vals.Size();
+    fn	EndV( &self) -> bool {
+        let  	cnt = self.Get()._Vals.Size();
         if cnt >= U32( 3) {
-            let w = if cnt >= U32( 4) { *self._Vals.Arr().At( 3) } else { 1.0 };
-            self._VStash.Push( WPt3f::WithW( *self._Vals.Arr().At( 0), *self._Vals.Arr().At( 1), *self._Vals.Arr().At( 2), w));
+            let  	w = if cnt >= U32( 4) { *self.Get()._Vals.Arr().At( 3) } else { 1.0 };
+            self.Get()._VStash.Push( WPt3f::WithW( *self.Get()._Vals.Arr().At( 0), *self.Get()._Vals.Arr().At( 1), *self.Get()._Vals.Arr().At( 2), w));
         }
-        self._Vals.Clear();
+        self.Get()._Vals.Clear();
+        true
     }
     
     #[inline( always)]
-    fn ParseFaceV( &self, arr: Arr< '_, U8>) {
-        let v = arr.ParseI32();
-        let numV = self._VStash.Size().0 as i32;
-        self._FvPtr.Get()._VertexIdx = if v < 0 { numV + v + 1 } else { v };
+    fn	ParseFaceV( &self, arr: Arr< '_, U8>) -> bool {
+        let  	v = arr.ParseI32();
+        let  	numV = self.Get()._VStash.Size().0 as i32;
+        self.Get()._CurFaceVert._VertexIdx = if v < 0 { numV + v + 1 } else { v };
+        true
     }
     
     #[inline( always)]
-    fn ParseFaceVt( &self, arr: Arr< '_, U8>) {
-        let v = arr.ParseI32();
-        let numT = self._VtStash.Size().0 as i32;
-        self._FvPtr.Get()._TexCoordIdx = Some( if v < 0 { numT + v + 1 } else { v });
+    fn	ParseFaceVt( &self, arr: Arr< '_, U8>) -> bool {
+        let  	v = arr.ParseI32();
+        let  	numT = self.Get()._VtStash.Size().0 as i32;
+        self.Get()._CurFaceVert._TexCoordIdx = Some( if v < 0 { numT + v + 1 } else { v });
+        true
     }
     
     #[inline( always)]
-    fn ParseFaceVn( &self, arr: Arr< '_, U8>) {
-        let v = arr.ParseI32();
-        let numN = self._VnStash.Size().0 as i32;
-        self._FvPtr.Get()._NormalIdx = Some( if v < 0 { numN + v + 1 } else { v });
+    fn	ParseFaceVn( &self, arr: Arr< '_, U8>) -> bool {
+        let  	v = arr.ParseI32();
+        let  	numN = self.Get()._VnStash.Size().0 as i32;
+        self.Get()._CurFaceVert._NormalIdx = Some( if v < 0 { numN + v + 1 } else { v });
+        true
     }
     
     #[inline( always)]
-    fn EndFaceVertex( &self) {
-        self._FaceVerts.Push( *self._FvPtr.Get());
-        *self._FvPtr.Get() = FaceVertex { _VertexIdx: 0, _TexCoordIdx: None, _NormalIdx: None };
+    fn	EndFaceVertex( &self) -> bool {
+        self.Get()._FaceVerts.Push( self.Get()._CurFaceVert);
+        self.Get()._CurFaceVert = FaceVertex { _VertexIdx: 0, _TexCoordIdx: None, _NormalIdx: None };
+        true
     }
     
     #[inline( always)]
-    fn EndFace( &self) {
-        if self._FaceVerts.Size() > U32( 0) {
-            self._FStash.Push( Face { _Vertices: self._FaceVerts.ToBuff() });
-            self._FaceVerts.Clear();
+    fn	EndFace( &self) -> bool {
+        if self.Get()._FaceVerts.Size() > U32( 0) {
+            self.Get()._FStash.Push( Face { _Vertices: self.Get()._FaceVerts.ToBuff() });
+            self.Get()._FaceVerts.Clear();
         }
+        true
     }
     
     #[inline( always)]
-    fn PushObj( &self, arr: Arr< '_, U8>) { self._ObjStash.Push( arr.AsStr().to_string()); }
+    fn	PushObj( &self, arr: Arr< '_, U8>) -> bool { self.Get()._ObjStash.Push( arr.AsStr().to_string()); true }
     
     #[inline( always)]
-    fn PushGrp( &self, arr: Arr< '_, U8>) { self._GrpStash.Push( arr.AsStr().to_string()); }
+    fn	PushGrp( &self, arr: Arr< '_, U8>) -> bool { self.Get()._GrpStash.Push( arr.AsStr().to_string()); true }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -495,83 +503,35 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
         let  	model = unsafe { &mut *modelPtr };
 
         let  	streamSz = parser.InStream().Size();
-        let  	estVerts = (streamSz.0 / 40).max( 128);
-        let  	estFaces = (streamSz.0 / 50).max( 128);
-
-        let  	mut verticesStash = Stash::< WPt3f>::WithCapacity( U32( estVerts));
-        let  	mut texCoordsStash = Stash::< WPt2f>::WithCapacity( U32( (estVerts / 2).max( 64)));
-        let  	mut normalsStash = Stash::< Dir3f>::WithCapacity( U32( (estVerts / 2).max( 64)));
-        let  	mut facesStash = Stash::< Face>::WithCapacity( U32( estFaces));
-        let  	mut objectsStash = Stash::< String>::New();
-        let  	mut groupsStash = Stash::< String>::New();
-        let  	mut mtlLibsStash = Stash::< String>::New();
-        let  	mut useMtlsStash = Stash::< String>::New();
-
-        let  	mut valsStash = Stash::< f32>::WithCapacity( U32( 4));
-        let  	mut faceVertsBuff = Stash::< FaceVertex>::WithCapacity( U32( 4));
-
-        let  	mut curFaceVert = FaceVertex { _VertexIdx: 0, _TexCoordIdx: None, _NormalIdx: None };
-        
-        let  	ctx = ParserCtx {
-            _VStash: StashMM::New( &mut verticesStash),
-            _VtStash: StashMM::New( &mut texCoordsStash),
-            _VnStash: StashMM::New( &mut normalsStash),
-            _FStash: StashMM::New( &mut facesStash),
-            _ObjStash: StashMM::New( &mut objectsStash),
-            _GrpStash: StashMM::New( &mut groupsStash),
-            _MtlStash: StashMM::New( &mut mtlLibsStash),
-            _UseMtlStash: StashMM::New( &mut useMtlsStash),
-            _Vals: StashMM::New( &mut valsStash),
-            _FaceVerts: StashMM::New( &mut faceVertsBuff),
-            _FvPtr: MutVal::New( &mut curFaceVert),
-        };
+        let  	mut ctx = WaveObjParserCtx::New( streamSz);
+        let  	ctxMM = WaveObjParserCtxMM( &mut ctx as *mut _);
 
         let  	nonWs = *Charset::NonSpace();
         let  	nonEnd = Charset::EndLine().Negative();
 
         let  	objGrammar = ShardTree!(
             *(
-                *[ " 	" ]
+                *[ " \t" ]
                 < (
-                    ( "mtllib" < +[ " 	" ] < (+nonWs)[ |arr| { ctx.PushMtlLib( arr); true } ] )
-                    | ( "usemtl" < +[ " 	" ] < (+nonWs)[ |arr| { ctx.PushUseMtl( arr); true } ] )
-                    | ( ( "vt" < +[ " 	" ] < Real[ |arr| { ctx.PushVal( arr); true } ] < ?( +[ " 	" ] < Real[ |arr| { ctx.PushVal( arr); true } ] < ?( +[ " 	" ] < Real[ |arr| { ctx.PushVal( arr); true } ] ) ) )[ |arr| {
-                        let  	_ = arr;
-                        ctx.EndVt();
-                        true
-                    } ] )
-                    | ( ( "vn" < +[ " 	" ] < Real[ |arr| { ctx.PushVal( arr); true } ] < +[ " 	" ] < Real[ |arr| { ctx.PushVal( arr); true } ] < +[ " 	" ] < Real[ |arr| { ctx.PushVal( arr); true } ] )[ |arr| {
-                        let  	_ = arr;
-                        ctx.EndVn();
-                        true
-                    } ] )
-                    | ( ( "v" < +[ " 	" ] < Real[ |arr| { ctx.PushVal( arr); true } ] < +[ " 	" ] < Real[ |arr| { ctx.PushVal( arr); true } ] < +[ " 	" ] < Real[ |arr| { ctx.PushVal( arr); true } ] < ?( +[ " 	" ] < Real[ |arr| { ctx.PushVal( arr); true } ] ) )[ |arr| {
-                        let  	_ = arr;
-                        ctx.EndV();
-                        true
-                    } ] )
-                    | ( ( "f" < +( +[ " 	" ] < (
-                        Int[ |arr| { ctx.ParseFaceV( arr); true } ]
+                    ( "mtllib" < +[ " \t" ] < (+nonWs)[ |arr| ctxMM.PushMtlLib( arr) ] )
+                    | ( "usemtl" < +[ " \t" ] < (+nonWs)[ |arr| ctxMM.PushUseMtl( arr) ] )
+                    | ( ( "vt" < +[ " \t" ] < Real[ |arr| ctxMM.PushVal( arr) ] < ?( +[ " \t" ] < Real[ |arr| ctxMM.PushVal( arr) ] < ?( +[ " \t" ] < Real[ |arr| ctxMM.PushVal( arr) ] ) ) )[ |_arr| ctxMM.EndVt() ] )
+                    | ( ( "vn" < +[ " \t" ] < Real[ |arr| ctxMM.PushVal( arr) ] < +[ " \t" ] < Real[ |arr| ctxMM.PushVal( arr) ] < +[ " \t" ] < Real[ |arr| ctxMM.PushVal( arr) ] )[ |_arr| ctxMM.EndVn() ] )
+                    | ( ( "v" < +[ " \t" ] < Real[ |arr| ctxMM.PushVal( arr) ] < +[ " \t" ] < Real[ |arr| ctxMM.PushVal( arr) ] < +[ " \t" ] < Real[ |arr| ctxMM.PushVal( arr) ] < ?( +[ " \t" ] < Real[ |arr| ctxMM.PushVal( arr) ] ) )[ |_arr| ctxMM.EndV() ] )
+                    | ( ( "f" < +( +[ " \t" ] < (
+                        Int[ |arr| ctxMM.ParseFaceV( arr) ]
                         < ?( "/"
-                             < ?Int[ |arr| { ctx.ParseFaceVt( arr); true } ]
+                             < ?Int[ |arr| ctxMM.ParseFaceVt( arr) ]
                              < ?( "/"
-                                  < Int[ |arr| { ctx.ParseFaceVn( arr); true } ]
+                                  < Int[ |arr| ctxMM.ParseFaceVn( arr) ]
                              )
                         )
-                    )[ |arr| {
-                        let  	_ = arr;
-                        ctx.EndFaceVertex();
-                        true
-                    } ] ) )[ |arr| {
-                        let  	_ = arr;
-                        ctx.EndFace();
-                        true
-                    } ] )
-                    | ( "o" < +[ " 	" ] < (+nonWs)[ |arr| { ctx.PushObj( arr); true } ] )
-                    | ( "g" < +[ " 	" ] < (+nonWs)[ |arr| { ctx.PushGrp( arr); true } ] )
+                    )[ |_arr| ctxMM.EndFaceVertex() ] ) )[ |_arr| ctxMM.EndFace() ] )
+                    | ( "o" < +[ " \t" ] < (+nonWs)[ |arr| ctxMM.PushObj( arr) ] )
+                    | ( "g" < +[ " \t" ] < (+nonWs)[ |arr| ctxMM.PushGrp( arr) ] )
                     | *nonEnd
                 )
-                < *[ " 	" ]
+                < *[ " \t" ]
                 < ?( ( ?'\r' < '\n' ) | '\r' )
             )
         );
@@ -580,14 +540,14 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
             return false;
         }
 
-        model._Vertices = verticesStash.IntoBuff();
-        model._TexCoords = texCoordsStash.IntoBuff();
-        model._Normals = normalsStash.IntoBuff();
-        model._Faces = facesStash.IntoBuff();
-        model._Objects = objectsStash.IntoBuff();
-        model._Groups = groupsStash.IntoBuff();
-        model._MtlLibs = mtlLibsStash.IntoBuff();
-        model._UseMtls = useMtlsStash.IntoBuff();
+        model._Vertices = ctx._VStash.IntoBuff();
+        model._TexCoords = ctx._VtStash.IntoBuff();
+        model._Normals = ctx._VnStash.IntoBuff();
+        model._Faces = ctx._FStash.IntoBuff();
+        model._Objects = ctx._ObjStash.IntoBuff();
+        model._Groups = ctx._GrpStash.IntoBuff();
+        model._MtlLibs = ctx._MtlStash.IntoBuff();
+        model._UseMtls = ctx._UseMtlStash.IntoBuff();
 
         true
     }
@@ -655,6 +615,7 @@ impl fmt::Display for WaveObjModel
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
 
 
 
