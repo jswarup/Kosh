@@ -2,7 +2,7 @@
 
 use	std::fmt;
 use	crate::{
-    heist::IMaestro,
+    heist::{ IAtelier, IMaestro },
     silo::{ Stash, U16 },
     stalks::{ BinNode, BinOp, DynIWorker, IntoWorkPtr, IWork },
     swarm::BackendKind,
@@ -34,7 +34,7 @@ pub struct Chore
 {
     pub _DocStr: &'static str,
     pub _Target: ChoreTarget,
-    _Closure: fn( &DynIWorker< '_>),
+    _Closure:    fn( &DynIWorker< '_>),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -100,9 +100,28 @@ impl Chore
         }
     }
 
-    pub fn	Target( &self) -> ChoreTarget
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub trait IChore: IWork + IChoreNode
+{
+    fn	Target( &self) -> ChoreTarget;
+    fn	DocStr( &self) -> &'static str;
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IChore for Chore
+{
+    fn	Target( &self) -> ChoreTarget
     {
         self._Target
+    }
+
+    fn	DocStr( &self) -> &'static str
+    {
+        self._DocStr
     }
 }
 

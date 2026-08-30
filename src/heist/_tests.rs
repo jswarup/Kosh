@@ -7,7 +7,7 @@ use	crate::{
     ChoreTree,
     CpuChore,
     GpuAutoChore,
-    heist::{ Atelier, ChoreTarget, IChoreNode, IMaestro, Maestro },
+    heist::{ Atelier, IAtelier, IChore, ChoreTarget, IChoreNode, IMaestro, Maestro },
     silo::{ Buff, IAccess, IArr, Stash, U16, U32 },
     stalks::{ Atm, DynIWorker, IntoWorkPtr, IWorker, Worker },
     swarm::SwarmEngine,

@@ -1,37 +1,49 @@
-
-use	std::collections::HashSet;
+//-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
 use	std::sync::Arc;
 use	std::sync::atomic::Ordering;
-use	std::{ fmt, hint::spin_loop, thread::{ scope, yield_now } };
+use	std::{ hint::spin_loop, thread::{ scope, yield_now } };
 use	crate::heist::{ Maestro, IMaestro };
-use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, U16, U32 };
-use	crate::silo::uint::Xplod;
+use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, USeg, U16, U32 };
 use	crate::stalks::{ Atm, Spinlock, WorkPtr };
 use	crate::swarm::SwarmEngine;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+pub trait IAtelier< 'a>
+{
+    fn	MainMaestro( &self) -> &Maestro< 'a>;
+    fn	Maestros( &self) -> Arr< 'a, Maestro< 'a>>;
+    fn	SetSwarm( &mut self, swarm: SwarmEngine);
+    fn	Swarm( &self) -> Option< &SwarmEngine>;
+    fn	SetSucc< J: Into< U16>, S: Into< U16>>( &self, jobId: J, succId: S)
+    where
+        Self: Sized;
+    fn	ConstructJob< M: Into< U32>, S: Into< U16>>( &self, maestroIdx: M, succId: S, job: WorkPtr< 'a>, docStr: &'static str) -> U16
+    where
+        Self: Sized;
+    fn	DoLaunch( &self);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub struct Atelier< 'a>
 {
-    pub( crate) _SzSchedJob: Atm< U32>,                                 // Count of cumulative jobs in flight
-    _Maestros: Buff< Maestro< 'a>>,
-    _SzPreds: Buff< Atm< U16>>,                                         // Count of predessors for job at the jobId
-    _SuccIds: Buff< U16>,                       
-    _FreeJobLock: Spinlock,
+    _SzSchedJob:   Atm< U32>,                                           // Count of cumulative jobs in flight
+    _Maestros:     Buff< Maestro< 'a>>,
+    _SzPreds:      Buff< Atm< U16>>,                                    // Count of predecessors for job at the jobId
+    _SuccIds:      Buff< U16>,
+    _FreeJobLock:  Spinlock,
     _FreeJobStash: Stash< U16>,                                         // A Stack of free jobIds
-    _JobBuff: Buff< WorkPtr< 'a>>,
-    _JobDocBuff: Buff< &'static str>,
-    _Terminal: U16,
-    _Swarm: Option< Arc< SwarmEngine>>,                                 // shared heterogeneous GPU/CPU compute runtime instance
+    _JobBuff:      Buff< WorkPtr< 'a>>,
+    _JobDocBuff:   Buff< &'static str>,
+    _Terminal:     U16,
+    _Swarm:        Option< Arc< SwarmEngine>>,                          // Shared heterogeneous compute runtime instance
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl< 'a> Atelier< 'a>
 {
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
     pub fn	New< S: Into< U32>>( szMaestro: S) -> Atelier< 'a>
     {
         let  	mut atelier = Self {
@@ -54,62 +66,36 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	SetSwarm( &mut self, swarm: SwarmEngine)
+    pub( crate) fn	IncSchedJob( &self)
     {
-        self._Swarm = Some( Arc::new( swarm));
+        self._SzSchedJob.Add( U32( 1));
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	Swarm( &self) -> Option< &SwarmEngine>
+    pub( crate) fn	SuccIds( &self) -> Arr< '_, U16>
     {
-        self._Swarm.as_deref()
+        self._SuccIds.Arr()
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	MainMaestro( &self) -> &Maestro< 'a>
-    {
-        let  	maestro = self._Maestros.Arr().MutAt( U32( 0));
-        maestro.SetAtelier( self);
-        maestro
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	Terminal( &self) -> U16
-    {
-        self._Terminal
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	Maestros( &self) -> Arr< 'a, Maestro< 'a>>
-    {
-        self._Maestros.Arr()
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	SuccId< J: Into< U16>>( &self, jobId: J) -> U16
-    {
-        *self._SuccIds.Arr().At( jobId.into())
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	SzPred< J: Into< U16>>( &self, jobId: J) -> &Atm< U16>
+    pub( crate) fn	SzPred< J: Into< U16>>( &self, jobId: J) -> &Atm< U16>
     {
         self._SzPreds.Arr().At( jobId.into())
     }
 
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	FreeDocStr( &self) -> &'static str
+    pub( crate) fn	JobDocBuff( &self) -> &Buff< &'static str>
     {
-        let     docStr = *self._JobDocBuff.Arr().At( 0);
+        &self._JobDocBuff
+    }
+
+    pub( crate) fn	FreeDocStr( &self) -> &'static str
+    {
+        let  	docStr = *self._JobDocBuff.Arr().At( 0);
         assert!( docStr == "Free");
         docStr
+    }
+
+    pub fn	Terminal( &self) -> U16
+    {
+        self._Terminal
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -153,62 +139,38 @@ impl< 'a> Atelier< 'a>
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	SetSucc< J: Into< U16>, S: Into< U16>>( &self, jobId: J, succId: S)
-    {
-        let  	j = jobId.into();
-        let  	s = succId.into();
-        self._SuccIds.Arr().SetAt( j, &s);
-        self.SzPred( s).Add( 1);
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	ConstructJob< M: Into< U32>, S: Into< U16>>( &self, maestroIdx: M, succId: S, job: WorkPtr< 'a>, docStr: &'static str) -> U16
-    {
-        let  	mIdx = maestroIdx.into();
-        let  	sId = succId.into();
-        let  	jobId = self.AllocJob( mIdx);
-        if jobId == 0 {
-            return jobId;
-        }
-        self._JobBuff.Arr().SetAt( jobId, &job);
-        self._JobDocBuff.Arr().SetAt( jobId, &docStr);
-        if sId != 0 {
-             self.SetSucc( jobId, sId);
-        }
-        jobId
-    }
-
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
     fn	GrabJob( &self, idx: U32, stealSeed: &mut u32) -> U16
     {
         let  	maestros = self._Maestros.Arr();
-        let  	sz = maestros.len() as u32;
-        let     knuthMultHash = 2654435761u32;
+        let  	sz = maestros.Size();
+        let  	knuthMultHash = 2654435761u32;
         *stealSeed = stealSeed.wrapping_mul( knuthMultHash).wrapping_add( 1u32);
-        for mIdx in 0..sz {
-            let  	maestroIdx = U32( stealSeed.wrapping_add( mIdx) % sz);
+        let  	seed = *stealSeed;
+        let  	mut foundJobId = U16::_0;
+        USeg::New( U32::_0, sz).Traverse( |mIdx| {
+            if foundJobId != 0 {
+                return;
+            }
+            let  	maestroIdx = U32( ( seed.wrapping_add( mIdx.AsU32()) ) % sz.AsU32());
             if maestroIdx == idx {
-                continue;
+                return;
             }
             let  	maestro = maestros.At( maestroIdx);
             let  	jobId = maestro.PopJob();
             if jobId != 0 {
-                return jobId;
+                foundJobId = jobId;
             }
-        }
-        U16( 0)
+        });
+        foundJobId
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	ExecuteLoop< M: Into< U32>>( &self, maestroIdx: M)
+    fn	ExecuteLoop< M: Into< U32>>( &self, maestroIdx: M)
     {
         let  	mIdx = maestroIdx.into();
         let  	maestro = self._Maestros.Arr().MutAt( mIdx);
-        maestro.SetAtelier( self );
+        maestro.SetAtelier( self);
         maestro.FlushTempQueue();
         let  	mut jobId = U16( 0);
         let  	mut stealSeed = mIdx.AsU32();
@@ -220,7 +182,7 @@ impl< 'a> Atelier< 'a>
 
                 ( job._Func)( job._Data, maestro);                   // Run job
                 self._JobBuff.Arr().SetAt( jobId, &WorkPtr::Null());
-                maestro._SzProcessed += 1;
+                maestro.IncProcessed();
 
                 let  	_res = self.FreeJob( mIdx, jobId);
                 let  	succId = maestro.CurSuccId();
@@ -248,16 +210,68 @@ impl< 'a> Atelier< 'a>
             }
         }
     }
+}
 
-    //-----------------------------------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	DoLaunch( &self)
+impl< 'a> IAtelier< 'a> for Atelier< 'a>
+{
+    fn	MainMaestro( &self) -> &Maestro< 'a>
+    {
+        let  	maestro = self._Maestros.Arr().MutAt( U32( 0));
+        maestro.SetAtelier( self);
+        maestro
+    }
+
+    fn	Maestros( &self) -> Arr< 'a, Maestro< 'a>>
+    {
+        self._Maestros.Arr()
+    }
+
+    fn	SetSwarm( &mut self, swarm: SwarmEngine)
+    {
+        self._Swarm = Some( Arc::new( swarm));
+    }
+
+    fn	Swarm( &self) -> Option< &SwarmEngine>
+    {
+        self._Swarm.as_deref()
+    }
+
+    fn	SetSucc< J: Into< U16>, S: Into< U16>>( &self, jobId: J, succId: S)
+    {
+        let  	j = jobId.into();
+        let  	s = succId.into();
+        self._SuccIds.Arr().SetAt( j, &s);
+        self.SzPred( s).Add( 1);
+    }
+
+    fn	ConstructJob< M: Into< U32>, S: Into< U16>>( &self, maestroIdx: M, succId: S, job: WorkPtr< 'a>, docStr: &'static str) -> U16
+    {
+        let  	mIdx = maestroIdx.into();
+        let  	sId = succId.into();
+        let  	jobId = self.AllocJob( mIdx);
+        if jobId == 0 {
+            return jobId;
+        }
+        self._JobBuff.Arr().SetAt( jobId, &job);
+        self._JobDocBuff.Arr().SetAt( jobId, &docStr);
+        if sId != 0 {
+            self.SetSucc( jobId, sId);
+        }
+        jobId
+    }
+
+    fn	DoLaunch( &self)
     {
         let  	maestros = self._Maestros.Arr();
+        let  	sz = maestros.Size();
         scope( |s| {
-            for maestroIdx in 1..maestros.len() {
-                s.spawn( move || {
-                    self.ExecuteLoop( U32( maestroIdx as u32));
+            if sz > U32( 1) {
+                USeg::New( U32( 1), sz - U32( 1)).Traverse( |maestroIdx| {
+                    s.spawn( move || {
+                        self.ExecuteLoop( maestroIdx);
+                    });
                 });
             }
             self.ExecuteLoop( U32( 0));
@@ -265,138 +279,9 @@ impl< 'a> Atelier< 'a>
         println!();
         print!( "Atelier[ ");
         maestros.USeg().Traverse( |maestroIdx| {
-            print!( "( Maestro-{}: {})", maestroIdx, maestros.At( maestroIdx)._SzProcessed);
+            print!( "( Maestro-{}: {})", maestroIdx, maestros.At( maestroIdx).SzProcessed());
         });
-        println!( "]")
-    }
-
-
-
-}
-
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[derive( Clone, Copy, Default)]
-pub struct JobInfo
-{
-    pub _JobId: U16,
-    pub _SuccId: U16,
-    pub _SzPred: U16,
-    pub _DocStr: &'static str,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl JobInfo
-{
-    pub fn	New< 'a>( atelier: *const Atelier< 'a>, jobId: U16) -> Self
-    {
-        unsafe {
-            let  	succId = *( *atelier)._SuccIds.Arr().At( jobId);
-            let  	szPred = ( *atelier)._SzPreds.Arr().At( jobId).Load( Ordering::SeqCst);
-            let  	docStr = *( *atelier)._JobDocBuff.Arr().At( jobId);
-            Self { _JobId: jobId, _SuccId: succId, _SzPred: szPred, _DocStr: docStr }
-        }
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-pub struct AtelierInfo
-{
-
-    pub _HookedStash: Stash< JobInfo>,
-    pub _JobRefBuff: Buff< U16>
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl AtelierInfo
-{
-    pub fn	FetchConnectedJobs( atelier: &Atelier< '_>, jobIds: Arr< U16>, jobStash: &mut Stash< JobInfo>  )
-    {
-        let  	mut jobSet = HashSet::< U16>::new();
-        let  	mut processStash = Stash::< U16>::Create( U32( 1024), 0, |_| U16( 0));
-        jobIds.Traverse( |jobId| {
-            processStash.Push( *jobId);
-        });
-
-        for jobId in processStash.Stk().Arr()  {
-            if !jobSet.insert( *jobId) {
-                continue;
-            }
-
-            let  	succId = *atelier._SuccIds.Arr().At( *jobId);
-            if succId != U16( 0) {
-                processStash.Stk().Push( succId);
-            }
-            jobStash.Push( JobInfo::New( atelier as *const _, *jobId));
-        }
-    }
-
-    pub fn	TraceJobs( atelier: &Atelier< '_>) -> AtelierInfo
-    {
-        let  	docArr = atelier._JobDocBuff.Arr();
-        let  	freeDoc = atelier.FreeDocStr();
-        let  	mut info = AtelierInfo {
-            _HookedStash: Stash::Create( U32( 1024), U32::_0, |_| JobInfo::default()),
-            _JobRefBuff: Buff::Create( U32::_16Sz, |i| if (*docArr.At( i)).as_ptr() == (*freeDoc).as_ptr() {  i.Xplod()[ 0]} else { U16::_X}),
-        };
-
-        let  	maestros = atelier.Maestros();
-        maestros.Traverse( |maestro| {
-            let  	runQueue = maestro.RunQueueArr();
-            Self::FetchConnectedJobs( atelier, runQueue, &mut info._HookedStash);
-        });
-
-        let  	jobRefs = info._JobRefBuff.Arr();
-        let  	jSeg = jobRefs.USeg();
-        jSeg.QSort( |i, j| *jobRefs.At( i) < *jobRefs.At( j), |i, j| jobRefs.Swap( i, j));
-        let  	hookedArr = info._HookedStash.Stk().Arr();
-        let  	mut tempStash = Stash::Create( U32( 1024), U32::_0, |_| U16::_X);
-
-        hookedArr.Traverse( |job| {
-            let  	lInd = jSeg.LowerBound( | i| *jobRefs.At( i) < job._JobId);
-            if jSeg.IsWithin( lInd) && ( *jobRefs.At( lInd) == job._JobId) {
-                tempStash.Push( lInd.Xplod()[ 0]);
-            }
-        });
-        tempStash.Stk().Arr().Traverse( | jobId| { jobRefs.SetAt( *jobId, &U16::_X); });
-
-        jSeg.QSort( |i, j| *jobRefs.At( i) < *jobRefs.At( j), |i, j| jobRefs.Swap( i, j));
-
-        let  	lInd = jSeg.LowerBound( | i| *jobRefs.At( i) < U16::_X);
-        jobRefs.RSnip( jobRefs.Size() - lInd);
-        info
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl fmt::Display for JobInfo
-{
-    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
-    {
-        write!( f, "{{ JobId: {},  {}, {}, {}}} ", self._JobId, self._SuccId, self._SzPred, self._DocStr)
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl fmt::Display for AtelierInfo
-{
-    fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
-    {
-        write!( f, "Atel[ Hooked:")?;
-        self._HookedStash.Stk().Arr().Traverse( |job| {
-            let  	_ = write!( f, " {}", *job);
-        });
-        write!( f, " FreeJobs:")?;
-        self._JobRefBuff.Arr().Traverse( |jobId| {
-            let  	_ = write!( f, " {}", *jobId);
-        });
-        write!( f, "] ")
+        println!( "]");
     }
 }
 

@@ -1,7 +1,7 @@
 //-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
 use	std::ptr::null;
 use	std::sync::atomic::Ordering;
-use	crate::heist::{ Atelier, choretree::IChoreNode };
+use	crate::heist::{ Atelier, IAtelier, choretree::IChoreNode };
 use	crate::silo::{ Arr, Buff, IAccess, Stash, Stk, U16, U32 };
 use	crate::stalks::{ Atm, DynIWorker, IWorker, IntoWorkPtr, Spinlock, WorkPtr };
 use	crate::swarm::SwarmEngine;
@@ -10,10 +10,14 @@ use	crate::swarm::SwarmEngine;
 
 pub trait IMaestro< 'a>: IWorker
 {
-    fn	SetAtelier( &mut self, atelier: *const Atelier< 'a>);
     fn	Atelier( &self) -> &Atelier< 'a>;
     fn	MaestroIndex( &self) -> U32;
     fn	Swarm( &self) -> Option< &SwarmEngine>;
+    fn	CurSuccId( &self) -> U16;
+
+    fn	SetCurSuccId< K: Into< U16>>( &self, val: K)
+    where
+        Self: Sized;
 
     fn	ConstructJob< S: Into< U16>>( &self, succId: S, job: impl IntoWorkPtr< 'a>, docStr: &'static str) -> U16
     where
@@ -36,15 +40,7 @@ pub trait IMaestro< 'a>: IWorker
         }, docStr)
     }
 
-    fn	JobCacheStk( &self) -> Stk< '_, '_, U16>;
-    fn	RunQueueArr( &self) -> Arr< '_, U16>;
     fn	FlushTempQueue( &self);
-    fn	PopJob( &self) -> U16;
-    fn	CurSuccId( &self) -> U16;
-
-    fn	SetCurSuccId< K: Into< U16>>( &self, val: K)
-    where
-        Self: Sized;
 
     fn	PostChoreTree< T: IChoreNode>( &self, node: &T)
     where
@@ -64,14 +60,14 @@ pub trait IMaestro< 'a>: IWorker
 
 pub struct Maestro< 'a>
 {
-    _Index: U32,
-    _Atelier: *const Atelier< 'a>,
-    pub( crate) _SzProcessed: U32,
-    _JobCache: Stash< U16>,
-    _RunQueue: Stash< U16>,
-    _RunQlock: Spinlock,
-    _CurSuccId: Atm< U16>,
-    _TempQueue: Stash< U16>,
+    _Index:       U32,
+    _Atelier:     *const Atelier< 'a>,
+    _SzProcessed: U32,
+    _JobCache:    Stash< U16>,
+    _RunQueue:    Stash< U16>,
+    _RunQlock:    Spinlock,
+    _CurSuccId:   Atm< U16>,
+    _TempQueue:   Stash< U16>,
 }
 
 unsafe impl< 'a> Send for Maestro< 'a>
@@ -104,17 +100,52 @@ impl< 'a> Maestro< 'a>
         assert!( !ptr.is_null());
         unsafe { &*( ptr as *const Self) }
     }
+
+    pub fn	SzProcessed( &self) -> U32
+    {
+        self._SzProcessed
+    }
+
+    pub( crate) fn	IncProcessed( &mut self)
+    {
+        self._SzProcessed += 1;
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub( crate) fn	SetAtelier( &mut self, atelier: *const Atelier< 'a>)
+    {
+        self._Atelier = atelier;
+    }
+
+    pub( crate) fn	JobCacheStk( &self) -> Stk< '_, '_, U16>
+    {
+        self._JobCache.Stk()
+    }
+
+    pub( crate) fn	RunQueueArr( &self) -> Arr< '_, U16>
+    {
+        self._RunQueue.Stk().Arr()
+    }
+
+    pub( crate) fn	PopJob( &self) -> U16
+    {
+        let  	xStk = self._RunQueue.Stk();
+        let  	mut jobId = U16( 0);
+        if xStk.Size() != 0 {
+            let  	_guard = self._RunQlock.Lock();
+            if xStk.Size() != 0 && xStk.Pop( &mut jobId) {
+                return jobId;
+            }
+        }
+        return jobId;
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl< 'a> IMaestro< 'a> for Maestro< 'a>
 {
-    fn	SetAtelier( &mut self, atelier: *const Atelier< 'a>)
-    {
-        self._Atelier = atelier;
-    }
-
     fn	Atelier( &self) -> &Atelier< 'a>
     {
         unsafe { &*self._Atelier }
@@ -141,16 +172,6 @@ impl< 'a> IMaestro< 'a> for Maestro< 'a>
         assert!( res);
     }
 
-    fn	JobCacheStk( &self) -> Stk< '_, '_, U16>
-    {
-        self._JobCache.Stk()
-    }
-
-    fn	RunQueueArr( &self) -> Arr< '_, U16>
-    {
-        self._RunQueue.Stk().Arr()
-    }
-
     fn	FlushTempQueue( &self)
     {
         let  	arr = self._TempQueue.Stk().Arr();
@@ -162,24 +183,11 @@ impl< 'a> IMaestro< 'a> for Maestro< 'a>
         arr.USeg().Traverse( |i| {
             let  	jobId = *arr.At( i);
             if jobId != 0 {
-                self.Atelier()._SzSchedJob.Add( U32( 1));
+                self.Atelier().IncSchedJob();
                 assert!( self._RunQueue.Stk().Push( jobId), "RunQueue overflow!");
             }
         });
         self._TempQueue.ClearConcurrent();
-    }
-
-    fn	PopJob( &self) -> U16
-    {
-        let  	xStk = self._RunQueue.Stk();
-        let  	mut jobId = U16( 0);
-        if xStk.Size() != 0 {
-            let  	_guard = self._RunQlock.Lock();
-            if xStk.Size() != 0 && xStk.Pop( &mut jobId) {
-                return jobId;
-            }
-        }
-        return jobId;
     }
 
     fn	CurSuccId( &self) -> U16

@@ -14,6 +14,17 @@ The `heist` module is Kosh's **asynchronous workflow DAG orchestrator and work-s
 
 ```mermaid
 classDiagram
+    class IAtelier~'a~ {
+        <<trait>>
+        +MainMaestro() &Maestro
+        +Maestros() Arr~Maestro~
+        +SetSwarm(swarm: SwarmEngine)
+        +Swarm() Option~&SwarmEngine~
+        +SetSucc(jobId: U16, succId: U16)
+        +ConstructJob(maestroIdx, succId, job, docStr) U16
+        +DoLaunch()
+    }
+
     class Atelier~'a~ {
         +Atm~U32~ _SzSchedJob
         -_Maestros: Buff~Maestro~
@@ -24,13 +35,21 @@ classDiagram
         -_Terminal: U16
         -_Swarm: Option~Arc~SwarmEngine~~
         +New(szMaestro: U32) Atelier
-        +SetSwarm(swarm: SwarmEngine)
+        +Terminal() U16
+    }
+
+    class IMaestro~'a~ {
+        <<trait>>
+        +Atelier() &Atelier
+        +MaestroIndex() U32
         +Swarm() Option~&SwarmEngine~
-        +MainMaestro() &Maestro
-        +ConstructJob(maestroIdx, succId, job, docStr) U16
-        +SetSucc(jobId: U16, succId: U16)
-        +ExecuteLoop(maestroIdx: U32)
-        +DoLaunch()
+        +CurSuccId() U16
+        +SetCurSuccId(val)
+        +ConstructJob(succId, job, docStr) U16
+        +EnqueueJob(jobId)
+        +ConstructEnqueArr(succId, buff, docStr) U16
+        +FlushTempQueue()
+        +PostChoreTree(node)
     }
 
     class Maestro~'a~ {
@@ -43,11 +62,13 @@ classDiagram
         -_CurSuccId: Atm~U16~
         -_TempQueue: Stash~U16~
         +New(maestroInd) Maestro
-        +ConstructJob(succId, job, docStr) U16
-        +EnqueueJob(jobId: U16)
-        +FlushTempQueue()
-        +PopJob() U16
-        +PostChoreTree(node)
+        +FromWorker(worker) &Maestro
+    }
+
+    class IChore {
+        <<trait>>
+        +Target() ChoreTarget
+        +DocStr() &'static str
     }
 
     class Chore {
@@ -70,7 +91,7 @@ classDiagram
 
     class IChoreNode {
         <<trait>>
-        +Post(maestro: &Maestro, tails: &mut Buff~U16~) U16
+        +Post(maestro: &impl IMaestro, tails: &mut Stash~U16~) U16
     }
 
     class JobInfo {
@@ -87,6 +108,9 @@ classDiagram
         +TraceJobs(atelier) AtelierInfo
     }
 
+    IAtelier <|.. Atelier : implements
+    IMaestro <|.. Maestro : implements
+    IChore <|.. Chore : implements
     IChoreNode <|.. Chore : implements
     IChoreNode <|.. BinNode : implements
     Atelier *-- Maestro : owns
@@ -103,17 +127,17 @@ flowchart TD
     Start["Maestro::ExecuteLoop(maestroIdx)"] --> CheckPending{"_SzSchedJob > 0 ?"}
     CheckPending -- No --> Finish["Execution Loop Terminated"]
     CheckPending -- Yes --> HaveJob{"jobId != 0 ?"}
-    
+
     HaveJob -- Yes --> ExecJob["Execute job: (job.func)(job.data, maestro)<br/>_SzProcessed += 1"]
     ExecJob --> FreeJob["atelier.FreeJob(maestroIdx, jobId)"]
     FreeJob --> CheckSucc{"succId != 0 ?"}
-    
+
     CheckSucc -- Yes --> DecrPred["szPred = atelier.SzPred(succId).Add(-1)"]
     DecrPred --> Ready{"szPred == 1 ?<br/>(All precursors finished)"}
     Ready -- Yes --> SetNext["jobId = succId<br/>_SzSchedJob.Add(1)"]
     Ready -- No --> ClearJob["jobId = 0"]
     CheckSucc -- No --> ClearJob
-    
+
     ClearJob --> DecrGlobal["_SzSchedJob.Add(-1)"]
     DecrGlobal --> CheckPending
 
@@ -152,33 +176,40 @@ flowchart LR
 
 ## 5. Struct Reference
 
-### `Atelier<'a>`
+### `Atelier<'a>` (implements `IAtelier<'a>`)
 Workspace coordinator managing multi-threaded pipeline execution:
 - `New<S: Into<U32>>(szMaestro: S) -> Self`: Initializes workspace with `szMaestro` worker threads and $2^{16}$ pre-allocated job descriptors.
+- `MainMaestro(&self) -> &Maestro<'a>`: Returns reference to maestro 0 for DAG submission.
+- `Maestros(&self) -> Arr<'a, Maestro<'a>>`: Returns array of all worker maestros.
 - `SetSwarm(&mut self, swarm: SwarmEngine)`: Binds GPU/CPU compute engine to workspace.
 - `Swarm(&self) -> Option<&SwarmEngine>`: Returns reference to bound Swarm compute engine if present.
-- `MainMaestro(&self) -> &Maestro<'a>`: Returns reference to maestro 0 for DAG submission.
-- `ConstructJob<M: Into<U32>, S: Into<U16>>(&self, maestroIdx: M, succId: S, job: WorkPtr<'a>, docStr: &'static str) -> U16`: Allocates a unique `jobId` from `_FreeJobStash` or thread caches and registers its successor.
 - `SetSucc<J: Into<U16>, S: Into<U16>>(&self, jobId: J, succId: S)`: Sets `_SuccIds[jobId] = succId` and increments `_SzPreds[succId]` atomically.
+- `ConstructJob<M: Into<U32>, S: Into<U16>>(&self, maestroIdx: M, succId: S, job: WorkPtr<'a>, docStr: &'static str) -> U16`: Allocates a unique `jobId` and registers its successor.
 - `DoLaunch(&self)`: Spawns worker threads via `std::thread::scope` and runs the execution loop until all tasks complete.
 
-### `Maestro<'a>`
-Worker thread executor implementing `IWorker`:
+### `Maestro<'a>` (implements `IMaestro<'a>`, `IWorker`)
+Worker thread executor managing local queues and work-stealing:
 - `New<I: Into<U32>>(maestroInd: I) -> Self`: Constructs worker instance.
-- `MaestroIndex(&self) -> U32`: Returns assigned worker index.
 - `FromWorker<'w>(worker: &'w DynIWorker<'_>) -> &'w Self`: Safe downcasting helper from dynamic worker.
+- `Atelier(&self) -> &Atelier<'a>`: Returns reference to owning Atelier workspace.
+- `MaestroIndex(&self) -> U32`: Returns assigned worker index.
+- `Swarm(&self) -> Option<&SwarmEngine>`: Returns Swarm compute engine if bound.
+- `CurSuccId(&self) -> U16`: Returns currently active successor ID.
+- `SetCurSuccId<K: Into<U16>>(&self, val: K)`: Updates active successor ID.
 - `ConstructJob<S: Into<U16>>(&self, succId: S, job: impl IntoWorkPtr<'a>, docStr: &'static str) -> U16`: Allocates job via Atelier.
 - `EnqueueJob<J: Into<U16>>(&self, jobId: J)`: Pushes job to thread-local `_TempQueue`.
 - `FlushTempQueue(&self)`: Flushes temporary queue into thread-safe `_RunQueue` and increments `_SzSchedJob`.
-- `PopJob(&self) -> U16`: Thread-safe pop from `_RunQueue`.
+- `ConstructEnqueArr<S: Into<U16>>(&self, succId: S, buff: Buff<U16>, docStr: &'static str) -> U16`: Constructs parallel job distributor.
 - `PostChoreTree<T: IChoreNode>(&self, node: &T)`: Recursively traverses and posts a `ChoreTree` into the scheduler.
 
-### `Chore`
+### `Chore` (implements `IChore`, `IWork`, `IChoreNode`)
 A runnable unit of work with documentation and hardware affinity:
 - `New(f: fn(&DynIWorker<'_>)) -> Self`: Default CPU chore.
 - `Cpu(docStr: &'static str, f: fn(&DynIWorker<'_>)) -> Self`: Explicit CPU chore.
 - `Gpu(docStr: &'static str, backend: BackendKind, f: fn(&DynIWorker<'_>)) -> Self`: Chore bound to specific compute backend.
 - `GpuAuto(docStr: &'static str, f: fn(&DynIWorker<'_>)) -> Self`: Chore dispatched to auto-selected compute device.
+- `Target(&self) -> ChoreTarget`: Returns target execution affinity.
+- `DocStr(&self) -> &'static str`: Returns documentation label.
 
 ---
 
