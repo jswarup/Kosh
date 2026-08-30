@@ -63,9 +63,9 @@ classDiagram
     }
 
     class FaceVertex {
-        +i32 _VertexIdx
-        +i32 _TexCoordIdx
-        +i32 _NormalIdx
+        +U32 _VertexIdx
+        +Option~U32~ _TexCoordIdx
+        +Option~U32~ _NormalIdx
     }
 
 

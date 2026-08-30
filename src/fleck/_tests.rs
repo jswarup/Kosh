@@ -280,14 +280,14 @@ f 1/1/1 2/2/1 3/3/1
     assert_eq!( face0.Len(), 3);
 
     let  	v0 = face0._Vertices.Arr().At( U32( 0));
-    assert_eq!( v0._VertexIdx, 1);
-    assert_eq!( v0._TexCoordIdx, Some( 1));
-    assert_eq!( v0._NormalIdx, Some( 1));
+    assert_eq!( v0._VertexIdx, U32( 1));
+    assert_eq!( v0._TexCoordIdx, Some( U32( 1)));
+    assert_eq!( v0._NormalIdx, Some( U32( 1)));
 
     let  	v1 = face0._Vertices.Arr().At( U32( 1));
-    assert_eq!( v1._VertexIdx, 2);
-    assert_eq!( v1._TexCoordIdx, Some( 2));
-    assert_eq!( v1._NormalIdx, Some( 1));
+    assert_eq!( v1._VertexIdx, U32( 2));
+    assert_eq!( v1._TexCoordIdx, Some( U32( 2)));
+    assert_eq!( v1._NormalIdx, Some( U32( 1)));
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -323,28 +323,28 @@ f 1/1/1 2/2/1 4/2/1 3/1/1
 
     // Face 0: v only
     let  	f0 = faces.At( U32( 0));
-    assert_eq!( f0._Vertices.Arr().At( U32( 0))._VertexIdx, 1);
+    assert_eq!( f0._Vertices.Arr().At( U32( 0))._VertexIdx, U32( 1));
     assert_eq!( f0._Vertices.Arr().At( U32( 0))._TexCoordIdx, None);
     assert_eq!( f0._Vertices.Arr().At( U32( 0))._NormalIdx, None);
 
     // Face 1: v/vt
     let  	f1 = faces.At( U32( 1));
-    assert_eq!( f1._Vertices.Arr().At( U32( 0))._VertexIdx, 1);
-    assert_eq!( f1._Vertices.Arr().At( U32( 0))._TexCoordIdx, Some( 1));
+    assert_eq!( f1._Vertices.Arr().At( U32( 0))._VertexIdx, U32( 1));
+    assert_eq!( f1._Vertices.Arr().At( U32( 0))._TexCoordIdx, Some( U32( 1)));
     assert_eq!( f1._Vertices.Arr().At( U32( 0))._NormalIdx, None);
 
     // Face 2: v//vn
     let  	f2 = faces.At( U32( 2));
-    assert_eq!( f2._Vertices.Arr().At( U32( 0))._VertexIdx, 1);
+    assert_eq!( f2._Vertices.Arr().At( U32( 0))._VertexIdx, U32( 1));
     assert_eq!( f2._Vertices.Arr().At( U32( 0))._TexCoordIdx, None);
-    assert_eq!( f2._Vertices.Arr().At( U32( 0))._NormalIdx, Some( 1));
+    assert_eq!( f2._Vertices.Arr().At( U32( 0))._NormalIdx, Some( U32( 1)));
 
     // Face 3: quad v/vt/vn
     let  	f3 = faces.At( U32( 3));
     assert_eq!( f3.Len(), 4);
-    assert_eq!( f3._Vertices.Arr().At( U32( 3))._VertexIdx, 3);
-    assert_eq!( f3._Vertices.Arr().At( U32( 3))._TexCoordIdx, Some( 1));
-    assert_eq!( f3._Vertices.Arr().At( U32( 3))._NormalIdx, Some( 1));
+    assert_eq!( f3._Vertices.Arr().At( U32( 3))._VertexIdx, U32( 3));
+    assert_eq!( f3._Vertices.Arr().At( U32( 3))._TexCoordIdx, Some( U32( 1)));
+    assert_eq!( f3._Vertices.Arr().At( U32( 3))._NormalIdx, Some( U32( 1)));
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -364,9 +364,9 @@ f -3 -2 -1
     assert_eq!( model.FaceCount().AsUsize(), 1);
 
     let  	f0 = model._Faces.Arr().At( U32( 0));
-    assert_eq!( f0._Vertices.Arr().At( U32( 0))._VertexIdx, 1);
-    assert_eq!( f0._Vertices.Arr().At( U32( 1))._VertexIdx, 2);
-    assert_eq!( f0._Vertices.Arr().At( U32( 2))._VertexIdx, 3);
+    assert_eq!( f0._Vertices.Arr().At( U32( 0))._VertexIdx, U32( 1));
+    assert_eq!( f0._Vertices.Arr().At( U32( 1))._VertexIdx, U32( 2));
+    assert_eq!( f0._Vertices.Arr().At( U32( 2))._VertexIdx, U32( 3));
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
