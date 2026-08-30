@@ -48,20 +48,24 @@ classDiagram
     }
 
     class WaveObjModel {
-        +Buff~Pt3f~ _Vertices
-        +Buff~Pt3f~ _Normals
+        +Buff~WPt3f~ _Vertices
+        +Buff~Dir3f~ _Normals
         +Buff~WPt2f~ _TexCoords
-        +Buff~WaveObjFace~ _Faces
-        +Point32 _BBoxMin
-        +Point32 _BBoxMax
+        +Buff~Face~ _Faces
         +New() WaveObjModel
         +ToDto() WaveObjMeshDto
+        +Triangulate() Buff~[FaceVertex; 3]~
     }
 
-    class WaveObjFace {
-        +Buff~U32~ _VertexIndices
-        +Buff~U32~ _NormalIndices
-        +Buff~U32~ _TexIndices
+    class Face {
+        +Buff~FaceVertex~ _Vertices
+        +Len() usize
+    }
+
+    class FaceVertex {
+        +i32 _VertexIdx
+        +i32 _TexCoordIdx
+        +i32 _NormalIdx
     }
 
 
@@ -73,7 +77,7 @@ classDiagram
     }
 
     class WaveObjParserCtxMM {
-        +Get() WaveObjParserCtx
+        +Get() &mut WaveObjParserCtx
         +PushVal(arr) bool
         +EndV() bool
         +EndFace() bool
@@ -82,7 +86,8 @@ classDiagram
 
     PtsPoint *-- Point32 : coordinates
     PtsCloud o-- PtsPoint : stores in Buff
-    WaveObjModel o-- WaveObjFace : stores in Buff
+    WaveObjModel o-- Face : stores in Buff
+    Face *-- FaceVertex : coordinates
 ```
 
 ---
@@ -124,7 +129,7 @@ Grammar-based parser for polygonal 3D models:
 - **`ParsePtsStream(stream: &mut dyn IStream) -> Result<PtsCloud, String>`**: Parses stream implementing `IStream`.
 
 ### Wavefront OBJ I/O (`waveobjio.rs`)
-- **`ParseWaveObj(path: &str) -> Result<WaveObjModel, String>`**: Parses `.obj` file from disk using `BuffStream`.
+- **`ParseWaveObj(input: &str) -> Result<WaveObjModel, String>`**: Parses `.obj` file from disk using `BuffStream`.
 - **`ParseWaveObjBytes(bytes: &[u8]) -> Result<WaveObjModel, String>`**: Parses in-memory byte slice using `FixedStream`.
 - **`ParseWaveObjStream(stream: &mut dyn IStream) -> Result<WaveObjModel, String>`**: Parses stream implementing `IStream`.
 

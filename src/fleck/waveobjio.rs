@@ -1,5 +1,6 @@
 //-- waveobjio.rs ------------------------------------------------------------------------------------------------------------------
 use	std::fmt;
+use	std::collections::HashSet;
 use	crate::{
     fenst::{ PtsPointsDto, WaveObjMeshDto },
     fleck::{ BBox3f, Dir3f, Pt3f, WPt2f, WPt3f },
@@ -105,9 +106,9 @@ impl Face
     {
         let  	mut stash = Stash::WithCapacity( self._Vertices.Size() + U32( 1));
         let  	arr = self._Vertices.Arr();
-        for i in 0..self._Vertices.Size().AsUsize() {
-            stash.Push( *arr.At( i as u32));
-        }
+        arr.Traverse( |&vert| {
+            stash.Push( vert);
+        });
         stash.Push( vert);
         self._Vertices = stash.IntoBuff();
     }
@@ -198,10 +199,9 @@ impl WaveObjModel
         }
         let  	arr = self._Vertices.Arr();
         let  	mut bbox = BBox3f::Empty();
-        for i in 0..self._Vertices.Size().AsUsize() {
-            let  	v = arr.At( i as u32);
+        arr.Traverse( |v| {
             bbox.Extend( Pt3f::New( v._X, v._Y, v._Z));
-        }
+        });
         ( bbox.Min(), bbox.Max())
     }
 
@@ -246,7 +246,7 @@ impl WaveObjModel
 
         let  	numFaces = self._Faces.Size().AsUsize();
         let  	mut trianglesStash = Stash::< [u32; 3]>::WithCapacity( U32( (numFaces * 2).max( 16) as u32));
-        let  	mut edgeSet = std::collections::HashSet::new();
+        let  	mut edgeSet = HashSet::new();
         let  	facesArr = self._Faces.Arr();
 
         for fIdx in 0..numFaces {
@@ -355,6 +355,9 @@ impl WaveObjModel
 //---------------------------------------------------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------------------
 
+/// Transient mutable state for parsing a Wavefront .obj stream.
+/// Owns all `Stash` buffers that accumulate vertices, normals, faces, etc.
+/// Constructed once per parse via `New(streamSz)` and consumed into `Buff` results.
 struct WaveObjParserCtx {
     _VStash: Stash< WPt3f>,
     _VtStash: Stash< WPt2f>,
@@ -389,6 +392,9 @@ impl WaveObjParserCtx {
     }
 }
 
+/// Lightweight `Copy` raw-pointer wrapper over `WaveObjParserCtx`.
+/// Enables multiple `ShardTree!` action closures to mutate the shared parser
+/// context without `RefCell` or `Box` overhead.
 #[derive( Clone, Copy)]
 struct WaveObjParserCtxMM( *mut WaveObjParserCtx);
 
@@ -399,13 +405,13 @@ impl WaveObjParserCtxMM {
 
     #[inline( always)]
     fn	PushMtlLib( &self, arr: Arr< '_, U8>) -> bool { self.Get()._MtlStash.Push( arr.AsStr().to_string()); true }
-    
+
     #[inline( always)]
     fn	PushUseMtl( &self, arr: Arr< '_, U8>) -> bool { self.Get()._UseMtlStash.Push( arr.AsStr().to_string()); true }
-    
+
     #[inline( always)]
     fn	PushVal( &self, arr: Arr< '_, U8>) -> bool { self.Get()._Vals.Push( arr.ParseF32()); true }
-    
+
     #[inline( always)]
     fn	EndVt( &self) -> bool {
         let  	cnt = self.Get()._Vals.Size();
@@ -418,7 +424,7 @@ impl WaveObjParserCtxMM {
         self.Get()._Vals.Clear();
         true
     }
-    
+
     #[inline( always)]
     fn	EndVn( &self) -> bool {
         if self.Get()._Vals.Size() >= U32( 3) {
@@ -427,7 +433,7 @@ impl WaveObjParserCtxMM {
         self.Get()._Vals.Clear();
         true
     }
-    
+
     #[inline( always)]
     fn	EndV( &self) -> bool {
         let  	cnt = self.Get()._Vals.Size();
@@ -438,7 +444,7 @@ impl WaveObjParserCtxMM {
         self.Get()._Vals.Clear();
         true
     }
-    
+
     #[inline( always)]
     fn	ParseFaceV( &self, arr: Arr< '_, U8>) -> bool {
         let  	v = arr.ParseI32();
@@ -446,15 +452,18 @@ impl WaveObjParserCtxMM {
         self.Get()._CurFaceVert._VertexIdx = if v < 0 { numV + v + 1 } else { v };
         true
     }
-    
+
     #[inline( always)]
     fn	ParseFaceVt( &self, arr: Arr< '_, U8>) -> bool {
+        if arr.Size() == U32( 0) {
+            return true;
+        }
         let  	v = arr.ParseI32();
         let  	numT = self.Get()._VtStash.Size().0 as i32;
         self.Get()._CurFaceVert._TexCoordIdx = Some( if v < 0 { numT + v + 1 } else { v });
         true
     }
-    
+
     #[inline( always)]
     fn	ParseFaceVn( &self, arr: Arr< '_, U8>) -> bool {
         let  	v = arr.ParseI32();
@@ -462,14 +471,14 @@ impl WaveObjParserCtxMM {
         self.Get()._CurFaceVert._NormalIdx = Some( if v < 0 { numN + v + 1 } else { v });
         true
     }
-    
+
     #[inline( always)]
     fn	EndFaceVertex( &self) -> bool {
         self.Get()._FaceVerts.Push( self.Get()._CurFaceVert);
         self.Get()._CurFaceVert = FaceVertex { _VertexIdx: 0, _TexCoordIdx: None, _NormalIdx: None };
         true
     }
-    
+
     #[inline( always)]
     fn	EndFace( &self) -> bool {
         if self.Get()._FaceVerts.Size() > U32( 0) {
@@ -478,10 +487,10 @@ impl WaveObjParserCtxMM {
         }
         true
     }
-    
+
     #[inline( always)]
     fn	PushObj( &self, arr: Arr< '_, U8>) -> bool { self.Get()._ObjStash.Push( arr.AsStr().to_string()); true }
-    
+
     #[inline( always)]
     fn	PushGrp( &self, arr: Arr< '_, U8>) -> bool { self.Get()._GrpStash.Push( arr.AsStr().to_string()); true }
 }
@@ -615,7 +624,3 @@ impl fmt::Display for WaveObjModel
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
-
-
-
