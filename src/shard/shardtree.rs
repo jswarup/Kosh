@@ -37,7 +37,7 @@ macro_rules! ShardTree {
         $crate::stalks::UniNode {
             _Child: $child,
             _Op: $crate::shard::actionshard::ActionOp {
-                _Action: $crate::shard::actionshard::Coerce( | mut $p: $crate::silo::Arr<'_, $crate::silo::U8> | { $( $body )+ } ),
+                _Action: $crate::shard::actionshard::Coerce( | $p: $crate::silo::Arr<'_, $crate::silo::U8> | { $( $body )+ } ),
             },
         }
     };

@@ -168,6 +168,20 @@ impl WaveObjModel
         }
     }
 
+    pub(crate) fn	Create( ctx: WaveObjParserCtx) -> Self
+    {
+        Self {
+            _Vertices:    ctx._VStash.IntoBuff(),
+            _TexCoords:   ctx._VtStash.IntoBuff(),
+            _Normals:     ctx._VnStash.IntoBuff(),
+            _Faces:       ctx._FStash.IntoBuff(),
+            _Objects:     ctx._ObjStash.IntoBuff(),
+            _Groups:      ctx._GrpStash.IntoBuff(),
+            _MtlLibs:     ctx._MtlStash.IntoBuff(),
+            _UseMtls:     ctx._UseMtlStash.IntoBuff(),
+        }
+    }
+
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	VertexCount( &self) -> U32
@@ -358,7 +372,7 @@ impl WaveObjModel
 /// Transient mutable state for parsing a Wavefront .obj stream.
 /// Owns all `Stash` buffers that accumulate vertices, normals, faces, etc.
 /// Constructed once per parse via `New(streamSz)` and consumed into `Buff` results.
-struct WaveObjParserCtx
+pub(crate) struct WaveObjParserCtx
 {
     _VStash:      Stash< WPt3f>,
     _VtStash:     Stash< WPt2f>,
@@ -399,9 +413,6 @@ impl WaveObjParserCtx
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Lightweight `Copy` raw-pointer wrapper over `WaveObjParserCtx`.
-/// Enables multiple `ShardTree!` action closures to mutate the shared parser
-/// context without `RefCell` or `Box` overhead.
 #[derive( Clone, Copy)]
 struct WaveObjParserCtxMM( *mut WaveObjParserCtx);
 
@@ -563,7 +574,7 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
 {
     fn	Match( &self, parser: &mut Parser) -> bool
     {
-        let  	modelPtr = self._Model as *const WaveObjModel as *mut WaveObjModel;
+        let  	modelPtr: *mut WaveObjModel = self._Model as *const WaveObjModel as *mut WaveObjModel;
         let  	model = unsafe { &mut *modelPtr };
 
         let  	streamSz = parser.InStream().Size();
@@ -604,14 +615,7 @@ impl< 'a> IGrammar for WaveObjShard< 'a>
             return false;
         }
 
-        model._Vertices = ctx._VStash.IntoBuff();
-        model._TexCoords = ctx._VtStash.IntoBuff();
-        model._Normals = ctx._VnStash.IntoBuff();
-        model._Faces = ctx._FStash.IntoBuff();
-        model._Objects = ctx._ObjStash.IntoBuff();
-        model._Groups = ctx._GrpStash.IntoBuff();
-        model._MtlLibs = ctx._MtlStash.IntoBuff();
-        model._UseMtls = ctx._UseMtlStash.IntoBuff();
+        *model = WaveObjModel::Create( ctx);
 
         true
     }
