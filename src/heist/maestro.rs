@@ -42,7 +42,7 @@ pub trait IMaestro< 'a>: IWorker
 
     fn	FlushTempQueue( &self);
 
-    fn	PostChoreTree< T: IChoreNode>( &self, node: &T)
+    fn	PostChoreTree< T: IChoreNode + 'a>( &self, node: &T)
     where
         Self: Sized,
     {

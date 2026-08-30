@@ -7,7 +7,7 @@ pub mod choretree;
 pub mod maestro;
 pub use	atelier::{ Atelier, IAtelier };
 pub use	atelierinfo::{ AtelierInfo, JobInfo };
-pub use	choretree::{ Chore, IChore, ChoreTarget, IChoreNode };
+pub use	choretree::{ Chore, IChore, ChoreTarget, IChoreNode, MapCollectNode };
 pub use	maestro::{ Maestro, IMaestro };
 
 //---------------------------------------------------------------------------------------------------------------------------------

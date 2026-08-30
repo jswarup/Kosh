@@ -6,8 +6,10 @@ use	crate::{
     Chore,
     ChoreTree,
     CpuChore,
+    CpuMapCollect,
     GpuAutoChore,
-    heist::{ Atelier, IAtelier, IChore, ChoreTarget, IChoreNode, IMaestro, Maestro },
+    WeightedChore,
+    heist::{ Atelier, IAtelier, IChore, ChoreTarget, IChoreNode, IMaestro, Maestro, Chore },
     silo::{ Buff, IAccess, IArr, Stash, U16, U32 },
     stalks::{ Atm, DynIWorker, IntoWorkPtr, IWorker, Worker },
     swarm::SwarmEngine,
@@ -322,6 +324,115 @@ fn	TestHeistSwarmHeterogeneousPipeline()
 
     assert_eq!( STAGE3_FINAL.Load( Ordering::Acquire), 60);
     println!( "TestHeistSwarmHeterogeneousPipeline: Parallel CPU -> Merge -> GPU pipeline completed ✓");
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestChoreWeightCalculation()
+{
+    let  	choreA = Chore::NewDoc( "A", |_| {}).WithWeight( U32( 10));
+    let  	choreB = WeightedChore!( U32( 20), "B", |_| {});
+    let  	choreC = CpuChore!( "C", |_| {}).WithWeight( U32( 30));
+
+    let  	tree = ChoreTree!( choreA | ( choreB < choreC));
+    assert_eq!( tree.Weight(), U32( 60));
+    println!( "TestChoreWeightCalculation: Tree weight calculated correctly ✓");
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+static MAP_COUNT_BASIC: Atm< U32> = U32::_0.IntoAtm();
+
+#[test]
+fn	TestMapCollectCpuBasic()
+{
+    MAP_COUNT_BASIC.Store( U32( 0), Ordering::Release);
+    let  	buff = Buff::Create( U32( 10000), |_| 1u32);
+
+    let  	mapCollect = CpuMapCollect!(
+        buff.Arr(),
+        |seg, _w| {
+            let  	mut sum = 0;
+            seg.Traverse( |_| sum += 1);
+            MAP_COUNT_BASIC.FetchAdd( U32( sum), Ordering::Relaxed);
+        },
+        |_w| {
+            println!( "Collect phase!");
+        }
+    );
+
+    let  	atelier = Atelier::New( 4);
+    atelier.MainMaestro().PostChoreTree( &mapCollect);
+    atelier.DoLaunch();
+
+    assert_eq!( MAP_COUNT_BASIC.Load( Ordering::Acquire), U32( 10000));
+    println!( "TestMapCollectCpuBasic: Distributed map and collect completed ✓");
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+static MAP_COUNT_ADAPTIVE: Atm< U32> = U32::_0.IntoAtm();
+
+#[test]
+fn	TestMapCollectAdaptiveChunking()
+{
+    MAP_COUNT_ADAPTIVE.Store( U32( 0), Ordering::Release);
+    let  	buff = Buff::Create( U32( 100), |_| 1u32); // Small enough to be lumped
+
+    let  	mapCollect = CpuMapCollect!(
+        buff.Arr(),
+        |seg, _w| {
+            let  	mut sum = 0;
+            seg.Traverse( |_| sum += 1);
+            MAP_COUNT_ADAPTIVE.FetchAdd( U32( sum), Ordering::Relaxed);
+        },
+        |_w| {}
+    );
+
+    let  	atelier = Atelier::New( 4);
+    atelier.MainMaestro().PostChoreTree( &mapCollect);
+    atelier.DoLaunch();
+
+    assert_eq!( MAP_COUNT_ADAPTIVE.Load( Ordering::Acquire), U32( 100));
+    println!( "TestMapCollectAdaptiveChunking: Coalesced small workload correctly ✓");
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+static FUSED_SEQ_VALUE: Atm< U32> = U32::_0.IntoAtm();
+
+#[test]
+fn	TestAutomaticSequentialChoreFusion()
+{
+    FUSED_SEQ_VALUE.Store( U32( 0), Ordering::Release);
+
+    let  	choreA = CpuChore!( "StepA", |_w| {
+        FUSED_SEQ_VALUE.FetchAdd( U32( 5), Ordering::Relaxed);
+    }).WithWeight( U32( 10));
+
+    let  	choreB = CpuChore!( "StepB", |_w| {
+        let  	cur = FUSED_SEQ_VALUE.Load( Ordering::Acquire);
+        FUSED_SEQ_VALUE.Store( cur * U32( 2), Ordering::Release);
+    }).WithWeight( U32( 20));
+
+    let  	choreC = CpuChore!( "StepC", |_w| {
+        FUSED_SEQ_VALUE.FetchAdd( U32( 1), Ordering::Relaxed);
+    }).WithWeight( U32( 30));
+
+    let  	pipeline = ChoreTree!(
+        choreA < choreB < choreC
+    );
+
+    assert_eq!( pipeline.Weight(), U32( 60));
+
+    let  	atelier = Atelier::New( 2);
+    atelier.MainMaestro().PostChoreTree( &pipeline);
+    atelier.DoLaunch();
+
+    // StepA (+5) -> StepB (*2 => 10) -> StepC (+1 => 11)
+    assert_eq!( FUSED_SEQ_VALUE.Load( Ordering::Acquire), U32( 11));
+    println!( "TestAutomaticSequentialChoreFusion: Automatic fused DAG completed ✓");
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 use	std::fmt;
 use	crate::{
     heist::{ IAtelier, IMaestro },
-    silo::{ Stash, U16 },
+    silo::{ Arr, IAccess, Stash, U16, U32, USeg },
     stalks::{ BinNode, BinOp, DynIWorker, IntoWorkPtr, IWork },
     swarm::BackendKind,
 };
@@ -32,9 +32,10 @@ impl Default for ChoreTarget
 #[derive( Copy, Clone, Debug)]
 pub struct Chore
 {
-    pub _DocStr: &'static str,
-    pub _Target: ChoreTarget,
-    _Closure:    fn( &DynIWorker< '_>),
+    pub _DocStr:  &'static str,
+    pub _Target:  ChoreTarget,
+    pub _Weight:  U32,
+    _Closure:     fn( &DynIWorker< '_>),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -46,6 +47,7 @@ impl Default for Chore
         Self {
             _DocStr:  "",
             _Target:  ChoreTarget::Cpu,
+            _Weight:  U32( 1),
             _Closure: |_| {},
         }
     }
@@ -60,6 +62,7 @@ impl Chore
         Self {
             _DocStr:  "",
             _Target:  ChoreTarget::Cpu,
+            _Weight:  U32( 1),
             _Closure: f,
         }
     }
@@ -69,6 +72,7 @@ impl Chore
         Self {
             _DocStr:  docStr,
             _Target:  ChoreTarget::Cpu,
+            _Weight:  U32( 1),
             _Closure: f,
         }
     }
@@ -78,6 +82,7 @@ impl Chore
         Self {
             _DocStr:  docStr,
             _Target:  ChoreTarget::Cpu,
+            _Weight:  U32( 1),
             _Closure: f,
         }
     }
@@ -87,6 +92,7 @@ impl Chore
         Self {
             _DocStr:  docStr,
             _Target:  ChoreTarget::Gpu( backend),
+            _Weight:  U32( 1),
             _Closure: f,
         }
     }
@@ -96,10 +102,21 @@ impl Chore
         Self {
             _DocStr:  docStr,
             _Target:  ChoreTarget::GpuAuto,
+            _Weight:  U32( 1),
             _Closure: f,
         }
     }
 
+    pub fn	WithWeight< W: Into< U32>>( mut self, weight: W) -> Self
+    {
+        self._Weight = weight.into();
+        self
+    }
+
+    pub fn	Weight( &self) -> U32
+    {
+        self._Weight
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -241,18 +258,34 @@ macro_rules! ChoreTree {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub trait IChoreNode
+pub trait IChoreNode: Copy + Send + Sync
 {
-    fn	Post< 'a, M: IMaestro< 'a>>( &self, maestro: &M, tails: &mut Stash< U16>) -> U16;
+    fn	Weight( &self) -> U32 { U32( 1) }
+    fn	Post< 'a, M: IMaestro< 'a>>( &self, maestro: &M, tails: &mut Stash< U16>) -> U16
+    where
+        Self: 'a;
+    fn  Exec( &self, worker: &DynIWorker< '_>);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl< T: IChoreNode> IChoreNode for &T
 {
+    fn	Weight( &self) -> U32
+    {
+        ( **self).Weight()
+    }
+
     fn	Post< 'a, M: IMaestro< 'a>>( &self, maestro: &M, tails: &mut Stash< U16>) -> U16
+    where
+        Self: 'a,
     {
         return ( **self).Post( maestro, tails);
+    }
+    
+    fn	Exec( &self, worker: &DynIWorker< '_>)
+    {
+        ( **self).Exec( worker);
     }
 }
 
@@ -260,11 +293,39 @@ impl< T: IChoreNode> IChoreNode for &T
 
 impl IChoreNode for Chore
 {
+    fn	Weight( &self) -> U32
+    {
+        self._Weight
+    }
+
     fn	Post< 'a, M: IMaestro< 'a>>( &self, maestro: &M, tails: &mut Stash< U16>) -> U16
+    where
+        Self: 'a,
     {
         let  	jobId = maestro.ConstructJob( U16::_0, IntoWorkPtr::IntoWorkPtr( *self), self._DocStr);
         tails.Push( jobId);
         return jobId;
+    }
+
+    fn	Exec( &self, worker: &DynIWorker< '_>)
+    {
+        ( self._Closure)( worker);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[derive( Copy, Clone)]
+pub struct FusedChore< T>
+{
+    pub _Node: T,
+}
+
+impl< T: IChoreNode> IWork for FusedChore< T>
+{
+    fn	DoWork( &mut self, worker: &DynIWorker< '_>)
+    {
+        self._Node.Exec( worker);
     }
 }
 
@@ -275,8 +336,22 @@ where
     L: IChoreNode,
     R: IChoreNode,
 {
-    fn	Post< 'a, M: IMaestro< 'a>>( &self, maestro: &M, tails: &mut Stash< U16>) -> U16
+    fn	Weight( &self) -> U32
     {
+        self._Left.Weight() + self._Right.Weight()
+    }
+
+    fn	Post< 'a, M: IMaestro< 'a>>( &self, maestro: &M, tails: &mut Stash< U16>) -> U16
+    where
+        Self: 'a,
+    {
+        if self.Weight() <= CHORE_FUSION_THRESHOLD {
+            let  	fused = FusedChore { _Node: *self };
+            let  	jobId = maestro.ConstructJob( U16( 0), fused, "FusedBinNode");
+            tails.Push( jobId);
+            return jobId;
+        }
+
         match self._Op {
             BinOp::Bor => {
                 let  	mut leftTails = Stash::New();
@@ -307,6 +382,181 @@ where
             _ => panic!( "Unsupported operator in ChoreTree Post"),
         }
     }
+
+    fn	Exec( &self, worker: &DynIWorker< '_>)
+    {
+        match self._Op {
+            BinOp::Bor | BinOp::Less => {
+                self._Left.Exec( worker);
+                self._Right.Exec( worker);
+            }
+            _ => panic!( "Unsupported operator in ChoreTree Exec"),
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub const CHORE_FUSION_THRESHOLD: U32 = U32( 1000);
+
+#[derive( Copy, Clone)]
+pub struct MapCollectNode< 'a, T>
+{
+    pub _Data:       Arr< 'a, T>,
+    pub _Target:     ChoreTarget,
+    pub _DocStr:     &'static str,
+    pub _ItemWeight: U32,
+    pub _MapFn:      fn( USeg, &DynIWorker< '_>),
+    pub _CollectFn:  fn( &DynIWorker< '_>),
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, T> MapCollectNode< 'a, T>
+{
+    pub fn	New< W: Into< U32>>(
+        data: Arr< 'a, T>,
+        target: ChoreTarget,
+        itemWeight: W,
+        docStr: &'static str,
+        mapFn: fn( USeg, &DynIWorker< '_>),
+        collectFn: fn( &DynIWorker< '_>),
+    ) -> Self
+    {
+        Self {
+            _Data:       data,
+            _Target:     target,
+            _DocStr:     docStr,
+            _ItemWeight: itemWeight.into(),
+            _MapFn:      mapFn,
+            _CollectFn:  collectFn,
+        }
+    }
+}
+
+#[derive( Clone)]
+pub struct MapChunkWork
+{
+    pub _Seg:   USeg,
+    pub _MapFn: fn( USeg, &DynIWorker< '_>),
+}
+
+impl IWork for MapChunkWork
+{
+    fn	DoWork( &mut self, worker: &DynIWorker< '_>)
+    {
+        ( self._MapFn)( self._Seg, worker);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, T: Copy + Send + Sync> IChoreNode for MapCollectNode< 'a, T>
+{
+    fn	Weight( &self) -> U32
+    {
+        self._Data.Size() * self._ItemWeight
+    }
+
+    fn	Post< 'm, MA: IMaestro< 'm>>( &self, maestro: &MA, tails: &mut Stash< U16>) -> U16
+    where
+        Self: 'm,
+    {
+        let  	totalWeight = self.Weight();
+        let  	isCpu = matches!( self._Target, ChoreTarget::Cpu);
+
+        let  	collectFn = self._CollectFn;
+        let  	collectChore = Chore::NewDoc( "Collect", collectFn);
+        let  	collectJobId = maestro.ConstructJob( U16( 0), collectChore, "Collect");
+        tails.Push( collectJobId);
+
+        if !isCpu || totalWeight <= CHORE_FUSION_THRESHOLD {
+            let  	mapWork = MapChunkWork {
+                _Seg:   self._Data.USeg(),
+                _MapFn: self._MapFn,
+            };
+            let  	mapJobId = maestro.ConstructJob( collectJobId, mapWork, self._DocStr);
+            return mapJobId;
+        }
+
+        let  	numMaestros = maestro.Atelier().Maestros().Size();
+        let  	mut c = numMaestros * U32( 2);
+        let  	maxChunks = totalWeight / CHORE_FUSION_THRESHOLD;
+        if c > maxChunks {
+            c = maxChunks;
+        }
+        if c == U32( 0) {
+            c = U32( 1);
+        }
+
+        let  	fullSeg = self._Data.USeg();
+        let  	mut heads = Stash::New();
+
+        let  	chunkSize = ( fullSeg.Size() + c - U32( 1)) / c;
+        let  	mut start = fullSeg._First;
+        let  	end = fullSeg._First + fullSeg.Size();
+
+        while start < end {
+            let  	rem = end - start;
+            let  	sz = if rem < chunkSize { rem } else { chunkSize };
+            let  	chunkSeg = USeg::New( start, sz);
+
+            let  	mapWork = MapChunkWork {
+                _Seg:   chunkSeg,
+                _MapFn: self._MapFn,
+            };
+            let  	mapJobId = maestro.ConstructJob( collectJobId, mapWork, self._DocStr);
+            heads.Push( mapJobId);
+
+            start += sz;
+        }
+
+        let  	enqId = maestro.ConstructEnqueArr( U16( 0), heads.IntoBuff(), "EnqPar");
+        enqId
+    }
+
+    fn	Exec( &self, worker: &DynIWorker< '_>)
+    {
+        ( self._MapFn)( self._Data.USeg(), worker);
+        ( self._CollectFn)( worker);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[macro_export]
+macro_rules! WeightedChore {
+    ( $weight:expr, $doc:expr, $closure:expr) => {
+        $crate::heist::Chore::NewDoc( $doc, $closure).WithWeight( $weight)
+    };
+}
+
+#[macro_export]
+macro_rules! MapCollect {
+    ( $data:expr, $target:expr, $mapFn:expr, $collectFn:expr) => {
+        $crate::heist::MapCollectNode::New( $data, $target, $crate::silo::U32( 1), "MapCollect", $mapFn, $collectFn)
+    };
+}
+
+#[macro_export]
+macro_rules! WeightedMapCollect {
+    ( $data:expr, $itemWeight:expr, $target:expr, $mapFn:expr, $collectFn:expr) => {
+        $crate::heist::MapCollectNode::New( $data, $target, $itemWeight, "WeightedMapCollect", $mapFn, $collectFn)
+    };
+}
+
+#[macro_export]
+macro_rules! CpuMapCollect {
+    ( $data:expr, $mapFn:expr, $collectFn:expr) => {
+        $crate::heist::MapCollectNode::New( $data, $crate::heist::ChoreTarget::Cpu, $crate::silo::U32( 1), "CpuMapCollect", $mapFn, $collectFn)
+    };
+}
+
+#[macro_export]
+macro_rules! GpuMapCollect {
+    ( $data:expr, $mapFn:expr, $collectFn:expr) => {
+        $crate::heist::MapCollectNode::New( $data, $crate::heist::ChoreTarget::GpuAuto, $crate::silo::U32( 1), "GpuMapCollect", $mapFn, $collectFn)
+    };
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
