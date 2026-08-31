@@ -1,6 +1,5 @@
 //-- corochore.rs ---------------------------------------------------------------------------------------------------------------------
 
-use	std::marker::PhantomData;
 use	crate::{
     heist::{ ChoreTarget, IChoreNode, IMaestro },
     silo::{ Stash, U16, U32 },
@@ -97,6 +96,17 @@ impl CoroChore
             _Closure: f,
         }
     }
+
+    pub fn	WithWeight< W: Into< U32>>( mut self, weight: W) -> Self
+    {
+        self._Weight = weight.into();
+        self
+    }
+
+    pub fn	Weight( &self) -> U32
+    {
+        self._Weight
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -123,7 +133,7 @@ impl IChoreNode for CoroChore
 
     fn	Exec( &self, worker: &DynIWorker< '_>)
     {
-        // For synchronous direct execution without yielding:
+        // For synchronous direct execution (e.g. fused subtrees):
         let  	closure = self._Closure;
         let  	mut coroWork = CoroWork {
             _Coro: Coro::New( move |yielder, input| closure( yielder, input)),
@@ -131,13 +141,7 @@ impl IChoreNode for CoroChore
         let  	workerPtr = WorkerFatPtr { _Ptr: unsafe { std::mem::transmute::< &DynIWorker< '_>, *const DynIWorker< 'static>>( worker) } };
         loop {
             match coroWork._Coro.Resume( workerPtr) {
-                CoroRes::Yield( _) => {
-                    // Synchronous execution can't yield to a scheduler, it just keeps going.
-                    // Or wait, if it yields, should it post itself to worker?
-                    // Actually, if it's called via Exec(), it's likely fused!
-                    // If it's fused, it shouldn't yield.
-                    panic!( "CoroChore cannot yield inside synchronous Exec(). Fusion may be misconfigured.");
-                }
+                CoroRes::Yield( _) => {},
                 CoroRes::Done( _) => break,
             }
         }
@@ -178,6 +182,15 @@ macro_rules! CoroChore {
     };
     ( $doc:expr, | $yielder:ident, $workerPtr:ident | $body:block ) => {
         $crate::heist::CoroChore::NewDoc( $doc, |$yielder, $workerPtr| $body )
+    };
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[macro_export]
+macro_rules! WeightedCoroChore {
+    ( $weight:expr, $doc:expr, | $yielder:ident, $workerPtr:ident | $body:block ) => {
+        $crate::heist::CoroChore::NewDoc( $doc, |$yielder, $workerPtr| $body ).WithWeight( $weight)
     };
 }
 

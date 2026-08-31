@@ -10,6 +10,7 @@ use	crate::{
     CpuMapCollect,
     GpuAutoChore,
     WeightedChore,
+    WeightedCoroChore,
     heist::{ Atelier, IAtelier, IChore, ChoreTarget, IChoreNode, IMaestro, Maestro, Chore },
     silo::{ Buff, IAccess, IArr, Stash, U16, U32 },
     stalks::{ Atm, DynIWorker, IntoWorkPtr, IWorker, Worker },
@@ -548,8 +549,47 @@ fn	TestHeistCoroChoreDAG()
     atelier.MainMaestro().PostChoreTree( &tree);
     atelier.DoLaunch();
 
-    // (1 + 1) * 2 * 2 + 5 = 13
+    // Fused sequential execution: (1 + 1) * 2 * 2 + 5 = 13
     assert_eq!( DAG_SEQ_VAL.Load( Ordering::Acquire), U32( 13));
-    println!( "TestHeistCoroChoreDAG: DAG execution with CoroChore intermediate step completed ?");
+    println!( "TestHeistCoroChoreDAG: Fused DAG execution with CoroChore intermediate step completed ✓");
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+static DAG_UNFUSED_VAL: Atm< U32> = U32::_0.IntoAtm();
+
+#[test]
+fn	TestHeistCoroChoreUnfusedDAG()
+{
+    DAG_UNFUSED_VAL.Store( U32( 1), Ordering::Release);
+
+    let  	c1 = WeightedChore!( U32( 10), "Step1", |_| {
+        DAG_UNFUSED_VAL.FetchAdd( U32( 1), Ordering::Relaxed);
+    });
+
+    let  	c2 = WeightedCoroChore!( U32( 10), "CoroStep2", |yielder, _wPtr| {
+        let  	v = DAG_UNFUSED_VAL.Load( Ordering::Acquire);
+        DAG_UNFUSED_VAL.Store( v * U32( 2), Ordering::Release);
+        yielder.Suspend( ());
+        let  	v2 = DAG_UNFUSED_VAL.Load( Ordering::Acquire);
+        DAG_UNFUSED_VAL.Store( v2 * U32( 2), Ordering::Release);
+    });
+
+    let  	c3 = WeightedChore!( U32( 10), "Step3", |_| {
+        DAG_UNFUSED_VAL.FetchAdd( U32( 5), Ordering::Relaxed);
+    });
+
+    let  	tree = ChoreTree!( c1 < c2 < c3 );
+    assert_eq!( tree.Weight(), U32( 30));
+
+    let  	atelier = Atelier::New( 2).WithFusionThres( 2);
+    atelier.MainMaestro().PostChoreTree( &tree);
+    atelier.DoLaunch();
+
+    // Asynchronous unfused DAG execution: (1 + 1) * 2 * 2 + 5 = 13
+    assert_eq!( DAG_UNFUSED_VAL.Load( Ordering::Acquire), U32( 13));
+    println!( "TestHeistCoroChoreUnfusedDAG: Unfused DAG execution with CoroChore yield/re-enqueue completed ✓");
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
 

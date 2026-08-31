@@ -2,11 +2,12 @@
 
 ## 1. Overview & Purpose
 
-The `stalks` module is Kosh's foundation for **concurrency primitives**, **AST node tree representations**, and **job execution scheduling**. It provides:
+The `stalks` module is Kosh's foundation for **concurrency primitives**, **AST node tree representations**, **stackful coroutines**, and **job execution scheduling**. It provides:
 1. **Generic Atomics & Spinlocks**: `Atm<T>` encapsulates any atomic type implementing `AtomicInt`, paired with low-overhead RAII `Spinlock` synchronization.
 2. **Universal AST Node System**: `UniNode<C, Op>` (unary nodes) and `BinNode<L, R, Op>` (binary nodes) parameterized with `BinOp` (`Sum`, `Prod`, `Sub`, `Div`, `Pow`, `Less`, `Bor`, `None`).
 3. **The `NodeTree!` Macro Engine**: A declarative meta-macro enabling zero-allocation recursive tree DSLs across `ShardTree!`, `TermTree!`, and `ChoreTree!`.
-4. **Work & Worker Abstractions**: `WorkPtr<'a>` (type-erased lightweight execution pointer), `IWork` trait, `IWorker` trait, and `DynIWorker` scheduling bridge.
+4. **Fast Stackful Coroutines (`Coro`)**: `Coro<In, Yield, Out>` and `ICoro` wrapping `corosensei` for zero-heap cooperative fibers with virtual stack management.
+5. **Work & Worker Abstractions**: `WorkPtr<'a>` (type-erased lightweight execution pointer), `IWork` trait, `IWorker` trait, and `DynIWorker` scheduling bridge.
 
 ---
 
@@ -64,12 +65,36 @@ classDiagram
         +Op _Op
     }
 
+    class ICoro~In, Yield, Out~ {
+        <<trait>>
+        +Resume(input: In) CoroRes~Yield, Out~
+        +IsDone() bool
+    }
+
+    class Coro~In, Yield, Out~ {
+        -_Coro: Coroutine
+        -_IsDone: bool
+        +New(f) Coro
+    }
+
+    class CoroYielder~'a, In, Yield~ {
+        -_Yielder: &Yielder
+        +Suspend(val: Yield) In
+    }
+
+    class CoroRes~Yield, Out~ {
+        <<enumeration>>
+        Yield(Yield)
+        Done(Out)
+    }
+
     class WorkPtr~'a~ {
         +*mut () data
         +JobFn func
         +Null() WorkPtr
         +Dummy() WorkPtr
         +FromRef(inner) WorkPtr
+        +New(data, func) WorkPtr
         +DoWork(worker)
     }
 
@@ -86,6 +111,9 @@ classDiagram
 
     Atm ..> AtomicInt : requires
     Spinlock ..> SpinLockGuard : produces
+    ICoro <|.. Coro : implements
+    Coro ..> CoroRes : returns
+    Coro ..> CoroYielder : provides
     IWorker <|.. Worker : implements
     IWorker ..> WorkPtr : consumes
 ```
@@ -159,11 +187,27 @@ Unary AST node encapsulating a single child `_Child: C` and an operator payload 
 Binary AST node encapsulating `_Left: L`, `_Right: R`, and `_Op: Op`.
 - Forms typed binary expression trees at compile time without heap indirections.
 
+### `Coro<In, Yield, Out>` (implements `ICoro<In, Yield, Out>`)
+A stackful coroutine instance wrapping `corosensei`:
+- `New<F>(f: F) -> Self where F: FnOnce(CoroYielder<'_, In, Yield>, In) -> Out + Send + 'static`: Constructs a stackful coroutine.
+- `Resume(&mut self, input: In) -> CoroRes<Yield, Out>`: Resumes execution of the coroutine.
+- `IsDone(&self) -> bool`: Returns `true` if the coroutine has completed execution.
+
+### `CoroRes<Yield, Out>`
+Result of resuming a `Coro`:
+- `Yield(Yield)`: The coroutine suspended with an intermediate value.
+- `Done(Out)`: The coroutine completed execution with a final return value.
+
+### `CoroYielder<'a, In, Yield>`
+Passed to the coroutine closure to enable suspension:
+- `Suspend(&self, val: Yield) -> In`: Suspends execution, yields `val` to caller, and receives the next input upon resume.
+
 ### `WorkPtr<'a>`
-A type-erased job descriptor containing a raw data pointer `data: *mut ()` and a typed function pointer `func: for<'r> fn(data: *mut (), worker: &'r DynIWorker<'r>)`:
+A type-erased job descriptor containing a raw data pointer `_Data: *mut ()` and a typed function pointer `_Func: for<'r> fn(data: *mut (), worker: &'r DynIWorker<'r>)`:
 - `Null() -> Self`: Creates a no-op null work pointer.
 - `Dummy() -> Self`: Creates a non-null placeholder marker.
 - `FromRef<T: IWork + 'a>(inner: &'a mut T) -> Self`: Constructs a `WorkPtr` borrowing `inner`.
+- `New(data: *mut (), func: JobFn) -> Self`: Constructs a `WorkPtr` with explicit data pointer and execution function.
 - `DoWork(&self, worker: &DynIWorker<'_>)`: Invokes the underlying job closure with the active worker context.
 
 ### `Worker`
@@ -179,6 +223,7 @@ A reference sequential implementation of `IWorker` executing posted jobs immedia
 | :--- | :--- | :--- |
 | `AtomicInt` | Unifies standard atomic integer types | `IntoAtomic()`, `Get()`, `Set()`, `FetchAdd()`, `CompareExchange()` |
 | `INode` | Marker trait for all AST tree nodes | Implemented blanket for all `T: ?Sized` |
+| `ICoro<In, Yield, Out>` | Operational interface for stackful coroutines | `Resume(&mut self, input: In) -> CoroRes<Yield, Out>`, `IsDone(&self) -> bool` |
 | `IWork` | Represents an executable unit of work | `DoWork(&mut self, worker: &DynIWorker<'_>)` |
 | `IntoWorkPtr<'a>` | Converts closures and `IWork` implementors into `WorkPtr<'a>` | `IntoWorkPtr(self) -> WorkPtr<'a>` |
 | `IWorker` | Trait for job executors and schedulers | `PostJob(&self, job: WorkPtr<'_>)`, `AsRawWorker() -> *const ()` |
@@ -188,3 +233,5 @@ A reference sequential implementation of `IWorker` executing posted jobs immedia
 ## 6. Macros Reference
 
 - **`NodeTree!( @parse $macro, $( $tokens )+ )`**: Core meta-macro engine responsible for parsing token streams, respecting infix operator precedence (`+`, `-`, `*`, `/`, `^`, `<`, `|`), prefix operators (`*`, `+`, `?`), action brackets (`[ action ]`), and generating nested `BinNode` and `UniNode` struct trees.
+- **`Coro!( |$yielder, $input| $body )`**: Creates a stackful `Coro` coroutine instance with input and yielder arguments.
+- **`Coro!( |$yielder| $body )`**: Creates a stackful `Coro` ignoring the input argument.
