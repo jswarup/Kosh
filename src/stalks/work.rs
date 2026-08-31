@@ -67,9 +67,14 @@ impl< 'a> WorkPtr< 'a>
             let  	actual = &mut *( dataPtr as *mut T);
             actual.DoWork( worker);
         };
+        Self::New( data, func)
+    }
+
+    pub fn	New( data: *mut (), func: JobFn) -> Self
+    {
         Self {
-            _Data: data,
-            _Func: func,
+            _Data:   data,
+            _Func:   func,
             _Marker: PhantomData,
         }
     }
@@ -130,7 +135,7 @@ pub type DynIWork< 'a> = dyn IWork + 'a;
 pub trait IWorker: Send + Sync
 {
     fn	PostJob( &self, job: WorkPtr< '_>);
-    
+
     // Allows unsafe downcasting to the underlying worker type (e.g. Parser)
     fn	AsRawWorker( &self) -> *const () { std::ptr::null() }
 }

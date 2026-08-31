@@ -23,6 +23,7 @@ rfd = "0.15"
 symph = { path = "src/symph" }
 wxdragon = { version = "*", features = ["aui"] }
 image = "0.25.10"
+corosensei = "0.3.4"
 
 [build-dependencies]
 spirv-builder = { git = "https://github.com/Rust-GPU/rust-gpu.git" }

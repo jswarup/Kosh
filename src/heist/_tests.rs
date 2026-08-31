@@ -5,6 +5,7 @@ use	std::thread;
 use	crate::{
     Chore,
     ChoreTree,
+    CoroChore,
     CpuChore,
     CpuMapCollect,
     GpuAutoChore,
@@ -466,3 +467,89 @@ fn	TestDefaultFusionThreshold()
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+static CORO_STAGE: Atm< U32> = U32::_0.IntoAtm();
+
+#[test]
+fn	TestCoroGeneratorBasic()
+{
+    use crate::stalks::{ Coro, CoroRes, ICoro };
+    let  	mut coro = Coro::New( |yielder, _input: ()| {
+        yielder.Suspend( 10);
+        yielder.Suspend( 20);
+        30
+    });
+
+    assert_eq!( coro.IsDone(), false);
+
+    if let CoroRes::Yield( y) = coro.Resume( ()) {
+        assert_eq!( y, 10);
+    } else { panic!(); }
+
+    if let CoroRes::Yield( y) = coro.Resume( ()) {
+        assert_eq!( y, 20);
+    } else { panic!(); }
+
+    if let CoroRes::Done( r) = coro.Resume( ()) {
+        assert_eq!( r, 30);
+    } else { panic!(); }
+
+    assert_eq!( coro.IsDone(), true);
+    println!( "TestCoroGeneratorBasic: Yield/Resume cycle verified ?");
+}
+
+#[test]
+fn	TestHeistCoroChoreYieldAndResume()
+{
+    CORO_STAGE.Store( U32( 0), Ordering::Release);
+
+    let  	coroChore = CoroChore!( "CoroTask", |yielder, _wPtr| {
+        CORO_STAGE.Store( U32( 1), Ordering::Release);
+        yielder.Suspend( ());
+        CORO_STAGE.Store( U32( 2), Ordering::Release);
+        yielder.Suspend( ());
+        CORO_STAGE.Store( U32( 3), Ordering::Release);
+    });
+
+    let  	atelier = Atelier::New( 2);
+    atelier.MainMaestro().PostChoreTree( &coroChore);
+    atelier.DoLaunch();
+
+    assert_eq!( CORO_STAGE.Load( Ordering::Acquire), U32( 3));
+    println!( "TestHeistCoroChoreYieldAndResume: Coroutine suspended and resumed on worker ?");
+}
+
+static DAG_SEQ_VAL: Atm< U32> = U32::_0.IntoAtm();
+
+#[test]
+fn	TestHeistCoroChoreDAG()
+{
+    DAG_SEQ_VAL.Store( U32( 1), Ordering::Release);
+
+    let  	c1 = CpuChore!( "Step1", |_| {
+        DAG_SEQ_VAL.FetchAdd( U32( 1), Ordering::Relaxed);
+    });
+
+    let  	c2 = CoroChore!( "CoroStep2", |yielder, _wPtr| {
+        let  	v = DAG_SEQ_VAL.Load( Ordering::Acquire);
+        DAG_SEQ_VAL.Store( v * U32( 2), Ordering::Release);
+        yielder.Suspend( ());
+        let  	v2 = DAG_SEQ_VAL.Load( Ordering::Acquire);
+        DAG_SEQ_VAL.Store( v2 * U32( 2), Ordering::Release);
+    });
+
+    let  	c3 = CpuChore!( "Step3", |_| {
+        DAG_SEQ_VAL.FetchAdd( U32( 5), Ordering::Relaxed);
+    });
+
+    let  	tree = ChoreTree!( c1 < c2 < c3 );
+
+    let  	atelier = Atelier::New( 2);
+    atelier.MainMaestro().PostChoreTree( &tree);
+    atelier.DoLaunch();
+
+    // (1 + 1) * 2 * 2 + 5 = 13
+    assert_eq!( DAG_SEQ_VAL.Load( Ordering::Acquire), U32( 13));
+    println!( "TestHeistCoroChoreDAG: DAG execution with CoroChore intermediate step completed ?");
+}
+

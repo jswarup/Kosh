@@ -4,10 +4,12 @@ mod _tests;
 pub mod atelier;
 pub mod atelierinfo;
 pub mod choretree;
+pub mod corochore;
 pub mod maestro;
 pub use	atelier::{ Atelier, IAtelier };
 pub use	atelierinfo::{ AtelierInfo, JobInfo };
 pub use	choretree::{ Chore, IChore, ChoreTarget, IChoreNode, MapCollectNode };
+pub use	corochore::{ CoroChore, ICoroChore, WorkerFatPtr };
 pub use	maestro::{ Maestro, IMaestro };
 
 //---------------------------------------------------------------------------------------------------------------------------------
