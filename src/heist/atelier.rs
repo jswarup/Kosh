@@ -1,7 +1,7 @@
 //-- atelier.rs ----------------------------------------------------------------------------------------------------------------------
-use	std::sync::Arc;
+use	std::sync::{ Arc, OnceLock };
 use	std::sync::atomic::Ordering;
-use	std::{ hint::spin_loop, thread::{ scope, yield_now } };
+use	std::{ hint::spin_loop, thread::{ self, scope, yield_now } };
 use	crate::heist::{ Maestro, IMaestro };
 use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, USeg, U16, U32 };
 use	crate::stalks::{ Atm, Spinlock, WorkPtr };
@@ -30,6 +30,8 @@ pub trait IAtelier< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+static GLOBAL_ATELIER: OnceLock< Atelier< 'static>> = OnceLock::new();
+
 pub struct Atelier< 'a>
 {
     _SzSchedJob:   Atm< U32>,                                           // Count of cumulative jobs in flight
@@ -43,6 +45,83 @@ pub struct Atelier< 'a>
     _Terminal:     U16,
     _FusionThres:  U32,
     _Swarm:        Option< Arc< SwarmEngine>>,                          // Shared heterogeneous compute runtime instance
+    _WorkerThreads:Buff< OnceLock< thread::Thread>>,
+}
+
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl Atelier< 'static>
+{
+    pub fn	Init< S: Into< U32>>( szMaestro: S)
+    {
+        let  	sz = szMaestro.into();
+        let  	atelier = Atelier::New( sz);
+        if GLOBAL_ATELIER.set( atelier).is_err() {
+            return;
+        }
+        let  	globalAtelier = Self::Get();
+
+        globalAtelier._Maestros.Arr().USeg().Traverse( |mIdx| {
+            globalAtelier._Maestros.Arr().MutAt( mIdx).SetAtelier( globalAtelier);
+        });
+
+        if sz > U32( 1) {
+            USeg::New( U32( 1), sz - U32( 1)).Traverse( |maestroIdx| {
+                let  	handle = thread::spawn( move || {
+                    Maestro::SetCurrentIndex( maestroIdx);
+                    loop {
+                        globalAtelier.ExecuteLoop( maestroIdx);
+                        thread::park();
+                    }
+                });
+                globalAtelier._WorkerThreads.Arr().At( maestroIdx.AsU32()).set( handle.thread().clone()).unwrap();
+            });
+        }
+    }
+
+    pub fn	Get() -> &'static Atelier< 'static>
+    {
+        GLOBAL_ATELIER.get_or_init( || {
+            let  	atelier = Atelier::New( U32( 4)); // Default to 4 workers if auto-initialized
+            let  	_sz = atelier._Maestros.Size();
+            panic!( "Atelier must be initialized explicitly via Atelier::Init");
+        })
+    }
+
+    pub fn	Post( job: impl crate::stalks::IntoWorkPtr< 'static> + 'static)
+    {
+        let  	atelier = Self::Get();
+        let  	maestroIdx = Maestro::GetCurrentIndex();
+        let  	maestro = atelier._Maestros.Arr().MutAt( maestroIdx);
+        let  	jobId = atelier.ConstructJob( maestroIdx, U16::_0, job.IntoWorkPtr(), "Post");
+        maestro.EnqueueJob( jobId);
+        maestro.FlushTempQueue();
+
+        atelier.WakeWorker();
+    }
+
+    pub fn	PostChoreTree( jobTree: impl crate::heist::choretree::IChoreNode + 'static)
+    {
+        let  	atelier = Self::Get();
+        let  	maestroIdx = Maestro::GetCurrentIndex();
+        let  	maestro = atelier._Maestros.Arr().MutAt( maestroIdx);
+        maestro.PostChoreTree( &jobTree);
+        maestro.FlushTempQueue();
+        atelier.WakeWorker();
+    }
+
+    pub fn	Wait()
+    {
+        let  	atelier = Self::Get();
+        let  	maestroIdx = Maestro::GetCurrentIndex();
+        atelier.ExecuteLoop( maestroIdx);
+    }
+
+    pub fn	Pump()
+    {
+        Self::Wait();
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -51,9 +130,10 @@ impl< 'a> Atelier< 'a>
 {
     pub fn	New< S: Into< U32>>( szMaestro: S) -> Atelier< 'a>
     {
+        let  	sz = szMaestro.into();
         let  	mut atelier = Self {
             _SzSchedJob:   Atm::New( U32::_0),
-            _Maestros:     Buff::Create( szMaestro.into(), Maestro::New),
+            _Maestros:     Buff::Create( sz, Maestro::New),
             _SzPreds:      Buff::Create( U32::_16Sz, |_i| Atm::New( U16::_0)),
             _SuccIds:      Buff::< U16>::Create( U32::_16Sz, |_| U16::_0),
             _FreeJobLock:  Spinlock::New(),
@@ -63,6 +143,7 @@ impl< 'a> Atelier< 'a>
             _Terminal:     U16::_0,
             _FusionThres:  U32( 2),
             _Swarm:        None,
+            _WorkerThreads:Buff::Create( sz, |_| OnceLock::new()),
         };
         atelier._FreeJobStash.DoIndexSetup();
         atelier._Terminal = atelier.ConstructJob( U32::_0, U16::_0, WorkPtr::Dummy(), "Terminal");
@@ -104,11 +185,25 @@ impl< 'a> Atelier< 'a>
         self._Terminal
     }
 
+
     pub fn	WithFusionThres< T: Into< U32>>( mut self, thres: T) -> Self
     {
         self._FusionThres = thres.into();
         self
     }
+
+    pub( crate) fn	WakeWorker( &self)
+    {
+        let  	sz = self._Maestros.Size();
+        if sz > U32( 1) {
+            USeg::New( U32( 1), sz - U32( 1)).Traverse( |mIdx| {
+                if let Some( t) = self._WorkerThreads.Arr().At( mIdx.AsU32()).get() {
+                    t.unpark();
+                }
+            });
+        }
+    }
+
 
     //-----------------------------------------------------------------------------------------------------------------------------
 

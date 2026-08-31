@@ -593,3 +593,29 @@ fn	TestHeistCoroChoreUnfusedDAG()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+static SINGLETON_VAL: Atm< U32> = U32::_0.IntoAtm();
+
+#[test]
+fn	TestAtelierSingletonStaticPost()
+{
+    // Auto-initialize the singleton on first Get() or explicitly Init
+    Atelier::Init( U32( 4));
+
+    let  	chore = CpuChore!( "SingletonChore", |_w| {
+        SINGLETON_VAL.FetchAdd( U32( 42), Ordering::Relaxed);
+    });
+
+    // Static API post
+    Atelier::PostChoreTree( chore);
+
+    // Wait blocks until all jobs are finished
+    Atelier::Wait();
+
+    assert_eq!( SINGLETON_VAL.Load( Ordering::Acquire), U32( 42));
+    println!( "TestAtelierSingletonStaticPost: Ambient Maestro lookup and static post completed ✓");
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------

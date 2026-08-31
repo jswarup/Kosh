@@ -1,4 +1,5 @@
 //-- maestro.rs ----------------------------------------------------------------------------------------------------------------------
+use	std::cell::Cell;
 use	std::ptr::null;
 use	std::sync::atomic::Ordering;
 use	crate::heist::{ Atelier, IAtelier, choretree::IChoreNode };
@@ -58,6 +59,12 @@ pub trait IMaestro< 'a>: IWorker
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+thread_local! {
+    static CURRENT_MAESTRO_INDEX: Cell< U32> = Cell::new( U32::_0);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub struct Maestro< 'a>
 {
     _Index:       U32,
@@ -78,9 +85,21 @@ unsafe impl< 'a> Sync for Maestro< 'a>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+
 impl< 'a> Maestro< 'a>
 {
+    pub fn	SetCurrentIndex< I: Into< U32>>( index: I)
+    {
+        CURRENT_MAESTRO_INDEX.with( |cell| cell.set( index.into()));
+    }
+
+    pub fn	GetCurrentIndex() -> U32
+    {
+        CURRENT_MAESTRO_INDEX.with( |cell| cell.get())
+    }
+
     pub fn	New< I: Into< U32>>( maestroInd: I) -> Self
+
     {
         Self {
             _Index:       maestroInd.into(),
