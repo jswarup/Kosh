@@ -282,7 +282,7 @@ impl< T: IChoreNode> IChoreNode for &T
     {
         return ( **self).Post( maestro, tails);
     }
-    
+
     fn	Exec( &self, worker: &DynIWorker< '_>)
     {
         ( **self).Exec( worker);
@@ -345,7 +345,7 @@ where
     where
         Self: 'a,
     {
-        if self.Weight() <= CHORE_FUSION_THRESHOLD {
+        if self.Weight() <= maestro.Atelier().FusionThres() {
             let  	fused = FusedChore { _Node: *self };
             let  	jobId = maestro.ConstructJob( U16( 0), fused, "FusedBinNode");
             tails.Push( jobId);
@@ -396,8 +396,6 @@ where
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
-
-pub const CHORE_FUSION_THRESHOLD: U32 = U32( 1000);
 
 #[derive( Copy, Clone)]
 pub struct MapCollectNode< 'a, T>
@@ -464,13 +462,14 @@ impl< 'a, T: Copy + Send + Sync> IChoreNode for MapCollectNode< 'a, T>
     {
         let  	totalWeight = self.Weight();
         let  	isCpu = matches!( self._Target, ChoreTarget::Cpu);
+        let  	fusionThres = maestro.Atelier().FusionThres();
 
         let  	collectFn = self._CollectFn;
         let  	collectChore = Chore::NewDoc( "Collect", collectFn);
         let  	collectJobId = maestro.ConstructJob( U16( 0), collectChore, "Collect");
         tails.Push( collectJobId);
 
-        if !isCpu || totalWeight <= CHORE_FUSION_THRESHOLD {
+        if !isCpu || totalWeight <= fusionThres {
             let  	mapWork = MapChunkWork {
                 _Seg:   self._Data.USeg(),
                 _MapFn: self._MapFn,
@@ -481,7 +480,7 @@ impl< 'a, T: Copy + Send + Sync> IChoreNode for MapCollectNode< 'a, T>
 
         let  	numMaestros = maestro.Atelier().Maestros().Size();
         let  	mut c = numMaestros * U32( 2);
-        let  	maxChunks = totalWeight / CHORE_FUSION_THRESHOLD;
+        let  	maxChunks = totalWeight / fusionThres;
         if c > maxChunks {
             c = maxChunks;
         }

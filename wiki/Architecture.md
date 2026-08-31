@@ -96,7 +96,7 @@ Algorithms in `symph` are written once in pure Rust. Using `#![no_std]` when tar
 ### Pillar 5: Work-Stealing Chore DAG Engine & Data-Parallel MapCollect (`heist`)
 Asynchronous workflows and high-throughput data streams are represented as DAG expressions via `ChoreTree!` and `MapCollect!`:
 - **Sequential & Parallel DSL**: `A < B` guarantees that job `B` will only run after `A` decrements `B`'s atomic predecessor counter (`_SzPreds`) to zero; `A | B` posts tasks simultaneously across worker threads.
-- **Chore-Weight & Automatic Sequential Fusion**: Nodes carry estimated execution weights (`_Weight: U32`). Sequences whose cumulative weight is $\le \text{CHORE\_FUSION\_THRESHOLD}$ (1000) are automatically fused into a single contiguous task (`FusedChore`), avoiding scheduler queue round-trips.
+- **Chore-Weight & Automatic Sequential Fusion**: Nodes carry estimated execution weights (`_Weight: U32`). Sequences whose cumulative weight is $\le \text{atelier.FusionThres()}$ (default `2`, runtime configurable via `_FusionThres`) are automatically fused into a single contiguous task (`FusedChore`), avoiding scheduler queue round-trips.
 - **Adaptive Data-Parallel Slicing**: `MapCollectNode` splits contiguous `Arr<'a, T>` payloads dynamically across $2 \times N_{maestros}$ chunks with automatic work-stealing, joining at an explicit collect synchronization barrier.
 - **Work Stealing**: Worker threads (`Maestro`) execute pending jobs from thread-local queues and dynamically steal tasks from peers using Knuth multiplicative hash pseudo-random distribution.
 

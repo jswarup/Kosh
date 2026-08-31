@@ -390,7 +390,7 @@ fn	TestMapCollectAdaptiveChunking()
         |_w| {}
     );
 
-    let  	atelier = Atelier::New( 4);
+    let  	atelier = Atelier::New( 4).WithFusionThres( 1000);
     atelier.MainMaestro().PostChoreTree( &mapCollect);
     atelier.DoLaunch();
 
@@ -426,13 +426,43 @@ fn	TestAutomaticSequentialChoreFusion()
 
     assert_eq!( pipeline.Weight(), U32( 60));
 
-    let  	atelier = Atelier::New( 2);
+    let  	atelier = Atelier::New( 2).WithFusionThres( 100);
     atelier.MainMaestro().PostChoreTree( &pipeline);
     atelier.DoLaunch();
 
     // StepA (+5) -> StepB (*2 => 10) -> StepC (+1 => 11)
     assert_eq!( FUSED_SEQ_VALUE.Load( Ordering::Acquire), U32( 11));
     println!( "TestAutomaticSequentialChoreFusion: Automatic fused DAG completed ✓");
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+static DEFAULT_FUSION_VAL: Atm< U32> = U32::_0.IntoAtm();
+
+#[test]
+fn	TestDefaultFusionThreshold()
+{
+    DEFAULT_FUSION_VAL.Store( U32( 0), Ordering::Release);
+
+    let  	atelier = Atelier::New( 2);
+    assert_eq!( atelier.FusionThres(), U32( 2));
+
+    // Two default-weight chores (1 + 1 = 2 <= 2) will fuse by default
+    let  	chore1 = CpuChore!( "Chore1", |_w| {
+        DEFAULT_FUSION_VAL.FetchAdd( U32( 10), Ordering::Relaxed);
+    });
+    let  	chore2 = CpuChore!( "Chore2", |_w| {
+        DEFAULT_FUSION_VAL.FetchAdd( U32( 20), Ordering::Relaxed);
+    });
+
+    let  	tree = ChoreTree!( chore1 < chore2);
+    assert_eq!( tree.Weight(), U32( 2));
+
+    atelier.MainMaestro().PostChoreTree( &tree);
+    atelier.DoLaunch();
+
+    assert_eq!( DEFAULT_FUSION_VAL.Load( Ordering::Acquire), U32( 30));
+    println!( "TestDefaultFusionThreshold: Default _FusionThres = 2 verified ✓");
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

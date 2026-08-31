@@ -6,7 +6,7 @@ The `heist` module is Kosh's **asynchronous workflow DAG orchestrator, data-para
 1. **The `Atelier` Master Workspace**: Manages worker thread pools (`Maestro`), global job allocators, predecessor counter arrays (`_SzPreds: Buff<Atm<U16>>`), and successor routing tables (`_SuccIds: Buff<U16>`).
 2. **The `Maestro` Worker**: Thread-local execution agent managing local job caches (`_JobCache`), run queues (`_RunQueue`), temporary enqueue queues (`_TempQueue`), and work-stealing from peer Maestros.
 3. **Chore DAG DSL (`ChoreTree!`)**: Construct parallel (`|`) and sequential (`<`) execution graphs with automatic predecessor and successor resolution.
-4. **Chore-Weight & Automatic Sequential Fusion**: Evaluates DAG subtrees using static/dynamic weights (`_Weight: U32`). If the aggregated weight of a sequence falls at or below `CHORE_FUSION_THRESHOLD` (1000), it is automatically coalesced into a single `FusedChore` job to bypass scheduler queue overhead.
+4. **Chore-Weight & Automatic Sequential Fusion**: Evaluates DAG subtrees using static/dynamic weights (`_Weight: U32`). If the aggregated weight of a sequence falls at or below `atelier.FusionThres()` (default `2`, runtime configurable via `_FusionThres`), it is automatically coalesced into a single `FusedChore` job to bypass scheduler queue overhead.
 5. **Data-Parallel `MapCollectNode`**: Distributes large array workloads across available worker threads (`maestro.Size() * 2`) with adaptive chunking, syncing at a final collector step.
 6. **Target Hardware Affinity (`ChoreTarget`)**: Directs individual chore tasks to host CPU worker threads, specific GPU backends (`Gpu(BackendKind)`), or auto-selected GPU compute (`GpuAuto`).
 
@@ -20,6 +20,8 @@ classDiagram
         <<trait>>
         +MainMaestro() &Maestro
         +Maestros() Arr~Maestro~
+        +FusionThres() U32
+        +SetFusionThres(val)
         +SetSwarm(swarm: SwarmEngine)
         +Swarm() Option~&SwarmEngine~
         +SetSucc(jobId: U16, succId: U16)
@@ -35,8 +37,12 @@ classDiagram
         -_FreeJobStash: Stash~U16~
         -_JobBuff: Buff~WorkPtr~
         -_Terminal: U16
+        +U32 _FusionThres
         -_Swarm: Option~Arc~SwarmEngine~~
         +New(szMaestro: U32) Atelier
+        +WithFusionThres(thres) Atelier
+        +SetFusionThres(thres)
+        +FusionThres() U32
         +Terminal() U16
     }
 
@@ -209,7 +215,10 @@ flowchart LR
 
 ### `Atelier<'a>` (implements `IAtelier<'a>`)
 Workspace coordinator managing multi-threaded pipeline execution:
-- `New<S: Into<U32>>(szMaestro: S) -> Self`: Initializes workspace with `szMaestro` worker threads and $2^{16}$ pre-allocated job descriptors.
+- `New<S: Into<U32>>(szMaestro: S) -> Self`: Initializes workspace with `szMaestro` worker threads, default `_FusionThres = U32(2)`, and $2^{16}$ pre-allocated job descriptors.
+- `WithFusionThres<T: Into<U32>>(mut self, thres: T) -> Self`: Builder configuring runtime sequential fusion complexity threshold.
+- `SetFusionThres<T: Into<U32>>(&mut self, thres: T)`: Updates runtime fusion threshold.
+- `FusionThres(&self) -> U32`: Returns currently configured fusion threshold.
 - `MainMaestro(&self) -> &Maestro<'a>`: Returns reference to maestro 0 for DAG submission.
 - `Maestros(&self) -> Arr<'a, Maestro<'a>>`: Returns array of all worker maestros.
 - `SetSwarm(&mut self, swarm: SwarmEngine)`: Binds GPU/CPU compute engine to workspace.
@@ -248,7 +257,7 @@ A runnable unit of work with documentation, weight complexity, and hardware affi
 ### `MapCollectNode<'a, T>` (implements `IChoreNode`)
 Data-parallel split-apply-combine node for high-throughput memory slicing:
 - `New<W: Into<U32>>(data: Arr<'a, T>, target: ChoreTarget, itemWeight: W, docStr: &'static str, mapFn: fn(USeg, &DynIWorker<'_>), collectFn: fn(&DynIWorker<'_>)) -> Self`: Constructs a data-parallel node.
-- Automatically calculates total workload weight ($N \times W_{item}$). If below `CHORE_FUSION_THRESHOLD` (1000) or non-CPU, executes in a single coalesced chunk; otherwise dynamically partitions across $2 \times N_{maestros}$ segments with work-stealing and synchronizes at the collect barrier.
+- Automatically calculates total workload weight ($N \times W_{item}$). If below `maestro.Atelier().FusionThres()` or non-CPU, executes in a single coalesced chunk; otherwise dynamically partitions across $2 \times N_{maestros}$ segments with work-stealing and synchronizes at the collect barrier.
 
 ---
 

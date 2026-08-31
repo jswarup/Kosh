@@ -13,6 +13,10 @@ pub trait IAtelier< 'a>
 {
     fn	MainMaestro( &self) -> &Maestro< 'a>;
     fn	Maestros( &self) -> Arr< 'a, Maestro< 'a>>;
+    fn	FusionThres( &self) -> U32;
+    fn	SetFusionThres< T: Into< U32>>( &mut self, val: T)
+    where
+        Self: Sized;
     fn	SetSwarm( &mut self, swarm: SwarmEngine);
     fn	Swarm( &self) -> Option< &SwarmEngine>;
     fn	SetSucc< J: Into< U16>, S: Into< U16>>( &self, jobId: J, succId: S)
@@ -37,6 +41,7 @@ pub struct Atelier< 'a>
     _JobBuff:      Buff< WorkPtr< 'a>>,
     _JobDocBuff:   Buff< &'static str>,
     _Terminal:     U16,
+    _FusionThres:  U32,
     _Swarm:        Option< Arc< SwarmEngine>>,                          // Shared heterogeneous compute runtime instance
 }
 
@@ -47,16 +52,17 @@ impl< 'a> Atelier< 'a>
     pub fn	New< S: Into< U32>>( szMaestro: S) -> Atelier< 'a>
     {
         let  	mut atelier = Self {
-            _SzSchedJob: Atm::New( U32::_0),
-            _Maestros: Buff::Create( szMaestro.into(), Maestro::New),
-            _SzPreds: Buff::Create( U32::_16Sz, |_i| Atm::New( U16::_0)),
-            _SuccIds: Buff::< U16>::Create( U32::_16Sz, |_| U16::_0),
-            _FreeJobLock: Spinlock::New(),
+            _SzSchedJob:   Atm::New( U32::_0),
+            _Maestros:     Buff::Create( szMaestro.into(), Maestro::New),
+            _SzPreds:      Buff::Create( U32::_16Sz, |_i| Atm::New( U16::_0)),
+            _SuccIds:      Buff::< U16>::Create( U32::_16Sz, |_| U16::_0),
+            _FreeJobLock:  Spinlock::New(),
             _FreeJobStash: Stash::< U16>::Create( U32::_16Sz, U32::_0, |_| U16::_0),
-            _JobBuff: Buff::Create( U32::_16Sz, |_| WorkPtr::Null()),
-            _JobDocBuff: Buff::Create( U32::_16Sz, |_| "Free"),
-            _Terminal: U16::_0,
-            _Swarm: None,
+            _JobBuff:      Buff::Create( U32::_16Sz, |_| WorkPtr::Null()),
+            _JobDocBuff:   Buff::Create( U32::_16Sz, |_| "Free"),
+            _Terminal:     U16::_0,
+            _FusionThres:  U32( 2),
+            _Swarm:        None,
         };
         atelier._FreeJobStash.DoIndexSetup();
         atelier._Terminal = atelier.ConstructJob( U32::_0, U16::_0, WorkPtr::Dummy(), "Terminal");
@@ -96,6 +102,12 @@ impl< 'a> Atelier< 'a>
     pub fn	Terminal( &self) -> U16
     {
         self._Terminal
+    }
+
+    pub fn	WithFusionThres< T: Into< U32>>( mut self, thres: T) -> Self
+    {
+        self._FusionThres = thres.into();
+        self
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -226,6 +238,16 @@ impl< 'a> IAtelier< 'a> for Atelier< 'a>
     fn	Maestros( &self) -> Arr< 'a, Maestro< 'a>>
     {
         self._Maestros.Arr()
+    }
+
+    fn	FusionThres( &self) -> U32
+    {
+        self._FusionThres
+    }
+
+    fn	SetFusionThres< T: Into< U32>>( &mut self, thres: T)
+    {
+        self._FusionThres = thres.into();
     }
 
     fn	SetSwarm( &mut self, swarm: SwarmEngine)
