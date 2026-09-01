@@ -3,7 +3,7 @@
 use	std::fmt;
 use	crate::{
     heist::{ IAtelier, IMaestro },
-    silo::{ Arr, IAccess, Stash, U16, U32, USeg },
+    silo::{ Arr, IAccess, IArr, Stash, U16, U32, USeg },
     stalks::{ BinNode, BinOp, DynIWorker, IntoWorkPtr, IWork },
     swarm::BackendKind,
 };
@@ -398,27 +398,27 @@ where
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[derive( Copy, Clone)]
-pub struct MapCollectNode< 'a, T>
+pub struct SpawnQuellNode< 'a, T>
 {
     pub _Data:       Arr< 'a, T>,
     pub _Target:     ChoreTarget,
     pub _DocStr:     &'static str,
     pub _ItemWeight: U32,
-    pub _MapFn:      fn( USeg, &DynIWorker< '_>),
-    pub _CollectFn:  fn( &DynIWorker< '_>),
+    pub _SpawnFn:    fn( Arr< 'a, T>, &DynIWorker< '_>),
+    pub _QuellFn:    fn( Arr< 'a, T>, &DynIWorker< '_>),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T> MapCollectNode< 'a, T>
+impl< 'a, T> SpawnQuellNode< 'a, T>
 {
     pub fn	New< W: Into< U32>>(
         data: Arr< 'a, T>,
         target: ChoreTarget,
         itemWeight: W,
         docStr: &'static str,
-        mapFn: fn( USeg, &DynIWorker< '_>),
-        collectFn: fn( &DynIWorker< '_>),
+        spawnFn: fn( Arr< 'a, T>, &DynIWorker< '_>),
+        quellFn: fn( Arr< 'a, T>, &DynIWorker< '_>),
     ) -> Self
     {
         Self {
@@ -426,30 +426,45 @@ impl< 'a, T> MapCollectNode< 'a, T>
             _Target:     target,
             _DocStr:     docStr,
             _ItemWeight: itemWeight.into(),
-            _MapFn:      mapFn,
-            _CollectFn:  collectFn,
+            _SpawnFn:    spawnFn,
+            _QuellFn:    quellFn,
         }
     }
 }
 
-#[derive( Clone)]
-pub struct MapChunkWork
+#[derive( Copy, Clone)]
+pub struct SpawnChunkWork< 'a, T>
 {
-    pub _Seg:   USeg,
-    pub _MapFn: fn( USeg, &DynIWorker< '_>),
+    pub _Data:    Arr< 'a, T>,
+    pub _SpawnFn: fn( Arr< 'a, T>, &DynIWorker< '_>),
 }
 
-impl IWork for MapChunkWork
+impl< 'a, T: Copy + Send + Sync> IWork for SpawnChunkWork< 'a, T>
 {
     fn	DoWork( &mut self, worker: &DynIWorker< '_>)
     {
-        ( self._MapFn)( self._Seg, worker);
+        ( self._SpawnFn)( self._Data, worker);
+    }
+}
+
+#[derive( Copy, Clone)]
+pub struct QuellWork< 'a, T>
+{
+    pub _Data:    Arr< 'a, T>,
+    pub _QuellFn: fn( Arr< 'a, T>, &DynIWorker< '_>),
+}
+
+impl< 'a, T: Copy + Send + Sync> IWork for QuellWork< 'a, T>
+{
+    fn	DoWork( &mut self, worker: &DynIWorker< '_>)
+    {
+        ( self._QuellFn)( self._Data, worker);
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T: Copy + Send + Sync> IChoreNode for MapCollectNode< 'a, T>
+impl< 'a, T: Copy + Send + Sync> IChoreNode for SpawnQuellNode< 'a, T>
 {
     fn	Weight( &self) -> U32
     {
@@ -464,18 +479,20 @@ impl< 'a, T: Copy + Send + Sync> IChoreNode for MapCollectNode< 'a, T>
         let  	isCpu = matches!( self._Target, ChoreTarget::Cpu);
         let  	fusionThres = maestro.Atelier().FusionThres();
 
-        let  	collectFn = self._CollectFn;
-        let  	collectChore = Chore::NewDoc( "Collect", collectFn);
-        let  	collectJobId = maestro.ConstructJob( U16( 0), collectChore, "Collect");
-        tails.Push( collectJobId);
+        let  	quellWork = QuellWork {
+            _Data:    self._Data,
+            _QuellFn: self._QuellFn,
+        };
+        let  	quellJobId = maestro.ConstructJob( U16( 0), quellWork, "Quell");
+        tails.Push( quellJobId);
 
         if !isCpu || totalWeight <= fusionThres {
-            let  	mapWork = MapChunkWork {
-                _Seg:   self._Data.USeg(),
-                _MapFn: self._MapFn,
+            let  	spawnWork = SpawnChunkWork {
+                _Data:    self._Data,
+                _SpawnFn: self._SpawnFn,
             };
-            let  	mapJobId = maestro.ConstructJob( collectJobId, mapWork, self._DocStr);
-            return mapJobId;
+            let  	spawnJobId = maestro.ConstructJob( quellJobId, spawnWork, self._DocStr);
+            return spawnJobId;
         }
 
         let  	numMaestros = maestro.Atelier().Maestros().Size();
@@ -488,24 +505,24 @@ impl< 'a, T: Copy + Send + Sync> IChoreNode for MapCollectNode< 'a, T>
             c = U32( 1);
         }
 
-        let  	fullSeg = self._Data.USeg();
+        let  	totalSz = self._Data.Size();
         let  	mut heads = Stash::New();
 
-        let  	chunkSize = ( fullSeg.Size() + c - U32( 1)) / c;
-        let  	mut start = fullSeg._First;
-        let  	end = fullSeg._First + fullSeg.Size();
+        let  	chunkSize = ( totalSz + c - U32( 1)) / c;
+        let  	mut start = U32( 0);
+        let  	end = totalSz;
 
         while start < end {
             let  	rem = end - start;
             let  	sz = if rem < chunkSize { rem } else { chunkSize };
-            let  	chunkSeg = USeg::New( start, sz);
+            let  	chunkArr = self._Data.Subset( start, sz);
 
-            let  	mapWork = MapChunkWork {
-                _Seg:   chunkSeg,
-                _MapFn: self._MapFn,
+            let  	spawnWork = SpawnChunkWork {
+                _Data:    chunkArr,
+                _SpawnFn: self._SpawnFn,
             };
-            let  	mapJobId = maestro.ConstructJob( collectJobId, mapWork, self._DocStr);
-            heads.Push( mapJobId);
+            let  	spawnJobId = maestro.ConstructJob( quellJobId, spawnWork, self._DocStr);
+            heads.Push( spawnJobId);
 
             start += sz;
         }
@@ -516,8 +533,8 @@ impl< 'a, T: Copy + Send + Sync> IChoreNode for MapCollectNode< 'a, T>
 
     fn	Exec( &self, worker: &DynIWorker< '_>)
     {
-        ( self._MapFn)( self._Data.USeg(), worker);
-        ( self._CollectFn)( worker);
+        ( self._SpawnFn)( self._Data, worker);
+        ( self._QuellFn)( self._Data, worker);
     }
 }
 
@@ -531,30 +548,30 @@ macro_rules! WeightedChore {
 }
 
 #[macro_export]
-macro_rules! MapCollect {
-    ( $data:expr, $target:expr, $mapFn:expr, $collectFn:expr) => {
-        $crate::heist::MapCollectNode::New( $data, $target, $crate::silo::U32( 1), "MapCollect", $mapFn, $collectFn)
+macro_rules! SpawnQuell {
+    ( $data:expr, $target:expr, $spawnFn:expr, $quellFn:expr) => {
+        $crate::heist::SpawnQuellNode::New( $data, $target, $crate::silo::U32( 1), "SpawnQuell", $spawnFn, $quellFn)
     };
 }
 
 #[macro_export]
-macro_rules! WeightedMapCollect {
-    ( $data:expr, $itemWeight:expr, $target:expr, $mapFn:expr, $collectFn:expr) => {
-        $crate::heist::MapCollectNode::New( $data, $target, $itemWeight, "WeightedMapCollect", $mapFn, $collectFn)
+macro_rules! WeightedSpawnQuell {
+    ( $data:expr, $itemWeight:expr, $target:expr, $spawnFn:expr, $quellFn:expr) => {
+        $crate::heist::SpawnQuellNode::New( $data, $target, $itemWeight, "WeightedSpawnQuell", $spawnFn, $quellFn)
     };
 }
 
 #[macro_export]
-macro_rules! CpuMapCollect {
-    ( $data:expr, $mapFn:expr, $collectFn:expr) => {
-        $crate::heist::MapCollectNode::New( $data, $crate::heist::ChoreTarget::Cpu, $crate::silo::U32( 1), "CpuMapCollect", $mapFn, $collectFn)
+macro_rules! CpuSpawnQuell {
+    ( $data:expr, $spawnFn:expr, $quellFn:expr) => {
+        $crate::heist::SpawnQuellNode::New( $data, $crate::heist::ChoreTarget::Cpu, $crate::silo::U32( 1), "CpuSpawnQuell", $spawnFn, $quellFn)
     };
 }
 
 #[macro_export]
-macro_rules! GpuMapCollect {
-    ( $data:expr, $mapFn:expr, $collectFn:expr) => {
-        $crate::heist::MapCollectNode::New( $data, $crate::heist::ChoreTarget::GpuAuto, $crate::silo::U32( 1), "GpuMapCollect", $mapFn, $collectFn)
+macro_rules! GpuSpawnQuell {
+    ( $data:expr, $spawnFn:expr, $quellFn:expr) => {
+        $crate::heist::SpawnQuellNode::New( $data, $crate::heist::ChoreTarget::GpuAuto, $crate::silo::U32( 1), "GpuSpawnQuell", $spawnFn, $quellFn)
     };
 }
 

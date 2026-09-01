@@ -6,7 +6,7 @@ pub mod corochore;
 pub mod maestro;
 pub use	atelier::{ Atelier, IAtelier };
 pub use	atelierinfo::{ AtelierInfo, JobInfo };
-pub use	choretree::{ Chore, IChore, ChoreTarget, IChoreNode, MapCollectNode };
+pub use	choretree::{ Chore, IChore, ChoreTarget, IChoreNode, SpawnQuellNode };
 pub use	corochore::{ CoroChore, ICoroChore, WorkerFatPtr };
 pub use	maestro::{ Maestro, IMaestro };
 

@@ -7,7 +7,7 @@ use	crate::{
     ChoreTree,
     CoroChore,
     CpuChore,
-    CpuMapCollect,
+    CpuSpawnQuell,
     GpuAutoChore,
     WeightedChore,
     WeightedCoroChore,
@@ -344,60 +344,60 @@ fn	TestChoreWeightCalculation()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-static MAP_COUNT_BASIC: Atm< U32> = U32::_0.IntoAtm();
-
 #[test]
-fn	TestMapCollectCpuBasic()
+fn	TestSpawnQuellCpuBasic()
 {
-    MAP_COUNT_BASIC.Store( U32( 0), Ordering::Release);
     let  	buff = Buff::Create( U32( 10000), |_| 1u32);
 
-    let  	mapCollect = CpuMapCollect!(
+    let  	spawnQuell = CpuSpawnQuell!(
         buff.Arr(),
-        |seg, _w| {
-            let  	mut sum = 0;
-            seg.Traverse( |_| sum += 1);
-            MAP_COUNT_BASIC.FetchAdd( U32( sum), Ordering::Relaxed);
+        |chunk, _w| {
+            chunk.USeg().Traverse( |i| {
+                let  	val = *chunk.At( i);
+                chunk.SetAt( i, &( val * 2));
+            });
         },
-        |_w| {
-            println!( "Collect phase!");
+        |all, _w| {
+            println!( "Quell phase for {} items!", all.Size());
         }
     );
 
     let  	atelier = Atelier::New( 4);
-    atelier.MainMaestro().PostChoreTree( &mapCollect);
+    atelier.MainMaestro().PostChoreTree( &spawnQuell);
     atelier.DoLaunch();
 
-    assert_eq!( MAP_COUNT_BASIC.Load( Ordering::Acquire), U32( 10000));
-    println!( "TestMapCollectCpuBasic: Distributed map and collect completed ✓");
+    let  	mut totalSum = 0u32;
+    buff.Arr().Traverse( |v| totalSum += *v);
+    assert_eq!( totalSum, 20000);
+    println!( "TestSpawnQuellCpuBasic: Distributed spawn and quell completed ✓");
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-static MAP_COUNT_ADAPTIVE: Atm< U32> = U32::_0.IntoAtm();
-
 #[test]
-fn	TestMapCollectAdaptiveChunking()
+fn	TestSpawnQuellAdaptiveChunking()
 {
-    MAP_COUNT_ADAPTIVE.Store( U32( 0), Ordering::Release);
     let  	buff = Buff::Create( U32( 100), |_| 1u32); // Small enough to be lumped
 
-    let  	mapCollect = CpuMapCollect!(
+    let  	spawnQuell = CpuSpawnQuell!(
         buff.Arr(),
-        |seg, _w| {
-            let  	mut sum = 0;
-            seg.Traverse( |_| sum += 1);
-            MAP_COUNT_ADAPTIVE.FetchAdd( U32( sum), Ordering::Relaxed);
+        |chunk, _w| {
+            chunk.USeg().Traverse( |i| {
+                let  	val = *chunk.At( i);
+                chunk.SetAt( i, &( val * 5));
+            });
         },
-        |_w| {}
+        |_all, _w| {}
     );
 
     let  	atelier = Atelier::New( 4).WithFusionThres( 1000);
-    atelier.MainMaestro().PostChoreTree( &mapCollect);
+    atelier.MainMaestro().PostChoreTree( &spawnQuell);
     atelier.DoLaunch();
 
-    assert_eq!( MAP_COUNT_ADAPTIVE.Load( Ordering::Acquire), U32( 100));
-    println!( "TestMapCollectAdaptiveChunking: Coalesced small workload correctly ✓");
+    let  	mut totalSum = 0u32;
+    buff.Arr().Traverse( |v| totalSum += *v);
+    assert_eq!( totalSum, 500);
+    println!( "TestSpawnQuellAdaptiveChunking: Coalesced small workload correctly ✓");
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

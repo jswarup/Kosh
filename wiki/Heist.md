@@ -7,7 +7,7 @@ The `heist` module is Kosh's **asynchronous workflow DAG orchestrator, data-para
 2. **The `Maestro` Worker**: Thread-local execution agent managing local job caches (`_JobCache`), run queues (`_RunQueue`), temporary enqueue queues (`_TempQueue`), and work-stealing from peer Maestros.
 3. **Chore DAG DSL (`ChoreTree!`)**: Construct parallel (`|`) and sequential (`<`) execution graphs with automatic predecessor and successor resolution.
 4. **Chore-Weight & Automatic Sequential Fusion**: Evaluates DAG subtrees using static/dynamic weights (`_Weight: U32`). If the aggregated weight of a sequence falls at or below `atelier.FusionThres()` (default `2`, runtime configurable via `_FusionThres`), it is automatically coalesced into a single `FusedChore` job to bypass scheduler queue overhead.
-5. **Data-Parallel `MapCollectNode`**: Distributes large array workloads across available worker threads (`maestro.Size() * 2`) with adaptive chunking, syncing at a final collector step.
+5. **Data-Parallel `SpawnQuellNode`**: Distributes large array workloads across available worker threads (`maestro.Size() * 2`) with adaptive chunking, syncing at a final quell step.
 6. **Cooperative Stackful Coroutine Chores (`CoroChore`)**: Integrates zero-overhead, stackful fibers (`corosensei`) as first-class AST nodes. Allows multi-phase cooperative tasks to suspend (`yielder.Suspend(())`), release control to the `Atelier` worker pool, be stolen by idle peers across thread boundaries, and seamlessly resume while preserving DAG successor dependency barriers.
 7. **Target Hardware Affinity (`ChoreTarget`)**: Directs individual chore tasks to host CPU worker threads, specific GPU backends (`Gpu(BackendKind)`), or auto-selected GPU compute (`GpuAuto`).
 
@@ -135,19 +135,19 @@ classDiagram
         +DoWork(worker)
     }
 
-    class MapCollectNode~'a, T~ {
+    class SpawnQuellNode~'a, T~ {
         +Arr~'a, T~ _Data
         +ChoreTarget _Target
         +&'static str _DocStr
         +U32 _ItemWeight
-        +fn(USeg, &DynIWorker) _MapFn
-        +fn(&DynIWorker) _CollectFn
-        +New(data, target, itemWeight, docStr, mapFn, collectFn) MapCollectNode
+        +fn(USeg, &DynIWorker) _SpawnFn
+        +fn(&DynIWorker) _QuellFn
+        +New(data, target, itemWeight, docStr, spawnFn, quellFn) SpawnQuellNode
     }
 
-    class MapChunkWork {
+    class SpawnChunkWork {
         +USeg _Seg
-        +fn(USeg, &DynIWorker) _MapFn
+        +fn(USeg, &DynIWorker) _SpawnFn
         +DoWork(worker)
     }
 
@@ -172,9 +172,9 @@ classDiagram
     IChoreNode <|.. Chore : implements
     IChoreNode <|.. CoroChore : implements
     IChoreNode <|.. BinNode : implements
-    IChoreNode <|.. MapCollectNode : implements
+    IChoreNode <|.. SpawnQuellNode : implements
     IWork <|.. FusedChore : implements
-    IWork <|.. MapChunkWork : implements
+    IWork <|.. SpawnChunkWork : implements
     Atelier *-- Maestro : owns
     Maestro o-- Atelier : references
     Atelier ..> AtelierInfo : generates trace
@@ -230,12 +230,12 @@ sequenceDiagram
     Note over W1: CoroJobFunc re-enqueues continuation:<br/>1. ConstructJob(CurSuccId=C3, CoroWork)<br/>2. SetSucc(C2_cont, C3) -> SzPred(C3) += 1<br/>3. EnqueueJob(C2_cont)
     W1->>Q: Enqueue C2 Continuation
     Note over W1: FreeJob(C2) -> SzPred(C3) -= 1 (Net SzPred=1, so C3 stays blocked)
-    
+
     rect rgb(240, 248, 255)
         Note over Q: Continuation can be stolen by any idle worker (Send)
         Q->>W1: PopJob() -> C2 Continuation
     end
-    
+
     W1->>C: Execute Step 2 (coro.Resume(newWorkerPtr))
     Note over C: Runs final phase to completion
     C-->>W1: Returns CoroRes::Done
@@ -334,10 +334,10 @@ A cooperative, multi-phase stackful coroutine chore:
 - `Target(&self) -> ChoreTarget`: Returns hardware affinity (`ChoreTarget::Cpu`).
 - `DocStr(&self) -> &'static str`: Returns documentation label.
 
-### `MapCollectNode<'a, T>` (implements `IChoreNode`)
+### `SpawnQuellNode<'a, T>` (implements `IChoreNode`)
 Data-parallel split-apply-combine node for high-throughput memory slicing:
-- `New<W: Into<U32>>(data: Arr<'a, T>, target: ChoreTarget, itemWeight: W, docStr: &'static str, mapFn: fn(USeg, &DynIWorker<'_>), collectFn: fn(&DynIWorker<'_>)) -> Self`: Constructs a data-parallel node.
-- Automatically calculates total workload weight ($N \times W_{item}$). If below `maestro.Atelier().FusionThres()` or non-CPU, executes in a single coalesced chunk; otherwise dynamically partitions across $2 \times N_{maestros}$ segments with work-stealing and synchronizes at the collect barrier.
+- `New<W: Into<U32>>(data: Arr<'a, T>, target: ChoreTarget, itemWeight: W, docStr: &'static str, spawnFn: fn(USeg, &DynIWorker<'_>), quellFn: fn(&DynIWorker<'_>)) -> Self`: Constructs a data-parallel node.
+- Automatically calculates total workload weight ($N \times W_{item}$). If below `maestro.Atelier().FusionThres()` or non-CPU, executes in a single coalesced chunk; otherwise dynamically partitions across $2 \times N_{maestros}$ segments with work-stealing and synchronizes at the quell barrier.
 
 ---
 
@@ -353,21 +353,21 @@ Data-parallel split-apply-combine node for high-throughput memory slicing:
 | **`WeightedChore!`** | Instantiates a `Chore` with explicit time-complexity weight. | `WeightedChore!( U32(50), "HeavyTask", \|w\| { ... } )` |
 | **`CoroChore!`** | Instantiates a cooperative stackful `CoroChore`. | `CoroChore!( "CoroTask", \|yielder, wPtr\| { ... } )` |
 | **`WeightedCoroChore!`** | Instantiates a `CoroChore` with explicit weight. | `WeightedCoroChore!( U32(10), "Step", \|yielder, wPtr\| { ... } )` |
-| **`MapCollect!`** | Instantiates a data-parallel `MapCollectNode`. | `MapCollect!( buff.Arr(), ChoreTarget::Cpu, mapFn, colFn )` |
-| **`CpuMapCollect!`** | Instantiates a CPU-targeted `MapCollectNode`. | `CpuMapCollect!( buff.Arr(), mapFn, colFn )` |
-| **`GpuMapCollect!`** | Instantiates an auto-GPU `MapCollectNode`. | `GpuMapCollect!( buff.Arr(), mapFn, colFn )` |
-| **`WeightedMapCollect!`** | Instantiates a `MapCollectNode` with explicit per-element weight. | `WeightedMapCollect!( buff.Arr(), U32(5), ChoreTarget::Cpu, mapFn, colFn )` |
+| **`SpawnQuell!`** | Instantiates a data-parallel `SpawnQuellNode`. | `SpawnQuell!( buff.Arr(), ChoreTarget::Cpu, spawnFn, quellFn )` |
+| **`CpuSpawnQuell!`** | Instantiates a CPU-targeted `SpawnQuellNode`. | `CpuSpawnQuell!( buff.Arr(), spawnFn, quellFn )` |
+| **`GpuSpawnQuell!`** | Instantiates an auto-GPU `SpawnQuellNode`. | `GpuSpawnQuell!( buff.Arr(), spawnFn, quellFn )` |
+| **`WeightedSpawnQuell!`** | Instantiates a `SpawnQuellNode` with explicit per-element weight. | `WeightedSpawnQuell!( buff.Arr(), U32(5), ChoreTarget::Cpu, spawnFn, quellFn )` |
 
 ---
 
 ## 8. Code Examples
 
-### 8.1 Hybrid CPU/GPU Pipeline with MapCollect & Coroutines
+### 8.1 Hybrid CPU/GPU Pipeline with SpawnQuell & Coroutines
 
 ```rust
 use kosh::{
     ChoreTree, CpuChore, GpuAutoChore, WeightedChore,
-    CoroChore, CpuMapCollect,
+    CoroChore, CpuSpawnQuell,
 };
 use kosh::heist::Atelier;
 use kosh::silo::{Buff, U32};
@@ -381,10 +381,10 @@ let dataBuff = Buff::Create(U32(100_000), |i| i.0);
 let coroTask = CoroChore!("CooperativeFiber", |yielder, _wPtr| {
     // Phase 1: Initialize
     println!("Phase 1: Initializing fiber on worker");
-    
+
     // Suspend and yield control back to Atelier thread pool
     yielder.Suspend(());
-    
+
     // Phase 2: Resume (possibly stolen by another worker thread)
     println!("Phase 2: Resumed cooperative task");
 });
@@ -396,10 +396,10 @@ let pipeline = ChoreTree!(
         | GpuAutoChore!("PrepGPU", |w| { /* GPU compute */ })
     )
     < coroTask
-    < CpuMapCollect!(
+    < CpuSpawnQuell!(
         dataBuff.Arr(),
-        |seg, w| { /* Map over sub-slice */ },
-        |w| { /* Collect reduction */ }
+        |seg, w| { /* Spawn over sub-slice */ },
+        |w| { /* Quell reduction */ }
     )
     < WeightedChore!(U32(50), "Finalize", |w| { /* Finalize */ })
 );
