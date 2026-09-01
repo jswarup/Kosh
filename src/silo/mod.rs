@@ -11,6 +11,8 @@ pub mod useg;
 pub mod cast;
 pub mod edge_connect;
 pub mod edge_broadcast;
+pub mod console;
+
 pub use	edge_connect::{ EdgeConnect, IEdgeConnect };
 pub use	edge_broadcast::{ EdgeBroadcast, IEdgeBroadcast };
 pub use	access::{ IAccess, AccessIter};
@@ -23,5 +25,6 @@ pub use	stk::Stk;
 pub use	uint::{ U8, U16, U32, U64 };
 pub use	useg::USeg;
 pub use cast::{ ICastExt, IPtrExt, IConstPtrExt, IPtrRefExt, IConstPtrRefExt, IPtrAtExt, IAllocRawExt, IVoidPtrExt, ISliceExt };
+pub use crate::{ ConsoleTest, _console_test_inner };
 
 //---------------------------------------------------------------------------------------------------------------------------------

@@ -22,6 +22,9 @@ struct Args
     /// Enable output prints from tests (nocapture)
     #[arg( short = 'g', long = "nocapture")]
     _Nocapture: bool,
+    /// Run console tests and dump their output to the console
+    #[arg( short = 'c', long = "console")]
+    _Console: bool,
     /// Run native 3D GPU workspace
     #[arg( long = "frieze")]
     _Frieze: bool,
@@ -50,12 +53,15 @@ fn	setup_logging( verbose: bool) -> Result< ()>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-fn	run_tests( filter: &str, nocapture: bool) -> Result< ()>
+fn	run_tests( filter: &str, nocapture: bool, console: bool) -> Result< ()>
 {
     let  	mut cmd = Command::new( "cargo");
     cmd.arg( "test");
     if filter != "all" {
         cmd.arg( filter);
+    }
+    if console {
+        cmd.env( "KOSH_TEST_CONSOLE", "1");
     }
     if nocapture {
         cmd.arg( "--");
@@ -76,7 +82,7 @@ fn	main() -> Result< ()>
 {
     let  	args = Args::parse();
     if let  	Some( ref filter) = args._Test {
-        return run_tests( filter, args._Nocapture);
+        return run_tests( filter, args._Nocapture, args._Console);
     }
 
     if args._Verbose {
