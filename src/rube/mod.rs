@@ -11,6 +11,7 @@ pub mod reg;
 pub mod trigger;
 pub mod vcd;
 pub mod vcdio;
+pub mod fifo;
 mod _tests;
 
 pub use	adder::{ Adder, BusAdder32, FullAdder, HalfAdder };
@@ -24,5 +25,6 @@ pub use	reg::{ Reg, RegVal };
 
 pub use	trigger::{ ITriggerWad, TriggerId, TriggerWad };
 pub use vcd::VcdWriter;
+pub use fifo::Fifo;
 
 //---------------------------------------------------------------------------------------------------------------------------------

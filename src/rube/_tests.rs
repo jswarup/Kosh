@@ -345,4 +345,56 @@ b1100 "
         assert_eq!( ts2._Values[U32( 1)]._Id, "\"");
         assert_eq!( ts2._Values[U32( 1)]._ValStr, "1100");
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_fifo()
+    {
+        use crate::rube::fifo::Fifo;
+        use crate::rube::{ SimEngine, Layout, Reg };
+
+        let  	mut layout = Layout::New();
+        let  	fifo = Fifo::New( &mut layout, "MyFifo", 4, 32);
+
+        let  	mut engine = SimEngine::Create( &layout);
+        engine.SetPortBool( fifo.Reset(), Reg::TRUE);
+        engine.SetPortBool( fifo.Clk(), Reg::FALSE);
+        engine.Drive();
+        
+        // Check empty initially due to reset
+        assert!( engine.GetPortBool( fifo.Empty()).unwrap().IsTrue());
+        
+        engine.SetPortBool( fifo.Reset(), Reg::FALSE);
+        engine.SetPortBool( fifo.Push(), Reg::TRUE);
+        engine.SetPortBool( fifo.Pop(), Reg::FALSE);
+        
+        // Push 4 values (0xA1, 0xA2, 0xA3, 0xA4)
+        for i in 1..=4 {
+            engine.SetPortValue( fifo.DataIn(), Reg::Known( 0xA0 + i));
+            engine.SetPortBool( fifo.Clk(), Reg::TRUE);
+            engine.Drive();
+            engine.SetPortBool( fifo.Clk(), Reg::FALSE);
+            engine.Drive();
+        }
+        
+        assert!( engine.GetPortBool( fifo.Full()).unwrap().IsTrue());
+        assert!( engine.GetPortBool( fifo.Empty()).unwrap().IsFalse());
+        
+        // Pop values
+        engine.SetPortBool( fifo.Push(), Reg::FALSE);
+        engine.SetPortBool( fifo.Pop(), Reg::TRUE);
+
+        for i in 1..=4 {
+            let  	dataOut = engine.GetPortValue( fifo.DataOut()).unwrap().Val();
+            assert_eq!( dataOut, 0xA0 + i);
+            
+            engine.SetPortBool( fifo.Clk(), Reg::TRUE);
+            engine.Drive();
+            engine.SetPortBool( fifo.Clk(), Reg::FALSE);
+            engine.Drive();
+        }
+        
+        assert!( engine.GetPortBool( fifo.Empty()).unwrap().IsTrue());
+    }
 }
