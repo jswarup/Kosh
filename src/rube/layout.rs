@@ -1,12 +1,14 @@
 //-- layout.rs -----------------------------------------------------------------------------------------------------------------------
 
-use	std::fmt;
+use	std::{ fmt, sync::Arc };
 use	crate::{
     rube::{
-        module::{ KernelKind, Module, ModuleId },
+        module::{ CustomModule, FastModule, KernelKind, Module, ModuleId },
         port::{ PortDesc, PortDir, PortId, PortSensitivity, PortType },
+        reg::Reg,
+        trigger::{ TriggerId, TriggerSubscriber, TriggerWad },
     },
-    silo::{ Arr, Buff, EdgeConnect, IAccess, IEdgeConnect, Stash, U32 },
+    silo::{ Arr, Buff, EdgeBroadcast, EdgeConnect, IAccess, IEdgeBroadcast, IEdgeConnect, Stash, U32, USeg },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -378,6 +380,130 @@ impl Layout
         self.Validate()?;
 
         return Ok( ());
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	PartitionNets( &self) -> ( EdgeBroadcast, Buff< TriggerId>)
+    {
+        let  	portCountU32 = self._Ports.Size();
+        let  	mut broadcast = EdgeBroadcast::New( portCountU32);
+
+        self._Modules.Arr().Traverse( |module| {
+            module._InPorts.Arr().Traverse( |&portId| {
+                broadcast.DoBroadcast( portId.0, |elemId, _, _, nextStack| {
+                    self._Connections.NodeTraverse( elemId, |nextElem| {
+                        nextStack.Push( nextElem);
+                    });
+                });
+            });
+            module._OutPorts.Arr().Traverse( |&portId| {
+                broadcast.DoBroadcast( portId.0, |elemId, _, _, nextStack| {
+                    self._Connections.NodeTraverse( elemId, |nextElem| {
+                        nextStack.Push( nextElem);
+                    });
+                });
+            });
+        });
+
+        let  	portToTrigger = broadcast.SnitchNodeGroupIds();
+        return ( broadcast, portToTrigger);
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	BuildTriggers( &self, broadcast: &EdgeBroadcast, portToTrigger: &Buff< TriggerId>) -> TriggerWad
+    {
+        let  	groupCount = broadcast.SzGroup();
+        let  	mut pastVals = Stash::WithCapacity( groupCount);
+        let  	mut currentVals = Stash::WithCapacity( groupCount);
+        let  	mut futureVals = Stash::WithCapacity( groupCount);
+
+        USeg::New( U32::_0, groupCount).Traverse( |grpIdx| {
+            let  	firstPortId = PortId( broadcast.FirstId( grpIdx));
+            let  	rootPort = &self._Ports[firstPortId.Index()];
+            let  	defaultVal = Reg::DefaultTyped( rootPort._Type);
+
+            pastVals.Push( defaultVal);
+            currentVals.Push( defaultVal);
+            futureVals.Push( defaultVal);
+        });
+
+        let  	mut subscribersLists = Buff::Create( groupCount, |_| Stash::New());
+
+        self._Modules.Arr().Traverse( |module| {
+            let  	inLen = module._InPorts.Size();
+            USeg::New( U32::_0, inLen).Traverse( |i| {
+                let  	portId = module._InPorts[i];
+                let  	trigId = portToTrigger[portId.Index()];
+                let  	sens = module._InSensitivities[i];
+                if sens != PortSensitivity::None {
+                    subscribersLists[ trigId].Push( TriggerSubscriber {
+                        _ModIndex:    module._Id.0,
+                        _Sensitivity: sens,
+                    });
+                }
+            });
+        });
+
+        let  	mut subscriberSpans = Stash::WithCapacity( groupCount);
+        let  	mut subscribers = Stash::New();
+
+        subscribersLists.Arr().Traverse( |list| {
+            let  	start = subscribers.Size();
+            list.Arr().Traverse( |sub| {
+                subscribers.Push( *sub);
+            });
+            let  	sz = subscribers.Size() - start;
+            subscriberSpans.Push( USeg::New( start, sz));
+        });
+
+        return TriggerWad::New(
+            pastVals.IntoBuff(),
+            currentVals.IntoBuff(),
+            futureVals.IntoBuff(),
+            subscriberSpans.IntoBuff(),
+            subscribers.IntoBuff(),
+        );
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	CompileModules( &self, portToTrigger: &Buff< TriggerId>) -> ( Buff< FastModule>, Buff< CustomModule>)
+    {
+        let  	modCount = self._Modules.Size();
+        let  	mut fastModules = Stash::WithCapacity( modCount);
+        let  	mut customModules = Stash::New();
+
+        self._Modules.Arr().Traverse( |module| {
+            let  	mut inTriggers = Stash::WithCapacity( module._InPorts.Size());
+            module._InPorts.Arr().Traverse( |portId| {
+                inTriggers.Push( portToTrigger[portId.Index()]);
+            });
+
+            let  	mut outTriggers = Stash::WithCapacity( module._OutPorts.Size());
+            module._OutPorts.Arr().Traverse( |portId| {
+                outTriggers.Push( portToTrigger[portId.Index()]);
+            });
+
+            if let Some( op) = module._Kernel.ToFastOp() {
+                let  	in1 = inTriggers[U32( 0)];
+                let  	in2 = if inTriggers.Size() > U32( 1) { inTriggers[U32( 1)] } else { in1 };
+                let  	outTrig = outTriggers[U32( 0)];
+                let  	outPortId = module._OutPorts[U32( 0)];
+                let  	outPortType = self._Ports[outPortId.Index()]._Type;
+                fastModules.Push( FastModule::New( module._Id, in1, in2, outTrig, op, outPortType.Mask()));
+            } else if let KernelKind::Custom( ref callback) = module._Kernel {
+                customModules.Push( CustomModule::New(
+                    module._Id,
+                    inTriggers.IntoBuff(),
+                    outTriggers.IntoBuff(),
+                    Arc::clone( callback),
+                ));
+            }
+        });
+
+        return ( fastModules.IntoBuff(), customModules.IntoBuff());
     }
 }
 

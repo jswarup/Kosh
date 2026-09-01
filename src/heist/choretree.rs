@@ -3,7 +3,7 @@
 use	std::fmt;
 use	crate::{
     heist::{ IAtelier, IMaestro },
-    silo::{ Arr, IAccess, IArr, Stash, U16, U32, USeg },
+    silo::{ Arr, IAccess, IArr, Stash, U16, U32 },
     stalks::{ BinNode, BinOp, DynIWorker, IntoWorkPtr, IWork },
     swarm::BackendKind,
 };

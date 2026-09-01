@@ -3,7 +3,11 @@
 use	std::fmt;
 use	std::sync::Arc;
 use	crate::{
-    rube::{ port::{ PortId, PortSensitivity }, reg::Reg },
+    rube::{
+        port::{ PortId, PortSensitivity },
+        reg::Reg,
+        trigger::TriggerId,
+    },
     silo::{ Buff, U32 },
 };
 
@@ -168,6 +172,69 @@ impl Module
             _InSensitivities: inSensitivities,
             _OutPorts: outPorts,
             _Kernel: kernel,
+        };
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+/// Compact 24-byte Copy struct for standard 2-in/1-out ( and 1-in/1-out) gates and bus arithmetic.
+#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct FastModule
+{
+    pub _ModuleId: ModuleId,
+    pub _In1:      TriggerId,
+    pub _In2:      TriggerId,
+    pub _Out:      TriggerId,
+    pub _Op:       KernelOp,
+    pub _Mask:     u64,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl FastModule
+{
+    #[inline]
+    pub const fn	New( modId: ModuleId, in1: TriggerId, in2: TriggerId, out: TriggerId, op: KernelOp, mask: u64) -> Self
+    {
+        return Self {
+            _ModuleId: modId,
+            _In1:      in1,
+            _In2:      in2,
+            _Out:      out,
+            _Op:       op,
+            _Mask:     mask,
+        };
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[derive( Clone)]
+pub struct CustomModule
+{
+    pub _ModuleId:    ModuleId,
+    pub _InTriggers:  Buff< TriggerId>,
+    pub _OutTriggers: Buff< TriggerId>,
+    pub _Callback:    Arc< dyn Fn( &[Reg], &mut [Reg]) + Send + Sync>,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl CustomModule
+{
+    pub fn	New(
+        moduleId: ModuleId,
+        inTriggers: Buff< TriggerId>,
+        outTriggers: Buff< TriggerId>,
+        callback: Arc< dyn Fn( &[Reg], &mut [Reg]) + Send + Sync>,
+    ) -> Self
+    {
+        return Self {
+            _ModuleId:    moduleId,
+            _InTriggers:  inTriggers,
+            _OutTriggers: outTriggers,
+            _Callback:    callback,
         };
     }
 }
