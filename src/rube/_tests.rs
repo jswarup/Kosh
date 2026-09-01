@@ -265,12 +265,12 @@ mod _tests
 
         let  	vcdWriter = VcdWriter::New( &layout, &engine);
         let  	mut vcdStr = String::new();
-        
+
         vcdWriter.WriteHeader( &layout, &engine, &mut vcdStr);
-        
+
         dLatch.SetE( &mut engine, Reg::FALSE);
         dLatch.SetD( &mut engine, Reg::TRUE);
-        for _ in 0..4 { 
+        for _ in 0..4 {
             engine.Drive();
             vcdWriter.DumpCycle( &engine, &mut vcdStr);
         }

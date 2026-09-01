@@ -54,7 +54,7 @@ impl VcdWriter
 
         layout.Modules().iter().for_each( |module| {
             out.push_str( &format!( "$scope module {} $end\n", module._Name));
-            
+
             module._InPorts.Arr().Traverse( |&portId| {
                 if let Some( port) = layout.Port( portId) {
                     if let Some( trigId) = engine.GetPortTrigger( portId) {
@@ -97,7 +97,7 @@ impl VcdWriter
     pub fn	DumpCycle( &self, engine: &SimEngine, out: &mut String)
     {
         out.push_str( &format!( "#{}\n", engine.CycleCount()));
-        
+
         USeg::New( U32::_0, engine.Triggers().Size()).Traverse( |i| {
             if engine.Triggers().IsEdge( i) {
                 let  	val = engine.GetTrigger( i);
@@ -162,3 +162,4 @@ impl VcdWriter
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
