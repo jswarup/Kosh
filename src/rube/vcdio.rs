@@ -89,10 +89,10 @@ pub(crate) struct VcdParserCtx
     _Version: String,
     _Date: String,
     _Timescale: String,
-    
+
     _ScopeStash: Stash< VcdScope>,
     _VarStash: Stash< VcdVar>,
-    
+
     _TimeSteps: Stash< VcdTimeStep>,
     _CurrentTime: u64,
     _CurrentValues: Stash< VcdValue>,
@@ -292,7 +292,7 @@ impl< 'a> IGrammar for VcdShard< 'a>
         let  	nonWs = *Charset::NonSpace();
         let  	notDollar = Charset::from( &b"$"[..]).Negative();
         let  	notDollarWs = notDollar & nonWs;
-        
+
         let  	vcdGrammar = ShardTree!(
             *(
                 *[ " \t\r\n" ]
