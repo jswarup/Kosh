@@ -75,6 +75,31 @@ pub enum PortType
 impl PortType
 {
     #[inline]
+    pub const fn	TypeSize( &self) -> U32
+    {
+        match self {
+            PortType::Bool => U32( 1),
+            PortType::U8Val => U32( 1),
+            PortType::U16Val => U32( 1),
+            PortType::U32Val => U32( 1),
+            PortType::U64Val => U32( 2),
+            PortType::Custom( bits) => U32( ( bits.0 + 31) / 32),
+        }
+    }
+
+    pub const fn	Bits( &self) -> u32
+    {
+        match self {
+            PortType::Bool => 1,
+            PortType::U8Val => 8,
+            PortType::U16Val => 16,
+            PortType::U32Val => 32,
+            PortType::U64Val => 64,
+            PortType::Custom( bits) => bits.0,
+        }
+    }
+
+    #[inline]
     pub const fn	Mask( &self) -> u64
     {
         return match self {

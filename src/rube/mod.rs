@@ -9,6 +9,8 @@ pub mod port;
 pub mod reg;
 
 pub mod trigger;
+pub mod vcd;
+pub mod vcdio;
 mod _tests;
 
 pub use	adder::{ Adder, BusAdder32, FullAdder, HalfAdder };
@@ -21,5 +23,6 @@ pub use	port::{ PortDesc, PortDir, PortId, PortSensitivity, PortType };
 pub use	reg::{ Reg, RegVal };
 
 pub use	trigger::{ ITriggerWad, TriggerId, TriggerWad };
+pub use vcd::VcdWriter;
 
 //---------------------------------------------------------------------------------------------------------------------------------

@@ -253,4 +253,33 @@ mod _tests
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    #[test]
+    fn	test_vcd_writer()
+    {
+        use crate::rube::VcdWriter;
+
+        let  	mut layout = Layout::New();
+        let  	dLatch = DLatch::New( &mut layout, "DLatch");
+        layout.Freeze().expect( "Compilation failed");
+        let  	mut engine = SimEngine::Create(&layout);
+
+        let  	vcdWriter = VcdWriter::New( &layout, &engine);
+        let  	mut vcdStr = String::new();
+        
+        vcdWriter.WriteHeader( &layout, &engine, &mut vcdStr);
+        
+        dLatch.SetE( &mut engine, Reg::FALSE);
+        dLatch.SetD( &mut engine, Reg::TRUE);
+        for _ in 0..4 { 
+            engine.Drive();
+            vcdWriter.DumpCycle( &engine, &mut vcdStr);
+        }
+
+        assert!( vcdStr.contains( "$timescale 1ns $end"));
+        assert!( vcdStr.contains( "$scope module DLatch.Inv $end"));
+        assert!( vcdStr.contains( "$var wire 1"));
+        assert!( vcdStr.contains( "$dumpvars"));
+        assert!( vcdStr.contains( "#1"));
+    }
+
 }
