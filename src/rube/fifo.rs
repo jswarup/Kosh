@@ -71,7 +71,7 @@ impl Fifo
             let  	mut s = state.lock().unwrap();
             let  	clk = inVals[0].IsTrue();
             let  	reset = inVals[1].IsTrue();
-            
+
             let  	clkRose = clk && !s._LastClk;
             s._LastClk = clk;
 
