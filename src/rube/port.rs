@@ -122,25 +122,11 @@ impl PortType
     }
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum PortSensitivity
-{
-    Up,
-    Down,
-    Any,
-    None,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
 #[derive( Clone, PartialEq, Eq, Hash, Debug)]
 pub struct PortDesc
 {
     pub _Name: String,
     pub _Type: PortType,
-    pub _Sensitivity: PortSensitivity,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -153,15 +139,7 @@ impl PortDesc
         return Self {
             _Name: name.into(),
             _Type: portType,
-            _Sensitivity: PortSensitivity::Any,
         };
-    }
-
-    #[inline]
-    pub fn	Sensitive( mut self, sensitivity: PortSensitivity) -> Self
-    {
-        self._Sensitivity = sensitivity;
-        return self;
     }
 
     #[inline]

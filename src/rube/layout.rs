@@ -4,9 +4,9 @@ use	std::{ fmt, sync::Arc };
 use	crate::{
     rube::{
         module::{ CustomModule, FastModule, KernelKind, Module, ModuleId },
-        port::{ PortDesc, PortDir, PortId, PortSensitivity, PortType },
+        port::{ PortDesc, PortDir, PortId, PortType },
         reg::Reg,
-        trigger::{ TriggerId, TriggerSubscriber, TriggerWad },
+        trigger::{ TriggerId, TriggerWad },
     },
     silo::{ Arr, Buff, EdgeBroadcast, EdgeConnect, IAccess, IEdgeBroadcast, IEdgeConnect, Stash, U32, USeg },
 };
@@ -132,14 +132,12 @@ impl Layout
     {
         let  	modId = ModuleId( self._Modules.Size());
         let  	inArr: Arr< 'a, PortDesc> = inPorts.into();
-        let  	inSensitivities = Buff::Create( inArr.Size(), |i| inArr[i]._Sensitivity);
         let  	inPortIds = self.AddPorts( modId, name, inArr, PortDir::In, |d| d.clone());
         let  	outPortIds = self.AddPorts( modId, name, outPorts, PortDir::Out, |d| d.clone());
         let  	module = Module::New(
             modId,
             name,
             inPortIds,
-            inSensitivities,
             outPortIds,
             kernel,
         );
@@ -163,13 +161,11 @@ impl Layout
     {
         let  	modId = ModuleId( self._Modules.Size());
         let  	inPortIds = self.AddPorts( modId, name, inPorts, PortDir::In, |&name| PortDesc::Bool( name));
-        let  	inSensitivities = Buff::Create( inPortIds.Size(), |_| PortSensitivity::Any);
         let  	outPortIds = self.AddPorts( modId, name, outPorts, PortDir::Out, |&name| PortDesc::Bool( name));
         let  	module = Module::New(
             modId,
             name,
             inPortIds,
-            inSensitivities,
             outPortIds,
             kernel,
         );
@@ -436,13 +432,7 @@ impl Layout
             USeg::New( U32::_0, inLen).Traverse( |i| {
                 let  	portId = module._InPorts[i];
                 let  	trigId = portToTrigger[portId.Index()];
-                let  	sens = module._InSensitivities[i];
-                if sens != PortSensitivity::None {
-                    subscribersLists[ trigId].Push( TriggerSubscriber {
-                        _ModIndex:    module._Id.0,
-                        _Sensitivity: sens,
-                    });
-                }
+                subscribersLists[ trigId].Push( module._Id.0);
             });
         });
 

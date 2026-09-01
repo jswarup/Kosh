@@ -96,13 +96,10 @@ impl SimEngine
             if self._Triggers.IsEdge( trigId) {
                 let  	spans = self._Triggers._SubscriberSpans[tIdx];
                 USeg::New( spans.First(), spans.Size()).Traverse( |sIdx| {
-                    let  	sub = self._Triggers._Subscribers[sIdx];
-                    if self._Triggers.IsSensitive( trigId, sub._Sensitivity) {
-                        let  	mIdx = sub._ModIndex.AsUsize();
-                        if !self._ModuleReady[mIdx] {
-                            self._ModuleReady[mIdx] = true;
-                            readyCount += U32( 1);
-                        }
+                    let  	mIdx = self._Triggers._Subscribers[sIdx].AsUsize();
+                    if !self._ModuleReady[mIdx] {
+                        self._ModuleReady[mIdx] = true;
+                        readyCount += U32( 1);
                     }
                 });
             }

@@ -20,7 +20,7 @@ pub use	gates::{ AndGate, NandGate, NotGate, OrGate, XorGate };
 pub use	latches::{ CRSLatch, DLatch, RSLatch };
 pub use	layout::{ Layout, LayoutError };
 pub use	module::{ CustomModule, FastModule, KernelKind, KernelOp, Module, ModuleId };
-pub use	port::{ PortDesc, PortDir, PortId, PortSensitivity, PortType };
+pub use	port::{ PortDesc, PortDir, PortId, PortType };
 pub use	reg::{ Reg, RegVal };
 
 pub use	trigger::{ ITriggerWad, TriggerId, TriggerWad };

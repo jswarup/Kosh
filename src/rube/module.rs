@@ -4,7 +4,7 @@ use	std::fmt;
 use	std::sync::Arc;
 use	crate::{
     rube::{
-        port::{ PortId, PortSensitivity },
+        port::PortId,
         reg::Reg,
         trigger::TriggerId,
     },
@@ -154,7 +154,6 @@ pub struct Module
     pub _Id: ModuleId,
     pub _Name: String,
     pub _InPorts: Buff< PortId>,
-    pub _InSensitivities: Buff< PortSensitivity>,
     pub _OutPorts: Buff< PortId>,
     pub _Kernel: KernelKind,
 }
@@ -163,13 +162,12 @@ pub struct Module
 
 impl Module
 {
-    pub fn	New( id: ModuleId, name: &str, inPorts: Buff< PortId>, inSensitivities: Buff< PortSensitivity>, outPorts: Buff< PortId>, kernel: KernelKind) -> Self
+    pub fn	New( id: ModuleId, name: &str, inPorts: Buff< PortId>, outPorts: Buff< PortId>, kernel: KernelKind) -> Self
     {
         return Self {
             _Id: id,
             _Name: name.to_string(),
             _InPorts: inPorts,
-            _InSensitivities: inSensitivities,
             _OutPorts: outPorts,
             _Kernel: kernel,
         };

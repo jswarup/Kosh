@@ -1,6 +1,6 @@
 //-- trigger.rs -------------------------------------------------------------------------------------------------------------------
 use	crate::{
-    rube::{ reg::Reg, port::PortSensitivity},
+    rube::reg::Reg,
     silo::{ U32, USeg, Buff}
 };
 
@@ -23,12 +23,7 @@ pub struct TriggerWad
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Clone, Copy, Debug)]
-pub struct TriggerSubscriber
-{
-    pub _ModIndex: U32,
-    pub _Sensitivity: PortSensitivity,
-}
+pub type TriggerSubscriber = U32;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -46,7 +41,6 @@ pub trait ITriggerWad
     fn	Future( &self, idx: TriggerId) -> Reg;
     fn	SetFuture( &mut self, idx: TriggerId, val: Reg);
     fn	SetImmediate( &mut self, idx: TriggerId, val: Reg);
-    fn	IsSensitive( &self, idx: TriggerId, sens: PortSensitivity) -> bool;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -160,17 +154,6 @@ impl ITriggerWad for TriggerWad
     {
         self._CurrentVals[idx] = val;
         self._FutureVals[idx] = val;
-    }
-
-    #[inline]
-    fn	IsSensitive( &self, idx: TriggerId, sens: PortSensitivity) -> bool
-    {
-        match sens {
-            PortSensitivity::Up => self.IsPosedge( idx),
-            PortSensitivity::Down => self.IsNegedge( idx),
-            PortSensitivity::Any => self.IsEdge( idx),
-            PortSensitivity::None => false,
-        }
     }
 }
 

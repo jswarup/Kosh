@@ -7,7 +7,7 @@ use	crate::{
     rube::{
         layout::Layout,
         module::KernelKind,
-        port::{ PortDesc, PortId, PortSensitivity, PortType },
+        port::{ PortDesc, PortId, PortType },
         reg::Reg,
     },
     silo::U32,
@@ -36,6 +36,7 @@ struct FifoState
     _Queue: VecDeque< u64>,
     _Depth: usize,
     _WidthMask: u64,
+    _LastClk: bool,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -45,11 +46,11 @@ impl Fifo
     pub fn	New( layout: &mut Layout, name: &str, depth: usize, width: u32) -> Self
     {
         let  	inPorts = [
-            PortDesc::Bool( "Clk").Sensitive( PortSensitivity::Up),
-            PortDesc::Bool( "Reset").Sensitive( PortSensitivity::Any),
-            PortDesc::Bool( "Push").Sensitive( PortSensitivity::None),
-            PortDesc::Bool( "Pop").Sensitive( PortSensitivity::None),
-            PortDesc::New( "DataIn", PortType::Custom( U32( width))).Sensitive( PortSensitivity::None),
+            PortDesc::Bool( "Clk"),
+            PortDesc::Bool( "Reset"),
+            PortDesc::Bool( "Push"),
+            PortDesc::Bool( "Pop"),
+            PortDesc::New( "DataIn", PortType::Custom( U32( width))),
         ];
 
         let  	outPorts = [
@@ -63,15 +64,20 @@ impl Fifo
             _Queue: VecDeque::with_capacity( depth),
             _Depth: depth,
             _WidthMask: widthMask,
+            _LastClk: false,
         }));
 
         let  	kernel = Arc::new( move |inVals: &[Reg], outVals: &mut [Reg]| {
             let  	mut s = state.lock().unwrap();
+            let  	clk = inVals[0].IsTrue();
             let  	reset = inVals[1].IsTrue();
+            
+            let  	clkRose = clk && !s._LastClk;
+            s._LastClk = clk;
 
             if reset {
                 s._Queue.clear();
-            } else {
+            } else if clkRose {
                 let  	push = inVals[2].IsTrue();
                 let  	pop = inVals[3].IsTrue();
                 let  	dataIn = inVals[4].Val() & s._WidthMask;
@@ -82,6 +88,8 @@ impl Fifo
                 if pop && !s._Queue.is_empty() {
                     s._Queue.pop_front();
                 }
+            } else {
+                return; // No reset and no clock edge -> do nothing, spurious trigger on inputs
             }
 
             let  	empty = s._Queue.is_empty();
