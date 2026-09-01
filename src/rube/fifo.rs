@@ -68,7 +68,7 @@ impl Fifo
         let  	kernel = Arc::new( move |inVals: &[Reg], outVals: &mut [Reg]| {
             let  	mut s = state.lock().unwrap();
             let  	reset = inVals[1].IsTrue();
-            
+
             if reset {
                 s._Queue.clear();
             } else {
@@ -106,7 +106,7 @@ impl Fifo
             _Full: layout.OutPort( modId, 2).unwrap(),
         };
     }
-    
+
     //-----------------------------------------------------------------------------------------------------------------------------
 
     #[inline]
