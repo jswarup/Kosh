@@ -1,9 +1,10 @@
 //-- engine.rs -----------------------------------------------------------------------------------------------------------------------
 
+use	std::sync::Arc;
 use	crate::{
     rube::{
         layout::Layout,
-        module::{ CustomModule, FastModule },
+        module::{ CustomWarp, FastWarp },
         port::PortId,
         reg::Reg,
         trigger::{ ITriggerWad, TriggerId, TriggerWad },
@@ -13,19 +14,15 @@ use	crate::{
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// High-density AoS Synchronous Simulation Engine.
-/// Stores hot trigger states in `_Triggers` ( 48 bytes per cell, cache-aligned).
-/// Stores cold metadata separately in `_Meta`.
-/// Evaluates fast gates via 16-byte `FastModule` descriptors without heap overhead.
 #[derive( Clone)]
 pub struct SimEngine
 {
-    pub _Triggers: TriggerWad,
-    pub _FastModules: Buff< FastModule>,
-    pub _CustomModules: Buff< CustomModule>,
+    pub _Triggers:      TriggerWad,
+    pub _FastWarps:     Buff< FastWarp>,
+    pub _CustomWarps:   Buff< CustomWarp>,
     pub _PortToTrigger: Buff< TriggerId>,
-    pub _ModuleReady: Buff< bool>,
-    pub _CycleCount: usize,
+    pub _ReadyWords:    Buff< u64>,
+    pub _CycleCount:    usize,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -36,16 +33,17 @@ impl SimEngine
     {
         let  	( broadcast, portToTrigger) = layout.PartitionNets();
         let  	triggers = layout.BuildTriggers( &broadcast, &portToTrigger);
-        let  	( fastModules, customModules) = layout.CompileModules( &portToTrigger);
-        let  	modCount = layout._Modules.Size();
-        let  	moduleReady = Buff::Create( modCount, |_| false);
+        let  	( fastWarps, customWarps) = layout.CompileWarps( &portToTrigger);
+        let  	modCount = layout._Modules.Size().AsUsize();
+        let  	wordCount = ( modCount + 63) / 64;
+        let  	readyWords = Buff::Create( U32( wordCount as u32), |_| 0u64);
 
         return Self {
             _Triggers:      triggers,
-            _FastModules:   fastModules,
-            _CustomModules: customModules,
+            _FastWarps:     fastWarps,
+            _CustomWarps:   customWarps,
             _PortToTrigger: portToTrigger,
-            _ModuleReady:   moduleReady,
+            _ReadyWords:    readyWords,
             _CycleCount:    0,
         };
     }
@@ -59,11 +57,11 @@ impl SimEngine
     #[inline]
     pub fn	Drive( &mut self) -> usize
     {
-        let  	readyCount = self.ResolveReadyModules();
+        let  	hasReady = self.ResolveReadyModules();
 
-        if readyCount > U32( 0) {
-            self.EvalFastModules();
-            self.EvalCustomModules();
+        if hasReady {
+            self.EvalFastWarps();
+            self.EvalCustomWarps();
         }
 
         self._Triggers.AdvanceAll();
@@ -73,71 +71,127 @@ impl SimEngine
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	ResolveReadyModules( &mut self) -> U32
+    fn	ResolveReadyModules( &mut self) -> bool
     {
-        let  	sz = self._ModuleReady.Size();
+        let  	wordCount = self._ReadyWords.Size();
         if self._CycleCount == 0 {
             // First cycle: evaluate all modules to initialize combinational logic
-            USeg::New( U32::_0, sz).Traverse( |i| {
-                self._ModuleReady[i.AsUsize()] = true;
+            USeg::New( U32::_0, wordCount).Traverse( |i| {
+                self._ReadyWords[i] = !0u64;
             });
-            return sz;
+            return true;
         }
 
-        // Reset readiness
-        USeg::New( U32::_0, sz).Traverse( |i| {
-            self._ModuleReady[i.AsUsize()] = false;
+        // Reset readiness words
+        USeg::New( U32::_0, wordCount).Traverse( |i| {
+            self._ReadyWords[i] = 0u64;
         });
 
-        let  	mut readyCount = U32( 0);
-        // Find triggers that changed and mark sensitive modules
+        let  	mut hasReady = false;
+        // Find triggers that changed and mark sensitive modules bitwise
         USeg::New( U32::_0, self._Triggers.Size()).Traverse( |tIdx| {
             let  	trigId = tIdx;
             if self._Triggers.IsEdge( trigId) {
                 let  	spans = self._Triggers._SubscriberSpans[tIdx];
                 USeg::New( spans.First(), spans.Size()).Traverse( |sIdx| {
                     let  	mIdx = self._Triggers._Subscribers[sIdx].AsUsize();
-                    if !self._ModuleReady[mIdx] {
-                        self._ModuleReady[mIdx] = true;
-                        readyCount += U32( 1);
+                    let  	wIdx = mIdx / 64;
+                    let  	bIdx = mIdx % 64;
+                    if wIdx < self._ReadyWords.Size().AsUsize() {
+                        self._ReadyWords[wIdx] |= 1u64 << bIdx;
+                        hasReady = true;
                     }
                 });
             }
         });
 
-        return readyCount;
+        return hasReady;
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	EvalFastModules( &mut self)
+    fn	EvalFastWarps( &mut self)
     {
-        self._FastModules.Arr().Traverse( |fm| {
-            if self._ModuleReady[fm._ModuleId.0.AsUsize()] {
-                let  	in1 = self._Triggers._CurrentVals[fm._In1];
-                let  	in2 = self._Triggers._CurrentVals[fm._In2];
-                self._Triggers._FutureVals[fm._Out] = fm._Op.Eval( in1, in2, fm._Mask);
+        self._FastWarps.Arr().Traverse( |warp| {
+            let  	op = warp._Op;
+            let  	mask = warp._Mask;
+            let  	count = warp._Count.AsUsize();
+            let  	modStart = warp._ModStart.AsUsize();
+
+            let  	mut lane = 0;
+            while lane < count {
+                let  	mIdx = modStart + lane;
+                let  	wIdx = mIdx / 64;
+                let  	bitOffset = mIdx % 64;
+                let  	activeWord = self._ReadyWords[wIdx] >> bitOffset;
+
+                let  	chunkLen = ( count - lane).min( 64 - bitOffset);
+                let  	chunkMask = if chunkLen >= 64 { !0u64 } else { ( 1u64 << chunkLen) - 1 };
+                if ( activeWord & chunkMask) == 0 {
+                    lane += chunkLen;
+                    continue;
+                }
+
+                for b in 0..chunkLen {
+                    if ( activeWord & ( 1u64 << b)) != 0 {
+                        let  	l = lane + b;
+                        let  	in1 = self._Triggers._CurrentVals[warp._In1[l]];
+                        let  	in2 = self._Triggers._CurrentVals[warp._In2[l]];
+                        self._Triggers._FutureVals[warp._Out[l]] = op.Eval( in1, in2, mask);
+                    }
+                }
+                lane += chunkLen;
             }
         });
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	EvalCustomModules( &mut self)
+    fn	EvalCustomWarps( &mut self)
     {
-        self._CustomModules.Arr().Traverse( |cm| {
-            if self._ModuleReady[cm._ModuleId.0.AsUsize()] {
-                Self::EvalCustomModule( cm, &mut self._Triggers);
+        self._CustomWarps.Arr().Traverse( |warp| {
+            let  	count = warp._Count.AsUsize();
+            let  	modStart = warp._ModStart.AsUsize();
+
+            let  	mut lane = 0;
+            while lane < count {
+                let  	mIdx = modStart + lane;
+                let  	wIdx = mIdx / 64;
+                let  	bitOffset = mIdx % 64;
+                let  	activeWord = self._ReadyWords[wIdx] >> bitOffset;
+
+                let  	chunkLen = ( count - lane).min( 64 - bitOffset);
+                let  	chunkMask = if chunkLen >= 64 { !0u64 } else { ( 1u64 << chunkLen) - 1 };
+                if ( activeWord & chunkMask) == 0 {
+                    lane += chunkLen;
+                    continue;
+                }
+
+                for b in 0..chunkLen {
+                    if ( activeWord & ( 1u64 << b)) != 0 {
+                        let  	l = lane + b;
+                        let  	cb = &warp._Instances[l];
+                        let  	inTrigs = &warp._InTriggers[l];
+                        let  	outTrigs = &warp._OutTriggers[l];
+                        Self::EvalCustomInstance( cb, inTrigs, outTrigs, &mut self._Triggers);
+                    }
+                }
+                lane += chunkLen;
             }
         });
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	EvalCustomModule( cm: &CustomModule, triggers: &mut TriggerWad)
+    fn	EvalCustomInstance(
+        cb: &Arc< dyn Fn( &[Reg], &mut [Reg]) + Send + Sync>,
+        inTriggers: &Buff< TriggerId>,
+        outTriggers: &Buff< TriggerId>,
+        triggers: &mut TriggerWad,
+    )
     {
-        let  	inLen = cm._InTriggers.Size();
-        let  	outLen = cm._OutTriggers.Size();
+        let  	inLen = inTriggers.Size();
+        let  	outLen = outTriggers.Size();
 
         // Stack-allocated buffers for modules with up to 16 inputs/outputs
         if inLen.0 <= 16 && outLen.0 <= 16 {
@@ -145,25 +199,25 @@ impl SimEngine
             let  	mut outBuf = [Reg::default(); 16];
 
             USeg::New( U32::_0, inLen).Traverse( |k| {
-                inBuf[k.AsUsize()] = triggers._CurrentVals[cm._InTriggers[k]];
+                inBuf[k.AsUsize()] = triggers._CurrentVals[inTriggers[k]];
             });
             USeg::New( U32::_0, outLen).Traverse( |k| {
-                outBuf[k.AsUsize()] = triggers._FutureVals[cm._OutTriggers[k]];
+                outBuf[k.AsUsize()] = triggers._FutureVals[outTriggers[k]];
             });
 
-            ( cm._Callback)( &inBuf[..inLen.AsUsize()], &mut outBuf[..outLen.AsUsize()]);
+            ( cb)( &inBuf[..inLen.AsUsize()], &mut outBuf[..outLen.AsUsize()]);
 
             USeg::New( U32::_0, outLen).Traverse( |k| {
-                triggers._FutureVals[cm._OutTriggers[k]] = outBuf[k.AsUsize()];
+                triggers._FutureVals[outTriggers[k]] = outBuf[k.AsUsize()];
             });
         } else {
-            let  	inVals = Buff::Create( inLen, |k| triggers._CurrentVals[cm._InTriggers[k]]);
-            let  	mut outVals = Buff::Create( outLen, |k| triggers._FutureVals[cm._OutTriggers[k]]);
+            let  	inVals = Buff::Create( inLen, |k| triggers._CurrentVals[inTriggers[k]]);
+            let  	mut outVals = Buff::Create( outLen, |k| triggers._FutureVals[outTriggers[k]]);
 
-            ( cm._Callback)( &inVals, &mut outVals);
+            ( cb)( &inVals, &mut outVals);
 
             USeg::New( U32::_0, outLen).Traverse( |k| {
-                triggers._FutureVals[cm._OutTriggers[k]] = outVals[k];
+                triggers._FutureVals[outTriggers[k]] = outVals[k];
             });
         }
     }

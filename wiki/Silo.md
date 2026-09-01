@@ -237,8 +237,11 @@ Unsigned index interval `[_First, _Last]` (`_First: U32`, `_Last: U32`):
 
 ---
 
-## 7. Macros Reference
+## 7. Macros & Console Testing Reference
 
 - **`Buff![ elem1, elem2, ... ]` / `Buff![ elem ; count ]`**: Constructs an initialized immutable `Buff<T>`.
 - **`Stash![ expr; for item in iter; if cond ]`**: List comprehension macro collecting evaluated elements into a `Stash<T>`.
 - **`ImplUIntTraits!( $type, $prim, $atomic, $asPrim )`**: Generates full arithmetic, casting, display, deref, and `AtomicInt` implementations for transparent integer wrappers.
+- **`ConsoleTest!( TestName { ... } )`**: Declares an optional console unit test. Supports concise syntax, `Result` return types, and attributes (`#[should_panic]`).
+- **`cprintln!( ... )` / `cprint!( ... )`**: Unconditionally writes directly to `stdout` bypassing `libtest` capture if `KOSH_TEST_CONSOLE=1` (or `kosh --console`) is active; otherwise falls back to standard captured `println!`.
+- **`IsConsoleEnabled() -> bool`**: Returns whether console test logging is currently active (cached via `OnceLock<bool>`).

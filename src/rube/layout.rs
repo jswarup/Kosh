@@ -3,7 +3,7 @@
 use	std::{ fmt, sync::Arc };
 use	crate::{
     rube::{
-        module::{ CustomModule, FastModule, KernelKind, Module, ModuleId },
+        module::{ CustomModule, CustomWarp, FastModule, FastWarp, KernelKind, Module, ModuleId },
         port::{ PortDesc, PortDir, PortId, PortType },
         reg::Reg,
         trigger::{ TriggerId, TriggerWad },
@@ -367,12 +367,40 @@ impl Layout
         self._Connections.DumpDot( ostr);
     }
 
+    pub fn	SortModules( &mut self)
+    {
+        let  	modCount = self._Modules.Size();
+        if modCount <= U32( 1) {
+            return;
+        }
+
+        // Step 1.1: Sort modules by KernelKind ClassKey
+        self._Modules.SliceMut().sort_by_key( |m| m._Kernel.ClassKey());
+
+        // Step 1.2: Remap ModuleId and update _PortOwners
+        USeg::New( U32::_0, modCount).Traverse( |i| {
+            let  	newModId = ModuleId( i);
+            self._Modules[i]._Id = newModId;
+            self._Modules[i]._InPorts.Arr().Traverse( |portId| {
+                self._PortOwners[portId.Index()] = newModId;
+            });
+            self._Modules[i]._OutPorts.Arr().Traverse( |portId| {
+                self._PortOwners[portId.Index()] = newModId;
+            });
+        });
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	Freeze( &mut self) -> Result< (), LayoutError>
     {
-        // Step 1: Compact connection graph for CSR binary search / segments
+        // Step 1: Sort modules for their KernelKind & vtable
+        self.SortModules();
+
+        // Step 2: Compact connection graph for CSR binary search / segments
         self._Connections.Compact();
 
-        // Step 2: Validate graph connections
+        // Step 3: Validate graph connections
         self.Validate()?;
 
         return Ok( ());
@@ -459,6 +487,108 @@ impl Layout
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    pub fn	CompileWarps( &self, portToTrigger: &Buff< TriggerId>) -> ( Buff< FastWarp>, Buff< CustomWarp>)
+    {
+        let  	mut fastWarps = Stash::New();
+        let  	mut customWarps = Stash::New();
+
+        let  	modules = self._Modules.Slice();
+        let  	mut i = 0;
+
+        while i < modules.len() {
+            let  	m = &modules[i];
+            match m._Kernel {
+                KernelKind::Custom( _) => {
+                    let  	vtablePtr = m._Kernel.ClassKey().1;
+                    let  	startIdx = i;
+                    let  	mut instances = Stash::New();
+                    let  	mut inTriggersList = Stash::New();
+                    let  	mut outTriggersList = Stash::New();
+
+                    while i < modules.len() && modules[i]._Kernel.ClassKey() == ( 1, vtablePtr) {
+                        let  	curMod = &modules[i];
+                        if let KernelKind::Custom( cb) = &curMod._Kernel {
+                            instances.Push( Arc::clone( cb));
+                        }
+
+                        let  	mut inTrig = Stash::WithCapacity( curMod._InPorts.Size());
+                        curMod._InPorts.Arr().Traverse( |portId| {
+                            inTrig.Push( portToTrigger[portId.Index()]);
+                        });
+                        inTriggersList.Push( inTrig.IntoBuff());
+
+                        let  	mut outTrig = Stash::WithCapacity( curMod._OutPorts.Size());
+                        curMod._OutPorts.Arr().Traverse( |portId| {
+                            outTrig.Push( portToTrigger[portId.Index()]);
+                        });
+                        outTriggersList.Push( outTrig.IntoBuff());
+
+                        i += 1;
+                    }
+
+                    let  	count = ( i - startIdx) as u32;
+                    customWarps.Push( CustomWarp::New(
+                        vtablePtr,
+                        U32( startIdx as u32),
+                        U32( count),
+                        instances.IntoBuff(),
+                        inTriggersList.IntoBuff(),
+                        outTriggersList.IntoBuff(),
+                    ));
+                }
+                _ => {
+                    let  	op = m._Kernel.ToFastOp().unwrap();
+                    let  	outPortId0 = m._OutPorts[U32( 0)];
+                    let  	mask = self._Ports[outPortId0.Index()]._Type.Mask();
+                    let  	startIdx = i;
+
+                    let  	mut in1List = Stash::New();
+                    let  	mut in2List = Stash::New();
+                    let  	mut outList = Stash::New();
+
+                    while i < modules.len() {
+                        let  	curMod = &modules[i];
+                        if let Some( curOp) = curMod._Kernel.ToFastOp() {
+                            let  	curOutPort0 = curMod._OutPorts[U32( 0)];
+                            let  	curMask = self._Ports[curOutPort0.Index()]._Type.Mask();
+                            if curOp == op && curMask == mask {
+                                let  	in1 = portToTrigger[curMod._InPorts[U32( 0)].Index()];
+                                let  	in2 = if curMod._InPorts.Size() > U32( 1) {
+                                    portToTrigger[curMod._InPorts[U32( 1)].Index()]
+                                } else {
+                                    in1
+                                };
+                                let  	outTrig = portToTrigger[curOutPort0.Index()];
+
+                                in1List.Push( in1);
+                                in2List.Push( in2);
+                                outList.Push( outTrig);
+                                i += 1;
+                                continue;
+                            }
+                        }
+                        break;
+                    }
+
+                    let  	count = ( i - startIdx) as u32;
+                    fastWarps.Push( FastWarp::New(
+                        op,
+                        U32( startIdx as u32),
+                        U32( count),
+                        mask,
+                        in1List.IntoBuff(),
+                        in2List.IntoBuff(),
+                        outList.IntoBuff(),
+                    ));
+                }
+            }
+        }
+
+        return ( fastWarps.IntoBuff(), customWarps.IntoBuff());
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	CompileModules( &self, portToTrigger: &Buff< TriggerId>) -> ( Buff< FastModule>, Buff< CustomModule>)
     {
         let  	modCount = self._Modules.Size();
@@ -483,7 +613,7 @@ impl Layout
                 let  	outPortId = module._OutPorts[U32( 0)];
                 let  	outPortType = self._Ports[outPortId.Index()]._Type;
                 fastModules.Push( FastModule::New( module._Id, in1, in2, outTrig, op, outPortType.Mask()));
-            } else if let KernelKind::Custom( ref callback) = module._Kernel {
+            } else if let KernelKind::Custom( callback) = &module._Kernel {
                 customModules.Push( CustomModule::New(
                     module._Id,
                     inTriggers.IntoBuff(),

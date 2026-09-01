@@ -106,12 +106,13 @@ To ensure strict separation of concerns and maximum rendering throughput:
 - **`wxfrieze` is Presentation Only**: Built on `wxdragon` (wxWidgets) and `wgpu`. It manages OS window frames, dockable AUI layout panes (`wxAuiManager`), user input dispatch (orbit/pan/zoom), and native Canvas 2D / WGPU rendering surfaces. It **must not** parse raw geometry, compute camera projection matrices, perform frustum culling, or execute compute kernels.
 - **`fenst` Orchestrates Graphics**: `fenst` manages virtual data providers, active graphics sessions (`PtsSessionState`), asset caching, camera transformations, and multi-GPU frame dispatch. All heavy geometric projections are delegated through `swarm` to `symph` SIMT kernels.
 
-### Pillar 7: Synchronous Digital Logic & Discrete-Event Simulation (`rube`)
-Digital logic circuits and event-driven dataflow systems are simulated with zero allocations during execution:
+### Pillar 7: Synchronous Digital Logic & SIMT Simulation (`rube`)
+Digital logic circuits and hardware netlists are simulated with zero allocations during execution:
 - **Unified 16-Byte Multi-Value Register (`Reg`)**: Represents 2-state and 4-state logic (0, 1, X) with IEEE-1364 bitwise operators (`!`, `&`, `|`, `^`).
-- **Array-of-Structures (AoS) Temporal Latching**: 48-byte `TriggerState` cells (`_Past`, `_Current`, `_Future`) fit within a single 64-byte L1 cache line.
-- **Topological Net Compilation (`NetCompiler`)**: Merges connected ports via Disjoint-Set Union (DSU) in $O(P \cdot \alpha(P))$ time.
-- **Dual Execution Modes**: Multicycle synchronous clock-ticking (`SimEngine`) and discrete-event delta-cycle propagation (`SimContext`) with flat 64-bit word bitmasks and inverted sensitivity indexes.
+- **Structure-of-Arrays (SoA) Temporal State (`TriggerWad`)**: Contiguous arrays for past, present, and future values (`_PastVals`, `_CurrentVals`, `_FutureVals`) and subscriber spans.
+- **`Layout::Freeze` Topological & Vtable Sorting**: Sorts modules by opcode (fast primitive gates) and `dyn Fn` vtable pointer (custom behavioral blocks) for instruction cache locality.
+- **SIMT Warp Execution & 64-Lane Word Predication**: `_ReadyWords: Buff<u64>` bitmasks allow the engine to skip 64 inactive gates in 1 CPU instruction. Active lanes evaluate homogenous opcode kernels (`FastWarp`) and vtable-clustered closures (`CustomWarp`) without branch switching.
+- **Waveform I/O & Component Library**: Full IEEE-1364 VCD export (`VcdWriter`) and streaming parser (`VcdParser`), logic gates, latches, adders, and configurable synchronous FWFT queues (`Fifo`).
 
 ### Pillar 8: 1:1 Trait-per-Struct Pattern & Minimal Interface Design
 Kosh establishes a strict interface decoupling model across all primary structs:
@@ -126,7 +127,7 @@ Kosh establishes a strict interface decoupling model across all primary structs:
 
 | Module | Core Purpose | Primary Structs & Enums | Primary Traits & Macros | Wiki Reference |
 | :--- | :--- | :--- | :--- | :--- |
-| **`silo`** | Memory management, custom unsigned numerics, dynamic/fixed arrays | `U8`, `U16`, `U32`, `U64`, `Buff<T>`, `Stash<T>`, `Arr<'a, T>`, `Stk<'a, 'b, T>`, `USeg` | `IAccess`, `IArr`, `ICastExt`, `ISliceExt`, `Buff!`, `Stash!` | [Silo.md](Silo.md) |
+| **`silo`** | Memory management, custom unsigned numerics, dynamic/fixed arrays | `U8`, `U16`, `U32`, `U64`, `Buff<T>`, `Stash<T>`, `Arr<'a, T>`, `Stk<'a, 'b, T>`, `USeg` | `IAccess`, `IArr`, `ICastExt`, `ISliceExt`, `Buff!`, `Stash!`, `ConsoleTest!`, `cprintln!` | [Silo.md](Silo.md) |
 | **`stalks`** | Concurrency primitives, AST nodes, stackful coroutines, worker thread abstraction | `Atm<T>`, `Spinlock`, `UniNode<C, Op>`, `BinNode<L, R, Op>`, `BinOp`, `Coro<In, Y, Out>`, `CoroRes<Y, R>`, `WorkPtr<'a>`, `Worker` | `AtomicInt`, `INode`, `ICoro`, `IWork`, `IWorker`, `NodeTree!`, `Coro!` | [Stalks.md](Stalks.md) |
 | **`shard`** | Recursive-descent grammar combinators and streaming JSON | `Parser<'p>`, `Charset`, `Str`, `UIntShard`, `IntShard`, `HexShard`, `RealShard`, `WSpc`, `JSon<'a>` | `IGrammar`, `INotify`, `ShardTree!` | [Shard.md](Shard.md) |
 | **`fresco`** | Symbolic algebra expressions and term repositories | `ExprRepos`, `PolyExpr`, `SumExpr`, `ProdExpr`, `PowExpr`, `RealExpr`, `VarExpr`, `VarAttrib`, `Term` | `ITermNode`, `AsTermNode`, `BaseExpr`, `TermTree!` | [Fresco.md](Fresco.md) |
@@ -134,7 +135,7 @@ Kosh establishes a strict interface decoupling model across all primary structs:
 | **`swarm`** | Hardware compute engine across CPU, WebGPU, and CUDA | `SwarmEngine`, `SwarmDevice`, `SwarmBuffer`, `SwarmKernel`, `StandardOp`, `SwarmMath` | `IComputeDevice`, `IComputeBuffer`, `IComputeKernel`, `IGpuOp` | [Swarm.md](Swarm.md) |
 | **`symph`** | Rust-GPU SPIR-V compute kernels and algorithms (`no_std` for SPIR-V builds) | Pure SIMT functions (`wang_hash`, `collatz`, `pointcloud_elem`, `double_elem`, `vector_add_elem`) | SPIR-V Shaders (`pts_pointcloud_cs`, `camera_transform_cs`, `frustum_cull_cs`, `scene_vs`, `scene_fs`) | [Swarm.md](Swarm.md) |
 | **`heist`** | Asynchronous workflow DAG orchestrator, data-parallel map-reduce, coroutine framework and work-stealing scheduler | `Atelier<'a>`, `Maestro<'a>`, `Chore`, `CoroChore`, `SpawnQuellNode<'a, T>`, `WorkerFatPtr`, `ChoreTarget`, `JobInfo`, `AtelierInfo` | `IAtelier`, `IMaestro`, `IChore`, `ICoroChore`, `IChoreNode`, `ChoreTree!`, `Chore!`, `CpuChore!`, `GpuAutoChore!`, `WeightedChore!`, `CoroChore!`, `WeightedCoroChore!`, `SpawnQuell!`, `CpuSpawnQuell!`, `GpuSpawnQuell!` | [Heist.md](Heist.md) |
-| **`rube`** | Synchronous digital logic simulation and discrete-event dataflow framework | `Reg`, `TriggerState`, `TriggerWad`, `Layout`, `NetCompiler`, `SimEngine`, `SimContext`, `FastModule`, `CustomModule`, `Adder<N>` | `NandGate`, `AndGate`, `OrGate`, `NotGate`, `XorGate`, `CRSLatch`, `DLatch`, `RSLatch` | [Rube.md](Rube.md) |
+| **`rube`** | Synchronous digital logic simulation and SIMT execution engine | `Reg`, `TriggerWad`, `Layout`, `FastWarp`, `CustomWarp`, `SimEngine`, `Fifo`, `VcdWriter`, `VcdParser` | `NandGate`, `AndGate`, `OrGate`, `NotGate`, `XorGate`, `CRSLatch`, `DLatch`, `RSLatch`, `Adder<N>` | [Rube.md](Rube.md) |
 | **`fleck`** | 3D Point Cloud (.pts) & Wavefront (.obj) mesh parsing, spatial bounding boxes, `Vex` | `PtsPoint`, `PtsCloud`, `WaveObjMesh`, `WaveObjFace`, `Vex<N, T>`, `Pt3f`, `WPt3f`, `Point32`, `RGB` | `ParsePts`, `ParsePtsStream`, `ParseWaveObj`, `ToDto` | [Fleck.md](Fleck.md) |
 | **`fenst`** | Virtual data provider framework, graphics session & camera orchestrator | `XplrEntry`, `XplrContent`, `XplrLeafInfo`, `FsBranch`, `FsLeaf`, `FrescoBranch`, `ShardBranch`, `XplrRegistry`, `PtsSessionState`, `PtsFrameDto` | `Xplr`, `LeafXplr`, `BranchXplr`, `XplrProvider`, `CreateDefaultRegistry` | [Fenst.md](Fenst.md) |
 | **`wxfrieze`** | Native desktop workspace built with `wxdragon` (wxWidgets 3.2+) and `wgpu` | `AppState`, `AppTheme`, `OpenTab`, `AuiManager`, `AuiPaneInfo`, `Notebook`, `ExplorerPanel`, `PtsView`, `ObjView`, `FrescoView` | `run()` | [Frieze.md](Frieze.md) |

@@ -13,7 +13,7 @@ mod _tests
             port::PortId,
             reg::Reg,
         },
-        silo::U32,
+        silo::{ Stash, U32, USeg },
     };
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -396,5 +396,62 @@ b1100 "
         }
 
         assert!( engine.GetPortBool( fifo.Empty()).unwrap().IsTrue());
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_simt_warps()
+    {
+        let  	mut layout = Layout::New();
+        let  	gateCount = U32( 128);
+
+        // Add 128 AND gates and 128 XOR gates
+        let  	mut andIn1 = Stash::WithCapacity( gateCount);
+        let  	mut andIn2 = Stash::WithCapacity( gateCount);
+        let  	mut andOut = Stash::WithCapacity( gateCount);
+
+        let  	mut xorIn1 = Stash::WithCapacity( gateCount);
+        let  	mut xorIn2 = Stash::WithCapacity( gateCount);
+        let  	mut xorOut = Stash::WithCapacity( gateCount);
+
+        USeg::New( U32::_0, gateCount).Traverse( |i| {
+            let  	andMod = AndGate::New( &mut layout, &format!( "And_{}", i));
+            andIn1.Push( andMod._In1);
+            andIn2.Push( andMod._In2);
+            andOut.Push( andMod._Out);
+
+            let  	xorMod = XorGate::New( &mut layout, &format!( "Xor_{}", i));
+            xorIn1.Push( xorMod._In1);
+            xorIn2.Push( xorMod._In2);
+            xorOut.Push( xorMod._Out);
+        });
+
+        assert!( layout.Freeze().is_ok());
+
+        let  	mut engine = SimEngine::Create( &layout);
+
+        // Verify warps were compiled
+        assert!( engine._FastWarps.Size() >= U32( 2));
+
+        // Drive even AND gates with (1, 1) -> 1, odd with (1, 0) -> 0
+        USeg::New( U32::_0, gateCount).Traverse( |i| {
+            engine.SetPortBool( andIn1[i], Reg::TRUE);
+            let  	in2Val = if i.0 % 2 == 0 { Reg::TRUE } else { Reg::FALSE };
+            engine.SetPortBool( andIn2[i], in2Val);
+
+            // Drive XOR gates with (1, 0) -> 1
+            engine.SetPortBool( xorIn1[i], Reg::TRUE);
+            engine.SetPortBool( xorIn2[i], Reg::FALSE);
+        });
+
+        engine.Drive();
+
+        // Check outputs
+        USeg::New( U32::_0, gateCount).Traverse( |i| {
+            let  	expectedAnd = if i.0 % 2 == 0 { Reg::TRUE } else { Reg::FALSE };
+            assert_eq!( engine.GetPortBool( andOut[i]).unwrap(), expectedAnd);
+            assert_eq!( engine.GetPortBool( xorOut[i]).unwrap(), Reg::TRUE);
+        });
     }
 }

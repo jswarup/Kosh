@@ -144,6 +144,31 @@ impl KernelKind
             Self::Custom( _) => None,
         };
     }
+
+    #[inline]
+    pub fn	ClassKey( &self) -> ( u8, usize)
+    {
+        return match self {
+            Self::Nand => ( 0, KernelOp::Nand as usize),
+            Self::And => ( 0, KernelOp::And as usize),
+            Self::Or => ( 0, KernelOp::Or as usize),
+            Self::Not => ( 0, KernelOp::Not as usize),
+            Self::Xor => ( 0, KernelOp::Xor as usize),
+            Self::Nor => ( 0, KernelOp::Nor as usize),
+            Self::Xnor => ( 0, KernelOp::Xnor as usize),
+            Self::Add => ( 0, KernelOp::Add as usize),
+            Self::Sub => ( 0, KernelOp::Sub as usize),
+            Self::Shl => ( 0, KernelOp::Shl as usize),
+            Self::Shr => ( 0, KernelOp::Shr as usize),
+            Self::Custom( callback) => {
+                let  	rawDyn: *const ( dyn Fn( &[Reg], &mut [Reg]) + Send + Sync) = Arc::as_ptr( callback);
+                let  	( _dataPtr, vtablePtr): ( *const (), *const ()) = unsafe {
+                    std::mem::transmute( rawDyn)
+                };
+                ( 1, vtablePtr as usize)
+            }
+        };
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -238,3 +263,85 @@ impl CustomModule
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+/// Structure-of-Arrays (SoA) SIMT Warp for homogeneous FastModule blocks.
+#[derive( Clone, Debug)]
+pub struct FastWarp
+{
+    pub _Op:       KernelOp,
+    pub _ModStart: U32,
+    pub _Count:    U32,
+    pub _Mask:     u64,
+    pub _In1:      Buff< TriggerId>,
+    pub _In2:      Buff< TriggerId>,
+    pub _Out:      Buff< TriggerId>,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl FastWarp
+{
+    #[inline]
+    pub fn	New(
+        op: KernelOp,
+        modStart: U32,
+        count: U32,
+        mask: u64,
+        in1: Buff< TriggerId>,
+        in2: Buff< TriggerId>,
+        out: Buff< TriggerId>,
+    ) -> Self
+    {
+        return Self {
+            _Op:       op,
+            _ModStart: modStart,
+            _Count:    count,
+            _Mask:     mask,
+            _In1:      in1,
+            _In2:      in2,
+            _Out:      out,
+        };
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+/// Structure-of-Arrays (SoA) SIMT Warp for homogeneous CustomModule closures sharing a vtable.
+#[derive( Clone)]
+pub struct CustomWarp
+{
+    pub _VtablePtr:   usize,
+    pub _ModStart:    U32,
+    pub _Count:       U32,
+    pub _Instances:   Buff< Arc< dyn Fn( &[Reg], &mut [Reg]) + Send + Sync>>,
+    pub _InTriggers:  Buff< Buff< TriggerId>>,
+    pub _OutTriggers: Buff< Buff< TriggerId>>,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl CustomWarp
+{
+    #[inline]
+    pub fn	New(
+        vtablePtr: usize,
+        modStart: U32,
+        count: U32,
+        instances: Buff< Arc< dyn Fn( &[Reg], &mut [Reg]) + Send + Sync>>,
+        inTriggers: Buff< Buff< TriggerId>>,
+        outTriggers: Buff< Buff< TriggerId>>,
+    ) -> Self
+    {
+        return Self {
+            _VtablePtr:   vtablePtr,
+            _ModStart:    modStart,
+            _Count:       count,
+            _Instances:   instances,
+            _InTriggers:  inTriggers,
+            _OutTriggers: outTriggers,
+        };
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+

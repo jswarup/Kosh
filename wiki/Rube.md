@@ -2,16 +2,19 @@
 
 ## 1. Overview & Purpose
 
-The `rube` module is Kosh's **ultra-low-latency synchronous digital logic simulation and discrete-event dataflow framework**. It provides an end-to-end pipeline for defining netlists, performing topological net compilation, and simulating digital systems with zero heap allocation during execution.
+The `rube` module is Kosh's **ultra-low-latency synchronous digital logic simulation and SIMT execution engine**. It provides an end-to-end framework for declaring hardware netlists, performing topological net compilation, and simulating digital systems with zero heap allocation during the simulation hot path.
 
-Key design principles:
-1. **Multi-Value Register Model (`Reg`)**: Unified 16-byte bit-packed register supporting 2-state and 4-state logic (0, 1, X) across Boolean, U8, U16, U32, and U64 bus widths.
-2. **Hot AoS Temporal Latching (`TriggerState`)**: 48-byte contiguous state cells (`_Past`, `_Current`, `_Future`) fitting within a single 64-byte L1 cache line, completely isolated from cold metadata (`TriggerMeta`).
-3. **Disjoint-Set Union (DSU) Net Compilation (`NetCompiler`)**: Merges connected input and output ports into canonical net roots in $O(P \cdot \alpha(P))$ time.
-4. **Dual Execution Models**:
-   - **Synchronous Engine (`SimEngine`)**: Multicycle synchronous clock-ticking with streaming fast-gate evaluation (`FastModule`) and custom module callbacks (`CustomModule`).
-   - **Discrete-Event Engine (`SimContext`)**: Event-driven delta-cycle engine using 64-bit flat bitmasks, an inverted trigger sensitivity index, and zero-allocation persistent queue swap buffers.
-5. **Zero `std::vec::Vec` Invariant**: All buffers, queues, and metadata use project-native `silo::Buff` and `silo::Stash`.
+Key architectural highlights:
+1. **Unified Register Currency (`Reg`)**: 16-byte bit-packed register supporting 2-state and 4-state IEEE-1364 logic (0, 1, X) across Boolean, U8, U16, U32, and U64 bus widths.
+2. **Structure-of-Arrays Temporal Storage (`TriggerWad`)**: Contiguous arrays for temporal states (`_PastVals`, `_CurrentVals`, `_FutureVals`) and subscriber spans (`_SubscriberSpans`, `_Subscribers`) maximizing L1 cache locality.
+3. **Graph Broadcast Net Partitioning (`EdgeBroadcast`)**: Merges connected input and output ports into canonical net trigger IDs using breadth-first CSR traversal.
+4. **SIMT Warp Execution Pipeline**:
+   - **`Layout::Freeze` Step 1**: Automatically sorts modules by opcode for fast primitive gates and by closure `vtable` pointer for custom behavioral blocks.
+   - **`FastWarp` & `CustomWarp`**: Batched Structure-of-Arrays (SoA) execution blocks eliminating dynamic opcode switching.
+   - **64-Lane Word Predication (`_ReadyWords`)**: Bit-packed readiness tracking (8x memory compression) enabling the engine to skip 64 inactive gates in a single CPU cycle.
+5. **Zero `std::vec::Vec` Invariant**: All buffers and metadata use project-native `silo::Buff` and `silo::Stash`.
+6. **VCD Waveform I/O (`vcd`, `vcdio`)**: Full IEEE-1364 Value Change Dump (VCD) writer and zero-heap `ShardTree` parser.
+7. **Rich Standard Component Library**: Built-in primitives for standard logic gates (`NandGate`, `AndGate`, `XorGate`, etc.), latches (`DLatch`, `CRSLatch`, `RSLatch`), adders (`HalfAdder`, `FullAdder`, `Adder<N>`, `BusAdder32`), and synchronous memory queues (`Fifo`).
 
 ---
 
@@ -33,25 +36,21 @@ classDiagram
         +Masked(mask) Reg
     }
 
-    class TriggerState {
-        +Reg _Past
-        +Reg _Current
-        +Reg _Future
-        +Advance() (Reg, Reg)
-        +IsEdge() bool
-        +IsPosedge() bool
-        +IsNegedge() bool
-    }
-
     class TriggerWad {
-        +Buff~TriggerState~ _Triggers
-        +Buff~TriggerMeta~ _Meta
-        +Add(name, initial) TriggerId
-        +AddTyped(name, portType, initial) TriggerId
-        +Get(id) Reg
-        +GetFuture(id) Reg
-        +SetFutureValue(id, val) bool
-        +Advance(id) (Reg, Reg)
+        +Buff~Reg~ _PastVals
+        +Buff~Reg~ _CurrentVals
+        +Buff~Reg~ _FutureVals
+        +Buff~USeg~ _SubscriberSpans
+        +Buff~TriggerSubscriber~ _Subscribers
+        +Size() U32
+        +AdvanceAll() void
+        +IsEdge(id) bool
+        +IsPosedge(id) bool
+        +IsNegedge(id) bool
+        +Current(id) Reg
+        +Future(id) Reg
+        +SetFuture(id, val) void
+        +SetImmediate(id, val) void
     }
 
     class Layout {
@@ -60,97 +59,87 @@ classDiagram
         +Stash~ModuleId~ _PortOwners
         +EdgeConnect _Connections
         +AddModule(name, inPorts, outPorts, kernel) ModuleId
-        +AddModuleSimple(name, inPorts, outPorts, kernel) ModuleId
+        +AddStdModule(name, inPorts, outPorts, kernel) ModuleId
         +Connect(srcOut, dstIn) Layout
-        +Validate() Result~(), LayoutError~
-        +DumpDot(ostr) void
-        +Compile() Result~SimEngine, LayoutError~
+        +SortModules() void
+        +Freeze() Result~(), LayoutError~
+        +PartitionNets() (EdgeBroadcast, Buff~TriggerId~)
+        +BuildTriggers(broadcast, portToTrigger) TriggerWad
+        +CompileWarps(portToTrigger) (Buff~FastWarp~, Buff~CustomWarp~)
     }
 
-    class FastModule {
-        +TriggerId _In1
-        +TriggerId _In2
-        +TriggerId _Out
+    class FastWarp {
         +KernelOp _Op
-        +New(in1, in2, out, op) FastModule
+        +U32 _ModStart
+        +U32 _Count
+        +u64 _Mask
+        +Buff~TriggerId~ _In1
+        +Buff~TriggerId~ _In2
+        +Buff~TriggerId~ _Out
     }
 
-    class CustomModule {
-        +ModuleId _Id
-        +Buff~TriggerId~ _InTriggers
-        +Buff~TriggerId~ _OutTriggers
-        +Arc~Callback~ _Callback
+    class CustomWarp {
+        +usize _VtablePtr
+        +U32 _ModStart
+        +U32 _Count
+        +Buff~Callback~ _Instances
+        +Buff~Buff~TriggerId~~ _InTriggers
+        +Buff~Buff~TriggerId~~ _OutTriggers
     }
 
     class SimEngine {
-        -Buff~TriggerState~ _Triggers
-        -Buff~TriggerMeta~ _Meta
-        -Buff~FastModule~ _FastModules
-        -Buff~CustomModule~ _CustomModules
+        -TriggerWad _Triggers
+        -Buff~FastWarp~ _FastWarps
+        -Buff~CustomWarp~ _CustomWarps
         -Buff~TriggerId~ _PortToTrigger
+        -Buff~u64~ _ReadyWords
         -usize _CycleCount
+        +Create(layout) SimEngine
         +Drive() usize
-        +SetPortBool(port, val)
-        +SetPortU32(port, val)
+        +SetPortBool(port, val) bool
+        +SetPortValue(port, val) bool
         +GetPortBool(port) Option~Reg~
-        +GetPortU32(port) Option~Reg~
+        +GetPortValue(port) Option~Reg~
         +CycleCount() usize
     }
 
-    class SimContext {
-        +TriggerWad _Triggers
-        -Stash~ActionKind~ _Actions
-        -Buff~Stash~TriggerTarget~~ _TriggerSensitivities
-        -Stash~u64~ _ArmedMask
-        -Stash~TriggerId~ _ArmedQueue
-        -Stash~u64~ _PendingMask
-        -Stash~ActionId~ _PendingQueue
-        +AddTrigger(name, initial) TriggerId
-        +AddAction(action, sensitivities) ActionId
-        +SetValue(id, val)
-        +Drive() usize
-    }
-
-    Layout --> NetCompiler : compiles via
-    NetCompiler --> SimEngine : produces
-    SimEngine *-- FastModule
-    SimEngine *-- CustomModule
-    SimEngine *-- TriggerState
-    TriggerWad *-- TriggerState
-    SimContext *-- TriggerWad
+    Layout --> EdgeBroadcast : partitions via
+    Layout --> TriggerWad : builds
+    Layout --> FastWarp : compiles into
+    Layout --> CustomWarp : compiles into
+    SimEngine *-- TriggerWad
+    SimEngine *-- FastWarp
+    SimEngine *-- CustomWarp
 ```
 
 ---
 
-## 3. Core Subcomponents
+## 3. Core Subsystems
 
 ### 3.1 Unified 16-Byte Register (`Reg`)
-`Reg` is the universal data currency across `rube`. It packs both value bits (`_Val`) and unknown mask bits (`_X`) into two 64-bit words:
-- **Known Valid**: `_X == 0`. `_Val` holds the exact value.
-- **Unknown (X)**: `_X != 0`. Each set bit in `_X` marks the corresponding bit in `_Val` as undefined.
-- **IEEE-1364 4-State Bitwise Operators**: Implements `Not`, `BitAnd`, `BitOr`, and `BitXor` with exact 4-state ternary propagation rules:
-  - `0 & X = 0`, `1 & X = X`, `X & X = X`
-  - `1 | X = 1`, `0 | X = X`, `X | X = X`
-  - `!X = X`
+`Reg` is the universal data currency across `rube`. It packs data value bits (`_Val`) and unknown mask bits (`_X`) into two 64-bit words:
+- **Known Valid**: `_X == 0`. `_Val` holds the exact integer or boolean value.
+- **Unknown (X)**: `_X != 0`. Marked bits indicate high-impedance or uninitialized states.
+- **Ternary Operators**: Implements `Not`, `BitAnd`, `BitOr`, and `BitXor` according to IEEE-1364 4-state logic propagation rules.
 
-### 3.2 Layout & Topological Net Compilation (`NetCompiler`)
-1. **Declaration**: Modules and ports are declared via `Layout::AddModule` or `Layout::AddModuleSimple`.
-2. **Driver Validation**: Validates 1-to-1 input driver constraints (`DuplicateInputDriver`), port directions (`InvalidPortDirection`), and port data types (`TypeMismatch`).
-3. **DSU Net Aliasing**: Merges connected nets using path-compressed Disjoint Set Union ($O(P \cdot \alpha(P))$ time).
-4. **Fast Kernel Inlining**: Standard logic gates (`Nand`, `And`, `Or`, `Not`, `Xor`, `Nor`, `Xnor`) are compiled into flat `FastModule` records containing direct `TriggerId` indices.
+### 3.2 Layout & Topological Net Partitioning
+1. **Declaration**: Modules and ports are added via `Layout::AddModule` or `Layout::AddStdModule`.
+2. **Freeze & Compilation**:
+   - **Step 1 (Module Sorting)**: Sorts all modules by `KernelKind::ClassKey()`, clustering primitive gates by opcode and custom closures by `vtable` pointer.
+   - **Step 2 (CSR Graph Compaction)**: Compacts `EdgeConnect` into CSR binary-search segments.
+   - **Step 3 (Validation)**: Verifies 1-to-1 driver rules and port type matching.
+3. **Net Partitioning (`EdgeBroadcast`)**: Traverses connected nets using `EdgeBroadcast::DoBroadcast` to produce canonical `TriggerId` group assignments for every port.
 
-### 3.3 Synchronous Simulation Engine (`SimEngine`)
+### 3.3 SIMT Warp Simulation Engine (`SimEngine`)
 During `SimEngine::Drive()`:
-- **Phase 1 (Fast Gate Streaming)**: Iterates over contiguous `FastModule` structs in L1 cache and evaluates `KernelOp::Eval(in1, in2, 1)`, streaming results directly to `_Triggers[out]._Future`.
-- **Phase 2 (Custom Module Evaluation)**: Dispatches user-defined custom kernels with stack-allocated input/output buffers (for $\le 16$ ports) or `silo::Buff` (for $> 16$ ports).
-- **Phase 3 (Synchronous Advance)**: Updates all trigger state cells in contiguous memory:
-  $$\text{\_Past} \leftarrow \text{\_Current}, \quad \text{\_Current} \leftarrow \text{\_Future}$$
+- **Phase 1 (Resolve Readiness)**: Evaluates changed trigger edges (`_Triggers.IsEdge`) and updates `_ReadyWords: Buff<u64>` bitmasks.
+- **Phase 2 (Fast Warp SIMT Execution)**: Scans 64-lane `_ReadyWords`. Inactive 64-gate blocks are skipped in 1 CPU instruction. Active lanes execute homogenous opcode kernels (`FastWarp`) with zero branch switching.
+- **Phase 3 (Custom Warp Execution)**: Executes `CustomWarp` closures in contiguous blocks, maximizing L1 instruction cache and branch target buffer (BTB) hit rates.
+- **Phase 4 (Temporal Advance)**: Synchronously advances all temporal state cells (`_PastVals <- _CurrentVals`, `_CurrentVals <- _FutureVals`).
 
-### 3.4 Event-Driven Discrete-Event Engine (`SimContext`)
-`SimContext` handles asynchronous discrete-event dataflow and delta-cycle propagation:
-- **Inverted Sensitivity Index**: `_TriggerSensitivities[trigger_id]` stores a dynamic array of actions sensitive to that trigger. When a trigger changes, lookups occur in $O(\text{fanout})$ time rather than linearly scanning all sensitivities.
-- **Flat Bitmask Queues**: 64-bit word masks (`_ArmedMask`, `_PendingMask`) eliminate duplicate queue insertions in $O(1)$ time.
-- **Zero-Allocation Delta Cycles**: `Drive()` swaps persistent queues (`_ArmedQueue` $\leftrightarrow$ `_CurrArmed`, `_PendingQueue` $\leftrightarrow$ `_CurrPending`) to avoid memory allocations during delta cycles.
+### 3.4 VCD Waveform I/O (`vcd`, `vcdio`)
+- **`VcdWriter`**: Generates standard IEEE-1364 VCD traces capturing time steps, scopes, and signal changes.
+- **`VcdParser`**: High-performance streaming VCD parser implemented using `shard::ShardTree` grammar combinators.
 
 ---
 
@@ -172,53 +161,34 @@ During `SimEngine::Drive()`:
 | `FullAdder` | `adder` | 1-bit Full Adder (2 x HA + OR) | `SetA`, `SetB`, `SetCIn`, `Sum`, `Carry` |
 | `Adder<N>` | `adder` | Parameterized N-bit ripple carry adder | `SetA(U32)`, `SetB(U32)`, `GetSum()`, `Carry()` |
 | `BusAdder32` | `adder` | Word-level 32-bit arithmetic bus adder | `_A`, `_B`, `_Sum`, `_Carry` |
+| `Fifo` | `fifo` | Synchronous FWFT FIFO with configurable width/depth | `Clk`, `Reset`, `Push`, `Pop`, `DataIn`, `DataOut`, `Empty`, `Full` |
 
 ---
 
-## 5. Usage Examples
+## 5. Usage Example
 
-### Synchronous Layout Compilation & Simulation
 ```rust
 use crate::rube::{
     adder::Adder,
+    engine::SimEngine,
     layout::Layout,
+    reg::Reg,
     silo::U32,
 };
 
 let mut layout = Layout::New();
 let adder = Adder::<16>::New(&mut layout, "Adder16");
-let mut engine = layout.Compile().expect("Layout compilation failed");
+layout.Freeze().expect("Layout freeze and validation failed");
+
+let mut engine = SimEngine::Create(&layout);
 
 adder.SetA(&mut engine, U32(1234));
 adder.SetB(&mut engine, U32(5678));
 
-// Advance clock ticks for ripple carry propagation
+// Advance simulation clock cycles
 for _ in 0..48 {
     engine.Drive();
 }
 
 assert_eq!(adder.GetSum(&engine), 6912);
-```
-
-### Event-Driven Delta Propagation
-```rust
-use crate::rube::{
-    reg::Reg,
-    sim_context::{ActionKind, SimContext},
-    trigger::TriggerSense,
-};
-
-let mut ctx = SimContext::New();
-let in0 = ctx.AddTrigger("in0", Reg::FALSE);
-let in1 = ctx.AddTrigger("in1", Reg::TRUE);
-
-ctx.AddAction(
-    ActionKind::Not { _In: in0, _Out: in1 },
-    &[(in0, TriggerSense::EDGE)],
-);
-
-ctx.SetValue(in0, Reg::TRUE);
-let deltaCycles = ctx.Drive();
-
-assert_eq!(ctx.GetValue(in1), Reg::FALSE);
 ```
