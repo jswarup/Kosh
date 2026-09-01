@@ -3,7 +3,7 @@
 
 use	crate::{
     flux::instream::FixedStream,
-    shard::{ Charset, IGrammar, Parser },
+    shard::{ Charset, IGrammar, Int, Parser },
     silo::{ Arr, Buff, Stash, U32, U8 },
     ShardTree,
 };
@@ -289,8 +289,29 @@ impl< 'a> IGrammar for VcdShard< 'a>
         let  	mut ctx = VcdParserCtx::New();
         let  	ctxMM = VcdParserCtxMM( &mut ctx as *mut _);
 
+        let  	nonWs = *Charset::NonSpace();
+        let  	notDollar = Charset::from( &b"$"[..]).Negative();
+        let  	notDollarWs = notDollar & nonWs;
+        
         let  	vcdGrammar = ShardTree!(
-            *( *Charset::All() )
+            *(
+                *[ " \t\r\n" ]
+                < (
+                    ( "$version" < *( notDollar )[ |arr| ctxMM.PushTemp( arr) ] < "$end"[ |_arr| ctxMM.SetVersion() ] )
+                    | ( "$timescale" < *( notDollar )[ |arr| ctxMM.PushTemp( arr) ] < "$end"[ |_arr| ctxMM.SetTimescale() ] )
+                    | ( "$date" < *( notDollar )[ |arr| ctxMM.PushTemp( arr) ] < "$end"[ |_arr| ctxMM.SetDate() ] )
+                    | ( "$scope" < +( +[ " \t\r\n" ] < (+notDollarWs)[ |arr| ctxMM.PushTemp( arr) ] ) < *[ " \t\r\n" ] < "$end"[ |_arr| ctxMM.PushScope() ] )
+                    | ( "$var" < +( +[ " \t\r\n" ] < (+notDollarWs)[ |arr| ctxMM.PushTemp( arr) ] ) < *[ " \t\r\n" ] < "$end"[ |_arr| ctxMM.PushVar() ] )
+                    | ( "$upscope" < *[ " \t\r\n" ] < "$end"[ |_arr| ctxMM.PopScope() ] )
+                    | ( "$enddefinitions" < *[ " \t\r\n" ] < "$end"[ |_arr| ctxMM.EndDefinitions() ] )
+                    | ( "$dumpvars" )
+                    | ( "$end" )
+                    | ( "#" < Int[ |arr| ctxMM.AddTime( arr) ] )
+                    | ( ( "b" | "B" ) < (+[ "01xXzZ" ])[ |arr| ctxMM.PushVectorVal( arr) ] < *[ " \t\r\n" ] < (+nonWs)[ |arr| ctxMM.PushVectorId( arr) ] )
+                    | ( ( [ "01xXzZ" ] < +nonWs )[ |arr| ctxMM.AddScalarVal( arr) ] )
+                )
+                < *[ " \t\r\n" ]
+            )
         );
 
         if parser.ParseGrammar( &vcdGrammar, parser.CurrMark()).is_none() {

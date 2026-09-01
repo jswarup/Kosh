@@ -282,4 +282,67 @@ mod _tests
         assert!( vcdStr.contains( "#1"));
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_vcd_parser()
+    {
+        use crate::rube::vcdio::ParseVcd;
+
+        let  	vcdContent = r#"
+$version
+   Kosh Rube Engine
+$end
+$timescale 1ns $end
+$date 2026-09-01 $end
+$scope module top $end
+$var wire 1 ! sig1 $end
+$var wire 4 " sig2 $end
+$upscope $end
+$enddefinitions $end
+$dumpvars
+0!
+b1010 "
+$end
+#1
+1!
+#2
+0!
+b1100 "
+"#;
+
+        let  	model = ParseVcd( vcdContent).expect( "Failed to parse VCD");
+        
+        assert_eq!( model._Version.trim(), "Kosh Rube Engine");
+        assert_eq!( model._Timescale.trim(), "1ns");
+        assert_eq!( model._Date.trim(), "2026-09-01");
+        
+        assert_eq!( model._Scopes.Size().0, 1);
+        assert_eq!( model._Scopes[U32( 0)]._Type, "module");
+        assert_eq!( model._Scopes[U32( 0)]._Name, "top");
+        
+        assert_eq!( model._TimeSteps.Size().0, 3);
+        
+        let  	ts0 = &model._TimeSteps[U32( 0)];
+        assert_eq!( ts0._Time, 0);
+        assert_eq!( ts0._Values.Size().0, 2);
+        assert_eq!( ts0._Values[U32( 0)]._Id, "!");
+        assert_eq!( ts0._Values[U32( 0)]._ValStr, "0");
+        assert_eq!( ts0._Values[U32( 1)]._Id, "\"");
+        assert_eq!( ts0._Values[U32( 1)]._ValStr, "1010");
+
+        let  	ts1 = &model._TimeSteps[U32( 1)];
+        assert_eq!( ts1._Time, 1);
+        assert_eq!( ts1._Values.Size().0, 1);
+        assert_eq!( ts1._Values[U32( 0)]._Id, "!");
+        assert_eq!( ts1._Values[U32( 0)]._ValStr, "1");
+
+        let  	ts2 = &model._TimeSteps[U32( 2)];
+        assert_eq!( ts2._Time, 2);
+        assert_eq!( ts2._Values.Size().0, 2);
+        assert_eq!( ts2._Values[U32( 0)]._Id, "!");
+        assert_eq!( ts2._Values[U32( 0)]._ValStr, "0");
+        assert_eq!( ts2._Values[U32( 1)]._Id, "\"");
+        assert_eq!( ts2._Values[U32( 1)]._ValStr, "1100");
+    }
 }
