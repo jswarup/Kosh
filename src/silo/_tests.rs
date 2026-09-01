@@ -3,7 +3,7 @@ use	std::{
     thread::{ self, spawn },
 };
 use	crate::{
-    silo::{ Arr, Buff, IAccess, IArr, Stash, Stk, USeg, U8, U16, U32, U64 },
+    silo::{ Arr, Buff, ConsoleTest, IAccess, IArr, Stash, Stk, USeg, U8, U16, U32, U64, cprint, cprintln },
     stalks::{ Atm, Worker },
     Stash as StashMacro,
 };
@@ -631,11 +631,11 @@ fn	TestStashDynamicPushback()
     let  	mut v = U32( 100);
     stash0.PushX( &mut v);
     assert_eq!( stash0.Size(), 1);
-    
+
     let  	mut v2 = U32( 200);
     stash0.PushX( &mut v2);
     assert_eq!( stash0.Size(), 2);
-    
+
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -697,6 +697,18 @@ fn	TestStashC()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+ConsoleTest!( TestConsoleTestMacro {
+    cprintln!( "Testing cprintln in ConsoleTest: {}", 42);
+    cprint!( "Testing cprint\n");
+    assert!( true);
+});
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+ConsoleTest!( TestConsoleTestMacroWithResult() -> Result< (), String> {
+    cprintln!( "Testing cprintln in Result test");
+    return Ok( ());
+});
 
 //---------------------------------------------------------------------------------------------------------------------------------
 

@@ -25,6 +25,7 @@ pub use	stk::Stk;
 pub use	uint::{ U8, U16, U32, U64 };
 pub use	useg::USeg;
 pub use cast::{ ICastExt, IPtrExt, IConstPtrExt, IPtrRefExt, IConstPtrRefExt, IPtrAtExt, IAllocRawExt, IVoidPtrExt, ISliceExt };
-pub use crate::{ ConsoleTest, _console_test_inner };
+pub use console::IsConsoleEnabled;
+pub use crate::{ ConsoleTest, cprint, cprintln };
 
 //---------------------------------------------------------------------------------------------------------------------------------
