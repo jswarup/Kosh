@@ -8,7 +8,7 @@ use	crate::{
         reg::Reg,
         trigger::{ TriggerId, TriggerWad },
     },
-    silo::{ Arr, Buff, EdgeBroadcast, EdgeConnect, IAccess, IEdgeBroadcast, IEdgeConnect, Stash, U32, USeg },
+    silo::{ Arr, Buff, EdgeBroadcast, EdgeConnect, IAccess, IArr, IEdgeBroadcast, IEdgeConnect, Stash, U32, USeg },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -61,6 +61,7 @@ pub struct Layout
     pub _Ports: Stash< PortDesc>,
     pub _PortOwners: Stash< ModuleId>,
     pub _Connections: EdgeConnect,
+    pub _ModuleChildren: Stash< Stash< ModuleId>>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -84,6 +85,7 @@ impl Layout
             _Ports: Stash::New(),
             _PortOwners: Stash::New(),
             _Connections: EdgeConnect::New(),
+            _ModuleChildren: Stash::New(),
         }
     }
 
@@ -142,6 +144,7 @@ impl Layout
             kernel,
         );
         self._Modules.Push( module);
+        self._ModuleChildren.Push( Stash::New());
         return modId;
     }
 
@@ -170,7 +173,53 @@ impl Layout
             kernel,
         );
         self._Modules.Push( module);
+        self._ModuleChildren.Push( Stash::New());
         return modId;
+    }
+
+pub fn	AddContainer( &mut self, name: &str) -> ModuleId
+    {
+        let  	modId = ModuleId( self._Modules.Size());
+        let  	module = Module::NewContainer( modId, name);
+        self._Modules.Push( module);
+        self._ModuleChildren.Push( Stash::New());
+        return modId;
+    }
+
+    pub fn	AddContainerWithPorts< 'a, I, O>(
+        &mut self,
+        name: &str,
+        inPorts: I,
+        outPorts: O,
+    ) -> ModuleId
+    where
+        I: Into< Arr< 'a, PortDesc>>,
+        O: Into< Arr< 'a, PortDesc>>,
+    {
+        let  	modId = ModuleId( self._Modules.Size());
+        let  	inArr: Arr< 'a, PortDesc> = inPorts.into();
+        let  	inPortIds = self.AddPorts( modId, name, inArr, PortDir::In, |d| d.clone());
+        let  	outPortIds = self.AddPorts( modId, name, outPorts, PortDir::Out, |d| d.clone());
+        let  	mut module = Module::NewContainer( modId, name);
+        module._InPorts = inPortIds;
+        module._OutPorts = outPortIds;
+        self._Modules.Push( module);
+        self._ModuleChildren.Push( Stash::New());
+        return modId;
+    }
+
+    pub fn	AddSubModule( &mut self, parent: ModuleId, child: ModuleId)
+    {
+        assert!( parent.0 < self._Modules.Size(), "Parent ModuleId out of bounds");
+        assert!( child.0 < self._Modules.Size(), "Child ModuleId out of bounds");
+        self._ModuleChildren[parent.0].Push( child);
+    }
+
+    pub fn	AddContainerUnder( &mut self, parent: ModuleId, name: &str) -> ModuleId
+    {
+        let  	child = self.AddContainer( name);
+        self.AddSubModule( parent, child);
+        return child;
     }
 
     #[inline]
@@ -370,35 +419,171 @@ impl Layout
     pub fn	SortModules( &mut self)
     {
         let  	modCount = self._Modules.Size();
-        if modCount <= U32( 1) {
+        if modCount == U32( 0) {
             return;
         }
 
-        // Step 1.1: Sort modules by KernelKind ClassKey
-        self._Modules.SliceMut().sort_by_key( |m| m._Kernel.ClassKey());
+        if modCount == U32( 1) {
+            let  	mut children = Stash::WithCapacity( self._ModuleChildren[U32( 0)].Size());
+            self._ModuleChildren[U32( 0)].Arr().Traverse( |&child| {
+                children.Push( child);
+            });
+            self._Modules[U32( 0)]._SubModules = children.IntoBuff();
+            return;
+        }
 
-        // Step 1.2: Remap ModuleId and update _PortOwners
-        USeg::New( U32::_0, modCount).Traverse( |i| {
-            let  	newModId = ModuleId( i);
-            self._Modules[i]._Id = newModId;
-            self._Modules[i]._InPorts.Arr().Traverse( |portId| {
+        let  	arr = self._Modules.Arr();
+        let  	lessFn = move |i, j| arr.At( i)._Kernel.ClassKey() < arr.At( j)._Kernel.ClassKey();
+        let  	swapFn = move |i, j| arr.Swap( i, j);
+        arr.USeg().QSort( lessFn, swapFn);
+
+        let  	mut oldToNew = Stash::WithCapacity( modCount);
+        USeg::New( U32::_0, modCount).Traverse( |_| {
+            oldToNew.Push( ModuleId( U32::_0));
+        });
+        USeg::New( U32::_0, modCount).Traverse( |newIdx| {
+            let  	oldId = self._Modules[newIdx]._Id;
+            oldToNew[oldId.0] = ModuleId( newIdx);
+        });
+
+        let  	mut newModuleChildren = Stash::WithCapacity( modCount);
+        // Pre-fill so we can assign randomly if needed, but since we traverse newIdx sequentially, we can just push.
+        USeg::New( U32::_0, modCount).Traverse( |newIdx| {
+            let  	oldId = self._Modules[newIdx]._Id;
+            let  	newModId = ModuleId( newIdx);
+            self._Modules[newIdx]._Id = newModId;
+
+            self._Modules[newIdx]._InPorts.Arr().Traverse( |portId| {
                 self._PortOwners[portId.Index()] = newModId;
             });
-            self._Modules[i]._OutPorts.Arr().Traverse( |portId| {
+            self._Modules[newIdx]._OutPorts.Arr().Traverse( |portId| {
                 self._PortOwners[portId.Index()] = newModId;
+            });
+
+            let  	oldChildren = &self._ModuleChildren[oldId.0];
+            let  	mut mappedChildren = Stash::WithCapacity( oldChildren.Size());
+            oldChildren.Arr().Traverse( |&childOldId| {
+                mappedChildren.Push( oldToNew[childOldId.0]);
+            });
+            
+            // Build the new ModuleChildren stash exactly in newIdx order
+            let  	mut stashClone = Stash::WithCapacity( mappedChildren.Size());
+            mappedChildren.Arr().Traverse( |&c| { stashClone.Push( c); } );
+            newModuleChildren.Push( stashClone);
+            
+            self._Modules[newIdx]._SubModules = mappedChildren.IntoBuff();
+        });
+        
+        self._ModuleChildren = newModuleChildren;
+    }
+
+    #[inline]
+    pub fn	SubModules( &self, moduleId: ModuleId) -> &[ModuleId]
+    {
+        let  	idx = moduleId.0;
+        if idx < self._Modules.Size() {
+            let  	frozen = self._Modules[idx].SubModules();
+            if !frozen.is_empty() {
+                return frozen;
+            }
+            if idx < self._ModuleChildren.Size() {
+                return self._ModuleChildren[idx].Slice();
+            }
+        }
+        return &[];
+    }
+
+    #[inline]
+    pub fn	IsContainer( &self, moduleId: ModuleId) -> bool
+    {
+        let  	idx = moduleId.0;
+        if idx < self._Modules.Size() {
+            return self._Modules[idx].IsContainer()
+                || ( idx < self._ModuleChildren.Size() && self._ModuleChildren[idx].Size() > U32( 0));
+        }
+        return false;
+    }
+
+    pub fn	RootModules( &self) -> Stash< ModuleId>
+    {
+        let  	mut hasParent = Stash::WithCapacity( self._Modules.Size());
+        USeg::New( U32::_0, self._Modules.Size()).Traverse( |_| {
+            hasParent.Push( false);
+        });
+
+        USeg::New( U32::_0, self._Modules.Size()).Traverse( |i| {
+            self.SubModules( ModuleId( i)).iter().for_each( |&childId| {
+                hasParent[childId.0] = true;
             });
         });
+
+        let  	mut roots = Stash::New();
+        USeg::New( U32::_0, self._Modules.Size()).Traverse( |i| {
+            if !hasParent[i] {
+                roots.Push( ModuleId( i));
+            }
+        });
+        return roots;
+    }
+
+    pub fn	DumpHierarchy( &self, ostr: &mut String)
+    {
+        let  	roots = self.RootModules();
+        let  	count = roots.Size().AsUsize();
+        for ( idx, &rootId) in roots.Slice().iter().enumerate() {
+            let  	isLast = idx + 1 == count;
+            self.DumpHierarchyNode( rootId, "", true, isLast, ostr);
+        }
+    }
+
+    fn	DumpHierarchyNode( &self, modId: ModuleId, prefix: &str, isRoot: bool, isLast: bool, ostr: &mut String)
+    {
+        let  	m = &self._Modules[modId.0];
+        let  	marker = if isRoot {
+            ""
+        } else if isLast {
+            "└── "
+        } else {
+            "├── "
+        };
+
+        let  	kindStr = if m._Kernel.IsNone() {
+            "Container".to_string()
+        } else if let Some( op) = m._Kernel.ToFastOp() {
+            format!( "{:?}", op)
+        } else {
+            "Custom".to_string()
+        };
+
+        let  	portsStr = format!( "in:{}, out:{}", m._InPorts.Size(), m._OutPorts.Size());
+        ostr.push_str( &format!( "{prefix}{marker}{} [{} ({})]
+", m._Name, portsStr, kindStr));
+
+        let  	childPrefix = if isRoot {
+            String::new()
+        } else if isLast {
+            format!( "{prefix}    ")
+        } else {
+            format!( "{prefix}│   ")
+        };
+
+        let  	children = self.SubModules( modId);
+        let  	childCount = children.len();
+        for ( idx, &childId) in children.iter().enumerate() {
+            let  	childIsLast = idx + 1 == childCount;
+            self.DumpHierarchyNode( childId, &childPrefix, false, childIsLast, ostr);
+        }
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	Freeze( &mut self) -> Result< (), LayoutError>
     {
-        // Step 1: Sort modules for their KernelKind & vtable
-        self.SortModules();
-
-        // Step 2: Compact connection graph for CSR binary search / segments
+        // Step 1: Compact connection graph for CSR binary search / segments
         self._Connections.Compact();
+
+        // Step 2: Sort modules for their KernelKind & vtable
+        self.SortModules();
 
         // Step 3: Validate graph connections
         self.Validate()?;
@@ -498,6 +683,10 @@ impl Layout
         while i < modules.len() {
             let  	m = &modules[i];
             match m._Kernel {
+                KernelKind::None => {
+                    i += 1;
+                    continue;
+                }
                 KernelKind::Custom( _) => {
                     let  	vtablePtr = m._Kernel.ClassKey().1;
                     let  	startIdx = i;
@@ -606,6 +795,9 @@ impl Layout
                 outTriggers.Push( portToTrigger[portId.Index()]);
             });
 
+            if module._Kernel.IsNone() {
+                return;
+            }
             if let Some( op) = module._Kernel.ToFastOp() {
                 let  	in1 = inTriggers[U32( 0)];
                 let  	in2 = if inTriggers.Size() > U32( 1) { inTriggers[U32( 1)] } else { in1 };

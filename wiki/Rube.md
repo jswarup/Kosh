@@ -124,11 +124,12 @@ classDiagram
 
 ### 3.2 Layout & Topological Net Partitioning
 1. **Declaration**: Modules and ports are added via `Layout::AddModule` or `Layout::AddStdModule`.
-2. **Freeze & Compilation**:
-   - **Step 1 (Module Sorting)**: Sorts all modules by `KernelKind::ClassKey()`, clustering primitive gates by opcode and custom closures by `vtable` pointer.
+2. **Pure Top-Down Container DAG**: The `Layout` maintains a zero-overhead structural hierarchy via `_SubModules`. Modules can act as containers for other modules without reverse `_Parent` links, allowing identical sub-blocks to be shared or grouped across multiple functional bounds in a Directed Acyclic Graph (DAG) without memory bloat.
+3. **Freeze & Compilation**:
+   - **Step 1 (Module Sorting)**: Sorts all modules by `KernelKind::ClassKey()`, clustering primitive gates by opcode and custom closures by `vtable` pointer. Structural hierarchies are remapped identically. Containers are ignored in compilation.
    - **Step 2 (CSR Graph Compaction)**: Compacts `EdgeConnect` into CSR binary-search segments.
    - **Step 3 (Validation)**: Verifies 1-to-1 driver rules and port type matching.
-3. **Net Partitioning (`EdgeBroadcast`)**: Traverses connected nets using `EdgeBroadcast::DoBroadcast` to produce canonical `TriggerId` group assignments for every port.
+4. **Net Partitioning (`EdgeBroadcast`)**: Traverses connected nets using `EdgeBroadcast::DoBroadcast` to produce canonical `TriggerId` group assignments for every port.
 
 ### 3.3 SIMT Warp Simulation Engine (`SimEngine`)
 During `SimEngine::Drive()`:

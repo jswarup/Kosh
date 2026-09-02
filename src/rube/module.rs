@@ -87,6 +87,7 @@ impl KernelOp
 #[derive( Clone)]
 pub enum KernelKind
 {
+    None,
     Nand,
     And,
     Or,
@@ -108,6 +109,7 @@ impl fmt::Debug for KernelKind
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
         match self {
+            Self::None => write!( f, "KernelKind::None"),
             Self::Nand => write!( f, "KernelKind::Nand"),
             Self::And => write!( f, "KernelKind::And"),
             Self::Or => write!( f, "KernelKind::Or"),
@@ -126,10 +128,18 @@ impl fmt::Debug for KernelKind
 
 impl KernelKind
 {
+
+    #[inline]
+    pub const fn	IsNone( &self) -> bool
+    {
+        return matches!( self, Self::None);
+    }
+
     #[inline]
     pub const fn	ToFastOp( &self) -> Option< KernelOp>
     {
         return match self {
+            Self::None => None,
             Self::Nand => Some( KernelOp::Nand),
             Self::And => Some( KernelOp::And),
             Self::Or => Some( KernelOp::Or),
@@ -149,6 +159,7 @@ impl KernelKind
     pub fn	ClassKey( &self) -> ( u8, usize)
     {
         return match self {
+            Self::None => ( 2, 0),
             Self::Nand => ( 0, KernelOp::Nand as usize),
             Self::And => ( 0, KernelOp::And as usize),
             Self::Or => ( 0, KernelOp::Or as usize),
@@ -181,12 +192,25 @@ pub struct Module
     pub _InPorts: Buff< PortId>,
     pub _OutPorts: Buff< PortId>,
     pub _Kernel: KernelKind,
+    pub _SubModules: Buff< ModuleId>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl Module
 {
+pub fn	NewContainer( id: ModuleId, name: &str) -> Self
+    {
+        return Self {
+            _Id: id,
+            _Name: name.to_string(),
+            _InPorts: Buff::New(),
+            _OutPorts: Buff::New(),
+            _Kernel: KernelKind::None,
+            _SubModules: Buff::New(),
+        };
+    }
+
     pub fn	New( id: ModuleId, name: &str, inPorts: Buff< PortId>, outPorts: Buff< PortId>, kernel: KernelKind) -> Self
     {
         return Self {
@@ -195,7 +219,20 @@ impl Module
             _InPorts: inPorts,
             _OutPorts: outPorts,
             _Kernel: kernel,
+            _SubModules: Buff::New(),
         };
+    }
+
+    #[inline]
+    pub fn	SubModules( &self) -> &[ModuleId]
+    {
+        return &self._SubModules;
+    }
+
+    #[inline]
+    pub fn	IsContainer( &self) -> bool
+    {
+        return self._Kernel.IsNone();
     }
 }
 
