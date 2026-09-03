@@ -144,6 +144,9 @@ impl Layout
 
         if let Some( p) = parent {
             self.AddSubModule( p, modId);
+            assert!( p.0 < self._Modules.Size(), "Parent ModuleId out of bounds");
+            assert!( modId.0 < self._Modules.Size(), "Child ModuleId out of bounds");
+            self._ModuleChildren[p.0].Push( modId);
         }
 
         return modId;

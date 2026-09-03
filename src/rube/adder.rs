@@ -27,10 +27,10 @@ pub struct HalfAdder
 
 impl HalfAdder
 {
-    pub fn	New( layout: &mut Layout, name: &str) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
     {
-        let  	xorGate = XorGate::New( layout, &format!( "{name}.Xor"));
-        let  	andGate = AndGate::New( layout, &format!( "{name}.And"));
+        let  	xorGate = XorGate::New( layout, &format!( "{name}.Xor"), parent);
+        let  	andGate = AndGate::New( layout, &format!( "{name}.And"), parent);
 
         return Self {
             _Xor: xorGate,
@@ -92,11 +92,11 @@ pub struct FullAdder
 
 impl FullAdder
 {
-    pub fn	New( layout: &mut Layout, name: &str) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
     {
-        let  	ha1 = HalfAdder::New( layout, &format!( "{name}.HA1"));
-        let  	ha2 = HalfAdder::New( layout, &format!( "{name}.HA2"));
-        let  	orGate = OrGate::New( layout, &format!( "{name}.Or"));
+        let  	ha1 = HalfAdder::New( layout, &format!( "{name}.HA1"), parent);
+        let  	ha2 = HalfAdder::New( layout, &format!( "{name}.HA2"), parent);
+        let  	orGate = OrGate::New( layout, &format!( "{name}.Or"), parent);
 
         layout.Connect( ha1.Sum(), ha2._Xor.In1());
         layout.Connect( ha1.Sum(), ha2._And.In1());
@@ -154,11 +154,11 @@ pub struct Adder< const N: usize>
 
 impl< const N: usize> Adder< N>
 {
-    pub fn	New( layout: &mut Layout, name: &str) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
     {
         let  	mut bits: Stash< FullAdder> = Stash::WithCapacity( U32( N as u32));
         USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
-            let  	bit = FullAdder::New( layout, &format!( "{name}.Bit{}", i.0));
+            let  	bit = FullAdder::New( layout, &format!( "{name}.Bit{}", i.0), parent);
             if i > U32::_0 {
                 let  	prevCarry = bits.Slice()[i.AsUsize() - 1].Carry();
                 layout.Connect( prevCarry, bit._HA2._Xor.In2());
@@ -235,7 +235,7 @@ pub struct BusAdder32
 
 impl BusAdder32
 {
-    pub fn	New( layout: &mut Layout, name: &str) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
     {
         let  	adderKernel = Arc::new( |inVals: &[Reg], outVals: &mut [Reg]| {
             let  	aVal = inVals[0].Val();
@@ -249,7 +249,7 @@ impl BusAdder32
 
         let  	modId = layout.AddModule(
             name,
-            None,
+            parent,
             &[ PortDesc::U32( "a"), PortDesc::U32( "b") ],
             &[ PortDesc::U32( "sum"), PortDesc::Bool( "carry") ],
             KernelKind::Custom( adderKernel),

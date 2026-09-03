@@ -9,11 +9,11 @@ use	crate::rube::{
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[inline]
-fn	CreateGate2( layout: &mut Layout, name: &str, kind: KernelKind) -> ( PortId, PortId, PortId)
+fn	CreateGate2( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>, kind: KernelKind) -> ( PortId, PortId, PortId)
 {
     let  	m = layout.AddModule(
         name,
-        None,
+        parent,
         &[ PortDesc::Bool( "in1"), PortDesc::Bool( "in2") ],
         &[ PortDesc::Bool( "out") ],
         kind,
@@ -41,9 +41,9 @@ pub struct NandGate
 impl NandGate
 {
     #[inline]
-    pub fn	New( layout: &mut Layout, name: &str) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
     {
-        let  	( in1, in2, out) = CreateGate2( layout, name, KernelKind::Nand);
+        let  	( in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Nand);
         return Self { _In1: in1, _In2: in2, _Out: out };
     }
 
@@ -82,9 +82,9 @@ pub struct AndGate
 impl AndGate
 {
     #[inline]
-    pub fn	New( layout: &mut Layout, name: &str) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
     {
-        let  	( in1, in2, out) = CreateGate2( layout, name, KernelKind::And);
+        let  	( in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::And);
         return Self { _In1: in1, _In2: in2, _Out: out };
     }
 
@@ -123,9 +123,9 @@ pub struct OrGate
 impl OrGate
 {
     #[inline]
-    pub fn	New( layout: &mut Layout, name: &str) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
     {
-        let  	( in1, in2, out) = CreateGate2( layout, name, KernelKind::Or);
+        let  	( in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Or);
         return Self { _In1: in1, _In2: in2, _Out: out };
     }
 
@@ -164,9 +164,9 @@ pub struct XorGate
 impl XorGate
 {
     #[inline]
-    pub fn	New( layout: &mut Layout, name: &str) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
     {
-        let  	( in1, in2, out) = CreateGate2( layout, name, KernelKind::Xor);
+        let  	( in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Xor);
         return Self { _In1: in1, _In2: in2, _Out: out };
     }
 
@@ -205,9 +205,9 @@ pub struct NorGate
 impl NorGate
 {
     #[inline]
-    pub fn	New( layout: &mut Layout, name: &str) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
     {
-        let  	( in1, in2, out) = CreateGate2( layout, name, KernelKind::Nor);
+        let  	( in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Nor);
         return Self { _In1: in1, _In2: in2, _Out: out };
     }
 
@@ -246,9 +246,9 @@ pub struct XnorGate
 impl XnorGate
 {
     #[inline]
-    pub fn	New( layout: &mut Layout, name: &str) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
     {
-        let  	( in1, in2, out) = CreateGate2( layout, name, KernelKind::Xnor);
+        let  	( in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Xnor);
         return Self { _In1: in1, _In2: in2, _Out: out };
     }
 
@@ -286,11 +286,11 @@ pub struct NotGate
 impl NotGate
 {
     #[inline]
-    pub fn	New( layout: &mut Layout, name: &str) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
     {
         let  	m = layout.AddModule(
             name,
-            None,
+            parent,
             &[ PortDesc::Bool( "in") ],
             &[ PortDesc::Bool( "out") ],
             KernelKind::Not,

@@ -7,6 +7,7 @@ use kosh::silo::U32;
 pub fn add_via_rube(a: u32, b: u32) -> u32 {
     let mut layout = Layout::New();
     let adder = Adder::<32>::New(&mut layout, "PyAdder32");
+    let adder = Adder::<32>::New(&mut layout, "PyAdder32", None);
     layout.Freeze().expect("Layout compilation failed");
 
     let mut engine = SimEngine::Create(&layout);

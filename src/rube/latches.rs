@@ -22,10 +22,10 @@ pub struct RSLatch
 
 impl RSLatch
 {
-    pub fn	New( layout: &mut Layout, name: &str) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
     {
-        let  	nand1 = NandGate::New( layout, &format!( "{name}.Nand1"));
-        let  	nand2 = NandGate::New( layout, &format!( "{name}.Nand2"));
+        let  	nand1 = NandGate::New( layout, &format!( "{name}.Nand1"), parent);
+        let  	nand2 = NandGate::New( layout, &format!( "{name}.Nand2"), parent);
 
         layout.Connect( nand1.Out(), nand2.In2());
         layout.Connect( nand2.Out(), nand1.In2());
@@ -88,11 +88,11 @@ pub struct CRSLatch
 
 impl CRSLatch
 {
-    pub fn	New( layout: &mut Layout, name: &str) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
     {
-        let  	gateS = NandGate::New( layout, &format!( "{name}.GateS"));
-        let  	gateR = NandGate::New( layout, &format!( "{name}.GateR"));
-        let  	rs = RSLatch::New( layout, &format!( "{name}.RS"));
+        let  	gateS = NandGate::New( layout, &format!( "{name}.GateS"), parent);
+        let  	gateR = NandGate::New( layout, &format!( "{name}.GateR"), parent);
+        let  	rs = RSLatch::New( layout, &format!( "{name}.RS"), parent);
 
         layout.Connect( gateS.Out(), rs.S());
         layout.Connect( gateR.Out(), rs.R());
@@ -174,10 +174,10 @@ pub struct DLatch
 
 impl DLatch
 {
-    pub fn	New( layout: &mut Layout, name: &str) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
     {
-        let  	crs = CRSLatch::New( layout, &format!( "{name}.CRS"));
-        let  	inv = NotGate::New( layout, &format!( "{name}.Inv"));
+        let  	crs = CRSLatch::New( layout, &format!( "{name}.CRS"), parent);
+        let  	inv = NotGate::New( layout, &format!( "{name}.Inv"), parent);
 
         layout.Connect( inv.Out(), crs.R());
 

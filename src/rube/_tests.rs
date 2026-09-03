@@ -24,7 +24,7 @@ mod _tests
     {
         let  	mut layout = Layout::New();
         const N: usize = 16;
-        let  	adder = Adder::< N>::New( &mut layout, "Adder16");
+        let  	adder = Adder::< N>::New( &mut layout, "Adder16", None);
         layout.Freeze().expect( "Compilation failed");
         let  	mut engine = SimEngine::Create(&layout);
 
@@ -59,7 +59,7 @@ mod _tests
     fn	test_clocked_rs_latch()
     {
         let  	mut layout = Layout::New();
-        let  	crs = CRSLatch::New( &mut layout, "CRSLatch");
+        let  	crs = CRSLatch::New( &mut layout, "CRSLatch", None);
         layout.Freeze().expect( "Compilation failed");
         let  	mut engine = SimEngine::Create(&layout);
 
@@ -100,7 +100,7 @@ mod _tests
     fn	test_d_latch()
     {
         let  	mut layout = Layout::New();
-        let  	dLatch = DLatch::New( &mut layout, "DLatch");
+        let  	dLatch = DLatch::New( &mut layout, "DLatch", None);
         layout.Freeze().expect( "Compilation failed");
         let  	mut engine = SimEngine::Create(&layout);
 
@@ -158,7 +158,7 @@ mod _tests
     fn	test_nand_gate()
     {
         testGate2(
-            NandGate::New, |g| g.In1(), |g| g.In2(), |g| g.Out(),
+            |layout, name| NandGate::New(layout, name, None), |g| g.In1(), |g| g.In2(), |g| g.Out(),
             &[ ( false, false, Reg::TRUE), ( false, true, Reg::TRUE), ( true, false, Reg::TRUE), ( true, true, Reg::FALSE) ],
         );
     }
@@ -167,7 +167,7 @@ mod _tests
     fn	test_and_gate()
     {
         testGate2(
-            AndGate::New, |g| g.In1(), |g| g.In2(), |g| g.Out(),
+            |layout, name| AndGate::New(layout, name, None), |g| g.In1(), |g| g.In2(), |g| g.Out(),
             &[ ( false, false, Reg::FALSE), ( false, true, Reg::FALSE), ( true, false, Reg::FALSE), ( true, true, Reg::TRUE) ],
         );
     }
@@ -176,7 +176,7 @@ mod _tests
     fn	test_or_gate()
     {
         testGate2(
-            OrGate::New, |g| g.In1(), |g| g.In2(), |g| g.Out(),
+            |layout, name| OrGate::New(layout, name, None), |g| g.In1(), |g| g.In2(), |g| g.Out(),
             &[ ( false, false, Reg::FALSE), ( false, true, Reg::TRUE), ( true, false, Reg::TRUE), ( true, true, Reg::TRUE) ],
         );
     }
@@ -185,7 +185,7 @@ mod _tests
     fn	test_xor_gate()
     {
         testGate2(
-            XorGate::New, |g| g.In1(), |g| g.In2(), |g| g.Out(),
+            |layout, name| XorGate::New(layout, name, None), |g| g.In1(), |g| g.In2(), |g| g.Out(),
             &[ ( false, false, Reg::FALSE), ( false, true, Reg::TRUE), ( true, false, Reg::TRUE), ( true, true, Reg::FALSE) ],
         );
     }
@@ -194,7 +194,7 @@ mod _tests
     fn	test_not_gate()
     {
         let  	mut layout = Layout::New();
-        let  	gate = NotGate::New( &mut layout, "Not");
+        let  	gate = NotGate::New( &mut layout, "Not", None);
         layout.Freeze().expect( "Compilation failed");
         let  	mut engine = SimEngine::Create(&layout);
 
@@ -260,7 +260,7 @@ mod _tests
         use crate::rube::VcdWriter;
 
         let  	mut layout = Layout::New();
-        let  	dLatch = DLatch::New( &mut layout, "DLatch");
+        let  	dLatch = DLatch::New( &mut layout, "DLatch", None);
         layout.Freeze().expect( "Compilation failed");
         let  	mut engine = SimEngine::Create(&layout);
 
@@ -356,7 +356,7 @@ b1100 "
         use crate::rube::{ SimEngine, Layout, Reg };
 
         let  	mut layout = Layout::New();
-        let  	fifo = Fifo::New( &mut layout, "MyFifo", 4, 32);
+        let  	fifo = Fifo::New( &mut layout, "MyFifo", 4, 32, None);
 
         let  	mut engine = SimEngine::Create( &layout);
         engine.SetPortBool( fifo.Reset(), Reg::TRUE);
@@ -417,12 +417,12 @@ b1100 "
         let  	mut xorOut = Stash::WithCapacity( gateCount);
 
         USeg::New( U32::_0, gateCount).Traverse( |i| {
-            let  	andMod = AndGate::New( &mut layout, &format!( "And_{}", i));
+            let  	andMod = AndGate::New( &mut layout, &format!( "And_{}", i), None);
             andIn1.Push( andMod._In1);
             andIn2.Push( andMod._In2);
             andOut.Push( andMod._Out);
 
-            let  	xorMod = XorGate::New( &mut layout, &format!( "Xor_{}", i));
+            let  	xorMod = XorGate::New( &mut layout, &format!( "Xor_{}", i), None);
             xorIn1.Push( xorMod._In1);
             xorIn2.Push( xorMod._In2);
             xorOut.Push( xorMod._Out);
@@ -466,14 +466,10 @@ b1100 "
         let  	topId = layout.AddModule( "TopBlock", None, &[], &[], KernelKind::None);
         let  	aluId = layout.AddModule( "ALU", Some( topId), &[], &[], KernelKind::None);
 
-        let  	andGate = AndGate::New( &mut layout, "ALU_And");
-        let  	notGate = NotGate::New( &mut layout, "ALU_Not");
+        let  	andGate = AndGate::New( &mut layout, "ALU_And", Some( aluId));
+        let  	notGate = NotGate::New( &mut layout, "ALU_Not", Some( aluId));
 
-        let  	andId = layout.PortOwner( andGate._Out).unwrap();
-        let  	notId = layout.PortOwner( notGate._Out).unwrap();
-
-        layout.AddSubModule( aluId, andId);
-        layout.AddSubModule( aluId, notId);
+        
 
         layout.Connect( andGate._Out, notGate._In);
 

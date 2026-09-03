@@ -44,6 +44,7 @@ struct FifoState
 impl Fifo
 {
     pub fn	New( layout: &mut Layout, name: &str, depth: usize, width: u32) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, depth: usize, width: u32, parent: Option<crate::rube::module::ModuleId>) -> Self
     {
         let  	inPorts = [
             PortDesc::Bool( "Clk"),
@@ -101,7 +102,7 @@ impl Fifo
             outVals[2] = Reg::FromBool( full);
         });
 
-        let  	modId = layout.AddModule( name, None, &inPorts, &outPorts, KernelKind::Custom( kernel));
+        let  	modId = layout.AddModule( name, parent, &inPorts, &outPorts, KernelKind::Custom( kernel));
 
         return Self {
             _Clk: layout.InPort( modId, 0).unwrap(),
