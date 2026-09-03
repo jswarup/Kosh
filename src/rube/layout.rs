@@ -119,6 +119,7 @@ impl Layout
     pub fn	AddModule< 'a, I, O>(
         &mut self,
         name: &str,
+        parent: Option< ModuleId>,
         inPorts: I,
         outPorts: O,
         kernel: KernelKind,
@@ -140,6 +141,11 @@ impl Layout
         );
         self._Modules.Push( module);
         self._ModuleChildren.Push( Stash::New());
+
+        if let Some( p) = parent {
+            self.AddSubModule( p, modId);
+        }
+
         return modId;
     }
 

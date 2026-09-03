@@ -10,6 +10,7 @@ mod _tests
             gates::{ AndGate, NandGate, NotGate, OrGate, XorGate },
             latches::{ CRSLatch, DLatch },
             layout::Layout,
+            module::KernelKind,
             port::PortId,
             reg::Reg,
         },
@@ -464,6 +465,8 @@ b1100 "
 
         let  	topId = layout.AddContainer( "TopBlock", &[], &[]);
         let  	aluId = layout.AddContainerUnder( topId, "ALU", &[], &[]);
+        let  	topId = layout.AddModule( "TopBlock", None, &[], &[], KernelKind::None);
+        let  	aluId = layout.AddModule( "ALU", Some( topId), &[], &[], KernelKind::None);
 
         let  	andGate = AndGate::New( &mut layout, "ALU_And");
         let  	notGate = NotGate::New( &mut layout, "ALU_Not");

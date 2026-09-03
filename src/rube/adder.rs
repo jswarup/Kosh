@@ -249,6 +249,7 @@ impl BusAdder32
 
         let  	modId = layout.AddModule(
             name,
+            None,
             &[ PortDesc::U32( "a"), PortDesc::U32( "b") ],
             &[ PortDesc::U32( "sum"), PortDesc::Bool( "carry") ],
             KernelKind::Custom( adderKernel),
