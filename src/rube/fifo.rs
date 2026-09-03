@@ -43,7 +43,6 @@ struct FifoState
 
 impl Fifo
 {
-    pub fn	New( layout: &mut Layout, name: &str, depth: usize, width: u32) -> Self
     pub fn	New( layout: &mut Layout, name: &str, depth: usize, width: u32, parent: Option<crate::rube::module::ModuleId>) -> Self
     {
         let  	inPorts = [

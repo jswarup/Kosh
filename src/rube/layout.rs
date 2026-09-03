@@ -141,24 +141,13 @@ impl Layout
         );
         self._Modules.Push( module);
         self._ModuleChildren.Push( Stash::New());
-
         if let Some( p) = parent {
-            self.AddSubModule( p, modId);
             assert!( p.0 < self._Modules.Size(), "Parent ModuleId out of bounds");
             assert!( modId.0 < self._Modules.Size(), "Child ModuleId out of bounds");
             self._ModuleChildren[p.0].Push( modId);
         }
 
         return modId;
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	AddSubModule( &mut self, parent: ModuleId, child: ModuleId)
-    {
-        assert!( parent.0 < self._Modules.Size(), "Parent ModuleId out of bounds");
-        assert!( child.0 < self._Modules.Size(), "Child ModuleId out of bounds");
-        self._ModuleChildren[parent.0].Push( child);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
