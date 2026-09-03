@@ -174,18 +174,7 @@ impl Layout
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	AddContainer( &mut self, name: &str) -> ModuleId
-    {
-        let  	modId = ModuleId( self._Modules.Size());
-        let  	module = Module::NewContainer( modId, name);
-        self._Modules.Push( module);
-        self._ModuleChildren.Push( Stash::New());
-        return modId;
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	AddContainerWithPorts< 'a, I, O>(
+    pub fn	AddContainer< 'a, I, O>(
         &mut self,
         name: &str,
         inPorts: I,
@@ -196,8 +185,7 @@ impl Layout
         O: Into< Arr< 'a, PortDesc>>,
     {
         let  	modId = ModuleId( self._Modules.Size());
-        let  	inArr: Arr< 'a, PortDesc> = inPorts.into();
-        let  	inSeg = self.AddPorts( modId, name, inArr, |d| d.clone());
+        let  	inSeg = self.AddPorts( modId, name, inPorts, |d| d.clone());
         let  	outSeg = self.AddPorts( modId, name, outPorts, |d| d.clone());
         let  	mut module = Module::NewContainer( modId, name);
         module._InPorts = inSeg;
@@ -218,9 +206,18 @@ impl Layout
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	AddContainerUnder( &mut self, parent: ModuleId, name: &str) -> ModuleId
+    pub fn	AddContainerUnder< 'a, I, O>(
+        &mut self,
+        parent: ModuleId,
+        name: &str,
+        inPorts: I,
+        outPorts: O,
+    ) -> ModuleId
+    where
+        I: Into< Arr< 'a, PortDesc>>,
+        O: Into< Arr< 'a, PortDesc>>,
     {
-        let  	child = self.AddContainer( name);
+        let  	child = self.AddContainer( name, inPorts, outPorts);
         self.AddSubModule( parent, child);
         return child;
     }

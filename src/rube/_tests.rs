@@ -462,8 +462,8 @@ b1100 "
     {
         let  	mut layout = Layout::New();
 
-        let  	topId = layout.AddContainer( "TopBlock");
-        let  	aluId = layout.AddContainerUnder( topId, "ALU");
+        let  	topId = layout.AddContainer( "TopBlock", &[], &[]);
+        let  	aluId = layout.AddContainerUnder( topId, "ALU", &[], &[]);
 
         let  	andGate = AndGate::New( &mut layout, "ALU_And");
         let  	notGate = NotGate::New( &mut layout, "ALU_Not");
