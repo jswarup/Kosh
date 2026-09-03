@@ -6,7 +6,7 @@ use	crate::{
         engine::SimEngine,
         gates::{ AndGate, OrGate, XorGate },
         layout::Layout,
-        module::{ KernelKind, ModuleId },
+        module::{ IModule, KernelKind, ModuleId },
         port::{ PortDesc, PortId },
         reg::Reg,
     },
@@ -20,6 +20,8 @@ use	crate::{
 pub struct HalfAdder
 {
     pub _Id:     ModuleId,
+    pub _Xor:    XorGate,
+    pub _And:    AndGate,
     pub _In1:    PortId,
     pub _In2:    PortId,
     pub _Sum:    PortId,
@@ -60,11 +62,19 @@ impl HalfAdder
 
         return Self {
             _Id:     modId,
+            _Xor:    xorGate,
+            _And:    andGate,
             _In1:    in1,
             _In2:    in2,
             _Sum:    sum,
             _Carry:  carry,
         };
+    }
+
+    #[inline]
+    pub const fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 
     #[inline]
@@ -106,11 +116,25 @@ impl HalfAdder
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl IModule for HalfAdder
+{
+    #[inline]
+    fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 /// 1-Bit Full Adder
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct FullAdder
 {
     pub _Id:     ModuleId,
+    pub _HA1:    HalfAdder,
+    pub _HA2:    HalfAdder,
+    pub _Or:     OrGate,
     pub _In1:    PortId,
     pub _In2:    PortId,
     pub _CIn:    PortId,
@@ -160,12 +184,21 @@ impl FullAdder
 
         return Self {
             _Id:     modId,
+            _HA1:    ha1,
+            _HA2:    ha2,
+            _Or:     orGate,
             _In1:    in1,
             _In2:    in2,
             _CIn:    cin,
             _Sum:    sum,
             _Carry:  carry,
         };
+    }
+
+    #[inline]
+    pub const fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 
     #[inline]
@@ -219,11 +252,23 @@ impl FullAdder
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl IModule for FullAdder
+{
+    #[inline]
+    fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 /// N-Bit Ripple Carry Adder
 #[derive( Clone, Debug)]
 pub struct Adder< const N: usize>
 {
     pub _Id:     ModuleId,
+    pub _Bits:   Buff< FullAdder>,
     pub _A:      Buff< PortId>,
     pub _B:      Buff< PortId>,
     pub _CIn:    PortId,
@@ -292,12 +337,19 @@ impl< const N: usize> Adder< N>
 
         return Self {
             _Id:     modId,
+            _Bits:   fullAdders.IntoBuff(),
             _A:      aPorts.IntoBuff(),
             _B:      bPorts.IntoBuff(),
             _CIn:    cinPort,
             _Sum:    sumPorts.IntoBuff(),
             _Carry:  carryPort,
         };
+    }
+
+    #[inline]
+    pub const fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 
     #[inline]
@@ -349,10 +401,22 @@ impl< const N: usize> Adder< N>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl< const N: usize> IModule for Adder< N>
+{
+    #[inline]
+    fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 /// 32-Bit High-Performance Bus Adder using custom word-level kernel
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct BusAdder32
 {
+    pub _Id:     ModuleId,
     pub _A:      PortId,
     pub _B:      PortId,
     pub _Sum:    PortId,
@@ -391,11 +455,29 @@ impl BusAdder32
         layout.SealModule( modId);
 
         return Self {
+            _Id:     modId,
             _A:      a,
             _B:      b,
             _Sum:    sum,
             _Carry:  carry,
         };
+    }
+
+    #[inline]
+    pub const fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IModule for BusAdder32
+{
+    #[inline]
+    fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 }
 

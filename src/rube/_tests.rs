@@ -5,14 +5,14 @@ mod _tests
 {
     use	crate::{
         rube::{
+            adder::{ Adder, FullAdder, HalfAdder },
             engine::SimEngine,
-            adder::Adder,
             gates::{ AndGate, NandGate, NotGate, OrGate, XorGate },
             latches::{ CRSLatch, DLatch },
             layout::Layout,
-            module::KernelKind,
+            module::{ IModule, KernelKind },
             netlist::INetlist,
-            port::{ PortDesc, PortId },
+            port::{ IPort, PortDesc, PortId },
             reg::Reg,
         },
         silo::{ Stash, U32, USeg },
@@ -618,5 +618,58 @@ b1100 "
         assert!( layout._Netlist.HasTrigger( subIn));
         assert!( layout._Netlist.HasTrigger( subOut));
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_framework_hierarchy_and_traits()
+    {
+        let  	mut layout = Layout::New();
+
+        let  	fa = FullAdder::New( &mut layout, "FA", None);
+
+        // 1. Verify IModule::Id()
+        assert_eq!( fa.Id(), fa._Id);
+        assert_eq!( fa._HA1.Id(), fa._HA1._Id);
+        assert_eq!( fa._HA1._Xor.Id(), fa._HA1._Xor._Id);
+
+        // 2. Verify nested internal signals can be read
+        let  	ha1XorOut = fa._HA1._Xor.Out();
+        let  	ha1AndOut = fa._HA1._And.Out();
+        assert!( ha1XorOut.IsOut());
+        assert!( ha1AndOut.IsOut());
+
+        // 3. Verify 4-bit adder holds concrete FullAdders in _Bits
+        let  	adder4 = Adder::< 4>::New( &mut layout, "Adder4", None);
+        assert_eq!( adder4._Bits.Size(), U32( 4));
+        assert_eq!( adder4._Bits[0]._HA1._Xor.Out().Dir(), crate::rube::port::PortDir::Out);
+
+        // 4. Test IModule and IPort traits directly
+        let  	ha = HalfAdder::New( &mut layout, "HAStandalone", None);
+        assert_eq!( IModule::Id( &ha), ha._Id);
+        assert_eq!( IPort::Id( &ha.Sum()), ha._Sum);
+
+        // 5. Freeze and run simulation to inspect internal submodule signals
+        layout.Freeze().unwrap();
+        let  	mut engine = SimEngine::Create( &layout);
+
+        // Set A=1, B=1, CIn=0 on fa
+        engine.SetPortBool( fa.In1(), Reg::TRUE);
+        engine.SetPortBool( fa.In2(), Reg::TRUE);
+        engine.SetPortBool( fa.CIn(), Reg::FALSE);
+        for _ in 0..4 {
+            engine.Drive();
+        }
+
+        // Check top boundary outputs: Sum=0, Carry=1
+        assert_eq!( engine.GetPortBool( fa.Sum()), Some( Reg::FALSE));
+        assert_eq!( engine.GetPortBool( fa.Carry()), Some( Reg::TRUE));
+
+        // Directly check nested submodule internal outputs through dot notation!
+        assert_eq!( engine.GetPortBool( fa._HA1._Xor.Out()), Some( Reg::FALSE));
+        assert_eq!( engine.GetPortBool( fa._HA1._And.Out()), Some( Reg::TRUE));
+        assert_eq!( engine.GetPortBool( fa._Or.Out()), Some( Reg::TRUE));
+    }
 }
+
 

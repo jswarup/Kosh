@@ -4,7 +4,7 @@ use	crate::rube::{
     engine::SimEngine,
     gates::{ NandGate, NotGate },
     layout::Layout,
-    module::{ KernelKind, ModuleId },
+    module::{ IModule, KernelKind, ModuleId },
     port::{ PortDesc, PortId },
     reg::Reg,
 };
@@ -15,11 +15,13 @@ use	crate::rube::{
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct RSLatch
 {
-    pub _Id:  ModuleId,
-    pub _S:   PortId,
-    pub _R:   PortId,
-    pub _Q:   PortId,
-    pub _Q1:  PortId,
+    pub _Id:     ModuleId,
+    pub _Nand1:  NandGate,
+    pub _Nand2:  NandGate,
+    pub _S:      PortId,
+    pub _R:      PortId,
+    pub _Q:      PortId,
+    pub _Q1:     PortId,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -56,12 +58,20 @@ impl RSLatch
         layout.SealModule( modId);
 
         return Self {
-            _Id:  modId,
-            _S:   s,
-            _R:   r,
-            _Q:   q,
-            _Q1:  q1,
+            _Id:     modId,
+            _Nand1:  nand1,
+            _Nand2:  nand2,
+            _S:      s,
+            _R:      r,
+            _Q:      q,
+            _Q1:     q1,
         };
+    }
+
+    #[inline]
+    pub const fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 
     #[inline]
@@ -103,17 +113,31 @@ impl RSLatch
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl IModule for RSLatch
+{
+    #[inline]
+    fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 /// Clocked RS Latch
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct CRSLatch
 {
-    pub _Id:    ModuleId,
-    pub _Clk1:  PortId,
-    pub _Clk2:  PortId,
-    pub _S:     PortId,
-    pub _R:     PortId,
-    pub _Q:     PortId,
-    pub _Q1:    PortId,
+    pub _Id:     ModuleId,
+    pub _GateS:  NandGate,
+    pub _GateR:  NandGate,
+    pub _RS:     RSLatch,
+    pub _Clk1:   PortId,
+    pub _Clk2:   PortId,
+    pub _S:      PortId,
+    pub _R:      PortId,
+    pub _Q:      PortId,
+    pub _Q1:     PortId,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -155,14 +179,23 @@ impl CRSLatch
         layout.SealModule( modId);
 
         return Self {
-            _Id:    modId,
-            _Clk1:  clk1,
-            _Clk2:  clk2,
-            _S:     s,
-            _R:     r,
-            _Q:     q,
-            _Q1:    q1,
+            _Id:     modId,
+            _GateS:  gateS,
+            _GateR:  gateR,
+            _RS:     rs,
+            _Clk1:   clk1,
+            _Clk2:   clk2,
+            _S:      s,
+            _R:      r,
+            _Q:      q,
+            _Q1:     q1,
         };
+    }
+
+    #[inline]
+    pub const fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 
     #[inline]
@@ -223,11 +256,24 @@ impl CRSLatch
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl IModule for CRSLatch
+{
+    #[inline]
+    fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 /// Transparent D-Latch
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct DLatch
 {
     pub _Id:    ModuleId,
+    pub _Not:   NotGate,
+    pub _CRS:   CRSLatch,
     pub _D:     PortId,
     pub _DInv:  PortId,
     pub _E1:    PortId,
@@ -274,6 +320,8 @@ impl DLatch
 
         return Self {
             _Id:    modId,
+            _Not:   inv,
+            _CRS:   crs,
             _D:     d,
             _DInv:  dInv,
             _E1:    e1,
@@ -281,6 +329,12 @@ impl DLatch
             _Q:     q,
             _Q1:    q1,
         };
+    }
+
+    #[inline]
+    pub const fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 
     #[inline]
@@ -331,6 +385,17 @@ impl DLatch
     {
         engine.SetPortBool( self.E1(), val);
         engine.SetPortBool( self.E2(), val);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IModule for DLatch
+{
+    #[inline]
+    fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 }
 

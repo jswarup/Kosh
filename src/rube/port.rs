@@ -62,6 +62,48 @@ pub enum PortDir
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+pub trait IPort: Copy
+{
+    fn	Id( &self) -> PortId;
+
+    #[inline]
+    fn	Index( &self) -> U32
+    {
+        return self.Id().Index();
+    }
+
+    #[inline]
+    fn	Dir( &self) -> PortDir
+    {
+        return self.Id().Dir();
+    }
+
+    #[inline]
+    fn	IsOut( &self) -> bool
+    {
+        return self.Id().IsOut();
+    }
+
+    #[inline]
+    fn	IsIn( &self) -> bool
+    {
+        return self.Id().IsIn();
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IPort for PortId
+{
+    #[inline]
+    fn	Id( &self) -> PortId
+    {
+        return *self;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 pub enum PortType
 {

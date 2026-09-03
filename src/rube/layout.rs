@@ -3,9 +3,9 @@
 use	std::{ fmt, sync::Arc };
 use	crate::{
     rube::{
-        module::{ CustomModule, CustomWarp, FastModule, FastWarp, KernelKind, Module, ModuleId },
+        module::{ CustomModule, CustomWarp, FastModule, FastWarp, IModule, KernelKind, Module, ModuleId },
         netlist::{ INetlist, Netlist },
-        port::{ PortDesc, PortDir, PortId, PortType },
+        port::{ IPort, PortDesc, PortDir, PortId, PortType },
         reg::Reg,
         trigger::{ TriggerId, TriggerWad },
     },
@@ -202,7 +202,15 @@ impl Layout
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	Connect( &mut self, src: PortId, dst: PortId) -> &mut Self
+    #[inline]
+    pub fn	Connect( &mut self, src: impl IPort, dst: impl IPort) -> &mut Self
+    {
+        return self.ConnectPorts( src.Id(), dst.Id());
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	ConnectPorts( &mut self, src: PortId, dst: PortId) -> &mut Self
     {
         let  	srcIdx = src.Index();
         let  	dstIdx = dst.Index();
@@ -249,6 +257,14 @@ impl Layout
         self._Netlist.Connect( driver, sink).expect( "Connection validation failed");
 
         return self;
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[inline]
+    pub fn	Seal( &mut self, module: &impl IModule)
+    {
+        self.SealModule( module.Id());
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

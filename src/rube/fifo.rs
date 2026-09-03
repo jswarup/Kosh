@@ -6,7 +6,7 @@ use	std::collections::VecDeque;
 use	crate::{
     rube::{
         layout::Layout,
-        module::KernelKind,
+        module::{ IModule, KernelKind, ModuleId },
         port::{ PortDesc, PortId, PortType },
         reg::Reg,
     },
@@ -19,14 +19,15 @@ use	crate::{
 #[derive( Clone, Debug)]
 pub struct Fifo
 {
-    pub _Clk: PortId,
-    pub _Reset: PortId,
-    pub _Push: PortId,
-    pub _Pop: PortId,
-    pub _DataIn: PortId,
-    pub _DataOut: PortId,
-    pub _Empty: PortId,
-    pub _Full: PortId,
+    pub _Id:       ModuleId,
+    pub _Clk:      PortId,
+    pub _Reset:    PortId,
+    pub _Push:     PortId,
+    pub _Pop:      PortId,
+    pub _DataIn:   PortId,
+    pub _DataOut:  PortId,
+    pub _Empty:    PortId,
+    pub _Full:     PortId,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -43,7 +44,7 @@ struct FifoState
 
 impl Fifo
 {
-    pub fn	New( layout: &mut Layout, name: &str, depth: usize, width: u32, parent: Option<crate::rube::module::ModuleId>) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, depth: usize, width: u32, parent: Option< ModuleId>) -> Self
     {
         let  	inPorts = [
             PortDesc::Bool( "Clk"),
@@ -105,18 +106,22 @@ impl Fifo
         layout.SealModule( modId);
 
         return Self {
-            _Clk: layout.InPort( modId, 0).unwrap(),
-            _Reset: layout.InPort( modId, 1).unwrap(),
-            _Push: layout.InPort( modId, 2).unwrap(),
-            _Pop: layout.InPort( modId, 3).unwrap(),
-            _DataIn: layout.InPort( modId, 4).unwrap(),
+            _Id:      modId,
+            _Clk:     layout.InPort( modId, 0).unwrap(),
+            _Reset:   layout.InPort( modId, 1).unwrap(),
+            _Push:    layout.InPort( modId, 2).unwrap(),
+            _Pop:     layout.InPort( modId, 3).unwrap(),
+            _DataIn:  layout.InPort( modId, 4).unwrap(),
             _DataOut: layout.OutPort( modId, 0).unwrap(),
-            _Empty: layout.OutPort( modId, 1).unwrap(),
-            _Full: layout.OutPort( modId, 2).unwrap(),
+            _Empty:   layout.OutPort( modId, 1).unwrap(),
+            _Full:    layout.OutPort( modId, 2).unwrap(),
         };
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[inline]
+    pub const fn	Id( &self) -> ModuleId { self._Id }
 
     #[inline]
     pub const fn	Clk( &self) -> PortId { self._Clk }
@@ -141,6 +146,17 @@ impl Fifo
 
     #[inline]
     pub const fn	Full( &self) -> PortId { self._Full }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IModule for Fifo
+{
+    #[inline]
+    fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

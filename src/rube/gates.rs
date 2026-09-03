@@ -2,14 +2,14 @@
 
 use	crate::rube::{
     layout::Layout,
-    module::{ KernelKind, ModuleId },
+    module::{ IModule, KernelKind, ModuleId },
     port::{ PortDesc, PortId },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[inline]
-fn	CreateGate2( layout: &mut Layout, name: &str, parent: Option< ModuleId>, kind: KernelKind) -> ( PortId, PortId, PortId)
+fn	CreateGate2( layout: &mut Layout, name: &str, parent: Option< ModuleId>, kind: KernelKind) -> ( ModuleId, PortId, PortId, PortId)
 {
     let  	m = layout.AddModule(
         name,
@@ -22,7 +22,7 @@ fn	CreateGate2( layout: &mut Layout, name: &str, parent: Option< ModuleId>, kind
     let  	in2 = layout.InPort( m, 1).unwrap();
     let  	out = layout.OutPort( m, 0).unwrap();
     layout.SealModule( m);
-    return ( in1, in2, out);
+    return ( m, in1, in2, out);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -31,9 +31,10 @@ fn	CreateGate2( layout: &mut Layout, name: &str, parent: Option< ModuleId>, kind
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct NandGate
 {
-    pub _In1: PortId,
-    pub _In2: PortId,
-    pub _Out: PortId,
+    pub _Id:   ModuleId,
+    pub _In1:  PortId,
+    pub _In2:  PortId,
+    pub _Out:  PortId,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -41,10 +42,16 @@ pub struct NandGate
 impl NandGate
 {
     #[inline]
-    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
     {
-        let  	( in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Nand);
-        return Self { _In1: in1, _In2: in2, _Out: out };
+        let  	( m, in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Nand);
+        return Self { _Id: m, _In1: in1, _In2: in2, _Out: out };
+    }
+
+    #[inline]
+    pub const fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 
     #[inline]
@@ -63,6 +70,17 @@ impl NandGate
     pub const fn	Out( &self) -> PortId
     {
         return self._Out;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IModule for NandGate
+{
+    #[inline]
+    fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 }
 
@@ -72,9 +90,10 @@ impl NandGate
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct AndGate
 {
-    pub _In1: PortId,
-    pub _In2: PortId,
-    pub _Out: PortId,
+    pub _Id:   ModuleId,
+    pub _In1:  PortId,
+    pub _In2:  PortId,
+    pub _Out:  PortId,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -82,10 +101,16 @@ pub struct AndGate
 impl AndGate
 {
     #[inline]
-    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
     {
-        let  	( in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::And);
-        return Self { _In1: in1, _In2: in2, _Out: out };
+        let  	( m, in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::And);
+        return Self { _Id: m, _In1: in1, _In2: in2, _Out: out };
+    }
+
+    #[inline]
+    pub const fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 
     #[inline]
@@ -104,6 +129,17 @@ impl AndGate
     pub const fn	Out( &self) -> PortId
     {
         return self._Out;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IModule for AndGate
+{
+    #[inline]
+    fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 }
 
@@ -113,9 +149,10 @@ impl AndGate
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct OrGate
 {
-    pub _In1: PortId,
-    pub _In2: PortId,
-    pub _Out: PortId,
+    pub _Id:   ModuleId,
+    pub _In1:  PortId,
+    pub _In2:  PortId,
+    pub _Out:  PortId,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -123,10 +160,16 @@ pub struct OrGate
 impl OrGate
 {
     #[inline]
-    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
     {
-        let  	( in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Or);
-        return Self { _In1: in1, _In2: in2, _Out: out };
+        let  	( m, in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Or);
+        return Self { _Id: m, _In1: in1, _In2: in2, _Out: out };
+    }
+
+    #[inline]
+    pub const fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 
     #[inline]
@@ -145,6 +188,17 @@ impl OrGate
     pub const fn	Out( &self) -> PortId
     {
         return self._Out;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IModule for OrGate
+{
+    #[inline]
+    fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 }
 
@@ -154,9 +208,10 @@ impl OrGate
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct XorGate
 {
-    pub _In1: PortId,
-    pub _In2: PortId,
-    pub _Out: PortId,
+    pub _Id:   ModuleId,
+    pub _In1:  PortId,
+    pub _In2:  PortId,
+    pub _Out:  PortId,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -164,10 +219,16 @@ pub struct XorGate
 impl XorGate
 {
     #[inline]
-    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
     {
-        let  	( in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Xor);
-        return Self { _In1: in1, _In2: in2, _Out: out };
+        let  	( m, in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Xor);
+        return Self { _Id: m, _In1: in1, _In2: in2, _Out: out };
+    }
+
+    #[inline]
+    pub const fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 
     #[inline]
@@ -186,6 +247,17 @@ impl XorGate
     pub const fn	Out( &self) -> PortId
     {
         return self._Out;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IModule for XorGate
+{
+    #[inline]
+    fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 }
 
@@ -195,9 +267,10 @@ impl XorGate
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct NorGate
 {
-    pub _In1: PortId,
-    pub _In2: PortId,
-    pub _Out: PortId,
+    pub _Id:   ModuleId,
+    pub _In1:  PortId,
+    pub _In2:  PortId,
+    pub _Out:  PortId,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -205,10 +278,16 @@ pub struct NorGate
 impl NorGate
 {
     #[inline]
-    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
     {
-        let  	( in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Nor);
-        return Self { _In1: in1, _In2: in2, _Out: out };
+        let  	( m, in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Nor);
+        return Self { _Id: m, _In1: in1, _In2: in2, _Out: out };
+    }
+
+    #[inline]
+    pub const fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 
     #[inline]
@@ -227,6 +306,17 @@ impl NorGate
     pub const fn	Out( &self) -> PortId
     {
         return self._Out;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IModule for NorGate
+{
+    #[inline]
+    fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 }
 
@@ -236,9 +326,10 @@ impl NorGate
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct XnorGate
 {
-    pub _In1: PortId,
-    pub _In2: PortId,
-    pub _Out: PortId,
+    pub _Id:   ModuleId,
+    pub _In1:  PortId,
+    pub _In2:  PortId,
+    pub _Out:  PortId,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -246,10 +337,16 @@ pub struct XnorGate
 impl XnorGate
 {
     #[inline]
-    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
     {
-        let  	( in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Xnor);
-        return Self { _In1: in1, _In2: in2, _Out: out };
+        let  	( m, in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Xnor);
+        return Self { _Id: m, _In1: in1, _In2: in2, _Out: out };
+    }
+
+    #[inline]
+    pub const fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 
     #[inline]
@@ -273,12 +370,24 @@ impl XnorGate
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl IModule for XnorGate
+{
+    #[inline]
+    fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 /// 1-Input Inverter / NOT Gate
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct NotGate
 {
-    pub _In: PortId,
-    pub _Out: PortId,
+    pub _Id:   ModuleId,
+    pub _In:   PortId,
+    pub _Out:  PortId,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -299,9 +408,16 @@ impl NotGate
         let  	outPort = layout.OutPort( m, 0).unwrap();
         layout.SealModule( m);
         return Self {
+            _Id:  m,
             _In:  inPort,
             _Out: outPort,
         };
+    }
+
+    #[inline]
+    pub const fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 
     #[inline]
@@ -314,6 +430,17 @@ impl NotGate
     pub const fn	Out( &self) -> PortId
     {
         return self._Out;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IModule for NotGate
+{
+    #[inline]
+    fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 }
 
