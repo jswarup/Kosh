@@ -276,7 +276,7 @@ impl Layout
         assert!( modIdx < self._Modules.Size(), "ModuleId out of bounds");
         assert!( !self._Modules[modIdx]._IsSealed, "Module {:?} is already sealed", moduleId);
 
-        // 1. Gather all root IDs for boundary ports of this module
+        // 1. Gather all root IDs for boundary ports of this module and sort for binary search
         let  	mut boundaryRoots = Stash::New();
         self._Modules[modIdx]._InPorts.Traverse( |idx| {
             boundaryRoots.Push( self._Netlist.FindRoot( PortId::In( idx)));
@@ -284,6 +284,11 @@ impl Layout
         self._Modules[modIdx]._OutPorts.Traverse( |idx| {
             boundaryRoots.Push( self._Netlist.FindRoot( PortId::Out( idx)));
         });
+        let  	arr = boundaryRoots.Arr();
+        let  	lessFn = move |i, j| arr.At( i) < arr.At( j);
+        let  	swapFn = move |i, j| arr.Swap( i, j);
+        arr.USeg().QSort( lessFn, swapFn);
+        let  	sortedRoots = boundaryRoots.Slice();
 
         // 2. Traverse all direct children of this module
         let  	childCount = self._ModuleChildren[modIdx].Size();
@@ -295,7 +300,7 @@ impl Layout
             child._InPorts.Traverse( |idx| {
                 let  	portId = PortId::In( idx);
                 let  	root = self._Netlist.FindRoot( portId);
-                let  	isBoundary = boundaryRoots.Slice().iter().any( |&br| br == root);
+                let  	isBoundary = sortedRoots.binary_search( &root).is_ok();
                 if !isBoundary && !self._Netlist.HasTrigger( portId) {
                     let  	portType = self._Ports[idx]._Type;
                     self._Netlist.AssignTrigger( root, portType);
@@ -304,7 +309,7 @@ impl Layout
             child._OutPorts.Traverse( |idx| {
                 let  	portId = PortId::Out( idx);
                 let  	root = self._Netlist.FindRoot( portId);
-                let  	isBoundary = boundaryRoots.Slice().iter().any( |&br| br == root);
+                let  	isBoundary = sortedRoots.binary_search( &root).is_ok();
                 if !isBoundary && !self._Netlist.HasTrigger( portId) {
                     let  	portType = self._Ports[idx]._Type;
                     self._Netlist.AssignTrigger( root, portType);
@@ -559,11 +564,11 @@ impl Layout
     pub fn	DumpHierarchy( &self, ostr: &mut String)
     {
         let  	roots = self.RootModules();
-        let  	count = roots.Size().AsUsize();
-        for ( idx, &rootId) in roots.Slice().iter().enumerate() {
-            let  	isLast = idx + 1 == count;
-            self.DumpHierarchyNode( rootId, "", true, isLast, ostr);
-        }
+        let  	count = roots.Size();
+        USeg::New( U32::_0, count).Traverse( |i| {
+            let  	isLast = i + U32::_1 == count;
+            self.DumpHierarchyNode( roots[i], "", true, isLast, ostr);
+        });
     }
 
     fn	DumpHierarchyNode( &self, modId: ModuleId, prefix: &str, isRoot: bool, isLast: bool, ostr: &mut String)
@@ -586,8 +591,7 @@ impl Layout
         };
 
         let  	portsStr = format!( "in:{}, out:{}", m._InPorts.Size(), m._OutPorts.Size());
-        ostr.push_str( &format!( "{prefix}{marker}{} [{} ({})]
-", m._Name, portsStr, kindStr));
+        ostr.push_str( &format!( "{prefix}{marker}{} [{} ({})]\n", m._Name, portsStr, kindStr));
 
         let  	childPrefix = if isRoot {
             String::new()
@@ -598,11 +602,11 @@ impl Layout
         };
 
         let  	children = self.SubModules( modId);
-        let  	childCount = children.len();
-        for ( idx, &childId) in children.iter().enumerate() {
-            let  	childIsLast = idx + 1 == childCount;
-            self.DumpHierarchyNode( childId, &childPrefix, false, childIsLast, ostr);
-        }
+        let  	childCount = U32( children.len() as u32);
+        USeg::New( U32::_0, childCount).Traverse( |i| {
+            let  	childIsLast = i + U32::_1 == childCount;
+            self.DumpHierarchyNode( children[i.AsUsize()], &childPrefix, false, childIsLast, ostr);
+        });
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -611,12 +615,12 @@ impl Layout
     {
         // Seal any modules that have not yet been sealed (from leaves to root)
         let  	modCount = self._Modules.Size();
-        for i in ( 0..modCount.0).rev() {
-            let  	modId = ModuleId( U32( i));
+        USeg::New( U32::_0, modCount).Traverse( |step| {
+            let  	modId = ModuleId( modCount - U32::_1 - step);
             if !self._Modules[modId.0]._IsSealed {
                 self.SealModule( modId);
             }
-        }
+        });
 
         // Precompute and store the port to trigger mapping
         self._PortToTrigger = self._Netlist.BuildPortToTrigger();
@@ -635,6 +639,16 @@ impl Layout
             return self._PortToTrigger.clone();
         }
         return self._Netlist.BuildPortToTriggerConst();
+    }
+
+    #[inline]
+    pub fn	PortTriggersOf( &self, seg: USeg, portToTrigger: &Buff< TriggerId>) -> Buff< TriggerId>
+    {
+        let  	mut stash = Stash::WithCapacity( seg.Size());
+        seg.Traverse( |idx| {
+            stash.Push( portToTrigger[idx]);
+        });
+        return stash.IntoBuff();
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -716,18 +730,8 @@ impl Layout
                             instances.Push( std::sync::Arc::clone( cb));
                         }
 
-                        let  	mut inTrig = Stash::WithCapacity( curMod._InPorts.Size());
-                        curMod._InPorts.Traverse( |idx| {
-                            inTrig.Push( portToTrigger[idx]);
-                        });
-                        inTriggersList.Push( inTrig.IntoBuff());
-
-                        let  	mut outTrig = Stash::WithCapacity( curMod._OutPorts.Size());
-                        curMod._OutPorts.Traverse( |idx| {
-                            outTrig.Push( portToTrigger[idx]);
-                        });
-                        outTriggersList.Push( outTrig.IntoBuff());
-
+                        inTriggersList.Push( self.PortTriggersOf( curMod._InPorts, portToTrigger));
+                        outTriggersList.Push( self.PortTriggersOf( curMod._OutPorts, portToTrigger));
                         i += 1;
                     }
 
@@ -749,18 +753,8 @@ impl Layout
                         let  	curMod = &modules[i];
                         if let KernelKind::Custom( curName) = curMod._Kernel {
                             if curName == kernelName {
-                                let  	mut inTrig = Stash::WithCapacity( curMod._InPorts.Size());
-                                curMod._InPorts.Traverse( |idx| {
-                                    inTrig.Push( portToTrigger[idx]);
-                                });
-                                inTriggersList.Push( inTrig.IntoBuff());
-
-                                let  	mut outTrig = Stash::WithCapacity( curMod._OutPorts.Size());
-                                curMod._OutPorts.Traverse( |idx| {
-                                    outTrig.Push( portToTrigger[idx]);
-                                });
-                                outTriggersList.Push( outTrig.IntoBuff());
-
+                                inTriggersList.Push( self.PortTriggersOf( curMod._InPorts, portToTrigger));
+                                outTriggersList.Push( self.PortTriggersOf( curMod._OutPorts, portToTrigger));
                                 i += 1;
                                 continue;
                             }
@@ -837,15 +831,8 @@ impl Layout
         let  	mut customModules = Stash::New();
 
         self._Modules.Arr().Traverse( |module| {
-            let  	mut inTriggers = Stash::WithCapacity( module._InPorts.Size());
-            module._InPorts.Traverse( |idx| {
-                inTriggers.Push( portToTrigger[idx]);
-            });
-
-            let  	mut outTriggers = Stash::WithCapacity( module._OutPorts.Size());
-            module._OutPorts.Traverse( |idx| {
-                outTriggers.Push( portToTrigger[idx]);
-            });
+            let  	inTriggers = self.PortTriggersOf( module._InPorts, portToTrigger);
+            let  	outTriggers = self.PortTriggersOf( module._OutPorts, portToTrigger);
 
             if module._Kernel.IsNone() {
                 return;
@@ -860,8 +847,8 @@ impl Layout
             } else if let KernelKind::Behavioral( _cb) = &module._Kernel { } else if let KernelKind::Custom( kernelName) = &module._Kernel {
                 customModules.Push( CustomModule::New(
                     module._Id,
-                    inTriggers.IntoBuff(),
-                    outTriggers.IntoBuff(),
+                    inTriggers,
+                    outTriggers,
                     kernelName,
                 ));
             }

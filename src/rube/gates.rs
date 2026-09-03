@@ -1,12 +1,12 @@
 //-- gates.rs -----------------------------------------------------------------------------------------------------------------------
 
 use	crate::{
-    flux::{ FieldExp, IFluxExportSource },
     rube::{
-    layout::Layout,
-    module::{ IModule, KernelKind, ModuleId },
-    port::{ PortDesc, PortId },
-} };
+        layout::Layout,
+        module::{ IModule, KernelKind, KernelOp, ModuleId },
+        port::{ PortDesc, PortId },
+    },
+};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -29,362 +29,77 @@ fn	CreateGate2( layout: &mut Layout, name: &str, parent: Option< ModuleId>, kind
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// 2-Input NAND Gate
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct NandGate
+macro_rules! DefineGate2
 {
-    pub _Id:   ModuleId,
-    pub _In1:  PortId,
-    pub _In2:  PortId,
-    pub _Out:  PortId,
+    ( $gate:ident, $op:ident, $doc:expr) => {
+        #[doc = $doc]
+        #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+        pub struct $gate
+        {
+            pub _Id:   ModuleId,
+            pub _In1:  PortId,
+            pub _In2:  PortId,
+            pub _Out:  PortId,
+        }
+
+        impl $gate
+        {
+            #[inline]
+            pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
+            {
+                let  	( m, in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Fast( KernelOp::$op));
+                return Self { _Id: m, _In1: in1, _In2: in2, _Out: out };
+            }
+
+            #[inline]
+            pub const fn	Id( &self) -> ModuleId
+            {
+                return self._Id;
+            }
+
+            #[inline]
+            pub const fn	In1( &self) -> PortId
+            {
+                return self._In1;
+            }
+
+            #[inline]
+            pub const fn	In2( &self) -> PortId
+            {
+                return self._In2;
+            }
+
+            #[inline]
+            pub const fn	Out( &self) -> PortId
+            {
+                return self._Out;
+            }
+        }
+
+        impl IModule for $gate
+        {
+            #[inline]
+            fn	Id( &self) -> ModuleId
+            {
+                return self._Id;
+            }
+        }
+
+        crate::ImplFluxSource!( $gate, _Id, _In1, _In2, _Out);
+    };
 }
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl NandGate
-{
-    #[inline]
-    pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
-    {
-        let  	( m, in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Nand);
-        return Self { _Id: m, _In1: in1, _In2: in2, _Out: out };
-    }
-
-    #[inline]
-    pub const fn	Id( &self) -> ModuleId
-    {
-        return self._Id;
-    }
-
-    #[inline]
-    pub const fn	In1( &self) -> PortId
-    {
-        return self._In1;
-    }
-
-    #[inline]
-    pub const fn	In2( &self) -> PortId
-    {
-        return self._In2;
-    }
-
-    #[inline]
-    pub const fn	Out( &self) -> PortId
-    {
-        return self._Out;
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IModule for NandGate
-{
-    #[inline]
-    fn	Id( &self) -> ModuleId
-    {
-        return self._Id;
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-/// 2-Input AND Gate
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct AndGate
-{
-    pub _Id:   ModuleId,
-    pub _In1:  PortId,
-    pub _In2:  PortId,
-    pub _Out:  PortId,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl AndGate
-{
-    #[inline]
-    pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
-    {
-        let  	( m, in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::And);
-        return Self { _Id: m, _In1: in1, _In2: in2, _Out: out };
-    }
-
-    #[inline]
-    pub const fn	Id( &self) -> ModuleId
-    {
-        return self._Id;
-    }
-
-    #[inline]
-    pub const fn	In1( &self) -> PortId
-    {
-        return self._In1;
-    }
-
-    #[inline]
-    pub const fn	In2( &self) -> PortId
-    {
-        return self._In2;
-    }
-
-    #[inline]
-    pub const fn	Out( &self) -> PortId
-    {
-        return self._Out;
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IModule for AndGate
-{
-    #[inline]
-    fn	Id( &self) -> ModuleId
-    {
-        return self._Id;
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-/// 2-Input OR Gate
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct OrGate
-{
-    pub _Id:   ModuleId,
-    pub _In1:  PortId,
-    pub _In2:  PortId,
-    pub _Out:  PortId,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl OrGate
-{
-    #[inline]
-    pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
-    {
-        let  	( m, in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Or);
-        return Self { _Id: m, _In1: in1, _In2: in2, _Out: out };
-    }
-
-    #[inline]
-    pub const fn	Id( &self) -> ModuleId
-    {
-        return self._Id;
-    }
-
-    #[inline]
-    pub const fn	In1( &self) -> PortId
-    {
-        return self._In1;
-    }
-
-    #[inline]
-    pub const fn	In2( &self) -> PortId
-    {
-        return self._In2;
-    }
-
-    #[inline]
-    pub const fn	Out( &self) -> PortId
-    {
-        return self._Out;
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IModule for OrGate
-{
-    #[inline]
-    fn	Id( &self) -> ModuleId
-    {
-        return self._Id;
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-/// 2-Input XOR Gate
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct XorGate
-{
-    pub _Id:   ModuleId,
-    pub _In1:  PortId,
-    pub _In2:  PortId,
-    pub _Out:  PortId,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl XorGate
-{
-    #[inline]
-    pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
-    {
-        let  	( m, in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Xor);
-        return Self { _Id: m, _In1: in1, _In2: in2, _Out: out };
-    }
-
-    #[inline]
-    pub const fn	Id( &self) -> ModuleId
-    {
-        return self._Id;
-    }
-
-    #[inline]
-    pub const fn	In1( &self) -> PortId
-    {
-        return self._In1;
-    }
-
-    #[inline]
-    pub const fn	In2( &self) -> PortId
-    {
-        return self._In2;
-    }
-
-    #[inline]
-    pub const fn	Out( &self) -> PortId
-    {
-        return self._Out;
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IModule for XorGate
-{
-    #[inline]
-    fn	Id( &self) -> ModuleId
-    {
-        return self._Id;
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-/// 2-Input NOR Gate
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct NorGate
-{
-    pub _Id:   ModuleId,
-    pub _In1:  PortId,
-    pub _In2:  PortId,
-    pub _Out:  PortId,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl NorGate
-{
-    #[inline]
-    pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
-    {
-        let  	( m, in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Nor);
-        return Self { _Id: m, _In1: in1, _In2: in2, _Out: out };
-    }
-
-    #[inline]
-    pub const fn	Id( &self) -> ModuleId
-    {
-        return self._Id;
-    }
-
-    #[inline]
-    pub const fn	In1( &self) -> PortId
-    {
-        return self._In1;
-    }
-
-    #[inline]
-    pub const fn	In2( &self) -> PortId
-    {
-        return self._In2;
-    }
-
-    #[inline]
-    pub const fn	Out( &self) -> PortId
-    {
-        return self._Out;
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IModule for NorGate
-{
-    #[inline]
-    fn	Id( &self) -> ModuleId
-    {
-        return self._Id;
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-/// 2-Input XNOR Gate
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct XnorGate
-{
-    pub _Id:   ModuleId,
-    pub _In1:  PortId,
-    pub _In2:  PortId,
-    pub _Out:  PortId,
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl XnorGate
-{
-    #[inline]
-    pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
-    {
-        let  	( m, in1, in2, out) = CreateGate2( layout, name, parent, KernelKind::Xnor);
-        return Self { _Id: m, _In1: in1, _In2: in2, _Out: out };
-    }
-
-    #[inline]
-    pub const fn	Id( &self) -> ModuleId
-    {
-        return self._Id;
-    }
-
-    #[inline]
-    pub const fn	In1( &self) -> PortId
-    {
-        return self._In1;
-    }
-
-    #[inline]
-    pub const fn	In2( &self) -> PortId
-    {
-        return self._In2;
-    }
-
-    #[inline]
-    pub const fn	Out( &self) -> PortId
-    {
-        return self._Out;
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IModule for XnorGate
-{
-    #[inline]
-    fn	Id( &self) -> ModuleId
-    {
-        return self._Id;
-    }
-}
+DefineGate2!( NandGate, Nand, "2-Input NAND Gate");
+DefineGate2!( AndGate, And, "2-Input AND Gate");
+DefineGate2!( OrGate, Or, "2-Input OR Gate");
+DefineGate2!( XorGate, Xor, "2-Input XOR Gate");
+DefineGate2!( NorGate, Nor, "2-Input NOR Gate");
+DefineGate2!( XnorGate, Xnor, "2-Input XNOR Gate");
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 /// 1-Input Inverter / NOT Gate
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 pub struct NotGate
 {
     pub _Id:   ModuleId,
@@ -404,7 +119,7 @@ impl NotGate
             parent,
             &[ PortDesc::Bool( "in") ],
             &[ PortDesc::Bool( "out") ],
-            KernelKind::Not,
+            KernelKind::Fast( KernelOp::Not),
         );
         let  	inPort = layout.InPort( m, 0).unwrap();
         let  	outPort = layout.OutPort( m, 0).unwrap();
@@ -448,318 +163,4 @@ impl IModule for NotGate
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IFluxExportSource for NandGate
-{
-    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
-    {
-        let  	mut step = 0;
-        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
-            match step {
-                0 => {
-                    *key = "Type".to_string();
-                    *val = FieldExp::Str( "NandGate");
-                    step += 1;
-                    true
-                }
-                1 => {
-                    *key = "_Id".to_string();
-                    *val = FieldExp::FluxSource( &self._Id);
-                    step += 1;
-                    true
-                }
-                2 => {
-                    *key = "_In1".to_string();
-                    *val = FieldExp::FluxSource( &self._In1);
-                    step += 1;
-                    true
-                }
-                3 => {
-                    *key = "_In2".to_string();
-                    *val = FieldExp::FluxSource( &self._In2);
-                    step += 1;
-                    true
-                }
-                4 => {
-                    *key = "_Out".to_string();
-                    *val = FieldExp::FluxSource( &self._Out);
-                    step += 1;
-                    true
-                }
-                _ => false,
-            }
-        };
-        *field = FieldExp::Obj( Box::new( generator));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IFluxExportSource for AndGate
-{
-    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
-    {
-        let  	mut step = 0;
-        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
-            match step {
-                0 => {
-                    *key = "Type".to_string();
-                    *val = FieldExp::Str( "AndGate");
-                    step += 1;
-                    true
-                }
-                1 => {
-                    *key = "_Id".to_string();
-                    *val = FieldExp::FluxSource( &self._Id);
-                    step += 1;
-                    true
-                }
-                2 => {
-                    *key = "_In1".to_string();
-                    *val = FieldExp::FluxSource( &self._In1);
-                    step += 1;
-                    true
-                }
-                3 => {
-                    *key = "_In2".to_string();
-                    *val = FieldExp::FluxSource( &self._In2);
-                    step += 1;
-                    true
-                }
-                4 => {
-                    *key = "_Out".to_string();
-                    *val = FieldExp::FluxSource( &self._Out);
-                    step += 1;
-                    true
-                }
-                _ => false,
-            }
-        };
-        *field = FieldExp::Obj( Box::new( generator));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IFluxExportSource for OrGate
-{
-    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
-    {
-        let  	mut step = 0;
-        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
-            match step {
-                0 => {
-                    *key = "Type".to_string();
-                    *val = FieldExp::Str( "OrGate");
-                    step += 1;
-                    true
-                }
-                1 => {
-                    *key = "_Id".to_string();
-                    *val = FieldExp::FluxSource( &self._Id);
-                    step += 1;
-                    true
-                }
-                2 => {
-                    *key = "_In1".to_string();
-                    *val = FieldExp::FluxSource( &self._In1);
-                    step += 1;
-                    true
-                }
-                3 => {
-                    *key = "_In2".to_string();
-                    *val = FieldExp::FluxSource( &self._In2);
-                    step += 1;
-                    true
-                }
-                4 => {
-                    *key = "_Out".to_string();
-                    *val = FieldExp::FluxSource( &self._Out);
-                    step += 1;
-                    true
-                }
-                _ => false,
-            }
-        };
-        *field = FieldExp::Obj( Box::new( generator));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IFluxExportSource for NorGate
-{
-    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
-    {
-        let  	mut step = 0;
-        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
-            match step {
-                0 => {
-                    *key = "Type".to_string();
-                    *val = FieldExp::Str( "NorGate");
-                    step += 1;
-                    true
-                }
-                1 => {
-                    *key = "_Id".to_string();
-                    *val = FieldExp::FluxSource( &self._Id);
-                    step += 1;
-                    true
-                }
-                2 => {
-                    *key = "_In1".to_string();
-                    *val = FieldExp::FluxSource( &self._In1);
-                    step += 1;
-                    true
-                }
-                3 => {
-                    *key = "_In2".to_string();
-                    *val = FieldExp::FluxSource( &self._In2);
-                    step += 1;
-                    true
-                }
-                4 => {
-                    *key = "_Out".to_string();
-                    *val = FieldExp::FluxSource( &self._Out);
-                    step += 1;
-                    true
-                }
-                _ => false,
-            }
-        };
-        *field = FieldExp::Obj( Box::new( generator));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IFluxExportSource for XorGate
-{
-    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
-    {
-        let  	mut step = 0;
-        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
-            match step {
-                0 => {
-                    *key = "Type".to_string();
-                    *val = FieldExp::Str( "XorGate");
-                    step += 1;
-                    true
-                }
-                1 => {
-                    *key = "_Id".to_string();
-                    *val = FieldExp::FluxSource( &self._Id);
-                    step += 1;
-                    true
-                }
-                2 => {
-                    *key = "_In1".to_string();
-                    *val = FieldExp::FluxSource( &self._In1);
-                    step += 1;
-                    true
-                }
-                3 => {
-                    *key = "_In2".to_string();
-                    *val = FieldExp::FluxSource( &self._In2);
-                    step += 1;
-                    true
-                }
-                4 => {
-                    *key = "_Out".to_string();
-                    *val = FieldExp::FluxSource( &self._Out);
-                    step += 1;
-                    true
-                }
-                _ => false,
-            }
-        };
-        *field = FieldExp::Obj( Box::new( generator));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IFluxExportSource for XnorGate
-{
-    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
-    {
-        let  	mut step = 0;
-        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
-            match step {
-                0 => {
-                    *key = "Type".to_string();
-                    *val = FieldExp::Str( "XnorGate");
-                    step += 1;
-                    true
-                }
-                1 => {
-                    *key = "_Id".to_string();
-                    *val = FieldExp::FluxSource( &self._Id);
-                    step += 1;
-                    true
-                }
-                2 => {
-                    *key = "_In1".to_string();
-                    *val = FieldExp::FluxSource( &self._In1);
-                    step += 1;
-                    true
-                }
-                3 => {
-                    *key = "_In2".to_string();
-                    *val = FieldExp::FluxSource( &self._In2);
-                    step += 1;
-                    true
-                }
-                4 => {
-                    *key = "_Out".to_string();
-                    *val = FieldExp::FluxSource( &self._Out);
-                    step += 1;
-                    true
-                }
-                _ => false,
-            }
-        };
-        *field = FieldExp::Obj( Box::new( generator));
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IFluxExportSource for NotGate
-{
-    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
-    {
-        let  	mut step = 0;
-        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
-            match step {
-                0 => {
-                    *key = "Type".to_string();
-                    *val = FieldExp::Str( "NotGate");
-                    step += 1;
-                    true
-                }
-                1 => {
-                    *key = "_Id".to_string();
-                    *val = FieldExp::FluxSource( &self._Id);
-                    step += 1;
-                    true
-                }
-                2 => {
-                    *key = "_In".to_string();
-                    *val = FieldExp::FluxSource( &self._In);
-                    step += 1;
-                    true
-                }
-                3 => {
-                    *key = "_Out".to_string();
-                    *val = FieldExp::FluxSource( &self._Out);
-                    step += 1;
-                    true
-                }
-                _ => false,
-            }
-        };
-        *field = FieldExp::Obj( Box::new( generator));
-    }
-}
+crate::ImplFluxSource!( NotGate, _Id, _In, _Out);

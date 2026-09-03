@@ -67,37 +67,44 @@ impl SimEngine
         };
     }
 
+    #[inline]
+    fn	ForEachReadyLane( readyWords: &Buff< u64>, modStart: usize, count: usize, mut f: impl FnMut( usize))
+    {
+        let  	mut lane = 0;
+        while lane < count {
+            let  	mIdx = modStart + lane;
+            let  	wIdx = mIdx / 64;
+            let  	bitOffset = mIdx % 64;
+            let  	activeWord = readyWords[wIdx] >> bitOffset;
+
+            let  	chunkLen = ( count - lane).min( 64 - bitOffset);
+            let  	chunkMask = if chunkLen >= 64 { !0u64 } else { ( 1u64 << chunkLen) - 1 };
+            let  	mut masked = activeWord & chunkMask;
+
+            while masked != 0 {
+                let  	b = masked.trailing_zeros() as usize;
+                f( lane + b);
+                masked &= masked - 1;
+            }
+            lane += chunkLen;
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     fn	EvalBehavioralWarps( &mut self)
     {
+        let  	readyWords = &self._ReadyWords;
+        let  	triggers = &mut self._Triggers;
         self._BehavioralWarps.Arr().Traverse( |warp| {
             let  	count = warp._Count.AsUsize();
             let  	modStart = warp._ModStart.AsUsize();
-
-            let  	mut lane = 0;
-            while lane < count {
-                let  	mIdx = modStart + lane;
-                let  	wIdx = mIdx / 64;
-                let  	bitOffset = mIdx % 64;
-                let  	activeWord = self._ReadyWords[wIdx] >> bitOffset;
-
-                let  	chunkLen = ( count - lane).min( 64 - bitOffset);
-                let  	chunkMask = if chunkLen >= 64 { !0u64 } else { ( 1u64 << chunkLen) - 1 };
-                if ( activeWord & chunkMask) == 0 {
-                    lane += chunkLen;
-                    continue;
-                }
-
-                for b in 0..chunkLen {
-                    if ( activeWord & ( 1u64 << b)) != 0 {
-                        let  	l = lane + b;
-                        let  	cb = &warp._Instances[l];
-                        let  	inTrigs = &warp._InTriggers[l];
-                        let  	outTrigs = &warp._OutTriggers[l];
-                        Self::EvalCustomInstance( cb, inTrigs, outTrigs, &mut self._Triggers);
-                    }
-                }
-                lane += chunkLen;
-            }
+            Self::ForEachReadyLane( readyWords, modStart, count, |l| {
+                let  	cb = &warp._Instances[l];
+                let  	inTrigs = &warp._InTriggers[l];
+                let  	outTrigs = &warp._OutTriggers[l];
+                Self::EvalCustomInstance( cb, inTrigs, outTrigs, triggers);
+            });
         });
     }
 
@@ -166,36 +173,18 @@ impl SimEngine
 
     fn	EvalFastWarps( &mut self)
     {
+        let  	readyWords = &self._ReadyWords;
+        let  	triggers = &mut self._Triggers;
         self._FastWarps.Arr().Traverse( |warp| {
             let  	op = warp._Op;
             let  	mask = warp._Mask;
             let  	count = warp._Count.AsUsize();
             let  	modStart = warp._ModStart.AsUsize();
-
-            let  	mut lane = 0;
-            while lane < count {
-                let  	mIdx = modStart + lane;
-                let  	wIdx = mIdx / 64;
-                let  	bitOffset = mIdx % 64;
-                let  	activeWord = self._ReadyWords[wIdx] >> bitOffset;
-
-                let  	chunkLen = ( count - lane).min( 64 - bitOffset);
-                let  	chunkMask = if chunkLen >= 64 { !0u64 } else { ( 1u64 << chunkLen) - 1 };
-                if ( activeWord & chunkMask) == 0 {
-                    lane += chunkLen;
-                    continue;
-                }
-
-                for b in 0..chunkLen {
-                    if ( activeWord & ( 1u64 << b)) != 0 {
-                        let  	l = lane + b;
-                        let  	in1 = self._Triggers._CurrentVals[warp._In1[l]];
-                        let  	in2 = self._Triggers._CurrentVals[warp._In2[l]];
-                        self._Triggers._FutureVals[warp._Out[l]] = op.Eval( in1, in2, mask);
-                    }
-                }
-                lane += chunkLen;
-            }
+            Self::ForEachReadyLane( readyWords, modStart, count, |l| {
+                let  	in1 = triggers._CurrentVals[warp._In1[l]];
+                let  	in2 = triggers._CurrentVals[warp._In2[l]];
+                triggers._FutureVals[warp._Out[l]] = op.Eval( in1, in2, mask);
+            });
         });
     }
 
@@ -203,37 +192,20 @@ impl SimEngine
 
     fn	EvalCustomWarps( &mut self)
     {
+        let  	readyWords = &self._ReadyWords;
+        let  	triggers = &mut self._Triggers;
+        let  	customCallbacks = &self._CustomCallbacks;
         let  	mut warpIdx = 0;
         self._CustomWarps.Arr().Traverse( |warp| {
             let  	count = warp._Count.AsUsize();
             let  	modStart = warp._ModStart.AsUsize();
-            let  	cb = &self._CustomCallbacks[warpIdx];
+            let  	cb = &customCallbacks[warpIdx];
             warpIdx += 1;
-
-            let  	mut lane = 0;
-            while lane < count {
-                let  	mIdx = modStart + lane;
-                let  	wIdx = mIdx / 64;
-                let  	bitOffset = mIdx % 64;
-                let  	activeWord = self._ReadyWords[wIdx] >> bitOffset;
-
-                let  	chunkLen = ( count - lane).min( 64 - bitOffset);
-                let  	chunkMask = if chunkLen >= 64 { !0u64 } else { ( 1u64 << chunkLen) - 1 };
-                if ( activeWord & chunkMask) == 0 {
-                    lane += chunkLen;
-                    continue;
-                }
-
-                for b in 0..chunkLen {
-                    if ( activeWord & ( 1u64 << b)) != 0 {
-                        let  	l = lane + b;
-                        let  	inTrigs = &warp._InTriggers[l];
-                        let  	outTrigs = &warp._OutTriggers[l];
-                        Self::EvalCustomInstance( cb, inTrigs, outTrigs, &mut self._Triggers);
-                    }
-                }
-                lane += chunkLen;
-            }
+            Self::ForEachReadyLane( readyWords, modStart, count, |l| {
+                let  	inTrigs = &warp._InTriggers[l];
+                let  	outTrigs = &warp._OutTriggers[l];
+                Self::EvalCustomInstance( cb, inTrigs, outTrigs, triggers);
+            });
         });
     }
 

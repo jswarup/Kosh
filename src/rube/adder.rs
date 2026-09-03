@@ -1,7 +1,7 @@
 //-- adder.rs -----------------------------------------------------------------------------------------------------------------------
 
 use	crate::{
-    flux::{ FieldExp, IFluxExportSource },
+    flux::{ FieldExp, IFluxExportSource, FieldImp, IFluxImportSource },
     rube::{
         engine::SimEngine,
         gates::{ AndGate, OrGate, XorGate },
@@ -16,7 +16,7 @@ use	crate::{
 //---------------------------------------------------------------------------------------------------------------------------------
 
 /// 1-Bit Half Adder ( XOR + AND)
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 pub struct HalfAdder
 {
     pub _Id:     ModuleId,
@@ -128,7 +128,7 @@ impl IModule for HalfAdder
 //---------------------------------------------------------------------------------------------------------------------------------
 
 /// 1-Bit Full Adder
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 pub struct FullAdder
 {
     pub _Id:     ModuleId,
@@ -283,34 +283,34 @@ impl< const N: usize> Adder< N>
     pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
     {
         let  	mut inDescs = Stash::WithCapacity( U32( ( 2 * N + 1) as u32));
-        for i in 0..N {
-            inDescs.Push( PortDesc::Bool( format!( "a{i}")));
-        }
-        for i in 0..N {
-            inDescs.Push( PortDesc::Bool( format!( "b{i}")));
-        }
+        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
+            inDescs.Push( PortDesc::Bool( format!( "a{}", i.0)));
+        });
+        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
+            inDescs.Push( PortDesc::Bool( format!( "b{}", i.0)));
+        });
         inDescs.Push( PortDesc::Bool( "cin"));
 
         let  	mut outDescs = Stash::WithCapacity( U32( ( N + 1) as u32));
-        for i in 0..N {
-            outDescs.Push( PortDesc::Bool( format!( "sum{i}")));
-        }
+        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
+            outDescs.Push( PortDesc::Bool( format!( "sum{}", i.0)));
+        });
         outDescs.Push( PortDesc::Bool( "carry"));
 
         let  	modId = layout.AddModule( name, parent, inDescs.Slice(), outDescs.Slice(), KernelKind::None);
 
         let  	mut aPorts = Stash::WithCapacity( U32( N as u32));
         let  	mut bPorts = Stash::WithCapacity( U32( N as u32));
-        for i in 0..N {
-            aPorts.Push( layout.InPort( modId, i as u32).unwrap());
-            bPorts.Push( layout.InPort( modId, ( N + i) as u32).unwrap());
-        }
-        let  	cinPort = layout.InPort( modId, ( 2 * N) as u32).unwrap();
+        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
+            aPorts.Push( layout.InPort( modId, i.0).unwrap());
+            bPorts.Push( layout.InPort( modId, ( N as u32) + i.0).unwrap());
+        });
+        let  	cinPort = layout.InPort( modId, ( 2 * N as u32)).unwrap();
 
         let  	mut sumPorts = Stash::WithCapacity( U32( N as u32));
-        for i in 0..N {
-            sumPorts.Push( layout.OutPort( modId, i as u32).unwrap());
-        }
+        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
+            sumPorts.Push( layout.OutPort( modId, i.0).unwrap());
+        });
         let  	carryPort = layout.OutPort( modId, N as u32).unwrap();
 
         let  	mut fullAdders: Stash< FullAdder> = Stash::WithCapacity( U32( N as u32));
@@ -356,20 +356,20 @@ impl< const N: usize> Adder< N>
     pub fn	SetA( &self, engine: &mut SimEngine, val: U32)
     {
         let  	v = val.0 as usize;
-        for i in 0..N {
-            let  	bitVal = ( ( v >> i) & 1) != 0;
+        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
+            let  	bitVal = ( ( v >> i.0) & 1) != 0;
             engine.SetPortBool( self._A[i], Reg::FromBool( bitVal));
-        }
+        });
     }
 
     #[inline]
     pub fn	SetB( &self, engine: &mut SimEngine, val: U32)
     {
         let  	v = val.0 as usize;
-        for i in 0..N {
-            let  	bitVal = ( ( v >> i) & 1) != 0;
+        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
+            let  	bitVal = ( ( v >> i.0) & 1) != 0;
             engine.SetPortBool( self._B[i], Reg::FromBool( bitVal));
-        }
+        });
     }
 
     #[inline]
@@ -382,13 +382,13 @@ impl< const N: usize> Adder< N>
     pub fn	GetSum( &self, engine: &SimEngine) -> usize
     {
         let  	mut sum = 0;
-        for i in 0..N {
+        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
             if let Some( bit) = engine.GetPortBool( self._Sum[i]) {
                 if bit.IsTrue() {
-                    sum |= 1 << i;
+                    sum |= 1 << i.0;
                 }
             }
-        }
+        });
         return sum;
     }
 
@@ -413,7 +413,7 @@ impl< const N: usize> IModule for Adder< N>
 //---------------------------------------------------------------------------------------------------------------------------------
 
 /// 32-Bit High-Performance Bus Adder using custom word-level kernel
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 pub struct BusAdder32
 {
     pub _Id:     ModuleId,
@@ -473,146 +473,9 @@ impl IModule for BusAdder32
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-//---------------------------------------------------------------------------------------------------------------------------------
-
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl IFluxExportSource for BusAdder32
-{
-    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
-    {
-        let  	mut step = 0;
-        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
-            match step {
-                0 => {
-                    *key = "Type".to_string();
-                    *val = FieldExp::Str( "BusAdder32");
-                    step += 1;
-                    true
-                }
-                1 => {
-                    *key = "_Id".to_string();
-                    *val = FieldExp::FluxSource( &self._Id);
-                    step += 1;
-                    true
-                }
-                // (Optional: loop over Buff arrays for A, B, Sum)
-                _ => false,
-            }
-        };
-        *field = FieldExp::Obj( Box::new( generator));
-    }
-}
-
-impl IFluxExportSource for HalfAdder
-{
-    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
-    {
-        let  	mut step = 0;
-        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
-            match step {
-                0 => {
-                    *key = "Type".to_string();
-                    *val = FieldExp::Str( "HalfAdder");
-                    step += 1;
-                    true
-                }
-                1 => {
-                    *key = "_Id".to_string();
-                    *val = FieldExp::FluxSource( &self._Id);
-                    step += 1;
-                    true
-                }
-                2 => {
-                    *key = "_In1".to_string();
-                    *val = FieldExp::FluxSource( &self._In1);
-                    step += 1;
-                    true
-                }
-                3 => {
-                    *key = "_In2".to_string();
-                    *val = FieldExp::FluxSource( &self._In2);
-                    step += 1;
-                    true
-                }
-                4 => {
-                    *key = "_Sum".to_string();
-                    *val = FieldExp::FluxSource( &self._Sum);
-                    step += 1;
-                    true
-                }
-                5 => {
-                    *key = "_Carry".to_string();
-                    *val = FieldExp::FluxSource( &self._Carry);
-                    step += 1;
-                    true
-                }
-                _ => false,
-            }
-        };
-        *field = FieldExp::Obj( Box::new( generator));
-    }
-}
-
-impl IFluxExportSource for FullAdder
-{
-    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
-    {
-        let  	mut step = 0;
-        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
-            match step {
-                0 => {
-                    *key = "Type".to_string();
-                    *val = FieldExp::Str( "FullAdder");
-                    step += 1;
-                    true
-                }
-                1 => {
-                    *key = "_Id".to_string();
-                    *val = FieldExp::FluxSource( &self._Id);
-                    step += 1;
-                    true
-                }
-                2 => {
-                    *key = "_In1".to_string();
-                    *val = FieldExp::FluxSource( &self._In1);
-                    step += 1;
-                    true
-                }
-                3 => {
-                    *key = "_In2".to_string();
-                    *val = FieldExp::FluxSource( &self._In2);
-                    step += 1;
-                    true
-                }
-                4 => {
-                    *key = "_CIn".to_string();
-                    *val = FieldExp::FluxSource( &self._CIn);
-                    step += 1;
-                    true
-                }
-                5 => {
-                    *key = "_Sum".to_string();
-                    *val = FieldExp::FluxSource( &self._Sum);
-                    step += 1;
-                    true
-                }
-                6 => {
-                    *key = "_Carry".to_string();
-                    *val = FieldExp::FluxSource( &self._Carry);
-                    step += 1;
-                    true
-                }
-                _ => false,
-            }
-        };
-        *field = FieldExp::Obj( Box::new( generator));
-    }
-}
+crate::ImplFluxSource!( BusAdder32, _Id, _A, _B, _Sum, _Carry);
+crate::ImplFluxSource!( HalfAdder, _Id, _Xor, _And, _In1, _In2, _Sum, _Carry);
+crate::ImplFluxSource!( FullAdder, _Id, _HA1, _HA2, _Or, _In1, _In2, _CIn, _Sum, _Carry);
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -620,31 +483,14 @@ impl< const N: usize> IFluxExportSource for Adder< N>
 {
     fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
     {
-        let  	mut step = 0;
-        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
-            match step {
-                0 => {
-                    *key = "Type".to_string();
-                    *val = FieldExp::Str( "Adder");
-                    step += 1;
-                    true
-                }
-                1 => {
-                    *key = "N".to_string();
-                    *val = FieldExp::U64( crate::silo::U64( N as u64));
-                    step += 1;
-                    true
-                }
-                2 => {
-                    *key = "_Id".to_string();
-                    *val = FieldExp::FluxSource( &self._Id);
-                    step += 1;
-                    true
-                }
-                // we skip Buffs to save test code complexity, just _Id is fine for structural test
-                _ => false,
-            }
-        };
-        *field = FieldExp::Obj( Box::new( generator));
+        self._Id.FetchFieldExp( field);
+    }
+}
+
+impl< const N: usize> IFluxImportSource for Adder< N>
+{
+    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
+    {
+        self._Id.FetchFieldImp( field);
     }
 }

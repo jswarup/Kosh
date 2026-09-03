@@ -51,4 +51,31 @@ impl KernelRegistry
 
         return registry;
     }
+
+    pub fn	FindOrInternStaticName( name: &str) -> &'static str
+    {
+        const KNOWN: &[&str] = &[
+            "BusAdder32_Kernel",
+        ];
+        let  	mut found = None;
+        KNOWN.iter().for_each( |&k| {
+            if k == name {
+                found = Some( k);
+            }
+        });
+        if let Some( s) = found {
+            return s;
+        }
+
+        use std::sync::Mutex;
+        static INTERNED: Mutex< Option< std::collections::HashSet< &'static str>>> = Mutex::new( None);
+        let  	mut guard = INTERNED.lock().unwrap();
+        let  	set = guard.get_or_insert_with( std::collections::HashSet::new);
+        if let Some( &existing) = set.get( name) {
+            return existing;
+        }
+        let  	leaked: &'static str = Box::leak( name.to_string().into_boxed_str());
+        set.insert( leaked);
+        return leaked;
+    }
 }

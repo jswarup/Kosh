@@ -264,15 +264,14 @@ impl IFluxExportSource for PortType
 {
     fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
     {
-        let  	s = match self {
-            Self::Bool => "Bool",
-            Self::U8Val => "U8Val",
-            Self::U16Val => "U16Val",
-            Self::U32Val => "U32Val",
-            Self::U64Val => "U64Val",
-            Self::Custom( _) => "Custom",
-        };
-        *field = FieldExp::Str( s);
+        match self {
+            Self::Bool => *field = FieldExp::Str( "Bool"),
+            Self::U8Val => *field = FieldExp::Str( "U8Val"),
+            Self::U16Val => *field = FieldExp::Str( "U16Val"),
+            Self::U32Val => *field = FieldExp::Str( "U32Val"),
+            Self::U64Val => *field = FieldExp::Str( "U64Val"),
+            Self::Custom( bits) => *field = FieldExp::String( format!( "Custom:{}", bits.0)),
+        }
     }
 }
 
@@ -313,8 +312,10 @@ impl crate::flux::IFluxImportSource for PortDir {
     }
 }
 
-impl crate::flux::IFluxImportSink for PortType {
-    fn FromFieldImp( &mut self, field: crate::flux::FieldImp) -> bool {
+impl crate::flux::IFluxImportSink for PortType
+{
+    fn	FromFieldImp( &mut self, field: crate::flux::FieldImp) -> bool
+    {
         if let crate::flux::FieldImp::Str( s) = field {
             *self = match *s {
                 "Bool" => Self::Bool,
@@ -322,12 +323,16 @@ impl crate::flux::IFluxImportSink for PortType {
                 "U16Val" => Self::U16Val,
                 "U32Val" => Self::U32Val,
                 "U64Val" => Self::U64Val,
-                "Custom" => Self::Custom( crate::silo::U32( 0)), // Can't parse Custom fully from string if it only exports "Custom"
+                "Custom" => Self::Custom( crate::silo::U32( 0)),
+                custom if custom.starts_with( "Custom:") => {
+                    let  	bits = custom[7..].parse::< u32>().unwrap_or( 0);
+                    Self::Custom( crate::silo::U32( bits))
+                }
                 _ => return false,
             };
             return true;
         }
-        false
+        return false;
     }
 }
 impl crate::flux::IFluxImportSource for PortType {

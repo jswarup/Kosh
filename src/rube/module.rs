@@ -6,6 +6,7 @@ use	crate::{
     flux::{ FieldExp, IFluxExportSource, FieldImp, IFluxImportSource },
     rube::{
         reg::Reg,
+        registry::KernelRegistry,
         trigger::TriggerId,
     },
     silo::{ Buff, U32, USeg },
@@ -106,17 +107,7 @@ impl KernelOp
 pub enum KernelKind
 {
     None,
-    Nand,
-    And,
-    Or,
-    Not,
-    Xor,
-    Nor,
-    Xnor,
-    Add,
-    Sub,
-    Shl,
-    Shr,
+    Fast( KernelOp),
     Behavioral( Arc< dyn Fn( &[Reg], &mut [Reg]) + Send + Sync>),
     Custom( &'static str),
 }
@@ -129,17 +120,7 @@ impl fmt::Debug for KernelKind
     {
         match self {
             Self::None => write!( f, "KernelKind::None"),
-            Self::Nand => write!( f, "KernelKind::Nand"),
-            Self::And => write!( f, "KernelKind::And"),
-            Self::Or => write!( f, "KernelKind::Or"),
-            Self::Not => write!( f, "KernelKind::Not"),
-            Self::Xor => write!( f, "KernelKind::Xor"),
-            Self::Nor => write!( f, "KernelKind::Nor"),
-            Self::Xnor => write!( f, "KernelKind::Xnor"),
-            Self::Add => write!( f, "KernelKind::Add"),
-            Self::Sub => write!( f, "KernelKind::Sub"),
-            Self::Shl => write!( f, "Shl"),
-            Self::Shr => write!( f, "Shr"),
+            Self::Fast( op) => write!( f, "KernelKind::Fast({:?})", op),
             Self::Behavioral( _) => write!( f, "Behavioral( ..)"),
             Self::Custom( n) => write!( f, "Custom( {})", n),
         }
@@ -148,7 +129,6 @@ impl fmt::Debug for KernelKind
 
 impl KernelKind
 {
-
     #[inline]
     pub const fn	IsNone( &self) -> bool
     {
@@ -159,20 +139,8 @@ impl KernelKind
     pub const fn	ToFastOp( &self) -> Option< KernelOp>
     {
         return match self {
-            Self::None => None,
-            Self::Nand => Some( KernelOp::Nand),
-            Self::And => Some( KernelOp::And),
-            Self::Or => Some( KernelOp::Or),
-            Self::Not => Some( KernelOp::Not),
-            Self::Xor => Some( KernelOp::Xor),
-            Self::Nor => Some( KernelOp::Nor),
-            Self::Xnor => Some( KernelOp::Xnor),
-            Self::Add => Some( KernelOp::Add),
-            Self::Sub => Some( KernelOp::Sub),
-            Self::Shl => Some( KernelOp::Shl),
-            Self::Shr => Some( KernelOp::Shr),
-            Self::Behavioral( _) => None,
-            Self::Custom( _) => None,
+            Self::Fast( op) => Some( *op),
+            _ => None,
         };
     }
 
@@ -181,17 +149,7 @@ impl KernelKind
     {
         return match self {
             Self::None => ( 2, 0),
-            Self::Nand => ( 0, KernelOp::Nand as usize),
-            Self::And => ( 0, KernelOp::And as usize),
-            Self::Or => ( 0, KernelOp::Or as usize),
-            Self::Not => ( 0, KernelOp::Not as usize),
-            Self::Xor => ( 0, KernelOp::Xor as usize),
-            Self::Nor => ( 0, KernelOp::Nor as usize),
-            Self::Xnor => ( 0, KernelOp::Xnor as usize),
-            Self::Add => ( 0, KernelOp::Add as usize),
-            Self::Sub => ( 0, KernelOp::Sub as usize),
-            Self::Shl => ( 0, KernelOp::Shl as usize),
-            Self::Shr => ( 0, KernelOp::Shr as usize),
+            Self::Fast( op) => ( 0, *op as usize),
             KernelKind::Behavioral( callback) => {
                 let  	rawDyn: *const ( dyn Fn( &[Reg], &mut [Reg]) + Send + Sync) = Arc::as_ptr( callback);
                 let  	vtablePtr = unsafe { std::mem::transmute::< _, ( usize, usize)>( rawDyn).1 };
@@ -464,86 +422,113 @@ impl IFluxImportSource for KernelOp {
     }
 }
 
-impl Default for KernelKind {
-    fn default() -> Self { Self::None }
-}
-impl IFluxExportSource for KernelKind {
-    fn FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>) {
-        let s = match self {
-            Self::None => "None", Self::Nand => "Nand", Self::And => "And", Self::Or => "Or",
-            Self::Not => "Not", Self::Xor => "Xor", Self::Nor => "Nor", Self::Xnor => "Xnor",
-            Self::Add => "Add", Self::Sub => "Sub", Self::Shl => "Shl", Self::Shr => "Shr",
-            Self::Custom( name) => { *field = FieldExp::Str( name); return; },
-            Self::Behavioral( _) => "Behavioral",
-        };
-        *field = FieldExp::Str( s);
+impl Default for KernelKind
+{
+    fn	default() -> Self
+    {
+        Self::None
     }
 }
-impl crate::flux::IFluxImportSink for KernelKind {
-    fn FromFieldImp( &mut self, field: FieldImp) -> bool {
+
+impl IFluxExportSource for KernelKind
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        match self {
+            Self::None => *field = FieldExp::Str( "None"),
+            Self::Fast( op) => op.FetchFieldExp( field),
+            Self::Custom( name) => *field = FieldExp::Str( name),
+            Self::Behavioral( _) => *field = FieldExp::Str( "Behavioral"),
+        }
+    }
+}
+
+impl crate::flux::IFluxImportSink for KernelKind
+{
+    fn	FromFieldImp( &mut self, field: FieldImp) -> bool
+    {
         if let FieldImp::Str( s) = field {
-            *self = match *s {
-                "None" => Self::None, "Nand" => Self::Nand, "And" => Self::And, "Or" => Self::Or,
-                "Not" => Self::Not, "Xor" => Self::Xor, "Nor" => Self::Nor, "Xnor" => Self::Xnor,
-                "Add" => Self::Add, "Sub" => Self::Sub, "Shl" => Self::Shl, "Shr" => Self::Shr,
-                "Behavioral" => return false,
-                name => Self::Custom( Box::leak( name.to_string().into_boxed_str())),
-            };
+            if *s == "None" {
+                *self = Self::None;
+                return true;
+            }
+            if *s == "Behavioral" {
+                return false;
+            }
+            let  	sCopy: String = s.to_string();
+            let  	mut op = KernelOp::default();
+            let  	mut tmp: &str = &sCopy;
+            if crate::flux::IFluxImportSink::FromFieldImp( &mut op, FieldImp::Str( &mut tmp)) {
+                *self = Self::Fast( op);
+                return true;
+            }
+            *self = Self::Custom( KernelRegistry::FindOrInternStaticName( &sCopy));
             return true;
         }
-        false
+        return false;
     }
 }
-impl IFluxImportSource for KernelKind {
-    fn FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>) {
+
+impl IFluxImportSource for KernelKind
+{
+    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
+    {
         *field = FieldImp::FluxSink( self);
     }
 }
 
 crate::ImplFluxSource!( Module, _Id, _Parent, _Name, _InPorts, _OutPorts, _SubModules, _Descendents, _Kernel, _IsSealed);
 
+//---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive(Clone)]
+#[derive( Clone)]
 pub struct BehavioralWarp
 {
-    pub _ModStart:    crate::silo::U32,
-    pub _Count:       crate::silo::U32,
-    pub _Instances:   crate::silo::Buff< std::sync::Arc< dyn Fn( &[crate::rube::reg::Reg], &mut [crate::rube::reg::Reg]) + Send + Sync>>,
-    pub _InTriggers:  crate::silo::Buff< crate::silo::Buff< crate::rube::trigger::TriggerId>>,
-    pub _OutTriggers: crate::silo::Buff< crate::silo::Buff< crate::rube::trigger::TriggerId>>,
+    pub _ModStart:    U32,
+    pub _Count:       U32,
+    pub _Instances:   Buff< Arc< dyn Fn( &[Reg], &mut [Reg]) + Send + Sync>>,
+    pub _InTriggers:  Buff< Buff< TriggerId>>,
+    pub _OutTriggers: Buff< Buff< TriggerId>>,
 }
+
+//---------------------------------------------------------------------------------------------------------------------------------
 
 impl BehavioralWarp
 {
-    pub fn New(
-        modStart: crate::silo::U32,
-        count: crate::silo::U32,
-        instances: crate::silo::Buff< std::sync::Arc< dyn Fn( &[crate::rube::reg::Reg], &mut [crate::rube::reg::Reg]) + Send + Sync>>,
-        inTriggers: crate::silo::Buff< crate::silo::Buff< crate::rube::trigger::TriggerId>>,
-        outTriggers: crate::silo::Buff< crate::silo::Buff< crate::rube::trigger::TriggerId>>,
-    ) -> Self {
-        Self {
-            _ModStart: modStart,
-            _Count: count,
-            _Instances: instances,
-            _InTriggers: inTriggers,
+    pub fn	New(
+        modStart: U32,
+        count: U32,
+        instances: Buff< Arc< dyn Fn( &[Reg], &mut [Reg]) + Send + Sync>>,
+        inTriggers: Buff< Buff< TriggerId>>,
+        outTriggers: Buff< Buff< TriggerId>>,
+    ) -> Self
+    {
+        return Self {
+            _ModStart:    modStart,
+            _Count:       count,
+            _Instances:   instances,
+            _InTriggers:  inTriggers,
             _OutTriggers: outTriggers,
-        }
+        };
     }
 }
 
-impl Default for Module {
-    fn default() -> Self {
-        Self {
-            _Id: ModuleId::default(),
-            _Parent: None,
-            _Name: String::new(),
-            _InPorts: crate::silo::USeg::New( crate::silo::U32(0), crate::silo::U32(0)),
-            _OutPorts: crate::silo::USeg::New( crate::silo::U32(0), crate::silo::U32(0)),
-            _SubModules: crate::silo::USeg::New( crate::silo::U32(0), crate::silo::U32(0)),
-            _Descendents: crate::silo::USeg::New( crate::silo::U32(0), crate::silo::U32(0)),
-            _Kernel: KernelKind::default(),
-            _IsSealed: false,
-        }
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl Default for Module
+{
+    fn	default() -> Self
+    {
+        return Self {
+            _Id:          ModuleId::default(),
+            _Parent:      None,
+            _Name:        String::new(),
+            _InPorts:     USeg::New( U32::_0, U32::_0),
+            _OutPorts:    USeg::New( U32::_0, U32::_0),
+            _SubModules:  USeg::New( U32::_0, U32::_0),
+            _Descendents: USeg::New( U32::_0, U32::_0),
+            _Kernel:      KernelKind::default(),
+            _IsSealed:    false,
+        };
     }
 }
