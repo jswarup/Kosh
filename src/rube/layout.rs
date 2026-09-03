@@ -429,31 +429,39 @@ impl Layout
         if modCount == U32( 1) {
             self._SubModules.Clear();
             self._Descendents.Clear();
-            let  	count = self._ModuleChildren[U32( 0)].Size();
-            self._ModuleChildren[U32( 0)].Arr().Traverse( |&child| {
-                self._SubModules.Push( child);
-            });
-            self._Modules[U32( 0)]._SubModules = USeg::New( U32::_0, count);
+            self._ModuleChildren.Clear();
+            self._Modules[U32( 0)]._SubModules = USeg::New( U32::_0, U32::_0);
             self._Modules[U32( 0)]._Descendents = USeg::New( U32::_0, U32::_0);
             return;
         }
 
         let  	arr = self._Modules.Arr();
-        let  	lessFn = move |i, j| arr.At( i)._Kernel.ClassKey() < arr.At( j)._Kernel.ClassKey();
+        let  	lessFn = move |i, j| {
+            if arr.At( i)._Kernel.ClassKey() == arr.At( j)._Kernel.ClassKey() {
+                arr.At( i)._Id < arr.At( j)._Id
+            } else {
+                arr.At( i)._Kernel.ClassKey() < arr.At( j)._Kernel.ClassKey()
+            }
+        };
         let  	swapFn = move |i, j| arr.Swap( i, j);
         arr.USeg().QSort( lessFn, swapFn);
 
-        let  	mut oldToNew = Stash::WithCapacity( modCount);
-        USeg::New( U32::_0, modCount).Traverse( |_| {
-            oldToNew.Push( ModuleId( U32::_0));
-        });
+        let  	mut oldToNew = Stash::WithCapacityVal( modCount, ModuleId( U32::_0));
         USeg::New( U32::_0, modCount).Traverse( |newIdx| {
             let  	oldId = self._Modules[newIdx]._Id;
             oldToNew[oldId.0] = ModuleId( newIdx);
         });
 
-        let  	mut newModuleChildren = Stash::WithCapacity( modCount);
-        // Pre-fill so we can assign randomly if needed, but since we traverse newIdx sequentially, we can just push.
+        // Compute total direct sub-modules to pre-reserve contiguous capacity in _SubModules
+        let  	mut totalSub = U32( 0);
+        USeg::New( U32::_0, modCount).Traverse( |i| {
+            totalSub += self._ModuleChildren[i].Size();
+        });
+
+        self._SubModules.Clear();
+        self._SubModules.Reserve( totalSub);
+
+        // Single pass: re-index modules, update port owners, and flatten mapped submodules
         USeg::New( U32::_0, modCount).Traverse( |newIdx| {
             let  	oldId = self._Modules[newIdx]._Id;
             let  	newModId = ModuleId( newIdx);
@@ -466,43 +474,31 @@ impl Layout
                 self._Ports[idx]._Owner = newModId;
             });
 
-            let  	oldChildren = &self._ModuleChildren[oldId.0];
-            let  	mut mappedChildren = Stash::WithCapacity( oldChildren.Size());
-            oldChildren.Arr().Traverse( |&childOldId| {
-                mappedChildren.Push( oldToNew[childOldId.0]);
-            });
-
-            // Build the new ModuleChildren stash exactly in newIdx order
-            let  	mut stashClone = Stash::WithCapacity( mappedChildren.Size());
-            mappedChildren.Arr().Traverse( |&c| { stashClone.Push( c); } );
-            newModuleChildren.Push( stashClone);
-        });
-
-        self._ModuleChildren = newModuleChildren;
-
-        // Flatten direct sub-modules into contiguous self._SubModules
-        self._SubModules.Clear();
-        USeg::New( U32::_0, modCount).Traverse( |newIdx| {
             let  	start = self._SubModules.Size();
-            let  	children = &self._ModuleChildren[newIdx];
-            let  	count = children.Size();
-            children.Arr().Traverse( |&childId| {
-                self._SubModules.Push( childId);
+            let  	oldChildren = &self._ModuleChildren[oldId.0];
+            let  	count = oldChildren.Size();
+            oldChildren.Arr().Traverse( |&childOldId| {
+                self._SubModules.Push( oldToNew[childOldId.0]);
             });
             self._Modules[newIdx]._SubModules = USeg::New( start, count);
         });
 
+        // Drop temporary dynamic child vectors now that _SubModules is contiguous
+        self._ModuleChildren.Clear();
+
         // Flatten transitive recursive descendents into contiguous self._Descendents
         self._Descendents.Clear();
+        self._Descendents.Reserve( totalSub);
+
+        // Single reusable visited array and stack across all module traversals
+        let  	mut visited = Stash::WithCapacityVal( modCount, false);
+        let  	mut stack = Stash::WithCapacity( modCount);
+
         USeg::New( U32::_0, modCount).Traverse( |newIdx| {
             let  	start = self._Descendents.Size();
-            let  	mut visited = Stash::WithCapacity( modCount);
-            USeg::New( U32::_0, modCount).Traverse( |_| {
-                visited.Push( false);
-            });
 
-            let  	mut stack = Stash::New();
-            self._ModuleChildren[newIdx].Arr().Traverse( |&childId| {
+            self._Modules[newIdx]._SubModules.Traverse( |childSlot| {
+                let  	childId = self._SubModules[childSlot];
                 stack.Push( childId);
                 visited[childId.0] = true;
             });
@@ -510,7 +506,8 @@ impl Layout
             while stack.Size() > U32::_0 {
                 let  	curr = stack.Pop().unwrap();
                 self._Descendents.Push( curr);
-                self._ModuleChildren[curr.0].Arr().Traverse( |&childId| {
+                self._Modules[curr.0]._SubModules.Traverse( |childSlot| {
+                    let  	childId = self._SubModules[childSlot];
                     if !visited[childId.0] {
                         visited[childId.0] = true;
                         stack.Push( childId);
@@ -520,6 +517,11 @@ impl Layout
 
             let  	count = self._Descendents.Size() - start;
             self._Modules[newIdx]._Descendents = USeg::New( start, count);
+
+            // Reset visited flags only for the nodes that were marked (O(deg) instead of O(N))
+            USeg::New( start, count).Traverse( |dIdx| {
+                visited[self._Descendents[dIdx].0] = false;
+            });
         });
     }
 
@@ -531,11 +533,8 @@ impl Layout
         let  	idx = moduleId.0;
         if idx < self._Modules.Size() {
             let  	seg = self._Modules[idx]._SubModules;
-            if self._SubModules.Size() > U32( 0) {
-                if !seg.IsEmpty() && seg.End() <= self._SubModules.Size() {
-                    return &self._SubModules.Slice()[seg.First().AsUsize()..seg.End().AsUsize()];
-                }
-                return &[];
+            if !seg.IsEmpty() && seg.End() <= self._SubModules.Size() {
+                return &self._SubModules.Slice()[seg.First().AsUsize()..seg.End().AsUsize()];
             }
             if idx < self._ModuleChildren.Size() {
                 return self._ModuleChildren[idx].Slice();
