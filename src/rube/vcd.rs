@@ -4,10 +4,11 @@ use	crate::{
     rube::{
         engine::SimEngine,
         layout::Layout,
+        port::PortId,
         reg::Reg,
         trigger::ITriggerWad,
     },
-    silo::{ IAccess, U32, USeg },
+    silo::{ U32, USeg },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -34,7 +35,7 @@ impl VcdWriter
 
         // Resolve bit width for each trigger by finding the first port mapped to it
         layout.Ports().iter().enumerate().for_each( |( pIdx, port)| {
-            if let Some( trigId) = engine.GetPortTrigger( crate::rube::port::PortId( U32( pIdx as u32))) {
+            if let Some( trigId) = engine.GetPortTrigger( PortId( U32( pIdx as u32))) {
                 trigBits[trigId.0 as usize] = port._Type.Bits();
             }
         });
@@ -55,7 +56,8 @@ impl VcdWriter
         layout.Modules().iter().for_each( |module| {
             out.push_str( &format!( "$scope module {} $end\n", module._Name));
 
-            module._InPorts.Arr().Traverse( |&portId| {
+            module._InPorts.Traverse( |idx| {
+                let  	portId = PortId::In( idx);
                 if let Some( port) = layout.Port( portId) {
                     if let Some( trigId) = engine.GetPortTrigger( portId) {
                         let  	vcdId = &self._TrigToIdStr[trigId.0 as usize];
@@ -65,7 +67,8 @@ impl VcdWriter
                 }
             });
 
-            module._OutPorts.Arr().Traverse( |&portId| {
+            module._OutPorts.Traverse( |idx| {
+                let  	portId = PortId::Out( idx);
                 if let Some( port) = layout.Port( portId) {
                     if let Some( trigId) = engine.GetPortTrigger( portId) {
                         let  	vcdId = &self._TrigToIdStr[trigId.0 as usize];

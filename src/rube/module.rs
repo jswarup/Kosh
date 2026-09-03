@@ -4,11 +4,10 @@ use	std::fmt;
 use	std::sync::Arc;
 use	crate::{
     rube::{
-        port::PortId,
         reg::Reg,
         trigger::TriggerId,
     },
-    silo::{ Buff, U32 },
+    silo::{ Buff, U32, USeg },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -187,39 +186,39 @@ impl KernelKind
 #[derive( Clone, Debug)]
 pub struct Module
 {
-    pub _Id: ModuleId,
-    pub _Name: String,
-    pub _InPorts: Buff< PortId>,
-    pub _OutPorts: Buff< PortId>,
-    pub _Kernel: KernelKind,
-    pub _SubModules: Buff< ModuleId>,
+    pub _Id:          ModuleId,
+    pub _Name:        String,
+    pub _InPorts:     USeg,
+    pub _OutPorts:    USeg,
+    pub _Kernel:      KernelKind,
+    pub _SubModules:  Buff< ModuleId>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl Module
 {
-pub fn	NewContainer( id: ModuleId, name: &str) -> Self
+    pub fn	NewContainer( id: ModuleId, name: &str) -> Self
     {
         return Self {
-            _Id: id,
-            _Name: name.to_string(),
-            _InPorts: Buff::New(),
-            _OutPorts: Buff::New(),
-            _Kernel: KernelKind::None,
-            _SubModules: Buff::New(),
+            _Id:          id,
+            _Name:        name.to_string(),
+            _InPorts:     USeg::New( U32::_0, U32::_0),
+            _OutPorts:    USeg::New( U32::_0, U32::_0),
+            _Kernel:      KernelKind::None,
+            _SubModules:  Buff::New(),
         };
     }
 
-    pub fn	New( id: ModuleId, name: &str, inPorts: Buff< PortId>, outPorts: Buff< PortId>, kernel: KernelKind) -> Self
+    pub fn	New( id: ModuleId, name: &str, inPorts: USeg, outPorts: USeg, kernel: KernelKind) -> Self
     {
         return Self {
-            _Id: id,
-            _Name: name.to_string(),
-            _InPorts: inPorts,
-            _OutPorts: outPorts,
-            _Kernel: kernel,
-            _SubModules: Buff::New(),
+            _Id:          id,
+            _Name:        name.to_string(),
+            _InPorts:     inPorts,
+            _OutPorts:    outPorts,
+            _Kernel:      kernel,
+            _SubModules:  Buff::New(),
         };
     }
 

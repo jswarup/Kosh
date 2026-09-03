@@ -94,29 +94,22 @@ impl Layout
         modId: ModuleId,
         moduleName: &str,
         ports: P,
-        dir: PortDir,
         extract: F,
-    ) -> Buff< PortId>
+    ) -> USeg
     where
         P: Into< Arr< 'a, T>>,
         F: Fn( &T) -> PortDesc,
     {
         let  	arr: Arr< 'a, T> = ports.into();
-        let  	mut portIds = Stash::WithCapacity( arr.Size());
+        let  	start = self._Ports.Size();
+        let  	count = arr.Size();
         arr.Traverse( |item| {
             let  	mut desc = extract( item);
-            let  	rawIdx = self._Ports.Size();
-            let  	portId = if dir == PortDir::Out {
-                PortId::Out( rawIdx)
-            } else {
-                PortId::In( rawIdx)
-            };
             desc._Name = format!( "{moduleName}.{}", desc._Name);
             self._Ports.Push( desc);
             self._PortOwners.Push( modId);
-            portIds.Push( portId);
         });
-        return portIds.IntoBuff();
+        return USeg::New( start, count);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -134,13 +127,13 @@ impl Layout
     {
         let  	modId = ModuleId( self._Modules.Size());
         let  	inArr: Arr< 'a, PortDesc> = inPorts.into();
-        let  	inPortIds = self.AddPorts( modId, name, inArr, PortDir::In, |d| d.clone());
-        let  	outPortIds = self.AddPorts( modId, name, outPorts, PortDir::Out, |d| d.clone());
+        let  	inSeg = self.AddPorts( modId, name, inArr, |d| d.clone());
+        let  	outSeg = self.AddPorts( modId, name, outPorts, |d| d.clone());
         let  	module = Module::New(
             modId,
             name,
-            inPortIds,
-            outPortIds,
+            inSeg,
+            outSeg,
             kernel,
         );
         self._Modules.Push( module);
@@ -163,13 +156,13 @@ impl Layout
         O: Into< Arr< 'a, &'a str>>,
     {
         let  	modId = ModuleId( self._Modules.Size());
-        let  	inPortIds = self.AddPorts( modId, name, inPorts, PortDir::In, |&name| PortDesc::Bool( name));
-        let  	outPortIds = self.AddPorts( modId, name, outPorts, PortDir::Out, |&name| PortDesc::Bool( name));
+        let  	inSeg = self.AddPorts( modId, name, inPorts, |&name| PortDesc::Bool( name));
+        let  	outSeg = self.AddPorts( modId, name, outPorts, |&name| PortDesc::Bool( name));
         let  	module = Module::New(
             modId,
             name,
-            inPortIds,
-            outPortIds,
+            inSeg,
+            outSeg,
             kernel,
         );
         self._Modules.Push( module);
@@ -177,7 +170,9 @@ impl Layout
         return modId;
     }
 
-pub fn	AddContainer( &mut self, name: &str) -> ModuleId
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	AddContainer( &mut self, name: &str) -> ModuleId
     {
         let  	modId = ModuleId( self._Modules.Size());
         let  	module = Module::NewContainer( modId, name);
@@ -185,6 +180,8 @@ pub fn	AddContainer( &mut self, name: &str) -> ModuleId
         self._ModuleChildren.Push( Stash::New());
         return modId;
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	AddContainerWithPorts< 'a, I, O>(
         &mut self,
@@ -198,15 +195,17 @@ pub fn	AddContainer( &mut self, name: &str) -> ModuleId
     {
         let  	modId = ModuleId( self._Modules.Size());
         let  	inArr: Arr< 'a, PortDesc> = inPorts.into();
-        let  	inPortIds = self.AddPorts( modId, name, inArr, PortDir::In, |d| d.clone());
-        let  	outPortIds = self.AddPorts( modId, name, outPorts, PortDir::Out, |d| d.clone());
+        let  	inSeg = self.AddPorts( modId, name, inArr, |d| d.clone());
+        let  	outSeg = self.AddPorts( modId, name, outPorts, |d| d.clone());
         let  	mut module = Module::NewContainer( modId, name);
-        module._InPorts = inPortIds;
-        module._OutPorts = outPortIds;
+        module._InPorts = inSeg;
+        module._OutPorts = outSeg;
         self._Modules.Push( module);
         self._ModuleChildren.Push( Stash::New());
         return modId;
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	AddSubModule( &mut self, parent: ModuleId, child: ModuleId)
     {
@@ -215,12 +214,16 @@ pub fn	AddContainer( &mut self, name: &str) -> ModuleId
         self._ModuleChildren[parent.0].Push( child);
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     pub fn	AddContainerUnder( &mut self, parent: ModuleId, name: &str) -> ModuleId
     {
         let  	child = self.AddContainer( name);
         self.AddSubModule( parent, child);
         return child;
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
 
     #[inline]
     pub fn	InPort< K: Into< U32>>( &self, moduleId: ModuleId, portIdx: K) -> Option< PortId>
@@ -234,8 +237,10 @@ pub fn	AddContainer( &mut self, name: &str) -> ModuleId
         if pIdx >= module._InPorts.Size() {
             return None;
         }
-        return Some( module._InPorts[pIdx]);
+        return Some( PortId::In( module._InPorts.First() + pIdx));
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
 
     #[inline]
     pub fn	OutPort< K: Into< U32>>( &self, moduleId: ModuleId, portIdx: K) -> Option< PortId>
@@ -249,7 +254,7 @@ pub fn	AddContainer( &mut self, name: &str) -> ModuleId
         if pIdx >= module._OutPorts.Size() {
             return None;
         }
-        return Some( module._OutPorts[pIdx]);
+        return Some( PortId::Out( module._OutPorts.First() + pIdx));
     }
 
     #[inline]
@@ -268,10 +273,11 @@ pub fn	AddContainer( &mut self, name: &str) -> ModuleId
             if err.is_some() {
                 return;
             }
-            module._InPorts.Arr().Traverse( |&inPort| {
+            module._InPorts.Traverse( |idx| {
                 if err.is_some() {
                     return;
                 }
+                let  	inPort = PortId::In( idx);
                 let  	dstIdx = inPort.Index();
                 if dstIdx >= portCount {
                     err = Some( LayoutError::PortNotFound( inPort));
@@ -326,10 +332,11 @@ pub fn	AddContainer( &mut self, name: &str) -> ModuleId
                 return;
             }
 
-            module._OutPorts.Arr().Traverse( |&outPort| {
+            module._OutPorts.Traverse( |idx| {
                 if err.is_some() {
                     return;
                 }
+                let  	outPort = PortId::Out( idx);
                 let  	srcIdx = outPort.Index();
                 if srcIdx >= portCount {
                     err = Some( LayoutError::PortNotFound( outPort));
@@ -453,11 +460,11 @@ pub fn	AddContainer( &mut self, name: &str) -> ModuleId
             let  	newModId = ModuleId( newIdx);
             self._Modules[newIdx]._Id = newModId;
 
-            self._Modules[newIdx]._InPorts.Arr().Traverse( |portId| {
-                self._PortOwners[portId.Index()] = newModId;
+            self._Modules[newIdx]._InPorts.Traverse( |idx| {
+                self._PortOwners[idx] = newModId;
             });
-            self._Modules[newIdx]._OutPorts.Arr().Traverse( |portId| {
-                self._PortOwners[portId.Index()] = newModId;
+            self._Modules[newIdx]._OutPorts.Traverse( |idx| {
+                self._PortOwners[idx] = newModId;
             });
 
             let  	oldChildren = &self._ModuleChildren[oldId.0];
@@ -465,15 +472,15 @@ pub fn	AddContainer( &mut self, name: &str) -> ModuleId
             oldChildren.Arr().Traverse( |&childOldId| {
                 mappedChildren.Push( oldToNew[childOldId.0]);
             });
-            
+
             // Build the new ModuleChildren stash exactly in newIdx order
             let  	mut stashClone = Stash::WithCapacity( mappedChildren.Size());
             mappedChildren.Arr().Traverse( |&c| { stashClone.Push( c); } );
             newModuleChildren.Push( stashClone);
-            
+
             self._Modules[newIdx]._SubModules = mappedChildren.IntoBuff();
         });
-        
+
         self._ModuleChildren = newModuleChildren;
     }
 
@@ -599,14 +606,16 @@ pub fn	AddContainer( &mut self, name: &str) -> ModuleId
         let  	mut broadcast = EdgeBroadcast::New( portCountU32);
 
         self._Modules.Arr().Traverse( |module| {
-            module._InPorts.Arr().Traverse( |&portId| {
+            module._InPorts.Traverse( |idx| {
+                let  	portId = PortId::In( idx);
                 broadcast.DoBroadcast( portId.0, |elemId, _, _, nextStack| {
                     self._Connections.NodeTraverse( elemId, |nextElem| {
                         nextStack.Push( nextElem);
                     });
                 });
             });
-            module._OutPorts.Arr().Traverse( |&portId| {
+            module._OutPorts.Traverse( |idx| {
+                let  	portId = PortId::Out( idx);
                 broadcast.DoBroadcast( portId.0, |elemId, _, _, nextStack| {
                     self._Connections.NodeTraverse( elemId, |nextElem| {
                         nextStack.Push( nextElem);
@@ -641,10 +650,8 @@ pub fn	AddContainer( &mut self, name: &str) -> ModuleId
         let  	mut subscribersLists = Buff::Create( groupCount, |_| Stash::New());
 
         self._Modules.Arr().Traverse( |module| {
-            let  	inLen = module._InPorts.Size();
-            USeg::New( U32::_0, inLen).Traverse( |i| {
-                let  	portId = module._InPorts[i];
-                let  	trigId = portToTrigger[portId.Index()];
+            module._InPorts.Traverse( |idx| {
+                let  	trigId = portToTrigger[idx];
                 subscribersLists[ trigId].Push( module._Id.0);
             });
         });
@@ -701,14 +708,14 @@ pub fn	AddContainer( &mut self, name: &str) -> ModuleId
                         }
 
                         let  	mut inTrig = Stash::WithCapacity( curMod._InPorts.Size());
-                        curMod._InPorts.Arr().Traverse( |portId| {
-                            inTrig.Push( portToTrigger[portId.Index()]);
+                        curMod._InPorts.Traverse( |idx| {
+                            inTrig.Push( portToTrigger[idx]);
                         });
                         inTriggersList.Push( inTrig.IntoBuff());
 
                         let  	mut outTrig = Stash::WithCapacity( curMod._OutPorts.Size());
-                        curMod._OutPorts.Arr().Traverse( |portId| {
-                            outTrig.Push( portToTrigger[portId.Index()]);
+                        curMod._OutPorts.Traverse( |idx| {
+                            outTrig.Push( portToTrigger[idx]);
                         });
                         outTriggersList.Push( outTrig.IntoBuff());
 
@@ -727,8 +734,8 @@ pub fn	AddContainer( &mut self, name: &str) -> ModuleId
                 }
                 _ => {
                     let  	op = m._Kernel.ToFastOp().unwrap();
-                    let  	outPortId0 = m._OutPorts[U32( 0)];
-                    let  	mask = self._Ports[outPortId0.Index()]._Type.Mask();
+                    let  	outPortIdx0 = m._OutPorts.First();
+                    let  	mask = self._Ports[outPortIdx0]._Type.Mask();
                     let  	startIdx = i;
 
                     let  	mut in1List = Stash::New();
@@ -738,16 +745,16 @@ pub fn	AddContainer( &mut self, name: &str) -> ModuleId
                     while i < modules.len() {
                         let  	curMod = &modules[i];
                         if let Some( curOp) = curMod._Kernel.ToFastOp() {
-                            let  	curOutPort0 = curMod._OutPorts[U32( 0)];
-                            let  	curMask = self._Ports[curOutPort0.Index()]._Type.Mask();
+                            let  	curOutPort0 = curMod._OutPorts.First();
+                            let  	curMask = self._Ports[curOutPort0]._Type.Mask();
                             if curOp == op && curMask == mask {
-                                let  	in1 = portToTrigger[curMod._InPorts[U32( 0)].Index()];
+                                let  	in1 = portToTrigger[curMod._InPorts.First()];
                                 let  	in2 = if curMod._InPorts.Size() > U32( 1) {
-                                    portToTrigger[curMod._InPorts[U32( 1)].Index()]
+                                    portToTrigger[curMod._InPorts.First() + U32( 1)]
                                 } else {
                                     in1
                                 };
-                                let  	outTrig = portToTrigger[curOutPort0.Index()];
+                                let  	outTrig = portToTrigger[curOutPort0];
 
                                 in1List.Push( in1);
                                 in2List.Push( in2);
@@ -786,13 +793,13 @@ pub fn	AddContainer( &mut self, name: &str) -> ModuleId
 
         self._Modules.Arr().Traverse( |module| {
             let  	mut inTriggers = Stash::WithCapacity( module._InPorts.Size());
-            module._InPorts.Arr().Traverse( |portId| {
-                inTriggers.Push( portToTrigger[portId.Index()]);
+            module._InPorts.Traverse( |idx| {
+                inTriggers.Push( portToTrigger[idx]);
             });
 
             let  	mut outTriggers = Stash::WithCapacity( module._OutPorts.Size());
-            module._OutPorts.Arr().Traverse( |portId| {
-                outTriggers.Push( portToTrigger[portId.Index()]);
+            module._OutPorts.Traverse( |idx| {
+                outTriggers.Push( portToTrigger[idx]);
             });
 
             if module._Kernel.IsNone() {
@@ -802,8 +809,8 @@ pub fn	AddContainer( &mut self, name: &str) -> ModuleId
                 let  	in1 = inTriggers[U32( 0)];
                 let  	in2 = if inTriggers.Size() > U32( 1) { inTriggers[U32( 1)] } else { in1 };
                 let  	outTrig = outTriggers[U32( 0)];
-                let  	outPortId = module._OutPorts[U32( 0)];
-                let  	outPortType = self._Ports[outPortId.Index()]._Type;
+                let  	outPortIdx = module._OutPorts.First();
+                let  	outPortType = self._Ports[outPortIdx]._Type;
                 fastModules.Push( FastModule::New( module._Id, in1, in2, outTrig, op, outPortType.Mask()));
             } else if let KernelKind::Custom( callback) = &module._Kernel {
                 customModules.Push( CustomModule::New(
