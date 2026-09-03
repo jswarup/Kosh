@@ -461,60 +461,71 @@ b1100 "
     fn	test_module_hierarchy_tree()
     {
         let  	mut layout = Layout::New();
-        
+
         let  	topId = layout.AddContainer( "TopBlock");
         let  	aluId = layout.AddContainerUnder( topId, "ALU");
-        
+
         let  	andGate = AndGate::New( &mut layout, "ALU_And");
         let  	notGate = NotGate::New( &mut layout, "ALU_Not");
-        
+
         let  	andId = layout.PortOwner( andGate._Out).unwrap();
         let  	notId = layout.PortOwner( notGate._Out).unwrap();
 
         layout.AddSubModule( aluId, andId);
         layout.AddSubModule( aluId, notId);
-        
+
         layout.Connect( andGate._Out, notGate._In);
-        
+
         layout.Freeze().expect( "Compilation failed");
-        
+
         // Find mapped IDs after QSort
         let  	mut newTopId = None;
         let  	mut newAluId = None;
         let  	mut newAndId = None;
-        
+
         layout.Modules().iter().for_each( |m| {
             if m._Name == "TopBlock" { newTopId = Some( m._Id); }
             if m._Name == "ALU" { newAluId = Some( m._Id); }
             if m._Name == "ALU_And" { newAndId = Some( m._Id); }
         });
-        
+
         let  	nTopId = newTopId.unwrap();
         let  	nAluId = newAluId.unwrap();
         let  	nAndId = newAndId.unwrap();
-        
+
         assert!( layout.IsContainer( nTopId));
         assert!( layout.IsContainer( nAluId));
-        println!("nAndId: {:?}, Kernel: {:?}, Children size: {}", nAndId, layout.Modules()[nAndId.0.AsUsize()]._Kernel, layout.SubModules(nAndId).len());
         assert!( !layout.IsContainer( nAndId));
-        
+
         let  	topChildren = layout.SubModules( nTopId);
         assert_eq!( topChildren.len(), 1);
         assert_eq!( topChildren[0], nAluId);
-        
+
         let  	aluChildren = layout.SubModules( nAluId);
         assert_eq!( aluChildren.len(), 2);
-        
+
+        let  	topDesc = layout.Descendents( nTopId);
+        assert_eq!( topDesc.len(), 3);
+        assert!( topDesc.contains( &nAluId));
+        assert!( topDesc.contains( &nAndId));
+
+        let  	aluDesc = layout.Descendents( nAluId);
+        assert_eq!( aluDesc.len(), 2);
+        assert!( aluDesc.contains( &nAndId));
+
+        let  	andDesc = layout.Descendents( nAndId);
+        assert_eq!( andDesc.len(), 0);
+
         let  	roots = layout.RootModules();
         assert_eq!( roots.Size().0, 1);
         assert_eq!( roots[U32( 0)], nTopId);
-        
+
         let  	mut engine = SimEngine::Create( &layout);
-        
+
         engine.SetPortBool( andGate._In1, Reg::TRUE);
         engine.SetPortBool( andGate._In2, Reg::TRUE);
         engine.Drive();
-        
+
         assert_eq!( engine.GetPortBool( andGate._Out), Some( Reg::TRUE));
         // NOTE: combinational gates take multiple Drive cycles or automatically chain.
         // Let's call Drive() again just in case there's a latency of 1 tick.

@@ -1,6 +1,9 @@
 //-- port.rs -------------------------------------------------------------------------------------------------------------------------
 
-use	crate::silo::U32;
+use	crate::{
+    rube::module::ModuleId,
+    silo::U32,
+};
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -125,8 +128,9 @@ impl PortType
 #[derive( Clone, PartialEq, Eq, Hash, Debug)]
 pub struct PortDesc
 {
-    pub _Name: String,
-    pub _Type: PortType,
+    pub _Name:   String,
+    pub _Type:   PortType,
+    pub _Owner:  ModuleId,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -137,8 +141,9 @@ impl PortDesc
     pub fn	New( name: impl Into< String>, portType: PortType) -> Self
     {
         return Self {
-            _Name: name.into(),
-            _Type: portType,
+            _Name:   name.into(),
+            _Type:   portType,
+            _Owner:  ModuleId( U32::_X),
         };
     }
 
@@ -152,6 +157,12 @@ impl PortDesc
     pub fn	PortType( &self) -> PortType
     {
         return self._Type;
+    }
+
+    #[inline]
+    pub fn	Owner( &self) -> ModuleId
+    {
+        return self._Owner;
     }
 
     #[inline]

@@ -57,11 +57,12 @@ impl std::error::Error for LayoutError {}
 
 pub struct Layout
 {
-    pub _Modules: Stash< Module>,
-    pub _Ports: Stash< PortDesc>,
-    pub _PortOwners: Stash< ModuleId>,
-    pub _Connections: EdgeConnect,
-    pub _ModuleChildren: Stash< Stash< ModuleId>>,
+    pub _Modules:         Stash< Module>,
+    pub _Ports:           Stash< PortDesc>,
+    pub _Connections:     EdgeConnect,
+    pub _ModuleChildren:  Stash< Stash< ModuleId>>,
+    pub _SubModules:      Stash< ModuleId>,
+    pub _Descendents:     Stash< ModuleId>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -81,11 +82,12 @@ impl Layout
     pub fn	New() -> Self
     {
         Self {
-            _Modules: Stash::New(),
-            _Ports: Stash::New(),
-            _PortOwners: Stash::New(),
-            _Connections: EdgeConnect::New(),
-            _ModuleChildren: Stash::New(),
+            _Modules:         Stash::New(),
+            _Ports:           Stash::New(),
+            _Connections:     EdgeConnect::New(),
+            _ModuleChildren:  Stash::New(),
+            _SubModules:      Stash::New(),
+            _Descendents:     Stash::New(),
         }
     }
 
@@ -106,8 +108,8 @@ impl Layout
         arr.Traverse( |item| {
             let  	mut desc = extract( item);
             desc._Name = format!( "{moduleName}.{}", desc._Name);
+            desc._Owner = modId;
             self._Ports.Push( desc);
-            self._PortOwners.Push( modId);
         });
         return USeg::New( start, count);
     }
@@ -390,17 +392,11 @@ impl Layout
     }
 
     #[inline]
-    pub fn	PortOwners( &self) -> &[ModuleId]
-    {
-        return self._PortOwners.Slice();
-    }
-
-    #[inline]
     pub fn	PortOwner( &self, portId: PortId) -> Option< ModuleId>
     {
         let  	idx = portId.Index();
-        if idx < self._PortOwners.Size() {
-            return Some( self._PortOwners[idx]);
+        if idx < self._Ports.Size() {
+            return Some( self._Ports[idx]._Owner);
         }
         return None;
     }
@@ -431,11 +427,14 @@ impl Layout
         }
 
         if modCount == U32( 1) {
-            let  	mut children = Stash::WithCapacity( self._ModuleChildren[U32( 0)].Size());
+            self._SubModules.Clear();
+            self._Descendents.Clear();
+            let  	count = self._ModuleChildren[U32( 0)].Size();
             self._ModuleChildren[U32( 0)].Arr().Traverse( |&child| {
-                children.Push( child);
+                self._SubModules.Push( child);
             });
-            self._Modules[U32( 0)]._SubModules = children.IntoBuff();
+            self._Modules[U32( 0)]._SubModules = USeg::New( U32::_0, count);
+            self._Modules[U32( 0)]._Descendents = USeg::New( U32::_0, U32::_0);
             return;
         }
 
@@ -461,10 +460,10 @@ impl Layout
             self._Modules[newIdx]._Id = newModId;
 
             self._Modules[newIdx]._InPorts.Traverse( |idx| {
-                self._PortOwners[idx] = newModId;
+                self._Ports[idx]._Owner = newModId;
             });
             self._Modules[newIdx]._OutPorts.Traverse( |idx| {
-                self._PortOwners[idx] = newModId;
+                self._Ports[idx]._Owner = newModId;
             });
 
             let  	oldChildren = &self._ModuleChildren[oldId.0];
@@ -477,21 +476,66 @@ impl Layout
             let  	mut stashClone = Stash::WithCapacity( mappedChildren.Size());
             mappedChildren.Arr().Traverse( |&c| { stashClone.Push( c); } );
             newModuleChildren.Push( stashClone);
-
-            self._Modules[newIdx]._SubModules = mappedChildren.IntoBuff();
         });
 
         self._ModuleChildren = newModuleChildren;
+
+        // Flatten direct sub-modules into contiguous self._SubModules
+        self._SubModules.Clear();
+        USeg::New( U32::_0, modCount).Traverse( |newIdx| {
+            let  	start = self._SubModules.Size();
+            let  	children = &self._ModuleChildren[newIdx];
+            let  	count = children.Size();
+            children.Arr().Traverse( |&childId| {
+                self._SubModules.Push( childId);
+            });
+            self._Modules[newIdx]._SubModules = USeg::New( start, count);
+        });
+
+        // Flatten transitive recursive descendents into contiguous self._Descendents
+        self._Descendents.Clear();
+        USeg::New( U32::_0, modCount).Traverse( |newIdx| {
+            let  	start = self._Descendents.Size();
+            let  	mut visited = Stash::WithCapacity( modCount);
+            USeg::New( U32::_0, modCount).Traverse( |_| {
+                visited.Push( false);
+            });
+
+            let  	mut stack = Stash::New();
+            self._ModuleChildren[newIdx].Arr().Traverse( |&childId| {
+                stack.Push( childId);
+                visited[childId.0] = true;
+            });
+
+            while stack.Size() > U32::_0 {
+                let  	curr = stack.Pop().unwrap();
+                self._Descendents.Push( curr);
+                self._ModuleChildren[curr.0].Arr().Traverse( |&childId| {
+                    if !visited[childId.0] {
+                        visited[childId.0] = true;
+                        stack.Push( childId);
+                    }
+                });
+            }
+
+            let  	count = self._Descendents.Size() - start;
+            self._Modules[newIdx]._Descendents = USeg::New( start, count);
+        });
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
 
     #[inline]
     pub fn	SubModules( &self, moduleId: ModuleId) -> &[ModuleId]
     {
         let  	idx = moduleId.0;
         if idx < self._Modules.Size() {
-            let  	frozen = self._Modules[idx].SubModules();
-            if !frozen.is_empty() {
-                return frozen;
+            let  	seg = self._Modules[idx]._SubModules;
+            if self._SubModules.Size() > U32( 0) {
+                if !seg.IsEmpty() && seg.End() <= self._SubModules.Size() {
+                    return &self._SubModules.Slice()[seg.First().AsUsize()..seg.End().AsUsize()];
+                }
+                return &[];
             }
             if idx < self._ModuleChildren.Size() {
                 return self._ModuleChildren[idx].Slice();
@@ -500,12 +544,30 @@ impl Layout
         return &[];
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[inline]
+    pub fn	Descendents( &self, moduleId: ModuleId) -> &[ModuleId]
+    {
+        let  	idx = moduleId.0;
+        if idx < self._Modules.Size() {
+            let  	seg = self._Modules[idx]._Descendents;
+            if !seg.IsEmpty() && seg.End() <= self._Descendents.Size() {
+                return &self._Descendents.Slice()[seg.First().AsUsize()..seg.End().AsUsize()];
+            }
+        }
+        return &[];
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     #[inline]
     pub fn	IsContainer( &self, moduleId: ModuleId) -> bool
     {
         let  	idx = moduleId.0;
         if idx < self._Modules.Size() {
             return self._Modules[idx].IsContainer()
+                || !self._Modules[idx]._SubModules.IsEmpty()
                 || ( idx < self._ModuleChildren.Size() && self._ModuleChildren[idx].Size() > U32( 0));
         }
         return false;

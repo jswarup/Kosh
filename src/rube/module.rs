@@ -186,12 +186,13 @@ impl KernelKind
 #[derive( Clone, Debug)]
 pub struct Module
 {
-    pub _Id:          ModuleId,
-    pub _Name:        String,
-    pub _InPorts:     USeg,
-    pub _OutPorts:    USeg,
-    pub _Kernel:      KernelKind,
-    pub _SubModules:  Buff< ModuleId>,
+    pub _Id:           ModuleId,
+    pub _Name:         String,
+    pub _InPorts:      USeg,
+    pub _OutPorts:     USeg,
+    pub _SubModules:   USeg,
+    pub _Descendents:  USeg,
+    pub _Kernel:       KernelKind,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -201,31 +202,27 @@ impl Module
     pub fn	NewContainer( id: ModuleId, name: &str) -> Self
     {
         return Self {
-            _Id:          id,
-            _Name:        name.to_string(),
-            _InPorts:     USeg::New( U32::_0, U32::_0),
-            _OutPorts:    USeg::New( U32::_0, U32::_0),
-            _Kernel:      KernelKind::None,
-            _SubModules:  Buff::New(),
+            _Id:           id,
+            _Name:         name.to_string(),
+            _InPorts:      USeg::New( U32::_0, U32::_0),
+            _OutPorts:     USeg::New( U32::_0, U32::_0),
+            _SubModules:   USeg::New( U32::_0, U32::_0),
+            _Descendents:  USeg::New( U32::_0, U32::_0),
+            _Kernel:       KernelKind::None,
         };
     }
 
     pub fn	New( id: ModuleId, name: &str, inPorts: USeg, outPorts: USeg, kernel: KernelKind) -> Self
     {
         return Self {
-            _Id:          id,
-            _Name:        name.to_string(),
-            _InPorts:     inPorts,
-            _OutPorts:    outPorts,
-            _Kernel:      kernel,
-            _SubModules:  Buff::New(),
+            _Id:           id,
+            _Name:         name.to_string(),
+            _InPorts:      inPorts,
+            _OutPorts:     outPorts,
+            _SubModules:   USeg::New( U32::_0, U32::_0),
+            _Descendents:  USeg::New( U32::_0, U32::_0),
+            _Kernel:       kernel,
         };
-    }
-
-    #[inline]
-    pub fn	SubModules( &self) -> &[ModuleId]
-    {
-        return &self._SubModules;
     }
 
     #[inline]
@@ -245,8 +242,8 @@ pub struct FastModule
     pub _In1:      TriggerId,
     pub _In2:      TriggerId,
     pub _Out:      TriggerId,
-    pub _Op:       KernelOp,
     pub _Mask:     u64,
+    pub _Op:       KernelOp,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -261,8 +258,8 @@ impl FastModule
             _In1:      in1,
             _In2:      in2,
             _Out:      out,
-            _Op:       op,
             _Mask:     mask,
+            _Op:       op,
         };
     }
 }
