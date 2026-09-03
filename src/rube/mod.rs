@@ -5,6 +5,7 @@ pub mod gates;
 pub mod latches;
 pub mod layout;
 pub mod module;
+pub mod netlist;
 pub mod port;
 pub mod reg;
 
@@ -20,6 +21,7 @@ pub use	gates::{ AndGate, NandGate, NotGate, OrGate, XorGate };
 pub use	latches::{ CRSLatch, DLatch, RSLatch };
 pub use	layout::{ Layout, LayoutError };
 pub use	module::{ CustomModule, CustomWarp, FastModule, FastWarp, KernelKind, KernelOp, Module, ModuleId };
+pub use	netlist::{ INetlist, Netlist };
 pub use	port::{ PortDesc, PortDir, PortId, PortType };
 pub use	reg::{ Reg, RegVal };
 

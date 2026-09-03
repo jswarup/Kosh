@@ -4,7 +4,8 @@ use	crate::rube::{
     engine::SimEngine,
     gates::{ NandGate, NotGate },
     layout::Layout,
-    port::PortId,
+    module::{ KernelKind, ModuleId },
+    port::{ PortDesc, PortId },
     reg::Reg,
 };
 
@@ -14,50 +15,77 @@ use	crate::rube::{
 #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct RSLatch
 {
-    pub _Nand1: NandGate,
-    pub _Nand2: NandGate,
+    pub _Id:  ModuleId,
+    pub _S:   PortId,
+    pub _R:   PortId,
+    pub _Q:   PortId,
+    pub _Q1:  PortId,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl RSLatch
 {
-    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
     {
-        let  	nand1 = NandGate::New( layout, &format!( "{name}.Nand1"), parent);
-        let  	nand2 = NandGate::New( layout, &format!( "{name}.Nand2"), parent);
+        let  	modId = layout.AddModule(
+            name,
+            parent,
+            &[ PortDesc::Bool( "S"), PortDesc::Bool( "R") ],
+            &[ PortDesc::Bool( "Q"), PortDesc::Bool( "Q1") ],
+            KernelKind::None,
+        );
+
+        let  	s = layout.InPort( modId, 0).unwrap();
+        let  	r = layout.InPort( modId, 1).unwrap();
+        let  	q = layout.OutPort( modId, 0).unwrap();
+        let  	q1 = layout.OutPort( modId, 1).unwrap();
+
+        let  	nand1 = NandGate::New( layout, &format!( "{name}.Nand1"), Some( modId));
+        let  	nand2 = NandGate::New( layout, &format!( "{name}.Nand2"), Some( modId));
+
+        layout.Connect( s, nand1.In1());
+        layout.Connect( r, nand2.In1());
 
         layout.Connect( nand1.Out(), nand2.In2());
         layout.Connect( nand2.Out(), nand1.In2());
 
+        layout.Connect( nand1.Out(), q);
+        layout.Connect( nand2.Out(), q1);
+
+        layout.SealModule( modId);
+
         return Self {
-            _Nand1: nand1,
-            _Nand2: nand2,
+            _Id:  modId,
+            _S:   s,
+            _R:   r,
+            _Q:   q,
+            _Q1:  q1,
         };
     }
 
     #[inline]
     pub const fn	S( &self) -> PortId
     {
-        return self._Nand1.In1();
+        return self._S;
     }
 
     #[inline]
     pub const fn	R( &self) -> PortId
     {
-        return self._Nand2.In1();
+        return self._R;
     }
 
     #[inline]
     pub const fn	Q( &self) -> PortId
     {
-        return self._Nand1.Out();
+        return self._Q;
     }
 
     #[inline]
     pub const fn	Q1( &self) -> PortId
     {
-        return self._Nand2.Out();
+        return self._Q1;
     }
 
     #[inline]
@@ -76,68 +104,101 @@ impl RSLatch
 //---------------------------------------------------------------------------------------------------------------------------------
 
 /// Clocked RS Latch
-#[derive( Clone, Debug)]
+#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct CRSLatch
 {
-    pub _GateS: NandGate,
-    pub _GateR: NandGate,
-    pub _RS: RSLatch,
+    pub _Id:    ModuleId,
+    pub _Clk1:  PortId,
+    pub _Clk2:  PortId,
+    pub _S:     PortId,
+    pub _R:     PortId,
+    pub _Q:     PortId,
+    pub _Q1:    PortId,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl CRSLatch
 {
-    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
     {
-        let  	gateS = NandGate::New( layout, &format!( "{name}.GateS"), parent);
-        let  	gateR = NandGate::New( layout, &format!( "{name}.GateR"), parent);
-        let  	rs = RSLatch::New( layout, &format!( "{name}.RS"), parent);
+        let  	modId = layout.AddModule(
+            name,
+            parent,
+            &[ PortDesc::Bool( "Clk1"), PortDesc::Bool( "Clk2"), PortDesc::Bool( "S"), PortDesc::Bool( "R") ],
+            &[ PortDesc::Bool( "Q"), PortDesc::Bool( "Q1") ],
+            KernelKind::None,
+        );
+
+        let  	clk1 = layout.InPort( modId, 0).unwrap();
+        let  	clk2 = layout.InPort( modId, 1).unwrap();
+        let  	s = layout.InPort( modId, 2).unwrap();
+        let  	r = layout.InPort( modId, 3).unwrap();
+        let  	q = layout.OutPort( modId, 0).unwrap();
+        let  	q1 = layout.OutPort( modId, 1).unwrap();
+
+        let  	gateS = NandGate::New( layout, &format!( "{name}.GateS"), Some( modId));
+        let  	gateR = NandGate::New( layout, &format!( "{name}.GateR"), Some( modId));
+        let  	rs = RSLatch::New( layout, &format!( "{name}.RS"), Some( modId));
+
+        layout.Connect( s, gateS.In1());
+        layout.Connect( clk1, gateS.In2());
+        layout.Connect( clk2, gateR.In1());
+        layout.Connect( r, gateR.In2());
 
         layout.Connect( gateS.Out(), rs.S());
         layout.Connect( gateR.Out(), rs.R());
 
+        layout.Connect( rs.Q(), q);
+        layout.Connect( rs.Q1(), q1);
+
+        layout.SealModule( modId);
+
         return Self {
-            _GateS: gateS,
-            _GateR: gateR,
-            _RS: rs,
+            _Id:    modId,
+            _Clk1:  clk1,
+            _Clk2:  clk2,
+            _S:     s,
+            _R:     r,
+            _Q:     q,
+            _Q1:    q1,
         };
     }
 
     #[inline]
     pub const fn	Clk1( &self) -> PortId
     {
-        return self._GateS.In2();
+        return self._Clk1;
     }
 
     #[inline]
     pub const fn	Clk2( &self) -> PortId
     {
-        return self._GateR.In1();
+        return self._Clk2;
     }
 
     #[inline]
     pub const fn	S( &self) -> PortId
     {
-        return self._GateS.In1();
+        return self._S;
     }
 
     #[inline]
     pub const fn	R( &self) -> PortId
     {
-        return self._GateR.In2();
+        return self._R;
     }
 
     #[inline]
     pub const fn	Q( &self) -> PortId
     {
-        return self._RS.Q();
+        return self._Q;
     }
 
     #[inline]
     pub const fn	Q1( &self) -> PortId
     {
-        return self._RS.Q1();
+        return self._Q1;
     }
 
     #[inline]
@@ -163,64 +224,99 @@ impl CRSLatch
 //---------------------------------------------------------------------------------------------------------------------------------
 
 /// Transparent D-Latch
-#[derive( Clone, Debug)]
+#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct DLatch
 {
-    pub _CRS: CRSLatch,
-    pub _Inv: NotGate,
+    pub _Id:    ModuleId,
+    pub _D:     PortId,
+    pub _DInv:  PortId,
+    pub _E1:    PortId,
+    pub _E2:    PortId,
+    pub _Q:     PortId,
+    pub _Q1:    PortId,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl DLatch
 {
-    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
     {
-        let  	crs = CRSLatch::New( layout, &format!( "{name}.CRS"), parent);
-        let  	inv = NotGate::New( layout, &format!( "{name}.Inv"), parent);
+        let  	modId = layout.AddModule(
+            name,
+            parent,
+            &[ PortDesc::Bool( "D"), PortDesc::Bool( "DInv"), PortDesc::Bool( "E1"), PortDesc::Bool( "E2") ],
+            &[ PortDesc::Bool( "Q"), PortDesc::Bool( "Q1") ],
+            KernelKind::None,
+        );
+
+        let  	d = layout.InPort( modId, 0).unwrap();
+        let  	dInv = layout.InPort( modId, 1).unwrap();
+        let  	e1 = layout.InPort( modId, 2).unwrap();
+        let  	e2 = layout.InPort( modId, 3).unwrap();
+        let  	q = layout.OutPort( modId, 0).unwrap();
+        let  	q1 = layout.OutPort( modId, 1).unwrap();
+
+        let  	crs = CRSLatch::New( layout, &format!( "{name}.CRS"), Some( modId));
+        let  	inv = NotGate::New( layout, &format!( "{name}.Inv"), Some( modId));
+
+        layout.Connect( d, crs.S());
+        layout.Connect( dInv, inv.In());
+        layout.Connect( e1, crs.Clk1());
+        layout.Connect( e2, crs.Clk2());
 
         layout.Connect( inv.Out(), crs.R());
 
+        layout.Connect( crs.Q(), q);
+        layout.Connect( crs.Q1(), q1);
+
+        layout.SealModule( modId);
+
         return Self {
-            _CRS: crs,
-            _Inv: inv,
+            _Id:    modId,
+            _D:     d,
+            _DInv:  dInv,
+            _E1:    e1,
+            _E2:    e2,
+            _Q:     q,
+            _Q1:    q1,
         };
     }
 
     #[inline]
     pub const fn	D( &self) -> PortId
     {
-        return self._CRS.S();
+        return self._D;
     }
 
     #[inline]
     pub const fn	DInv( &self) -> PortId
     {
-        return self._Inv.In();
+        return self._DInv;
     }
 
     #[inline]
     pub const fn	E1( &self) -> PortId
     {
-        return self._CRS.Clk1();
+        return self._E1;
     }
 
     #[inline]
     pub const fn	E2( &self) -> PortId
     {
-        return self._CRS.Clk2();
+        return self._E2;
     }
 
     #[inline]
     pub const fn	Q( &self) -> PortId
     {
-        return self._CRS.Q();
+        return self._Q;
     }
 
     #[inline]
     pub const fn	Q1( &self) -> PortId
     {
-        return self._CRS.Q1();
+        return self._Q1;
     }
 
     #[inline]
@@ -238,4 +334,4 @@ impl DLatch
     }
 }
 
-
+//---------------------------------------------------------------------------------------------------------------------------------

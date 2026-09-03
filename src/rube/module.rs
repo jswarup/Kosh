@@ -187,41 +187,47 @@ impl KernelKind
 pub struct Module
 {
     pub _Id:           ModuleId,
+    pub _Parent:       Option< ModuleId>,
     pub _Name:         String,
     pub _InPorts:      USeg,
     pub _OutPorts:     USeg,
     pub _SubModules:   USeg,
     pub _Descendents:  USeg,
     pub _Kernel:       KernelKind,
+    pub _IsSealed:     bool,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl Module
 {
-    pub fn	NewContainer( id: ModuleId, name: &str) -> Self
+    pub fn	NewContainer( id: ModuleId, parent: Option< ModuleId>, name: &str) -> Self
     {
         return Self {
             _Id:           id,
+            _Parent:       parent,
             _Name:         name.to_string(),
             _InPorts:      USeg::New( U32::_0, U32::_0),
             _OutPorts:     USeg::New( U32::_0, U32::_0),
             _SubModules:   USeg::New( U32::_0, U32::_0),
             _Descendents:  USeg::New( U32::_0, U32::_0),
             _Kernel:       KernelKind::None,
+            _IsSealed:     false,
         };
     }
 
-    pub fn	New( id: ModuleId, name: &str, inPorts: USeg, outPorts: USeg, kernel: KernelKind) -> Self
+    pub fn	New( id: ModuleId, parent: Option< ModuleId>, name: &str, inPorts: USeg, outPorts: USeg, kernel: KernelKind) -> Self
     {
         return Self {
             _Id:           id,
+            _Parent:       parent,
             _Name:         name.to_string(),
             _InPorts:      inPorts,
             _OutPorts:     outPorts,
             _SubModules:   USeg::New( U32::_0, U32::_0),
             _Descendents:  USeg::New( U32::_0, U32::_0),
             _Kernel:       kernel,
+            _IsSealed:     false,
         };
     }
 

@@ -31,8 +31,8 @@ impl SimEngine
 {
     pub fn	Create( layout: &Layout) -> Self
     {
-        let  	( broadcast, portToTrigger) = layout.PartitionNets();
-        let  	triggers = layout.BuildTriggers( &broadcast, &portToTrigger);
+        let  	portToTrigger = layout.PortToTrigger();
+        let  	triggers = layout.BuildTriggers( &portToTrigger);
         let  	( fastWarps, customWarps) = layout.CompileWarps( &portToTrigger);
         let  	modCount = layout._Modules.Size().AsUsize();
         let  	wordCount = ( modCount + 63) / 64;

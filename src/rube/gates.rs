@@ -2,14 +2,14 @@
 
 use	crate::rube::{
     layout::Layout,
-    module::KernelKind,
+    module::{ KernelKind, ModuleId },
     port::{ PortDesc, PortId },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[inline]
-fn	CreateGate2( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>, kind: KernelKind) -> ( PortId, PortId, PortId)
+fn	CreateGate2( layout: &mut Layout, name: &str, parent: Option< ModuleId>, kind: KernelKind) -> ( PortId, PortId, PortId)
 {
     let  	m = layout.AddModule(
         name,
@@ -18,11 +18,11 @@ fn	CreateGate2( layout: &mut Layout, name: &str, parent: Option<crate::rube::mod
         &[ PortDesc::Bool( "out") ],
         kind,
     );
-    return (
-        layout.InPort( m, 0).unwrap(),
-        layout.InPort( m, 1).unwrap(),
-        layout.OutPort( m, 0).unwrap(),
-    );
+    let  	in1 = layout.InPort( m, 0).unwrap();
+    let  	in2 = layout.InPort( m, 1).unwrap();
+    let  	out = layout.OutPort( m, 0).unwrap();
+    layout.SealModule( m);
+    return ( in1, in2, out);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -286,7 +286,7 @@ pub struct NotGate
 impl NotGate
 {
     #[inline]
-    pub fn	New( layout: &mut Layout, name: &str, parent: Option<crate::rube::module::ModuleId>) -> Self
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
     {
         let  	m = layout.AddModule(
             name,
@@ -295,9 +295,12 @@ impl NotGate
             &[ PortDesc::Bool( "out") ],
             KernelKind::Not,
         );
+        let  	inPort = layout.InPort( m, 0).unwrap();
+        let  	outPort = layout.OutPort( m, 0).unwrap();
+        layout.SealModule( m);
         return Self {
-            _In: layout.InPort( m, 0).unwrap(),
-            _Out: layout.OutPort( m, 0).unwrap(),
+            _In:  inPort,
+            _Out: outPort,
         };
     }
 

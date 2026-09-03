@@ -11,7 +11,8 @@ mod _tests
             latches::{ CRSLatch, DLatch },
             layout::Layout,
             module::KernelKind,
-            port::PortId,
+            netlist::INetlist,
+            port::{ PortDesc, PortId },
             reg::Reg,
         },
         silo::{ Stash, U32, USeg },
@@ -469,7 +470,7 @@ b1100 "
         let  	andGate = AndGate::New( &mut layout, "ALU_And", Some( aluId));
         let  	notGate = NotGate::New( &mut layout, "ALU_Not", Some( aluId));
 
-        
+
 
         layout.Connect( andGate._Out, notGate._In);
 
@@ -528,6 +529,94 @@ b1100 "
         // Let's call Drive() again just in case there's a latency of 1 tick.
         engine.Drive();
         assert_eq!( engine.GetPortBool( notGate._Out), Some( Reg::FALSE));
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    #[should_panic( expected = "port is not visible beyond its immediate parent")]
+    fn	test_hierarchy_scope_violation()
+    {
+        let  	mut layout = Layout::New();
+
+        let  	topId = layout.AddModule( "Top", None, &[ PortDesc::Bool( "in") ], &[], KernelKind::None);
+        let  	subId = layout.AddModule( "Sub", Some( topId), &[], &[], KernelKind::None);
+        let  	leaf = AndGate::New( &mut layout, "Leaf", Some( subId));
+
+        let  	topIn = layout.InPort( topId, 0).unwrap();
+
+        // Attempt connecting grandparent topIn directly to grandchild leaf.In1()
+        // Must panic with hierarchy visibility violation!
+        layout.Connect( topIn, leaf.In1());
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    #[should_panic( expected = "Connection validation failed")]
+    fn	test_duplicate_input_driver_rejection()
+    {
+        let  	mut layout = Layout::New();
+
+        let  	topId = layout.AddModule( "Top", None, &[], &[], KernelKind::None);
+        let  	gate1 = AndGate::New( &mut layout, "G1", Some( topId));
+        let  	gate2 = OrGate::New( &mut layout, "G2", Some( topId));
+        let  	gate3 = NotGate::New( &mut layout, "G3", Some( topId));
+
+        layout.Connect( gate1.Out(), gate3.In());
+        // Attempt connecting a second driver to gate3.In()
+        // Must panic with DuplicateInputDriver!
+        layout.Connect( gate2.Out(), gate3.In());
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_incremental_trigger_assignment()
+    {
+        let  	mut layout = Layout::New();
+
+        let  	topId = layout.AddModule( "Top", None, &[], &[], KernelKind::None);
+        let  	subId = layout.AddModule(
+            "SubBlock",
+            Some( topId),
+            &[ PortDesc::Bool( "subIn") ],
+            &[ PortDesc::Bool( "subOut") ],
+            KernelKind::None,
+        );
+
+        let  	subIn = layout.InPort( subId, 0).unwrap();
+        let  	subOut = layout.OutPort( subId, 0).unwrap();
+
+        let  	and1 = AndGate::New( &mut layout, "SubBlock.And1", Some( subId));
+        let  	and2 = AndGate::New( &mut layout, "SubBlock.And2", Some( subId));
+
+        // Connect boundary pass-down and internal sibling
+        layout.Connect( subIn, and1.In1());
+        layout.Connect( and1.Out(), and2.In1());
+        layout.Connect( and2.Out(), subOut);
+
+        // Before sealing subId, internal net between and1.Out() and and2.In1() has no trigger
+        assert!( !layout._Netlist.HasTrigger( and1.Out()));
+
+        // Seal subId
+        layout.SealModule( subId);
+
+        // After sealing subId:
+        // 1. Internal net (and1.Out -> and2.In1) MUST have an assigned TriggerId!
+        assert!( layout._Netlist.HasTrigger( and1.Out()));
+        assert!( layout._Netlist.HasTrigger( and2.In1()));
+
+        // 2. Boundary connected nets (subIn and subOut) are NOT yet assigned triggers because top is unsealed
+        assert!( !layout._Netlist.HasTrigger( subIn));
+        assert!( !layout._Netlist.HasTrigger( subOut));
+
+        // Now seal topId
+        layout.SealModule( topId);
+
+        // All nets must now have assigned triggers!
+        assert!( layout._Netlist.HasTrigger( subIn));
+        assert!( layout._Netlist.HasTrigger( subOut));
     }
 }
 

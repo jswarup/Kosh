@@ -7,7 +7,7 @@ use	crate::{
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive( Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 pub struct PortId( pub U32);
 
 impl PortId
@@ -62,9 +62,10 @@ pub enum PortDir
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive( Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 pub enum PortType
 {
+    #[default]
     Bool,
     U8Val,
     U16Val,

@@ -4,11 +4,12 @@ use	std::{ fmt, sync::Arc };
 use	crate::{
     rube::{
         module::{ CustomModule, CustomWarp, FastModule, FastWarp, KernelKind, Module, ModuleId },
+        netlist::{ INetlist, Netlist },
         port::{ PortDesc, PortDir, PortId, PortType },
         reg::Reg,
         trigger::{ TriggerId, TriggerWad },
     },
-    silo::{ Arr, Buff, EdgeBroadcast, EdgeConnect, IAccess, IArr, IEdgeBroadcast, IEdgeConnect, Stash, U32, USeg },
+    silo::{ Arr, Buff, IAccess, IArr, Stash, U32, USeg },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -22,6 +23,13 @@ pub enum LayoutError
     ModuleNotFound( ModuleId),
     UnconnectedInput { _ModuleId: ModuleId, _PortId: PortId },
     TypeMismatch { _Src: PortId, _SrcType: PortType, _Dst: PortId, _DstType: PortType },
+    InvalidHierarchyConnection {
+        _Src:       PortId,
+        _Dst:       PortId,
+        _SrcOwner:  ModuleId,
+        _DstOwner:  ModuleId,
+        _Reason:    &'static str,
+    },
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -45,6 +53,10 @@ impl fmt::Display for LayoutError
             LayoutError::TypeMismatch { _Src, _SrcType, _Dst, _DstType } => {
                 write!( f, "Type mismatch connecting {:?} ({:?}) to {:?} ({:?})", _Src, _SrcType, _Dst, _DstType)
             }
+            LayoutError::InvalidHierarchyConnection { _Src, _Dst, _SrcOwner, _DstOwner, _Reason } => {
+                write!( f, "Invalid hierarchy connection between port {:?} of module {:?} and port {:?} of module {:?}: {}",
+                    _Src, _SrcOwner, _Dst, _DstOwner, _Reason)
+            }
         }
     }
 }
@@ -59,10 +71,11 @@ pub struct Layout
 {
     pub _Modules:         Stash< Module>,
     pub _Ports:           Stash< PortDesc>,
-    pub _Connections:     EdgeConnect,
+    pub _Netlist:         Netlist,
     pub _ModuleChildren:  Stash< Stash< ModuleId>>,
     pub _SubModules:      Stash< ModuleId>,
     pub _Descendents:     Stash< ModuleId>,
+    pub _PortToTrigger:   Buff< TriggerId>,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -84,10 +97,11 @@ impl Layout
         Self {
             _Modules:         Stash::New(),
             _Ports:           Stash::New(),
-            _Connections:     EdgeConnect::New(),
+            _Netlist:         Netlist::New(),
             _ModuleChildren:  Stash::New(),
             _SubModules:      Stash::New(),
             _Descendents:     Stash::New(),
+            _PortToTrigger:   Buff::New(),
         }
     }
 
@@ -111,6 +125,7 @@ impl Layout
             desc._Owner = modId;
             self._Ports.Push( desc);
         });
+        self._Netlist.Grow( count);
         return USeg::New( start, count);
     }
 
@@ -134,6 +149,7 @@ impl Layout
         let  	outSeg = self.AddPorts( modId, name, outPorts, |d| d.clone());
         let  	module = Module::New(
             modId,
+            parent,
             name,
             inSeg,
             outSeg,
@@ -184,115 +200,125 @@ impl Layout
         return Some( PortId::Out( module._OutPorts.First() + pIdx));
     }
 
-    #[inline]
-    pub fn	Connect( &mut self, srcOut: PortId, dstIn: PortId) -> &mut Self
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	Connect( &mut self, src: PortId, dst: PortId) -> &mut Self
     {
-        self._Connections.RegisterEdge( srcOut.0, dstIn.0, true);
+        let  	srcIdx = src.Index();
+        let  	dstIdx = dst.Index();
+        assert!( srcIdx < self._Ports.Size(), "Source port out of bounds");
+        assert!( dstIdx < self._Ports.Size(), "Destination port out of bounds");
+
+        let  	srcOwner = self._Ports[srcIdx]._Owner;
+        let  	dstOwner = self._Ports[dstIdx]._Owner;
+        let  	srcParent = self._Modules[srcOwner.0]._Parent;
+        let  	dstParent = self._Modules[dstOwner.0]._Parent;
+
+        // 4 valid hierarchical scope cases
+        let  	( driver, sink) = if srcParent == dstParent {
+            // Sibling-to-Sibling (inside shared parent)
+            assert!( src.IsOut(), "In sibling connection, source must be an output port");
+            assert!( dst.IsIn(), "In sibling connection, destination must be an input port");
+            ( src, dst)
+        } else if Some( srcOwner) == dstParent {
+            // Pass-Down: parent input driving child input
+            assert!( src.IsIn(), "In pass-down connection, parent port must be an input");
+            assert!( dst.IsIn(), "In pass-down connection, child port must be an input");
+            ( src, dst)
+        } else if Some( dstOwner) == srcParent {
+            // Pass-Up: child output driving parent output
+            assert!( src.IsOut(), "In pass-up connection, child port must be an output");
+            assert!( dst.IsOut(), "In pass-up connection, parent port must be an output");
+            ( src, dst)
+        } else if srcOwner == dstOwner {
+            // Feedthrough: parent input connected directly to parent output
+            assert!( src.IsIn(), "In feedthrough connection, source must be an input");
+            assert!( dst.IsOut(), "In feedthrough connection, destination must be an output");
+            ( src, dst)
+        } else {
+            panic!(
+                "Cannot connect port {:?} of module {:?} to port {:?} of module {:?}: port is not visible beyond its immediate parent",
+                src, srcOwner, dst, dstOwner
+            );
+        };
+
+        let  	srcType = self._Ports[srcIdx]._Type;
+        let  	dstType = self._Ports[dstIdx]._Type;
+        assert_eq!( srcType, dstType, "Type mismatch connecting {:?} ({:?}) to {:?} ({:?})", src, srcType, dst, dstType);
+
+        self._Netlist.Connect( driver, sink).expect( "Connection validation failed");
+
         return self;
     }
 
-    pub fn	Validate( &self) -> Result< (), LayoutError>
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	SealModule( &mut self, moduleId: ModuleId)
     {
-        let  	portCount = self._Ports.Size();
-        let  	mut err = None;
+        let  	modIdx = moduleId.0;
+        assert!( modIdx < self._Modules.Size(), "ModuleId out of bounds");
+        assert!( !self._Modules[modIdx]._IsSealed, "Module {:?} is already sealed", moduleId);
 
-        self._Modules.Arr().Traverse( |module| {
-            if err.is_some() {
-                return;
-            }
-            module._InPorts.Traverse( |idx| {
-                if err.is_some() {
-                    return;
-                }
-                let  	inPort = PortId::In( idx);
-                let  	dstIdx = inPort.Index();
-                if dstIdx >= portCount {
-                    err = Some( LayoutError::PortNotFound( inPort));
-                    return;
-                }
+        // 1. Gather all root IDs for boundary ports of this module
+        let  	mut boundaryRoots = Stash::New();
+        self._Modules[modIdx]._InPorts.Traverse( |idx| {
+            boundaryRoots.Push( self._Netlist.FindRoot( PortId::In( idx)));
+        });
+        self._Modules[modIdx]._OutPorts.Traverse( |idx| {
+            boundaryRoots.Push( self._Netlist.FindRoot( PortId::Out( idx)));
+        });
 
-                let  	edSeg = self._Connections.EdgeSeg( inPort.0);
-                let  	driverCount = edSeg.Size();
+        // 2. Traverse all direct children of this module
+        let  	childCount = self._ModuleChildren[modIdx].Size();
+        USeg::New( U32::_0, childCount).Traverse( |cIdx| {
+            let  	childId = self._ModuleChildren[modIdx][cIdx];
+            let  	child = &self._Modules[childId.0];
+            assert!( child._IsSealed, "Child module {:?} must be sealed before parent {:?}", childId, moduleId);
 
-                if driverCount > U32( 1) {
-                    let  	e0 = self._Connections.EdgeAt( edSeg.First());
-                    let  	e1 = self._Connections.EdgeAt( edSeg.First() + U32( 1));
-                    err = Some( LayoutError::DuplicateInputDriver {
-                        _DstIn: inPort,
-                        _ExistingSrc: PortId( e0[1]),
-                        _AttemptedSrc: PortId( e1[1]),
-                    });
-                    return;
-                }
-
-                if driverCount == U32( 1) {
-                    let  	e = self._Connections.EdgeAt( edSeg.First());
-                    let  	srcOut = PortId( e[1]);
-                    if !srcOut.IsOut() {
-                        err = Some( LayoutError::InvalidPortDirection {
-                            _Port: srcOut,
-                            _Expected: PortDir::Out,
-                            _Actual: PortDir::In,
-                        });
-                        return;
-                    }
-                    let  	srcIdx = srcOut.Index();
-                    if srcIdx >= portCount {
-                        err = Some( LayoutError::PortNotFound( srcOut));
-                        return;
-                    }
-                    let  	srcPort = &self._Ports[srcIdx];
-                    let  	dstPort = &self._Ports[dstIdx];
-                    if srcPort._Type != dstPort._Type {
-                        err = Some( LayoutError::TypeMismatch {
-                            _Src: srcOut,
-                            _SrcType: srcPort._Type,
-                            _Dst: inPort,
-                            _DstType: dstPort._Type,
-                        });
-                        return;
-                    }
+            child._InPorts.Traverse( |idx| {
+                let  	portId = PortId::In( idx);
+                let  	root = self._Netlist.FindRoot( portId);
+                let  	isBoundary = boundaryRoots.Slice().iter().any( |&br| br == root);
+                if !isBoundary && !self._Netlist.HasTrigger( portId) {
+                    let  	portType = self._Ports[idx]._Type;
+                    self._Netlist.AssignTrigger( root, portType);
                 }
             });
-
-            if err.is_some() {
-                return;
-            }
-
-            module._OutPorts.Traverse( |idx| {
-                if err.is_some() {
-                    return;
+            child._OutPorts.Traverse( |idx| {
+                let  	portId = PortId::Out( idx);
+                let  	root = self._Netlist.FindRoot( portId);
+                let  	isBoundary = boundaryRoots.Slice().iter().any( |&br| br == root);
+                if !isBoundary && !self._Netlist.HasTrigger( portId) {
+                    let  	portType = self._Ports[idx]._Type;
+                    self._Netlist.AssignTrigger( root, portType);
                 }
-                let  	outPort = PortId::Out( idx);
-                let  	srcIdx = outPort.Index();
-                if srcIdx >= portCount {
-                    err = Some( LayoutError::PortNotFound( outPort));
-                    return;
-                }
-
-                let  	edSeg = self._Connections.EdgeSeg( outPort.0);
-                edSeg.Traverse( |edIdx| {
-                    if err.is_some() {
-                        return;
-                    }
-                    let  	e = self._Connections.EdgeAt( edIdx);
-                    let  	dstIn = PortId( e[1]);
-                    if !dstIn.IsIn() {
-                        err = Some( LayoutError::InvalidPortDirection {
-                            _Port: dstIn,
-                            _Expected: PortDir::In,
-                            _Actual: PortDir::Out,
-                        });
-                    }
-                });
             });
         });
 
-        if let Some( e) = err {
-            return Err( e);
+        // 3. If top-level module (parent is None), seal its own boundary ports too
+        if self._Modules[modIdx]._Parent.is_none() {
+            self._Modules[modIdx]._InPorts.Traverse( |idx| {
+                let  	portId = PortId::In( idx);
+                let  	root = self._Netlist.FindRoot( portId);
+                if !self._Netlist.HasTrigger( portId) {
+                    let  	portType = self._Ports[idx]._Type;
+                    self._Netlist.AssignTrigger( root, portType);
+                }
+            });
+            self._Modules[modIdx]._OutPorts.Traverse( |idx| {
+                let  	portId = PortId::Out( idx);
+                let  	root = self._Netlist.FindRoot( portId);
+                if !self._Netlist.HasTrigger( portId) {
+                    let  	portType = self._Ports[idx]._Type;
+                    self._Netlist.AssignTrigger( root, portType);
+                }
+            });
         }
-        return Ok( ());
+
+        self._Modules[modIdx]._IsSealed = true;
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
 
     #[inline]
     pub fn	Modules( &self) -> &[Module]
@@ -327,21 +353,15 @@ impl Layout
     }
 
     #[inline]
-    pub fn	Connections( &self) -> &EdgeConnect
+    pub fn	Netlist( &self) -> &Netlist
     {
-        return &self._Connections;
+        return &self._Netlist;
     }
 
     #[inline]
-    pub fn	ConnectionsMut( &mut self) -> &mut EdgeConnect
+    pub fn	NetlistMut( &mut self) -> &mut Netlist
     {
-        return &mut self._Connections;
-    }
-
-    #[inline]
-    pub fn	DumpDot( &self, ostr: &mut String)
-    {
-        self._Connections.DumpDot( ostr);
+        return &mut self._Netlist;
     }
 
     pub fn	SortModules( &mut self)
@@ -572,61 +592,46 @@ impl Layout
 
     pub fn	Freeze( &mut self) -> Result< (), LayoutError>
     {
-        // Step 1: Compact connection graph for CSR binary search / segments
-        self._Connections.Compact();
+        // Seal any modules that have not yet been sealed (from leaves to root)
+        let  	modCount = self._Modules.Size();
+        for i in ( 0..modCount.0).rev() {
+            let  	modId = ModuleId( U32( i));
+            if !self._Modules[modId.0]._IsSealed {
+                self.SealModule( modId);
+            }
+        }
 
-        // Step 2: Sort modules for their KernelKind & vtable
+        // Precompute and store the port to trigger mapping
+        self._PortToTrigger = self._Netlist.BuildPortToTrigger();
+
+        // Sort modules for their KernelKind & vtable
         self.SortModules();
-
-        // Step 3: Validate graph connections
-        self.Validate()?;
 
         return Ok( ());
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	PartitionNets( &self) -> ( EdgeBroadcast, Buff< TriggerId>)
+    pub fn	PortToTrigger( &self) -> Buff< TriggerId>
     {
-        let  	portCountU32 = self._Ports.Size();
-        let  	mut broadcast = EdgeBroadcast::New( portCountU32);
-
-        self._Modules.Arr().Traverse( |module| {
-            module._InPorts.Traverse( |idx| {
-                let  	portId = PortId::In( idx);
-                broadcast.DoBroadcast( portId.0, |elemId, _, _, nextStack| {
-                    self._Connections.NodeTraverse( elemId, |nextElem| {
-                        nextStack.Push( nextElem);
-                    });
-                });
-            });
-            module._OutPorts.Traverse( |idx| {
-                let  	portId = PortId::Out( idx);
-                broadcast.DoBroadcast( portId.0, |elemId, _, _, nextStack| {
-                    self._Connections.NodeTraverse( elemId, |nextElem| {
-                        nextStack.Push( nextElem);
-                    });
-                });
-            });
-        });
-
-        let  	portToTrigger = broadcast.SnitchNodeGroupIds();
-        return ( broadcast, portToTrigger);
+        if !self._PortToTrigger.is_empty() {
+            return self._PortToTrigger.clone();
+        }
+        return self._Netlist.BuildPortToTriggerConst();
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	BuildTriggers( &self, broadcast: &EdgeBroadcast, portToTrigger: &Buff< TriggerId>) -> TriggerWad
+    pub fn	BuildTriggers( &self, portToTrigger: &Buff< TriggerId>) -> TriggerWad
     {
-        let  	groupCount = broadcast.SzGroup();
+        let  	groupCount = self._Netlist.TriggerCount();
         let  	mut pastVals = Stash::WithCapacity( groupCount);
         let  	mut currentVals = Stash::WithCapacity( groupCount);
         let  	mut futureVals = Stash::WithCapacity( groupCount);
 
         USeg::New( U32::_0, groupCount).Traverse( |grpIdx| {
-            let  	firstPortId = PortId( broadcast.FirstId( grpIdx));
-            let  	rootPort = &self._Ports[firstPortId.Index()];
-            let  	defaultVal = Reg::DefaultTyped( rootPort._Type);
+            let  	portType = self._Netlist.TriggerType( grpIdx);
+            let  	defaultVal = Reg::DefaultTyped( portType);
 
             pastVals.Push( defaultVal);
             currentVals.Push( defaultVal);

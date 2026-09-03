@@ -102,6 +102,7 @@ impl Fifo
         });
 
         let  	modId = layout.AddModule( name, parent, &inPorts, &outPorts, KernelKind::Custom( kernel));
+        layout.SealModule( modId);
 
         return Self {
             _Clk: layout.InPort( modId, 0).unwrap(),

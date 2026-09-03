@@ -11,8 +11,10 @@ pub mod useg;
 pub mod cast;
 pub mod edge_connect;
 pub mod edge_broadcast;
+pub mod disjoint_set;
 pub mod console;
 
+pub use	disjoint_set::{ DisjointSet, IDisjointSet };
 pub use	edge_connect::{ EdgeConnect, IEdgeConnect };
 pub use	edge_broadcast::{ EdgeBroadcast, IEdgeBroadcast };
 pub use	access::{ IAccess, AccessIter};
