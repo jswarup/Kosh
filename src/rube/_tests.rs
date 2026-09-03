@@ -463,8 +463,6 @@ b1100 "
     {
         let  	mut layout = Layout::New();
 
-        let  	topId = layout.AddContainer( "TopBlock", &[], &[]);
-        let  	aluId = layout.AddContainerUnder( topId, "ALU", &[], &[]);
         let  	topId = layout.AddModule( "TopBlock", None, &[], &[], KernelKind::None);
         let  	aluId = layout.AddModule( "ALU", Some( topId), &[], &[], KernelKind::None);
 

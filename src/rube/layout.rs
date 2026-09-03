@@ -151,81 +151,11 @@ impl Layout
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    #[inline]
-    pub fn	AddStdModule< 'a, I, O>(
-        &mut self,
-        name: &str,
-        inPorts: I,
-        outPorts: O,
-        kernel: KernelKind,
-    ) -> ModuleId
-    where
-        I: Into< Arr< 'a, &'a str>>,
-        O: Into< Arr< 'a, &'a str>>,
-    {
-        let  	modId = ModuleId( self._Modules.Size());
-        let  	inSeg = self.AddPorts( modId, name, inPorts, |&name| PortDesc::Bool( name));
-        let  	outSeg = self.AddPorts( modId, name, outPorts, |&name| PortDesc::Bool( name));
-        let  	module = Module::New(
-            modId,
-            name,
-            inSeg,
-            outSeg,
-            kernel,
-        );
-        self._Modules.Push( module);
-        self._ModuleChildren.Push( Stash::New());
-        return modId;
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	AddContainer< 'a, I, O>(
-        &mut self,
-        name: &str,
-        inPorts: I,
-        outPorts: O,
-    ) -> ModuleId
-    where
-        I: Into< Arr< 'a, PortDesc>>,
-        O: Into< Arr< 'a, PortDesc>>,
-    {
-        let  	modId = ModuleId( self._Modules.Size());
-        let  	inSeg = self.AddPorts( modId, name, inPorts, |d| d.clone());
-        let  	outSeg = self.AddPorts( modId, name, outPorts, |d| d.clone());
-        let  	mut module = Module::NewContainer( modId, name);
-        module._InPorts = inSeg;
-        module._OutPorts = outSeg;
-        self._Modules.Push( module);
-        self._ModuleChildren.Push( Stash::New());
-        return modId;
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
     pub fn	AddSubModule( &mut self, parent: ModuleId, child: ModuleId)
     {
         assert!( parent.0 < self._Modules.Size(), "Parent ModuleId out of bounds");
         assert!( child.0 < self._Modules.Size(), "Child ModuleId out of bounds");
         self._ModuleChildren[parent.0].Push( child);
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	AddContainerUnder< 'a, I, O>(
-        &mut self,
-        parent: ModuleId,
-        name: &str,
-        inPorts: I,
-        outPorts: O,
-    ) -> ModuleId
-    where
-        I: Into< Arr< 'a, PortDesc>>,
-        O: Into< Arr< 'a, PortDesc>>,
-    {
-        let  	child = self.AddContainer( name, inPorts, outPorts);
-        self.AddSubModule( parent, child);
-        return child;
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
