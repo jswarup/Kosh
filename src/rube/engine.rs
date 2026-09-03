@@ -3,8 +3,9 @@
 use	std::sync::Arc;
 use	crate::{
     rube::{
+        registry::{ KernelRegistry, CustomKernelFn },
         layout::Layout,
-        module::{ CustomWarp, FastWarp },
+        module::{ BehavioralWarp, CustomWarp, FastWarp },
         port::PortId,
         reg::Reg,
         trigger::{ ITriggerWad, TriggerId, TriggerWad },
@@ -20,6 +21,8 @@ pub struct SimEngine
     pub _Triggers:      TriggerWad,
     pub _FastWarps:     Buff< FastWarp>,
     pub _CustomWarps:   Buff< CustomWarp>,
+    pub _CustomCallbacks: Buff< CustomKernelFn>,
+    pub _BehavioralWarps: Buff< BehavioralWarp>,
     pub _PortToTrigger: Buff< TriggerId>,
     pub _ReadyWords:    Buff< u64>,
     pub _CycleCount:    usize,
@@ -31,21 +34,71 @@ impl SimEngine
 {
     pub fn	Create( layout: &Layout) -> Self
     {
+        return Self::CreateWithRegistry( layout, &KernelRegistry::Default());
+    }
+
+    pub fn	CreateWithRegistry( layout: &Layout, registry: &KernelRegistry) -> Self
+    {
         let  	portToTrigger = layout.PortToTrigger();
         let  	triggers = layout.BuildTriggers( &portToTrigger);
-        let  	( fastWarps, customWarps) = layout.CompileWarps( &portToTrigger);
+        let  	( fastWarps, customWarps, behavioralWarps) = layout.CompileWarps( &portToTrigger);
         let  	modCount = layout._Modules.Size().AsUsize();
         let  	wordCount = ( modCount + 63) / 64;
         let  	readyWords = Buff::Create( U32( wordCount as u32), |_| 0u64);
+        
+        let  	mut callbacks = crate::silo::Stash::WithCapacity( customWarps.Size());
+        customWarps.Arr().Traverse( |warp| {
+            if let Some( cb) = registry._Map.get( warp._KernelName) {
+                callbacks.Push( Arc::clone( cb));
+            } else {
+                panic!( "Missing custom kernel: {}", warp._KernelName);
+            }
+        });
 
         return Self {
             _Triggers:      triggers,
             _FastWarps:     fastWarps,
             _CustomWarps:   customWarps,
+            _BehavioralWarps: behavioralWarps,
+            _CustomCallbacks: callbacks.IntoBuff(),
             _PortToTrigger: portToTrigger,
             _ReadyWords:    readyWords,
             _CycleCount:    0,
         };
+    }
+
+    fn	EvalBehavioralWarps( &mut self)
+    {
+        self._BehavioralWarps.Arr().Traverse( |warp| {
+            let  	count = warp._Count.AsUsize();
+            let  	modStart = warp._ModStart.AsUsize();
+
+            let  	mut lane = 0;
+            while lane < count {
+                let  	mIdx = modStart + lane;
+                let  	wIdx = mIdx / 64;
+                let  	bitOffset = mIdx % 64;
+                let  	activeWord = self._ReadyWords[wIdx] >> bitOffset;
+
+                let  	chunkLen = ( count - lane).min( 64 - bitOffset);
+                let  	chunkMask = if chunkLen >= 64 { !0u64 } else { ( 1u64 << chunkLen) - 1 };
+                if ( activeWord & chunkMask) == 0 {
+                    lane += chunkLen;
+                    continue;
+                }
+
+                for b in 0..chunkLen {
+                    if ( activeWord & ( 1u64 << b)) != 0 {
+                        let  	l = lane + b;
+                        let  	cb = &warp._Instances[l];
+                        let  	inTrigs = &warp._InTriggers[l];
+                        let  	outTrigs = &warp._OutTriggers[l];
+                        Self::EvalCustomInstance( cb, inTrigs, outTrigs, &mut self._Triggers);
+                    }
+                }
+                lane += chunkLen;
+            }
+        });
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -62,6 +115,7 @@ impl SimEngine
         if hasReady {
             self.EvalFastWarps();
             self.EvalCustomWarps();
+            self.EvalBehavioralWarps();
         }
 
         self._Triggers.AdvanceAll();
@@ -149,9 +203,12 @@ impl SimEngine
 
     fn	EvalCustomWarps( &mut self)
     {
+        let  	mut warpIdx = 0;
         self._CustomWarps.Arr().Traverse( |warp| {
             let  	count = warp._Count.AsUsize();
             let  	modStart = warp._ModStart.AsUsize();
+            let  	cb = &self._CustomCallbacks[warpIdx];
+            warpIdx += 1;
 
             let  	mut lane = 0;
             while lane < count {
@@ -170,7 +227,6 @@ impl SimEngine
                 for b in 0..chunkLen {
                     if ( activeWord & ( 1u64 << b)) != 0 {
                         let  	l = lane + b;
-                        let  	cb = &warp._Instances[l];
                         let  	inTrigs = &warp._InTriggers[l];
                         let  	outTrigs = &warp._OutTriggers[l];
                         Self::EvalCustomInstance( cb, inTrigs, outTrigs, &mut self._Triggers);

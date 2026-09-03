@@ -1,13 +1,15 @@
 //-- latches.rs ---------------------------------------------------------------------------------------------------------------------
 
-use	crate::rube::{
+use	crate::{
+    flux::{ FieldExp, IFluxExportSource },
+    rube::{
     engine::SimEngine,
     gates::{ NandGate, NotGate },
     layout::Layout,
     module::{ IModule, KernelKind, ModuleId },
     port::{ PortDesc, PortId },
     reg::Reg,
-};
+} };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -400,3 +402,165 @@ impl IModule for DLatch
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+
+impl IFluxExportSource for DLatch
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        let  	mut step = 0;
+        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
+            match step {
+                0 => {
+                    *key = "Type".to_string();
+                    *val = FieldExp::Str( "DLatch");
+                    step += 1;
+                    true
+                }
+                1 => {
+                    *key = "_Id".to_string();
+                    *val = FieldExp::FluxSource( &self._Id);
+                    step += 1;
+                    true
+                }
+                2 => {
+                    *key = "_D".to_string();
+                    *val = FieldExp::FluxSource( &self._D);
+                    step += 1;
+                    true
+                }
+                3 => {
+                    *key = "_E1".to_string();
+                    *val = FieldExp::FluxSource( &self._E1);
+                    step += 1;
+                    true
+                }
+                4 => {
+                    *key = "_Q".to_string();
+                    *val = FieldExp::FluxSource( &self._Q);
+                    step += 1;
+                    true
+                }
+                5 => {
+                    *key = "_Q1".to_string();
+                    *val = FieldExp::FluxSource( &self._Q1);
+                    step += 1;
+                    true
+                }
+                _ => false,
+            }
+        };
+        *field = FieldExp::Obj( Box::new( generator));
+    }
+}
+
+impl IFluxExportSource for CRSLatch
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        let  	mut step = 0;
+        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
+            match step {
+                0 => {
+                    *key = "Type".to_string();
+                    *val = FieldExp::Str( "CRSLatch");
+                    step += 1;
+                    true
+                }
+                1 => {
+                    *key = "_Id".to_string();
+                    *val = FieldExp::FluxSource( &self._Id);
+                    step += 1;
+                    true
+                }
+                2 => {
+                    *key = "_S".to_string();
+                    *val = FieldExp::FluxSource( &self._S);
+                    step += 1;
+                    true
+                }
+                3 => {
+                    *key = "_R".to_string();
+                    *val = FieldExp::FluxSource( &self._R);
+                    step += 1;
+                    true
+                }
+                4 => {
+                    *key = "_Clk1".to_string();
+                    *val = FieldExp::FluxSource( &self._Clk1);
+                    step += 1;
+                    true
+                }
+                5 => {
+                    *key = "_Q".to_string();
+                    *val = FieldExp::FluxSource( &self._Q);
+                    step += 1;
+                    true
+                }
+                6 => {
+                    *key = "_Q1".to_string();
+                    *val = FieldExp::FluxSource( &self._Q1);
+                    step += 1;
+                    true
+                }
+                _ => false,
+            }
+        };
+        *field = FieldExp::Obj( Box::new( generator));
+    }
+}
+
+impl IFluxExportSource for RSLatch
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        let  	mut step = 0;
+        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
+            match step {
+                0 => {
+                    *key = "Type".to_string();
+                    *val = FieldExp::Str( "RSLatch");
+                    step += 1;
+                    true
+                }
+                1 => {
+                    *key = "_Id".to_string();
+                    *val = FieldExp::FluxSource( &self._Id);
+                    step += 1;
+                    true
+                }
+                2 => {
+                    *key = "_S".to_string();
+                    *val = FieldExp::FluxSource( &self._S);
+                    step += 1;
+                    true
+                }
+                3 => {
+                    *key = "_R".to_string();
+                    *val = FieldExp::FluxSource( &self._R);
+                    step += 1;
+                    true
+                }
+                4 => {
+                    *key = "_Q".to_string();
+                    *val = FieldExp::FluxSource( &self._Q);
+                    step += 1;
+                    true
+                }
+                5 => {
+                    *key = "_Q1".to_string();
+                    *val = FieldExp::FluxSource( &self._Q1);
+                    step += 1;
+                    true
+                }
+                _ => false,
+            }
+        };
+        *field = FieldExp::Obj( Box::new( generator));
+    }
+}

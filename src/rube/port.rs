@@ -1,8 +1,9 @@
 //-- port.rs -------------------------------------------------------------------------------------------------------------------------
 
 use	crate::{
+    flux::{ FieldExp, IFluxExportSource },
     rube::module::ModuleId,
-    silo::U32,
+    silo::{ U32, U64 },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -232,3 +233,115 @@ impl< 'a> From< &'a str> for PortDesc
     }
 }
 
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IFluxExportSource for PortId
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        *field = FieldExp::U64( U64( self.0.0 as u64));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IFluxExportSource for PortDir
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        let  	s = match self {
+            Self::In => "In",
+            Self::Out => "Out",
+        };
+        *field = FieldExp::Str( s);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IFluxExportSource for PortType
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        let  	s = match self {
+            Self::Bool => "Bool",
+            Self::U8Val => "U8Val",
+            Self::U16Val => "U16Val",
+            Self::U32Val => "U32Val",
+            Self::U64Val => "U64Val",
+            Self::Custom( _) => "Custom",
+        };
+        *field = FieldExp::Str( s);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+crate::ImplFluxSource!( PortDesc, _Name, _Type, _Owner);
+
+impl crate::flux::IFluxImportSink for PortId {
+    fn FromFieldImp( &mut self, field: crate::flux::FieldImp) -> bool {
+        self.0.FromFieldImp( field)
+    }
+}
+impl crate::flux::IFluxImportSource for PortId {
+    fn FetchFieldImp< 'a>( &'a mut self, field: &mut crate::flux::FieldImp< 'a>) {
+        self.0.FetchFieldImp( field);
+    }
+}
+
+impl Default for PortDir {
+    fn default() -> Self { Self::In }
+}
+impl crate::flux::IFluxImportSink for PortDir {
+    fn FromFieldImp( &mut self, field: crate::flux::FieldImp) -> bool {
+        if let crate::flux::FieldImp::Str( s) = field {
+            *self = match *s {
+                "In" => Self::In,
+                "Out" => Self::Out,
+                _ => return false,
+            };
+            return true;
+        }
+        false
+    }
+}
+impl crate::flux::IFluxImportSource for PortDir {
+    fn FetchFieldImp< 'a>( &'a mut self, field: &mut crate::flux::FieldImp< 'a>) {
+        *field = crate::flux::FieldImp::FluxSink( self);
+    }
+}
+
+impl crate::flux::IFluxImportSink for PortType {
+    fn FromFieldImp( &mut self, field: crate::flux::FieldImp) -> bool {
+        if let crate::flux::FieldImp::Str( s) = field {
+            *self = match *s {
+                "Bool" => Self::Bool,
+                "U8Val" => Self::U8Val,
+                "U16Val" => Self::U16Val,
+                "U32Val" => Self::U32Val,
+                "U64Val" => Self::U64Val,
+                "Custom" => Self::Custom( crate::silo::U32( 0)), // Can't parse Custom fully from string if it only exports "Custom"
+                _ => return false,
+            };
+            return true;
+        }
+        false
+    }
+}
+impl crate::flux::IFluxImportSource for PortType {
+    fn FetchFieldImp< 'a>( &'a mut self, field: &mut crate::flux::FieldImp< 'a>) {
+        *field = crate::flux::FieldImp::FluxSink( self);
+    }
+}
+
+impl Default for PortDesc {
+    fn default() -> Self {
+        Self {
+            _Name: String::new(),
+            _Type: PortType::Bool,
+            _Owner: crate::rube::module::ModuleId::default(),
+        }
+    }
+}

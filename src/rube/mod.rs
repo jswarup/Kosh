@@ -8,7 +8,7 @@ pub mod module;
 pub mod netlist;
 pub mod port;
 pub mod reg;
-
+pub mod registry;
 pub mod trigger;
 pub mod vcd;
 pub mod vcdio;

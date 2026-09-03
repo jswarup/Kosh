@@ -191,3 +191,6 @@ impl INetlist for Netlist
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+crate::ImplFluxSource!( DisjointSet, _Parent, _Rank);
+crate::ImplFluxSource!( Netlist, _Equiv, _Driver, _RootTrigger, _NextTriggerId, _TriggerTypes);

@@ -1,9 +1,10 @@
 //-- layout.rs -----------------------------------------------------------------------------------------------------------------------
 
-use	std::{ fmt, sync::Arc };
+use	std::fmt;
 use	crate::{
+    
     rube::{
-        module::{ CustomModule, CustomWarp, FastModule, FastWarp, IModule, KernelKind, Module, ModuleId },
+        module::{ BehavioralWarp, CustomModule, CustomWarp, FastModule, FastWarp, IModule, KernelKind, Module, ModuleId },
         netlist::{ INetlist, Netlist },
         port::{ IPort, PortDesc, PortDir, PortId, PortType },
         reg::Reg,
@@ -686,10 +687,11 @@ impl Layout
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	CompileWarps( &self, portToTrigger: &Buff< TriggerId>) -> ( Buff< FastWarp>, Buff< CustomWarp>)
+    pub fn	CompileWarps( &self, portToTrigger: &Buff< TriggerId>) -> ( Buff< FastWarp>, Buff< CustomWarp>, Buff< BehavioralWarp>)
     {
         let  	mut fastWarps = Stash::New();
         let  	mut customWarps = Stash::New();
+        let  	mut behavioralWarps = Stash::New();
 
         let  	modules = self._Modules.Slice();
         let  	mut i = 0;
@@ -701,17 +703,17 @@ impl Layout
                     i += 1;
                     continue;
                 }
-                KernelKind::Custom( _) => {
+                KernelKind::Behavioral( _) => {
                     let  	vtablePtr = m._Kernel.ClassKey().1;
                     let  	startIdx = i;
                     let  	mut instances = Stash::New();
                     let  	mut inTriggersList = Stash::New();
                     let  	mut outTriggersList = Stash::New();
 
-                    while i < modules.len() && modules[i]._Kernel.ClassKey() == ( 1, vtablePtr) {
+                    while i < modules.len() && modules[i]._Kernel.ClassKey() == ( 2, vtablePtr) {
                         let  	curMod = &modules[i];
-                        if let KernelKind::Custom( cb) = &curMod._Kernel {
-                            instances.Push( Arc::clone( cb));
+                        if let KernelKind::Behavioral( cb) = &curMod._Kernel {
+                            instances.Push( std::sync::Arc::clone( cb));
                         }
 
                         let  	mut inTrig = Stash::WithCapacity( curMod._InPorts.Size());
@@ -730,11 +732,47 @@ impl Layout
                     }
 
                     let  	count = ( i - startIdx) as u32;
-                    customWarps.Push( CustomWarp::New(
-                        vtablePtr,
+                    behavioralWarps.Push( BehavioralWarp::New(
                         U32( startIdx as u32),
                         U32( count),
                         instances.IntoBuff(),
+                        inTriggersList.IntoBuff(),
+                        outTriggersList.IntoBuff(),
+                    ));
+                }
+                KernelKind::Custom( kernelName) => {
+                    let  	startIdx = i;
+                    let  	mut inTriggersList = Stash::New();
+                    let  	mut outTriggersList = Stash::New();
+
+                    while i < modules.len() {
+                        let  	curMod = &modules[i];
+                        if let KernelKind::Custom( curName) = curMod._Kernel {
+                            if curName == kernelName {
+                                let  	mut inTrig = Stash::WithCapacity( curMod._InPorts.Size());
+                                curMod._InPorts.Traverse( |idx| {
+                                    inTrig.Push( portToTrigger[idx]);
+                                });
+                                inTriggersList.Push( inTrig.IntoBuff());
+
+                                let  	mut outTrig = Stash::WithCapacity( curMod._OutPorts.Size());
+                                curMod._OutPorts.Traverse( |idx| {
+                                    outTrig.Push( portToTrigger[idx]);
+                                });
+                                outTriggersList.Push( outTrig.IntoBuff());
+
+                                i += 1;
+                                continue;
+                            }
+                        }
+                        break;
+                    }
+
+                    let  	count = ( i - startIdx) as u32;
+                    customWarps.Push( CustomWarp::New(
+                        kernelName,
+                        U32( startIdx as u32),
+                        U32( count),
                         inTriggersList.IntoBuff(),
                         outTriggersList.IntoBuff(),
                     ));
@@ -787,7 +825,7 @@ impl Layout
             }
         }
 
-        return ( fastWarps.IntoBuff(), customWarps.IntoBuff());
+        return ( fastWarps.IntoBuff(), customWarps.IntoBuff(), behavioralWarps.IntoBuff());
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -819,12 +857,12 @@ impl Layout
                 let  	outPortIdx = module._OutPorts.First();
                 let  	outPortType = self._Ports[outPortIdx]._Type;
                 fastModules.Push( FastModule::New( module._Id, in1, in2, outTrig, op, outPortType.Mask()));
-            } else if let KernelKind::Custom( callback) = &module._Kernel {
+            } else if let KernelKind::Behavioral( _cb) = &module._Kernel { } else if let KernelKind::Custom( kernelName) = &module._Kernel {
                 customModules.Push( CustomModule::New(
                     module._Id,
                     inTriggers.IntoBuff(),
                     outTriggers.IntoBuff(),
-                    Arc::clone( callback),
+                    kernelName,
                 ));
             }
         });
@@ -834,3 +872,7 @@ impl Layout
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+crate::ImplFluxSource!( Layout, _Modules, _Ports, _Netlist, _ModuleChildren, _SubModules, _Descendents, _PortToTrigger);

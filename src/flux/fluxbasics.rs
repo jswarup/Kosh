@@ -1,7 +1,7 @@
 //-- fluxbasics.rs -----------------------------------------------------------------------------------------------------------------------
 
 use crate::flux::{ IFluxExportSource, fluxexport::FieldExp };
-use crate::flux::{ IFluxImportSource, fluximport::FieldImp };
+use crate::flux::{ IFluxImportSource, fluximport::{FieldImp, IFluxImportSink} };
 use crate::silo::{ U64, U32, U16, U8, USeg, Arr, Buff, IPtrRefExt, IConstPtrRefExt, IPtrAtExt };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -420,5 +420,80 @@ where
             idx += 1;
             true
         }));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T> IFluxExportSource for Option< T>
+where
+    T: IFluxExportSource,
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        if let Some( v) = self {
+            v.FetchFieldExp( field);
+        } else {
+            *field = FieldExp::Null;
+        }
+    }
+}
+
+impl< T> IFluxImportSink for Option< T>
+where
+    T: IFluxImportSink + Default,
+{
+    fn	FromFieldImp( &mut self, field: FieldImp) -> bool
+    {
+        if let FieldImp::Null = field {
+            *self = None;
+            return true;
+        }
+        if self.is_none() {
+            *self = Some( T::default());
+        }
+        self.as_mut().unwrap().FromFieldImp( field)
+    }
+}
+
+impl< T> IFluxImportSource for Option< T>
+where
+    T: IFluxImportSink + Default,
+{
+    fn	FetchFieldImp< 'a>( &'a mut self, field: &mut FieldImp< 'a>)
+    {
+        *field = FieldImp::FluxSink( self);
+    }
+}
+impl crate::flux::IFluxExportSource for u64 {
+    fn FetchFieldExp< 'a>( &'a self, field: &mut crate::flux::FieldExp< 'a>) {
+        *field = crate::flux::FieldExp::U64( crate::silo::U64( *self));
+    }
+}
+impl crate::flux::IFluxImportSink for u64 {
+    fn FromFieldImp( &mut self, field: crate::flux::FieldImp) -> bool {
+        if let crate::flux::FieldImp::U64( val) = field { *self = val.0; return true; }
+        false
+    }
+}
+impl crate::flux::IFluxImportSource for u64 {
+    fn FetchFieldImp< 'a>( &'a mut self, field: &mut crate::flux::FieldImp< 'a>) {
+        *field = crate::flux::FieldImp::FluxSink( self);
+    }
+}
+impl crate::flux::IFluxExportSource for bool {
+    fn FetchFieldExp< 'a>( &'a self, field: &mut crate::flux::FieldExp< 'a>) {
+        *field = crate::flux::FieldExp::Bool( *self);
+    }
+}
+impl crate::flux::IFluxImportSink for bool {
+    fn FromFieldImp( &mut self, field: crate::flux::FieldImp) -> bool {
+        if let crate::flux::FieldImp::Bool( val) = field { *self = *val; return true; }
+        false
+    }
+}
+impl crate::flux::IFluxImportSource for bool {
+    fn FetchFieldImp< 'a>( &'a mut self, field: &mut crate::flux::FieldImp< 'a>) {
+        *field = crate::flux::FieldImp::FluxSink( self);
     }
 }

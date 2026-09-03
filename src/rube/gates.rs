@@ -1,10 +1,12 @@
 //-- gates.rs -----------------------------------------------------------------------------------------------------------------------
 
-use	crate::rube::{
+use	crate::{
+    flux::{ FieldExp, IFluxExportSource },
+    rube::{
     layout::Layout,
     module::{ IModule, KernelKind, ModuleId },
     port::{ PortDesc, PortId },
-};
+} };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -445,3 +447,319 @@ impl IModule for NotGate
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IFluxExportSource for NandGate
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        let  	mut step = 0;
+        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
+            match step {
+                0 => {
+                    *key = "Type".to_string();
+                    *val = FieldExp::Str( "NandGate");
+                    step += 1;
+                    true
+                }
+                1 => {
+                    *key = "_Id".to_string();
+                    *val = FieldExp::FluxSource( &self._Id);
+                    step += 1;
+                    true
+                }
+                2 => {
+                    *key = "_In1".to_string();
+                    *val = FieldExp::FluxSource( &self._In1);
+                    step += 1;
+                    true
+                }
+                3 => {
+                    *key = "_In2".to_string();
+                    *val = FieldExp::FluxSource( &self._In2);
+                    step += 1;
+                    true
+                }
+                4 => {
+                    *key = "_Out".to_string();
+                    *val = FieldExp::FluxSource( &self._Out);
+                    step += 1;
+                    true
+                }
+                _ => false,
+            }
+        };
+        *field = FieldExp::Obj( Box::new( generator));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IFluxExportSource for AndGate
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        let  	mut step = 0;
+        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
+            match step {
+                0 => {
+                    *key = "Type".to_string();
+                    *val = FieldExp::Str( "AndGate");
+                    step += 1;
+                    true
+                }
+                1 => {
+                    *key = "_Id".to_string();
+                    *val = FieldExp::FluxSource( &self._Id);
+                    step += 1;
+                    true
+                }
+                2 => {
+                    *key = "_In1".to_string();
+                    *val = FieldExp::FluxSource( &self._In1);
+                    step += 1;
+                    true
+                }
+                3 => {
+                    *key = "_In2".to_string();
+                    *val = FieldExp::FluxSource( &self._In2);
+                    step += 1;
+                    true
+                }
+                4 => {
+                    *key = "_Out".to_string();
+                    *val = FieldExp::FluxSource( &self._Out);
+                    step += 1;
+                    true
+                }
+                _ => false,
+            }
+        };
+        *field = FieldExp::Obj( Box::new( generator));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IFluxExportSource for OrGate
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        let  	mut step = 0;
+        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
+            match step {
+                0 => {
+                    *key = "Type".to_string();
+                    *val = FieldExp::Str( "OrGate");
+                    step += 1;
+                    true
+                }
+                1 => {
+                    *key = "_Id".to_string();
+                    *val = FieldExp::FluxSource( &self._Id);
+                    step += 1;
+                    true
+                }
+                2 => {
+                    *key = "_In1".to_string();
+                    *val = FieldExp::FluxSource( &self._In1);
+                    step += 1;
+                    true
+                }
+                3 => {
+                    *key = "_In2".to_string();
+                    *val = FieldExp::FluxSource( &self._In2);
+                    step += 1;
+                    true
+                }
+                4 => {
+                    *key = "_Out".to_string();
+                    *val = FieldExp::FluxSource( &self._Out);
+                    step += 1;
+                    true
+                }
+                _ => false,
+            }
+        };
+        *field = FieldExp::Obj( Box::new( generator));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IFluxExportSource for NorGate
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        let  	mut step = 0;
+        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
+            match step {
+                0 => {
+                    *key = "Type".to_string();
+                    *val = FieldExp::Str( "NorGate");
+                    step += 1;
+                    true
+                }
+                1 => {
+                    *key = "_Id".to_string();
+                    *val = FieldExp::FluxSource( &self._Id);
+                    step += 1;
+                    true
+                }
+                2 => {
+                    *key = "_In1".to_string();
+                    *val = FieldExp::FluxSource( &self._In1);
+                    step += 1;
+                    true
+                }
+                3 => {
+                    *key = "_In2".to_string();
+                    *val = FieldExp::FluxSource( &self._In2);
+                    step += 1;
+                    true
+                }
+                4 => {
+                    *key = "_Out".to_string();
+                    *val = FieldExp::FluxSource( &self._Out);
+                    step += 1;
+                    true
+                }
+                _ => false,
+            }
+        };
+        *field = FieldExp::Obj( Box::new( generator));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IFluxExportSource for XorGate
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        let  	mut step = 0;
+        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
+            match step {
+                0 => {
+                    *key = "Type".to_string();
+                    *val = FieldExp::Str( "XorGate");
+                    step += 1;
+                    true
+                }
+                1 => {
+                    *key = "_Id".to_string();
+                    *val = FieldExp::FluxSource( &self._Id);
+                    step += 1;
+                    true
+                }
+                2 => {
+                    *key = "_In1".to_string();
+                    *val = FieldExp::FluxSource( &self._In1);
+                    step += 1;
+                    true
+                }
+                3 => {
+                    *key = "_In2".to_string();
+                    *val = FieldExp::FluxSource( &self._In2);
+                    step += 1;
+                    true
+                }
+                4 => {
+                    *key = "_Out".to_string();
+                    *val = FieldExp::FluxSource( &self._Out);
+                    step += 1;
+                    true
+                }
+                _ => false,
+            }
+        };
+        *field = FieldExp::Obj( Box::new( generator));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IFluxExportSource for XnorGate
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        let  	mut step = 0;
+        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
+            match step {
+                0 => {
+                    *key = "Type".to_string();
+                    *val = FieldExp::Str( "XnorGate");
+                    step += 1;
+                    true
+                }
+                1 => {
+                    *key = "_Id".to_string();
+                    *val = FieldExp::FluxSource( &self._Id);
+                    step += 1;
+                    true
+                }
+                2 => {
+                    *key = "_In1".to_string();
+                    *val = FieldExp::FluxSource( &self._In1);
+                    step += 1;
+                    true
+                }
+                3 => {
+                    *key = "_In2".to_string();
+                    *val = FieldExp::FluxSource( &self._In2);
+                    step += 1;
+                    true
+                }
+                4 => {
+                    *key = "_Out".to_string();
+                    *val = FieldExp::FluxSource( &self._Out);
+                    step += 1;
+                    true
+                }
+                _ => false,
+            }
+        };
+        *field = FieldExp::Obj( Box::new( generator));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IFluxExportSource for NotGate
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        let  	mut step = 0;
+        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
+            match step {
+                0 => {
+                    *key = "Type".to_string();
+                    *val = FieldExp::Str( "NotGate");
+                    step += 1;
+                    true
+                }
+                1 => {
+                    *key = "_Id".to_string();
+                    *val = FieldExp::FluxSource( &self._Id);
+                    step += 1;
+                    true
+                }
+                2 => {
+                    *key = "_In".to_string();
+                    *val = FieldExp::FluxSource( &self._In);
+                    step += 1;
+                    true
+                }
+                3 => {
+                    *key = "_Out".to_string();
+                    *val = FieldExp::FluxSource( &self._Out);
+                    step += 1;
+                    true
+                }
+                _ => false,
+            }
+        };
+        *field = FieldExp::Obj( Box::new( generator));
+    }
+}

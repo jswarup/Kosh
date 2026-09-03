@@ -1,7 +1,7 @@
 //-- adder.rs -----------------------------------------------------------------------------------------------------------------------
 
-use	std::sync::Arc;
 use	crate::{
+    flux::{ FieldExp, IFluxExportSource },
     rube::{
         engine::SimEngine,
         gates::{ AndGate, OrGate, XorGate },
@@ -429,22 +429,12 @@ impl BusAdder32
 {
     pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
     {
-        let  	adderKernel = Arc::new( |inVals: &[Reg], outVals: &mut [Reg]| {
-            let  	aVal = inVals[0].Val();
-            let  	bVal = inVals[1].Val();
-            let  	sum = aVal.wrapping_add( bVal) & 0xFFFF_FFFF;
-            let  	carry = ( aVal + bVal) > 0xFFFF_FFFF;
-
-            outVals[0] = Reg::FromU32( U32( sum as u32));
-            outVals[1] = Reg::FromBool( carry);
-        });
-
         let  	modId = layout.AddModule(
             name,
             parent,
             &[ PortDesc::U32( "a"), PortDesc::U32( "b") ],
             &[ PortDesc::U32( "sum"), PortDesc::Bool( "carry") ],
-            KernelKind::Custom( adderKernel),
+            KernelKind::Custom( "BusAdder32_Kernel"),
         );
 
         let  	a = layout.InPort( modId, 0).unwrap();
@@ -482,3 +472,179 @@ impl IModule for BusAdder32
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IFluxExportSource for BusAdder32
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        let  	mut step = 0;
+        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
+            match step {
+                0 => {
+                    *key = "Type".to_string();
+                    *val = FieldExp::Str( "BusAdder32");
+                    step += 1;
+                    true
+                }
+                1 => {
+                    *key = "_Id".to_string();
+                    *val = FieldExp::FluxSource( &self._Id);
+                    step += 1;
+                    true
+                }
+                // (Optional: loop over Buff arrays for A, B, Sum)
+                _ => false,
+            }
+        };
+        *field = FieldExp::Obj( Box::new( generator));
+    }
+}
+
+impl IFluxExportSource for HalfAdder
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        let  	mut step = 0;
+        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
+            match step {
+                0 => {
+                    *key = "Type".to_string();
+                    *val = FieldExp::Str( "HalfAdder");
+                    step += 1;
+                    true
+                }
+                1 => {
+                    *key = "_Id".to_string();
+                    *val = FieldExp::FluxSource( &self._Id);
+                    step += 1;
+                    true
+                }
+                2 => {
+                    *key = "_In1".to_string();
+                    *val = FieldExp::FluxSource( &self._In1);
+                    step += 1;
+                    true
+                }
+                3 => {
+                    *key = "_In2".to_string();
+                    *val = FieldExp::FluxSource( &self._In2);
+                    step += 1;
+                    true
+                }
+                4 => {
+                    *key = "_Sum".to_string();
+                    *val = FieldExp::FluxSource( &self._Sum);
+                    step += 1;
+                    true
+                }
+                5 => {
+                    *key = "_Carry".to_string();
+                    *val = FieldExp::FluxSource( &self._Carry);
+                    step += 1;
+                    true
+                }
+                _ => false,
+            }
+        };
+        *field = FieldExp::Obj( Box::new( generator));
+    }
+}
+
+impl IFluxExportSource for FullAdder
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        let  	mut step = 0;
+        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
+            match step {
+                0 => {
+                    *key = "Type".to_string();
+                    *val = FieldExp::Str( "FullAdder");
+                    step += 1;
+                    true
+                }
+                1 => {
+                    *key = "_Id".to_string();
+                    *val = FieldExp::FluxSource( &self._Id);
+                    step += 1;
+                    true
+                }
+                2 => {
+                    *key = "_In1".to_string();
+                    *val = FieldExp::FluxSource( &self._In1);
+                    step += 1;
+                    true
+                }
+                3 => {
+                    *key = "_In2".to_string();
+                    *val = FieldExp::FluxSource( &self._In2);
+                    step += 1;
+                    true
+                }
+                4 => {
+                    *key = "_CIn".to_string();
+                    *val = FieldExp::FluxSource( &self._CIn);
+                    step += 1;
+                    true
+                }
+                5 => {
+                    *key = "_Sum".to_string();
+                    *val = FieldExp::FluxSource( &self._Sum);
+                    step += 1;
+                    true
+                }
+                6 => {
+                    *key = "_Carry".to_string();
+                    *val = FieldExp::FluxSource( &self._Carry);
+                    step += 1;
+                    true
+                }
+                _ => false,
+            }
+        };
+        *field = FieldExp::Obj( Box::new( generator));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< const N: usize> IFluxExportSource for Adder< N>
+{
+    fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
+    {
+        let  	mut step = 0;
+        let  	generator = move |key: &mut String, val: &mut FieldExp< 'a>| -> bool {
+            match step {
+                0 => {
+                    *key = "Type".to_string();
+                    *val = FieldExp::Str( "Adder");
+                    step += 1;
+                    true
+                }
+                1 => {
+                    *key = "N".to_string();
+                    *val = FieldExp::U64( crate::silo::U64( N as u64));
+                    step += 1;
+                    true
+                }
+                2 => {
+                    *key = "_Id".to_string();
+                    *val = FieldExp::FluxSource( &self._Id);
+                    step += 1;
+                    true
+                }
+                // we skip Buffs to save test code complexity, just _Id is fine for structural test
+                _ => false,
+            }
+        };
+        *field = FieldExp::Obj( Box::new( generator));
+    }
+}

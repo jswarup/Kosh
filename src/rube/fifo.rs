@@ -102,7 +102,7 @@ impl Fifo
             outVals[2] = Reg::FromBool( full);
         });
 
-        let  	modId = layout.AddModule( name, parent, &inPorts, &outPorts, KernelKind::Custom( kernel));
+        let  	modId = layout.AddModule( name, parent, &inPorts, &outPorts, KernelKind::Behavioral( kernel));
         layout.SealModule( modId);
 
         return Self {
