@@ -1,41 +1,26 @@
-# Kosh Project Rules
+# Kosh Project Core Rules
 
-## Performance Guidelines
-- **Avoid Box Allocation in AST Trees**: When designing tree-based data structures (like ASTs, shard trees, term trees), prefer stack-allocated references (`&'a DynINode<'a>`) rather than owned heap allocations (`Box<DynINode<'a>>`) to eliminate heap allocation overhead and maximize CPU cache locality.
-- **Inline Shard Construction**: Implement AST node constructor logic via macro expansions or direct inline struct declarations to trigger temporary lifetime extension in the caller's stack frame. Avoid helper functions that return references to local variables/temporaries.
-- **Prefer `Traverse` / `USeg` Over `for` Loops**: Prefer using `.Arr().Traverse( |item| { ... })`, `arr.Traverse( |item| { ... })`, or `USeg::New( U32::_0, count).Traverse( |i| { ... })` instead of native Rust `for ... in ...` loops and index conversions (`0..count.0`). This keeps `U32` as the native indexing type and adheres to the project's zero-allocation iteration patterns.
+## 1. Architecture & Performance
+- **Zero-Allocation Data Structures**: Eliminate heap allocation overhead. Use stack-allocated references (&\'a DynINode<\'a>) for tree-based structures instead of owned heap allocations (Box<DynINode<\'a>>). 
+- **Inline Construction**: Implement AST node constructors via macro expansions or inline struct declarations to extend temporary lifetimes in the caller's stack frame. Avoid helper functions returning references to temporaries.
+- **Strict Iteration Patterns**: Never use native Rust or ... in ... loops. Always use .Arr().Traverse(|item| { ... }), rr.Traverse(|item| { ... }), or USeg::New(U32::_0, count).Traverse(|i| { ... }). This preserves U32 as the native index type.
+- **Graphics Ownership (rieze vs enst)**: 
+  - rieze is purely a thin presentation layer (DOM state, IPC frames, Canvas 2D painting). It MUST NOT process geometry, transforms, or contexts.
+  - enst orchestrates graphics sessions, cameras, and IPC. Graphics computation must be delegated through swarm to symph kernels.
 
-## Typing Guidelines
-- **Use Project-Defined Numeric Types**: Throughout the project, use the custom numeric types defined in `uint.rs` (e.g. `U8`, `U16`, `U32`, `USz`) instead of Rust's native primitive types (`u8`, `u16`, `u32`, `usize`) as far as possible.
-- **Avoid `usize` for Indexing**: Standardize on `U32` for all indexing, counts, and sizes throughout the codebase. Avoid back-and-forth casting/conversions between `U32` and `usize` (e.g., `usize::from`, `.AsUsize()`), keeping `U32` as the native indexing type across data structures, APIs, and algorithms.
-- **Struct Data Members**: All struct fields (data members) must be named in PascalCase preceded by an underscore `_` (e.g. `_Data`, `_Size`, `_Points`, `_BBoxMin`).
+## 2. Typing & Data Layout
+- **Custom Numeric Types**: Always use project-defined types (U8, U16, U32, USz from uint.rs). Never use native Rust primitives (u8, u32, usize) unless forced by external APIs.
+- **Native Indexing**: U32 is the strict standard for indexing, counts, and sizes. Avoid casting to/from usize (e.g., usize::from, .AsUsize()).
+- **Iface Trait Pattern**: 
+  - Define a strict 1:1 corresponding trait (IFoo) for public operational methods of concrete structs (Foo).
+  - Keep internal plumbing and execution loops out of the trait. 
+  - Inherent impl Foo blocks are strictly for constructors and private helpers.
+  - Re-export both at module root (pub use foo::{Foo, IFoo};).
 
-## Implementation Plan Policy
-- **Heap Usage Commentary**: As a strict project policy, EVERY implementation plan MUST include a dedicated section commenting on the anticipated heap usage and allocation impact of the proposed changes.
+## 3. Implementation Plan Policy
+- **Heap Usage Commentary**: Every generated implementation plan MUST include a dedicated section evaluating the anticipated heap usage and allocation impact.
 
-## Graphics Ownership Rule
-- **Frieze Is Presentation Only**: `frieze` is a thin presentation layer. It may manage DOM state, forward input, decode IPC frames, and paint backend-projected primitives through Canvas 2D. It MUST NOT parse geometry, calculate camera transforms, project vertices, cull, shade, sort geometry, or create WebGL/WebGPU contexts.
-- **Fenst Orchestrates Graphics**: `fenst` owns graphics sessions, asset loading, camera state, frame serialization, and IPC. All graphics computation and render preparation MUST be delegated through `swarm` to `symph` kernels, with a CPU fallback only inside that backend pipeline.
-
-## Architectural Guidelines
-- **Iface Pattern**:
-  - **1:1 Trait-per-Struct**: For a concrete struct `Foo`, define a corresponding trait `IFoo` containing only the **minimal set of public operational methods needed to interface** with the struct. Internal plumbing, helper accessors, diagnostic routines, and execution loop mechanics must not pollute `IFoo`.
-  - **Inherent Impl Limitation**: Inherent `impl Foo` blocks are reserved for constructors (e.g. `New`, `Create`, `From...`) and private/internal helper methods (`pub(crate)` or private).
-  - **Trait Implementation**: All public operational interface methods are implemented under `impl IFoo for Foo`.
-  - **Module Re-exporting**: Re-export both `Foo` and `IFoo` at the module root (`pub use foo::{Foo, IFoo};`) so callers importing the module automatically bring the trait methods into scope.
-  - **Object Safety & Generics**: Use `where Self: Sized` on generic trait methods to preserve object safety (`dyn IFoo`) for non-generic methods. Default implementations should be defined directly in `IFoo` when implemented via other trait methods.
-
-## Code Organization & Naming Guidelines
-- **Always Use Short Names & File-Level `use` Statements**:
-  - All `use` statements must be placed strictly at the file header (grouped logically by module).
-  - Do NOT use inline full-path qualifications (e.g. `crate::silo::Stash`, `crate::heist::choretree::IChoreNode`, `crate::swarm::SwarmEngine`, `std::sync::atomic::Ordering`).
-  - Import traits, structs, enums, and functions at the file header and refer to them exclusively by their short names throughout the file body.
-- **Casing & Naming Standards**:
-  - **Structs, Enums, & Types**: `PascalCase` (e.g. `TriggerWad`, `SimContext`, `PortLayout`, `Reg`).
-  - **Traits**: `PascalCase` with `I` prefix (e.g. `ITriggerWad`, `IPortLayout`, `IReg`, `IAccess`).
-  - **Methods & Functions**: `PascalCase` (e.g. `fn\tNew()`, `fn\tAdd()`, `fn\tGet()`, `fn\tAdvance()`, `fn\tIsEdge()`, `fn\tSize()`).
-  - **Function / Method Arguments**: `camelCase` (e.g. `val`, `initialVal`, `mxVert`, `biDirFlg`, `inSig`).
-  - **Local Variables**: `camelCase` preceded by `let  \t` (two spaces + tab, e.g. `let  \tnameStr = `, `let  \tnewSize = `).
-  - **Struct Data Members (Fields)**: Preceded by an underscore `_` followed by `PascalCase` (e.g. `_Data`, `_Size`, `_Names`, `_PastVal`, `_CurrentVal`, `_FutureVal`, `_X`). Field type definitions and the RHS (right-hand side) in struct field initializations must be column-aligned.
-
-
+## 4. Execution Principles
+- **Surgical Precision**: Touch only what you must. Do not "improve" adjacent code, comments, or formatting. Clean up only your own mess (remove unused imports/variables your changes orphaned).
+- **Simplicity First**: Write the minimum code needed to solve the problem. Do not build speculative features, "flexible" abstractions, or unnecessary error handling.
+- **Goal-Driven Execution**: Define clear success criteria (e.g., "Write test, then make it pass"). Loop and verify independently before declaring completion.

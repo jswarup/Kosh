@@ -1,39 +1,29 @@
-# Kosh Workspace Instructions
+# Kosh Workspace & Formatting Rules
 
-Welcome to the Kosh project! Please adhere to the following project-specific instructions and rules when generating or modifying code in this repository.
+Welcome to Kosh! You **MUST** strictly adhere to these non-standard formatting and workflow rules. Do not use automated formatters like 
+ustfmt, as they will destroy project macros and styling.
 
-## Formatting Rules
-This project has strict, non-standard Rust formatting rules defined in `FORMATTING.md`. You **MUST** ensure all code modifications comply with these directives:
+## 1. Strict Formatting & Syntax
+- **Indentation & Braces**: 4 spaces, UNIX (LF) line endings. Opening braces { MUST be on a **newline** for struct, impl, and n. For control flow (if, match), keep { on the same line.
+- **Spacing in Brackets**: Open parenthesis ( and angular bracket < MUST have a trailing space if not empty (e.g., ( val), Buff< T>).
+- **Function/Keyword Spacing**: n and use MUST be followed immediately by a tab (\t) (e.g., n\tSize(), use\tcrate::silo).
+- **Local Variables**: let MUST be followed by two spaces and a tab (e.g., let  \tvarStr = ).
+- **Return Statements**: 
+eturn MUST always be on its own line, not inline.
+- **Comments & Separators**: Trailing comments must align to column 72. Separator lines (//---...) MUST be padded with one blank line before and after.
 
-1. **Indentation & Braces**: 4 spaces, UNIX (LF) line endings. Opening braces `{` are on a **newline** for `struct`, `impl`, and `fn`. For control flow (`if`, `match`, etc.), keep `{` on the same line.
-2. **Spacing in Brackets**:
-   - Open parenthesis `(` MUST have a trailing space if not empty (e.g., `( val)`).
-   - Open angular bracket `<` MUST have a trailing space if not empty (e.g., `Buff< T>`).
-3. **Function declarations**: The `fn` keyword MUST be followed immediately by a tab (`\t`) (e.g., `fn\tSize()`).
-4. **Local Variables**: The `let` keyword MUST be followed by two spaces and a tab (`let  \tvar = `). Variables must use `camelCase`.
-5. **Separators**: All `//---...` separator lines MUST be padded with one blank line before and after.
-6. **Trailing Comments**: Must be aligned to column 72.
-7. **Use statements**: The `use` keyword MUST be followed by a tab (`\t`) (e.g., `use\tcrate::silo`). Prefer file-level use statements to full-path and function level use statements. Group file-level use statements. Do not use full-paths inline; rely on file-level `use` instead.
+## 2. Naming Conventions
+- **PascalCase**: Structs, Enums, Types (e.g., SimContext), Methods/Functions (e.g., n\tAdvance()).
+- **Traits**: PascalCase with an I prefix (e.g., IAccess).
+- **camelCase**: Local variables, function arguments (e.g., initialVal).
+- **Struct Fields**: PascalCase preceded by an underscore _ (e.g., _Data, _Size).
+- **Alignment**: Struct field types and right-hand side initializations MUST be vertically aligned into consistent columns.
 
-8. **return**: Must be on separate line
-9. **Naming & Casing Conventions**:
-   - **Structs, Enums, & Types**: `PascalCase` (e.g. `TriggerWad`, `SimContext`, `PortLayout`, `Reg`).
-   - **Traits**: `PascalCase` starting with `I` prefix (e.g. `ITriggerWad`, `IPortLayout`, `IReg`, `IAccess`).
-   - **Methods & Functions**: `PascalCase` (e.g. `fn\tNew()`, `fn\tAdd()`, `fn\tGet()`, `fn\tAdvance()`, `fn\tIsEdge()`, `fn\tSize()`).
-   - **Function / Method Arguments**: `camelCase` (e.g. `val`, `initialVal`, `mxVert`, `biDirFlg`, `inSig`).
-   - **Local Variables**: `camelCase` preceded by `let  \t` (two spaces + tab, e.g. `let  \tnameStr = `, `let  \tnewSize = `).
-   - **Struct Data Members (Fields)**: Preceded by an underscore `_` followed by `PascalCase` (e.g. `_Data`, `_Size`, `_Names`, `_PastVal`, `_CurrentVal`, `_FutureVal`, `_X`). Field type definitions must be aligned into consistent vertical columns. The RHS (right-hand side) in struct field initializations must also be vertically column-aligned.
-10. **Iteration & Loops**: Prefer `.Arr().Traverse( |item| { ... })`, `arr.Traverse( |item| { ... })`, or `USeg::New( U32::_0, count).Traverse( |i| { ... })` over native `for ... in ...` loops and integer range conversions (`0..count.0`).
+## 3. Code Organization
+- **Imports**: All use statements must be placed strictly at the file header, logically grouped. NEVER use inline full-path qualifications (e.g., crate::silo::Stash). Import short names and use them exclusively.
+- **Macros**: Be highly careful modifying macros (e.g., ImplUIntTraits!). Formatting rules might differ inside macro DSL tokens.
 
-When modifying files, please ensure you don't inadvertently reformat existing code that already complies with these rules. Be extremely careful when using automated formatting tools like `rustfmt`, as they will likely destroy these custom formatting rules.
-
-
-## Build and Testing
-After making changes, always verify them with:
-- `cargo build`
-- `cargo test`
-
-## Commit
-Never commit without explicit directive.
-
-There are heavy macro usages throughout the codebase (e.g. `NodeTree!`, `ImplUIntTraits!`), so be careful when editing macros as the custom formatting rules may not apply to DSL tokens inside macros.
+## 4. Agent Workflow Rules
+- **Verify**: After modifications, always verify with cargo build and cargo test. Ensure tests pass before and after your edits.
+- **Commit**: Never commit without an explicit directive from the user.
+- **Think Before Coding**: State assumptions explicitly. Surface trade-offs. If a simpler approach exists, push back. If unclear, stop and ask.
