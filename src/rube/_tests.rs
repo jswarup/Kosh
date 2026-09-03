@@ -670,6 +670,49 @@ b1100 "
         assert_eq!( engine.GetPortBool( fa._HA1._And.Out()), Some( Reg::TRUE));
         assert_eq!( engine.GetPortBool( fa._Or.Out()), Some( Reg::TRUE));
     }
+
+    #[test]
+    fn	test_fifo_serialization()
+    {
+        use crate::rube::fifo::Fifo;
+        use crate::rube::Layout;
+        use crate::flux::{ IFluxImportSource, FieldExp, FieldImp, jsonoutstrm::JsonOutStream, fluxexport::IFluxExportSink };
+        use crate::flux::instream::FixedStream;
+        use crate::shard::{ JSon, parser::Parser };
+        use crate::silo::U32;
+
+        let  	mut layout = Layout::New();
+        let  	fifo = Fifo::New( &mut layout, "MyFifo", 4, 32, None);
+
+        let  	mut jsonStr = String::new();
+        let  	mut outStream = JsonOutStream::New( &mut jsonStr, false);
+        outStream.DispatchFieldExp( FieldExp::FluxSource( &fifo));
+
+        // Debug output
+        println!( "{}", jsonStr);
+
+        let  	mut importedFifo = Fifo::default();
+        
+        let  	mut stream = FixedStream::from( jsonStr.as_str());
+        let  	mut parser = Parser::New( &mut stream);
+        
+        let  	mut field = FieldImp::Null;
+        importedFifo.FetchFieldImp( &mut field);
+        let  	json_parser = JSon::New( field);
+        
+        assert!( parser.ParseGrammar( &json_parser, U32( 0)).is_some());
+        drop(json_parser);
+
+        assert_eq!( fifo._Id, importedFifo._Id);
+        assert_eq!( fifo._Clk, importedFifo._Clk);
+        assert_eq!( fifo._Reset, importedFifo._Reset);
+        assert_eq!( fifo._Push, importedFifo._Push);
+        assert_eq!( fifo._Pop, importedFifo._Pop);
+        assert_eq!( fifo._DataIn, importedFifo._DataIn);
+        assert_eq!( fifo._DataOut, importedFifo._DataOut);
+        assert_eq!( fifo._Empty, importedFifo._Empty);
+        assert_eq!( fifo._Full, importedFifo._Full);
+    }
 }
 
 

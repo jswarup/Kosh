@@ -160,3 +160,23 @@ impl IModule for Fifo
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+impl Default for Fifo
+{
+    fn default() -> Self
+    {
+        return Self {
+            _Id:      ModuleId::default(),
+            _Clk:     PortId::default(),
+            _Reset:   PortId::default(),
+            _Push:    PortId::default(),
+            _Pop:     PortId::default(),
+            _DataIn:  PortId::default(),
+            _DataOut: PortId::default(),
+            _Empty:   PortId::default(),
+            _Full:    PortId::default(),
+        };
+    }
+}
+
+crate::ImplFluxSource!( Fifo, _Id, _Clk, _Reset, _Push, _Pop, _DataIn, _DataOut, _Empty, _Full);
