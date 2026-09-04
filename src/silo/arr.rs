@@ -1,7 +1,7 @@
 //-- arr.rs -----------------------------------------------------------------------------------------------------------------------
-use	std::{ fmt, ptr::{ copy_nonoverlapping, swap, swap_nonoverlapping }, slice::{ from_raw_parts, from_raw_parts_mut }, str::from_utf8_unchecked };
+use	std::{ cmp::Ordering, fmt, ptr::{ copy_nonoverlapping, swap, swap_nonoverlapping }, slice::{ from_raw_parts, from_raw_parts_mut }, str::from_utf8_unchecked };
 use	crate::silo::cast::ICastExt;
-use	crate::silo::{ IAccess, AccessIter, U8, U32 };
+use	crate::silo::{ IAccess, AccessIter, U8, U32, USeg };
 use	crate::stalks::DynIWorker;
 use	std::marker::PhantomData;
 use	std::ops::{ Deref, DerefMut, Index, IndexMut };
@@ -156,6 +156,24 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    fn	BinarySearch( &self, target: &T) -> Result< U32, U32>
+    where
+        T: Ord,
+    {
+        return self.USeg().BinarySearch( |i| self.At( i).cmp( target));
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	BinarySearchBy< F>( &self, mut cmp: F) -> Result< U32, U32>
+    where
+        F: FnMut( &T) -> Ordering,
+    {
+        return self.USeg().BinarySearch( |i| cmp( self.At( i)));
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -207,6 +225,30 @@ impl< 'a, T> Arr< 'a, T>
         }
     }
 
+    #[inline]
+    pub fn	USeg( &self) -> USeg
+    {
+        return USeg::New( 0, self._Size);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< 'a, T: Ord> Arr< 'a, T>
+{
+    #[inline]
+    pub fn	BinarySearch( &self, target: &T) -> Result< U32, U32>
+    {
+        return self.USeg().BinarySearch( |i| self.At( i).cmp( target));
+    }
+
+    #[inline]
+    pub fn	BinarySearchBy< F>( &self, mut cmp: F) -> Result< U32, U32>
+    where
+        F: FnMut( &T) -> Ordering,
+    {
+        return self.USeg().BinarySearch( |i| cmp( self.At( i)));
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------

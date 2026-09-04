@@ -166,9 +166,10 @@ impl< T> Stash< T>
         }
     }
 
-    pub fn	PopToSize( &mut self, targetSz: U32)
+    pub fn	PopToSize< S: Into< U32>>( &mut self, targetSz: S)
     {
-        while self.Size() > targetSz {
+        let  	tgt = targetSz.into();
+        while self.Size() > tgt {
             self.Pop();
         }
     }

@@ -86,14 +86,14 @@ impl IEdgeConnect for EdgeConnect
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    
+
     fn	EdgeAt( &self, k: U32) -> EdgeIndex
     {
-        self._EdgeStk.Slice()[ k.0 as usize]
+        self._EdgeStk[k]
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    
+
     fn	RegisterEdge( &mut self, c1: U32, c2: U32, biDirFlg: bool)
     {
         self._EdgeStk.Push( [c1, c2]);
@@ -101,7 +101,7 @@ impl IEdgeConnect for EdgeConnect
             self._EdgeStk.Push( [c2, c1]);
         }
     }
-    
+
     //-----------------------------------------------------------------------------------------------------------------------------
 
     fn	Compact( &mut self)
@@ -109,6 +109,7 @@ impl IEdgeConnect for EdgeConnect
         if self.SzEdge() == U32::_0 {
             return;
         }
+
         let  	slice = self._EdgeStk.SliceMut();
         slice.sort_unstable();
 
@@ -119,7 +120,7 @@ impl IEdgeConnect for EdgeConnect
                 j += 1;
             }
         }
-        self._EdgeStk.PopToSize( U32( j as u32));
+        self._EdgeStk.PopToSize( j);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -127,25 +128,24 @@ impl IEdgeConnect for EdgeConnect
     fn	EdgeIndex( &self, c1: U32, c2: U32) -> U32
     {
         let  	id = [c1, c2];
-        let  	slice = self._EdgeStk.Slice();
-        match slice.binary_search( &id) {
-            Ok( idx) => U32( idx as u32),
-            Err( _) => U32::_X,
+        match self._EdgeStk.Arr().BinarySearch( &id) {
+            Ok( idx) => idx,
+            Err( _)  => U32::_X,
         }
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    
+
     fn	EdgeSeg( &self, c1: U32) -> USeg
     {
-        let  	slice = self._EdgeStk.Slice();
+        let  	arr = self._EdgeStk.Arr();
         let  	lowIndex = [c1, U32::_0];
-        let  	lb = slice.partition_point( |x| x < &lowIndex);
+        let  	lb = arr.USeg().LowerBound( |i| arr[i] < lowIndex);
 
         let  	highIndex = [c1, U32::_X];
-        let  	ub = slice.partition_point( |x| x <= &highIndex);
+        let  	ub = arr.USeg().LowerBound( |i| arr[i] <= highIndex);
 
-        return USeg::New( U32( lb as u32), U32( ( ub - lb) as u32));
+        return USeg::New( lb, ub - lb);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

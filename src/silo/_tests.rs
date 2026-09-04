@@ -857,4 +857,45 @@ fn	TestIndexIntoU32()
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+#[test]
+fn	TestBinarySearch()
+{
+    let  	vals = [10, 20, 30, 40, 50];
+    let  	seg = USeg::New( 0, vals.len());
+
+    // USeg direct binary search
+    assert_eq!( seg.BinarySearch( |i| vals[i.AsUsize()].cmp( &10)), Ok( U32( 0)));
+    assert_eq!( seg.BinarySearch( |i| vals[i.AsUsize()].cmp( &30)), Ok( U32( 2)));
+    assert_eq!( seg.BinarySearch( |i| vals[i.AsUsize()].cmp( &50)), Ok( U32( 4)));
+    assert_eq!( seg.BinarySearch( |i| vals[i.AsUsize()].cmp( &5)), Err( U32( 0)));
+    assert_eq!( seg.BinarySearch( |i| vals[i.AsUsize()].cmp( &25)), Err( U32( 2)));
+    assert_eq!( seg.BinarySearch( |i| vals[i.AsUsize()].cmp( &55)), Err( U32( 5)));
+
+    // Empty USeg
+    let  	emptySeg = USeg::New( 0, 0);
+    assert_eq!( emptySeg.BinarySearch( |_| std::cmp::Ordering::Equal), Err( U32( 0)));
+
+    // Arr BinarySearch via buff.Arr()
+    let  	buff = Buff::Create( 5, |i| ( i + 1) * 10);
+    let  	arr = buff.Arr();
+    assert_eq!( arr.BinarySearch( &U32( 10)), Ok( U32( 0)));
+    assert_eq!( arr.BinarySearch( &U32( 20)), Ok( U32( 1)));
+    assert_eq!( arr.BinarySearch( &U32( 30)), Ok( U32( 2)));
+    assert_eq!( arr.BinarySearch( &U32( 35)), Err( U32( 3)));
+    assert_eq!( arr.BinarySearch( &U32( 50)), Ok( U32( 4)));
+    assert_eq!( arr.BinarySearchBy( |v| v.cmp( &U32( 40))), Ok( U32( 3)));
+
+    // Arr BinarySearch via stash.Arr()
+    let  	mut stash = Stash::WithCapacity( 5);
+    stash.Push( 10);
+    stash.Push( 20);
+    stash.Push( 30);
+    stash.Push( 40);
+    stash.Push( 50);
+    assert_eq!( stash.Arr().BinarySearch( &20), Ok( U32( 1)));
+    assert_eq!( stash.Arr().BinarySearch( &45), Err( U32( 4)));
+    assert_eq!( stash.Arr().BinarySearch( &5), Err( U32( 0)));
+    assert_eq!( stash.Arr().BinarySearch( &60), Err( U32( 5)));
+}
+
 

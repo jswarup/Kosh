@@ -17,10 +17,11 @@
   - Eliminate heap allocation overhead. Use stack-allocated references (`&'a DynINode<'a>`) for tree-based structures instead of owned heap allocations (`Box<DynINode<'a>>`).
   - AST node constructors must be implemented via macro expansions (`NodeTree!`, `ShardTree!`, `TermTree!`, `ChoreTree!`) or inline struct declarations to extend temporary lifetimes in the caller's stack frame.
   - Avoid helper functions returning references to temporaries.
-- **Strict Iteration Patterns (Zero-Range, `U32`-Preserving)**:
+- **Strict Iteration & Segment Algorithms (Zero-Range, `U32`-Preserving)**:
   - NEVER use native Rust `for ... in ...` loops or integer range conversions (`0..count.0`).
-  - Always use `.Arr().Traverse( |item| { ... })`, `arr.Traverse( |item| { ... })`, or `USeg::New( U32::_0, count).Traverse( |i| { ... })`.
+  - Always use `.Arr().Traverse( |item| { ... })`, `arr.Traverse( |item| { ... })`, or `USeg::New( 0, count).Traverse( |i| { ... })`.
   - For reverse iteration, use `arr.TraverseRev( ... )` or `useg.TraverseRev( ... )`.
+  - Always use `USeg` and container search/sort algorithms (`BinarySearch`, `LowerBound`, `UpperBound`, `LocateBound`, `QSort`, `DoQSort`, etc.) instead of native `slice::binary_search`, `slice::sort`, or `partition_point`.
   - This preserves `U32` as the native index type across all loops and avoids loop index conversions.
 - **Subsystem Ownership & Graphics Boundaries**:
   - `silo`: Foundational zero-allocation containers (`Arr`, `Buff`, `Stash`, `Stk`, `USeg`) and transparent custom unsigned numerics (`U8`..`U64`).
@@ -42,11 +43,15 @@
   - Do not introduce internal variables of Rust primitives unless required for explicit raw memory storage (e.g., pointer offsets or hardware registers).
   - Always explore alternatives within the framework before resorting to primitives.
   - All public and internal method arguments and return types must use Custom Numeric Types.
-  - Function arguments accepting numeric values, sizes, or indices should be parameterized by respective `Into` traits (e.g., `Idx: Into< U32>`, `Sz: Into< U32>`).
   - Use `From` trait implementations and `.into()` for conversions.
+- **Zero-Cast Generic Arguments (`Into< U32>`)**:
+  - Function and method arguments accepting numeric values, sizes, offsets, or indices MUST be parameterized by respective `Into` traits (e.g., `Idx: Into< U32>`, `Sz: Into< U32>`).
+  - Core constructors and container methods (`Stash::WithCapacity`, `Buff::Create`, `USeg::New`, `Arr::Snip`, `USeg::Snip`, etc.) accept any type implementing `Into< U32>`.
+  - Avoid redundant explicit casts or wrappers (e.g., `as u32`, `U32(...)`, `as usize`, `.0`) when invoking functions or methods that accept `Into< U32>`. Pass numeric literals (`0`, `16`), variables (`count`, `len`), or custom numeric types directly.
 - **Native Indexing Standard**:
   - `U32` is the strict standard for indexing, offsets, counts, and sizes.
   - Core containers (`Arr`, `Buff`, `Stash`) implement `Index< I>` and `IndexMut< I>` where `I: Into< U32>`.
+  - Callers directly index containers with any type implementing `Into< U32>` (e.g., `arr[i]`, `buff[0]`, `stash[len - 1]`) without `.AsUsize()` or `i.0`.
   - Slicing sub-ranges must use `.Slice()[start..end]` or `.SliceMut()[start..end]`.
   - Avoid casting to/from `usize` (e.g., `usize::from`, `.AsUsize()`) except when strictly required by external slice indexing boundaries.
 - **Iface Trait Pattern**:

@@ -1,4 +1,5 @@
 //-- silo/useg.rs ---------------------------------------------------------------------------------------------------------------------
+use	std::cmp::Ordering;
 use	crate::silo::U32;
 use	crate::stalks::DynIWorker;
 
@@ -16,7 +17,7 @@ pub struct USeg
 impl USeg
 {
     //-----------------------------------------------------------------------------------------------------------------------------
-    
+
     pub fn	New< Idx: Into< U32>, Sz: Into< U32>>( first: Idx, sz: Sz) -> Self
     {
         let  	fst = first.into();
@@ -28,7 +29,7 @@ impl USeg
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
-    
+
     pub fn	NewInf< Idx: Into< U32>>( first: Idx) -> Self
     {
         let  	fst = first.into();
@@ -82,12 +83,12 @@ impl USeg
 
     //-----------------------------------------------------------------------------------------------------------------------------
     // For parsing purposes IsEmpty doubles are IsInf
-    
+
     pub fn	IsEmpty( &self) -> bool
     {
         self.Size() == 0
     }
-    
+
     //-----------------------------------------------------------------------------------------------------------------------------
 
     pub fn	IsWithin< V: Into< U32>>( &self, v: V) -> bool
@@ -302,16 +303,21 @@ impl USeg
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	BinarySearch< LessAt>( &self, piv: U32, lessFn: LessAt) -> U32
+    pub fn	BinarySearch< CmpFn>( &self, mut cmpFn: CmpFn) -> Result< U32, U32>
     where
-        LessAt: Fn( U32, U32) -> bool
+        CmpFn: FnMut( U32) -> Ordering,
     {
-        let     lo = self.LowerBound( | i| lessFn( i, piv));
-        if lo == self.End() || lessFn( piv, lo) {
-           self.End()
-        } else {
-            lo
+        let  	mut l = self._First;
+        let  	mut h = self._First + self.Size();
+        while l < h {
+            let  	mid = l + ( h - l) / U32( 2);
+            match cmpFn( mid) {
+                Ordering::Less    => l = mid + U32( 1),
+                Ordering::Greater => h = mid,
+                Ordering::Equal   => return Ok( mid),
+            }
         }
+        return Err( l);
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

@@ -282,53 +282,52 @@ impl< const N: usize> Adder< N>
 {
     pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
     {
-        let  	mut inDescs = Stash::WithCapacity( U32( ( 2 * N + 1) as u32));
-        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
-            inDescs.Push( PortDesc::Bool( format!( "a{}", i.0)));
+        let  	mut inDescs = Stash::WithCapacity( 2 * N + 1);
+        USeg::New( 0, N).Traverse( |i| {
+            inDescs.Push( PortDesc::Bool( format!( "a{i}")));
         });
-        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
-            inDescs.Push( PortDesc::Bool( format!( "b{}", i.0)));
+        USeg::New( 0, N).Traverse( |i| {
+            inDescs.Push( PortDesc::Bool( format!( "b{i}")));
         });
         inDescs.Push( PortDesc::Bool( "cin"));
 
-        let  	mut outDescs = Stash::WithCapacity( U32( ( N + 1) as u32));
-        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
-            outDescs.Push( PortDesc::Bool( format!( "sum{}", i.0)));
+        let  	mut outDescs = Stash::WithCapacity( N + 1);
+        USeg::New( 0, N).Traverse( |i| {
+            outDescs.Push( PortDesc::Bool( format!( "sum{i}")));
         });
         outDescs.Push( PortDesc::Bool( "carry"));
 
         let  	modId = layout.AddModule( name, parent, inDescs.Slice(), outDescs.Slice(), KernelKind::None);
 
-        let  	mut aPorts = Stash::WithCapacity( U32( N as u32));
-        let  	mut bPorts = Stash::WithCapacity( U32( N as u32));
-        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
-            aPorts.Push( layout.InPort( modId, i.0).unwrap());
-            bPorts.Push( layout.InPort( modId, ( N as u32) + i.0).unwrap());
+        let  	mut aPorts = Stash::WithCapacity( N);
+        let  	mut bPorts = Stash::WithCapacity( N);
+        USeg::New( 0, N).Traverse( |i| {
+            aPorts.Push( layout.InPort( modId, i).unwrap());
+            bPorts.Push( layout.InPort( modId, i + N).unwrap());
         });
-        let  	cinPort = layout.InPort( modId, 2 * N as u32).unwrap();
+        let  	cinPort = layout.InPort( modId, 2 * N).unwrap();
 
-        let  	mut sumPorts = Stash::WithCapacity( U32( N as u32));
-        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
-            sumPorts.Push( layout.OutPort( modId, i.0).unwrap());
+        let  	mut sumPorts = Stash::WithCapacity( N);
+        USeg::New( 0, N).Traverse( |i| {
+            sumPorts.Push( layout.OutPort( modId, i).unwrap());
         });
-        let  	carryPort = layout.OutPort( modId, N as u32).unwrap();
+        let  	carryPort = layout.OutPort( modId, N).unwrap();
 
-        let  	mut fullAdders: Stash< FullAdder> = Stash::WithCapacity( U32( N as u32));
-        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
-            let  	idx = i.AsUsize();
-            let  	bit = FullAdder::New( layout, &format!( "{name}.Bit{}", i.0), Some( modId));
+        let  	mut fullAdders: Stash< FullAdder> = Stash::WithCapacity( N);
+        USeg::New( 0, N).Traverse( |i| {
+            let  	bit = FullAdder::New( layout, &format!( "{name}.Bit{i}"), Some( modId));
 
-            layout.Connect( aPorts[idx], bit.In1());
-            layout.Connect( bPorts[idx], bit.In2());
+            layout.Connect( aPorts[i], bit.In1());
+            layout.Connect( bPorts[i], bit.In2());
 
-            if i == U32::_0 {
+            if i == 0 {
                 layout.Connect( cinPort, bit.CIn());
             } else {
-                let  	prevCarry = fullAdders[idx - 1].Carry();
+                let  	prevCarry = fullAdders[i - 1].Carry();
                 layout.Connect( prevCarry, bit.CIn());
             }
 
-            layout.Connect( bit.Sum(), sumPorts[idx]);
+            layout.Connect( bit.Sum(), sumPorts[i]);
             fullAdders.Push( bit);
         });
 
@@ -353,20 +352,20 @@ impl< const N: usize> Adder< N>
     }
 
     #[inline]
-    pub fn	SetA( &self, engine: &mut SimEngine, val: U32)
+    pub fn	SetA< V: Into< U32>>( &self, engine: &mut SimEngine, val: V)
     {
-        let  	v = val.0 as usize;
-        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
+        let  	v = val.into().AsUsize();
+        USeg::New( 0, N).Traverse( |i| {
             let  	bitVal = ( ( v >> i.0) & 1) != 0;
             engine.SetPortBool( self._A[i], Reg::FromBool( bitVal));
         });
     }
 
     #[inline]
-    pub fn	SetB( &self, engine: &mut SimEngine, val: U32)
+    pub fn	SetB< V: Into< U32>>( &self, engine: &mut SimEngine, val: V)
     {
-        let  	v = val.0 as usize;
-        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
+        let  	v = val.into().AsUsize();
+        USeg::New( 0, N).Traverse( |i| {
             let  	bitVal = ( ( v >> i.0) & 1) != 0;
             engine.SetPortBool( self._B[i], Reg::FromBool( bitVal));
         });
@@ -382,7 +381,7 @@ impl< const N: usize> Adder< N>
     pub fn	GetSum( &self, engine: &SimEngine) -> usize
     {
         let  	mut sum = 0;
-        USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {
+        USeg::New( 0, N).Traverse( |i| {
             if let Some( bit) = engine.GetPortBool( self._Sum[i]) {
                 if bit.IsTrue() {
                     sum |= 1 << i.0;

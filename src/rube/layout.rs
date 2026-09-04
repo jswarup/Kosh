@@ -2,7 +2,7 @@
 
 use	std::fmt;
 use	crate::{
-    
+
     rube::{
         module::{ BehavioralWarp, CustomModule, CustomWarp, FastModule, FastWarp, IModule, KernelKind, Module, ModuleId },
         netlist::{ INetlist, Netlist },
@@ -288,11 +288,10 @@ impl Layout
         let  	lessFn = move |i, j| arr.At( i) < arr.At( j);
         let  	swapFn = move |i, j| arr.Swap( i, j);
         arr.USeg().QSort( lessFn, swapFn);
-        let  	sortedRoots = boundaryRoots.Slice();
 
         // 2. Traverse all direct children of this module
         let  	childCount = self._ModuleChildren[modIdx].Size();
-        USeg::New( U32::_0, childCount).Traverse( |cIdx| {
+        USeg::New( 0, childCount).Traverse( |cIdx| {
             let  	childId = self._ModuleChildren[modIdx][cIdx];
             let  	child = &self._Modules[childId.0];
             assert!( child._IsSealed, "Child module {:?} must be sealed before parent {:?}", childId, moduleId);
@@ -300,7 +299,7 @@ impl Layout
             child._InPorts.Traverse( |idx| {
                 let  	portId = PortId::In( idx);
                 let  	root = self._Netlist.FindRoot( portId);
-                let  	isBoundary = sortedRoots.binary_search( &root).is_ok();
+                let  	isBoundary = arr.BinarySearch( &root).is_ok();
                 if !isBoundary && !self._Netlist.HasTrigger( portId) {
                     let  	portType = self._Ports[idx]._Type;
                     self._Netlist.AssignTrigger( root, portType);
@@ -309,7 +308,7 @@ impl Layout
             child._OutPorts.Traverse( |idx| {
                 let  	portId = PortId::Out( idx);
                 let  	root = self._Netlist.FindRoot( portId);
-                let  	isBoundary = sortedRoots.binary_search( &root).is_ok();
+                let  	isBoundary = arr.BinarySearch( &root).is_ok();
                 if !isBoundary && !self._Netlist.HasTrigger( portId) {
                     let  	portType = self._Ports[idx]._Type;
                     self._Netlist.AssignTrigger( root, portType);
