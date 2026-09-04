@@ -5,7 +5,7 @@ use	std::io::Read;
 use	std::mem::{ forget, size_of, take };
 use	std::ops::{ Index, IndexMut };
 use	std::ptr::{ copy_nonoverlapping, drop_in_place, NonNull, read, write };
-use	std::slice::{ from_raw_parts, from_raw_parts_mut, SliceIndex };
+use	std::slice::{ from_raw_parts, from_raw_parts_mut };
 use	std::sync::atomic::Ordering;
 use	crate::silo::{ Arr, Buff, IAccess, Stk, U32, U8 };
 use	crate::stalks::Atm;
@@ -415,53 +415,25 @@ impl< T: Clone + Default> Clone for Stash< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T, I> Index< I> for Stash< T>
-where
-    I: SliceIndex< [T]>,
-{
-    type Output = I::Output;
-
-    #[inline]
-    fn	index( &self, index: I) -> &Self::Output
-    {
-        return &self.Slice()[index];
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< T, I> IndexMut< I> for Stash< T>
-where
-    I: SliceIndex< [T]>,
-{
-    #[inline]
-    fn	index_mut( &mut self, index: I) -> &mut Self::Output
-    {
-        return &mut self.SliceMut()[index];
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< T> Index< U32> for Stash< T>
+impl< T, I: Into< U32>> Index< I> for Stash< T>
 {
     type Output = T;
 
     #[inline]
-    fn	index( &self, index: U32) -> &Self::Output
+    fn	index( &self, index: I) -> &Self::Output
     {
-        return &self.Slice()[index.0 as usize];
+        return &self.Slice()[index.into().0 as usize];
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T> IndexMut< U32> for Stash< T>
+impl< T, I: Into< U32>> IndexMut< I> for Stash< T>
 {
     #[inline]
-    fn	index_mut( &mut self, index: U32) -> &mut Self::Output
+    fn	index_mut( &mut self, index: I) -> &mut Self::Output
     {
-        return &mut self.SliceMut()[index.0 as usize];
+        return &mut self.SliceMut()[index.into().0 as usize];
     }
 }
 

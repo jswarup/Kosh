@@ -126,7 +126,7 @@ impl<R: Read> BuffStream<R> {
             self._Buff.Resize( U32( newSize as u32), |_| U8::_0);
 
             let  	slice = ( &mut *self._Buff).Cast::< &mut [u8]>();
-            slice[currSize..newSize].copy_from_slice( &chunk[..readBytes]);
+            slice[currSize..newSize].copy_from_slice( &chunk.Slice()[..readBytes]);
             currSize = newSize;
         }
 

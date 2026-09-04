@@ -1,4 +1,4 @@
-﻿//-- swarm/engine.rs ----------------------------------------------------------------------------------------------------------------
+//-- swarm/engine.rs ----------------------------------------------------------------------------------------------------------------
 
 use	crate::silo::{ Buff, ISliceExt, U32, U64 };
 use	crate::swarm::cpu::{ CpuBuffer, CpuDevice, CpuKernel };
@@ -221,7 +221,7 @@ impl SwarmEngine
 
     /// Automatically discovers and selects the best available compute hardware.
     /// Priority order: CudaOxide -> RustGpu -> Cpu fallback.
-    
+
 
 
     pub fn	Auto() -> Self
@@ -458,7 +458,7 @@ pub struct SwarmCluster
 impl SwarmCluster
 {
     /// Automatically discovers all hardware compute adapters and initializes the cluster.
-    
+
 
 
     pub fn	Auto() -> Self
@@ -468,7 +468,7 @@ impl SwarmCluster
             let  	primary = SwarmEngine {
                 _Device: SwarmDevice::RustGpu( devices[0].clone()),
             };
-            let  	aux: Buff< SwarmEngine> = devices[1..]
+            let  	aux: Buff< SwarmEngine> = devices.Slice()[1..]
                 .iter()
                 .map( |d| SwarmEngine { _Device: SwarmDevice::RustGpu( d.clone()) })
                 .collect();

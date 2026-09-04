@@ -712,3 +712,84 @@ ConsoleTest!( TestConsoleTestMacroWithResult() -> Result< (), String> {
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+#[test]
+fn	TestIndexIntoU32()
+{
+    // Test Buff
+    let  	mut buff = Buff::Create( 10, |i| i.0 * 10);
+    assert_eq!( buff[U32( 2)], 20);
+    assert_eq!( buff[2u32], 20);
+    assert_eq!( buff[2usize], 20);
+    assert_eq!( buff[2i32], 20);
+    assert_eq!( buff[U16( 2)], 20);
+    assert_eq!( buff[U8( 2)], 20);
+
+    buff[U32( 2)] = 25;
+    assert_eq!( buff[2u32], 25);
+    buff[2u32] = 30;
+    assert_eq!( buff[2usize], 30);
+    buff[2usize] = 35;
+    assert_eq!( buff[2i32], 35);
+    buff[2i32] = 40;
+    assert_eq!( buff[U16( 2)], 40);
+    buff[U16( 2)] = 45;
+    assert_eq!( buff[U8( 2)], 45);
+    buff[U8( 2)] = 50;
+    assert_eq!( buff[2], 50);
+
+    // Test Buff Slice / SliceMut
+    assert_eq!( buff.Slice()[..3], [0, 10, 50]);
+    buff.SliceMut()[1] = 99;
+    assert_eq!( buff[1], 99);
+
+    // Test Stash
+    let  	mut stash = Stash::WithCapacity( 10);
+    stash.Push( 100);
+    stash.Push( 200);
+    stash.Push( 300);
+    assert_eq!( stash[U32( 1)], 200);
+    assert_eq!( stash[1u32], 200);
+    assert_eq!( stash[1usize], 200);
+    assert_eq!( stash[1i32], 200);
+    assert_eq!( stash[U16( 1)], 200);
+    assert_eq!( stash[U8( 1)], 200);
+
+    stash[U32( 1)] = 250;
+    assert_eq!( stash[1u32], 250);
+    stash[1u32] = 260;
+    assert_eq!( stash[1usize], 260);
+    stash[1usize] = 270;
+    assert_eq!( stash[1i32], 270);
+    stash[1i32] = 280;
+    assert_eq!( stash[U16( 1)], 280);
+    stash[U16( 1)] = 290;
+    assert_eq!( stash[U8( 1)], 290);
+    stash[U8( 1)] = 295;
+    assert_eq!( stash[1], 295);
+
+    // Test Arr
+    let  	mut arr = buff.Arr();
+    assert_eq!( arr[U32( 0)], 0);
+    assert_eq!( arr[0u32], 0);
+    assert_eq!( arr[0usize], 0);
+    assert_eq!( arr[0i32], 0);
+    assert_eq!( arr[U16( 0)], 0);
+    assert_eq!( arr[U8( 0)], 0);
+
+    arr[U32( 0)] = 7;
+    assert_eq!( arr[0u32], 7);
+    arr[0u32] = 8;
+    assert_eq!( arr[0usize], 8);
+    arr[0usize] = 9;
+    assert_eq!( arr[0i32], 9);
+    arr[0i32] = 10;
+    assert_eq!( arr[U16( 0)], 10);
+    arr[U16( 0)] = 11;
+    assert_eq!( arr[U8( 0)], 11);
+    arr[U8( 0)] = 12;
+    assert_eq!( arr[0], 12);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+

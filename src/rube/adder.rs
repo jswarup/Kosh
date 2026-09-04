@@ -305,7 +305,7 @@ impl< const N: usize> Adder< N>
             aPorts.Push( layout.InPort( modId, i.0).unwrap());
             bPorts.Push( layout.InPort( modId, ( N as u32) + i.0).unwrap());
         });
-        let  	cinPort = layout.InPort( modId, ( 2 * N as u32)).unwrap();
+        let  	cinPort = layout.InPort( modId, 2 * N as u32).unwrap();
 
         let  	mut sumPorts = Stash::WithCapacity( U32( N as u32));
         USeg::New( U32::_0, U32( N as u32)).Traverse( |i| {

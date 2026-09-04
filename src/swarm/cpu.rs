@@ -74,7 +74,7 @@ impl IComputeBuffer for CpuBuffer
         if data.len() > guard.len() {
             guard.Resize( U32( data.len() as u32), |_| 0);
         }
-        guard[..data.len()].copy_from_slice( data);
+        guard.SliceMut()[..data.len()].copy_from_slice( data);
         Ok( ())
     }
 
@@ -331,13 +331,13 @@ impl IComputeDevice for CpuDevice
             let  	inClone = rawData[0].clone();
             ( Buff![inClone], Buff![rawData[0].clone()])
         } else {
-            let  	inSlices: Buff< Buff< u8>> = Buff::from( &rawData[..rawData.len() - 1]);
+            let  	inSlices: Buff< Buff< u8>> = Buff::from( &rawData.Slice()[..rawData.len() - 1]);
             let  	outVecs: Buff< Buff< u8>> = Buff![rawData.last().unwrap().clone()];
             ( inSlices, outVecs)
         };
 
-        let  	inRefs: Buff< &[u8]> = inputSlices.iter().map( |v| &v[..]).collect();
-        let  	mut outRefs: Buff< &mut [u8]> = outputVectors.iter_mut().map( |v| &mut v[..]).collect();
+        let  	inRefs: Buff< &[u8]> = inputSlices.iter().map( |v| v.Slice()).collect();
+        let  	mut outRefs: Buff< &mut [u8]> = outputVectors.iter_mut().map( |v| v.SliceMut()).collect();
 
         // Execute kernel across grid
         for z in 0..threadsZ {

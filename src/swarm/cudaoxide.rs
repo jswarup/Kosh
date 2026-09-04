@@ -70,7 +70,7 @@ impl IComputeBuffer for CudaOxideBuffer
         if data.len() > guard.len() {
             guard.Resize( U32( data.len() as u32), |_| 0);
         }
-        guard[..data.len()].copy_from_slice( data);
+        guard.SliceMut()[..data.len()].copy_from_slice( data);
         Ok( ())
     }
 
@@ -275,7 +275,7 @@ impl IComputeDevice for CudaOxideDevice
             if let Some( targetBuf) = buffers.first() {
                 if let Some( cudaBuf) = (*targetBuf).AsAny().downcast_ref::< CudaOxideBuffer>() {
                     let  	mut guard = cudaBuf._Data.write().unwrap();
-                    let  	floats: &mut [f32] = ( &mut guard[..]).CastSliceMut();
+                    let  	floats: &mut [f32] = guard.SliceMut().CastSliceMut();
                     for i in 0..totalThreads.min( floats.len()) {
                         symph::double_elem( i, floats);
                     }
@@ -290,7 +290,7 @@ impl IComputeDevice for CudaOxideDevice
 
                 if let Some( cudaOut) = buffers[2].AsAny().downcast_ref::< CudaOxideBuffer>() {
                     let  	mut guard = cudaOut._Data.write().unwrap();
-                    let  	outFloats: &mut [f32] = ( &mut guard[..]).CastSliceMut();
+                    let  	outFloats: &mut [f32] = guard.SliceMut().CastSliceMut();
                     for i in 0..totalThreads.min( outFloats.len()).min( inA.len()).min( inB.len()) {
                         symph::vector_add_elem( i, inA, inB, outFloats);
                     }
@@ -303,7 +303,7 @@ impl IComputeDevice for CudaOxideDevice
 
                 if let Some( cudaOut) = buffers[1].AsAny().downcast_ref::< CudaOxideBuffer>() {
                     let  	mut guard = cudaOut._Data.write().unwrap();
-                    let  	outU32: &mut [u32] = ( &mut guard[..]).CastSliceMut();
+                    let  	outU32: &mut [u32] = guard.SliceMut().CastSliceMut();
                     for i in 0..totalThreads.min( outU32.len()).min( inU32.len()) {
                         symph::collatz_elem( i, inU32, outU32);
                     }
@@ -313,7 +313,7 @@ impl IComputeDevice for CudaOxideDevice
             if let Some( cudaOut) = buffers.first() {
                 if let Some( buf) = (*cudaOut).AsAny().downcast_ref::< CudaOxideBuffer>() {
                     let  	mut guard = buf._Data.write().unwrap();
-                    let  	outFloats: &mut [f32] = ( &mut guard[..]).CastSliceMut();
+                    let  	outFloats: &mut [f32] = guard.SliceMut().CastSliceMut();
                     for idx in 0..totalThreads {
                         symph::pointcloud_elem( idx, outFloats);
                     }

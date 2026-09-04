@@ -6,7 +6,6 @@ use	std::{
     mem::{ forget, size_of, swap },
     ops::{ Deref, DerefMut, Index, IndexMut },
     ptr::{ copy_nonoverlapping, drop_in_place, NonNull, read, slice_from_raw_parts_mut, write },
-    slice::SliceIndex,
 };
 use	serde::{
     de::{ SeqAccess, Visitor },
@@ -113,6 +112,22 @@ impl< T> Buff< T>
     pub fn	Size( &self) -> U32
     {
         U32( self._Ptr.len() as u32)
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[inline]
+    pub fn	Slice( &self) -> &[T]
+    {
+        return self.deref();
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[inline]
+    pub fn	SliceMut( &mut self) -> &mut [T]
+    {
+        return self.deref_mut();
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -552,53 +567,25 @@ impl< T> Default for Buff< T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T, I> Index< I> for Buff< T>
-where
-    I: SliceIndex< [T]>,
-{
-    type Output = I::Output;
-
-    #[inline]
-    fn	index( &self, index: I) -> &Self::Output
-    {
-        return &self.deref()[index];
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< T, I> IndexMut< I> for Buff< T>
-where
-    I: SliceIndex< [T]>,
-{
-    #[inline]
-    fn	index_mut( &mut self, index: I) -> &mut Self::Output
-    {
-        return &mut self.deref_mut()[index];
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-impl< T> Index< U32> for Buff< T>
+impl< T, I: Into< U32>> Index< I> for Buff< T>
 {
     type Output = T;
 
     #[inline]
-    fn	index( &self, index: U32) -> &Self::Output
+    fn	index( &self, index: I) -> &Self::Output
     {
-        return &self.deref()[index.0 as usize];
+        return &self.deref()[index.into().0 as usize];
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< T> IndexMut< U32> for Buff< T>
+impl< T, I: Into< U32>> IndexMut< I> for Buff< T>
 {
     #[inline]
-    fn	index_mut( &mut self, index: U32) -> &mut Self::Output
+    fn	index_mut( &mut self, index: I) -> &mut Self::Output
     {
-        return &mut self.deref_mut()[index.0 as usize];
+        return &mut self.deref_mut()[index.into().0 as usize];
     }
 }
 
