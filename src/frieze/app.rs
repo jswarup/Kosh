@@ -18,8 +18,10 @@ use	crate::frieze::explorer::build_explorer_panel;
 use	crate::frieze::fresco_view::build_fresco_view_panel;
 use	crate::frieze::img_view::build_img_view_panel;
 use	crate::frieze::geom_view::build_geom_view_panel;
+use	crate::frieze::wave_view::build_wave_view_panel;
 use	crate::frieze::state::{ AppState, AppTheme, OpenTab, SharedState, TabKind };
 use	crate::frieze::tab_bar::close_active_tab;
+use	crate::rube::{ vcdio::ParseVcd, VcdDisplayModel };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -122,6 +124,14 @@ fn	open_tab_for_path( notebook: &Notebook, state: &SharedState, path: &Path)
         }
         TabKind::Image => {
             let  	page = build_img_view_panel( notebook, state.clone(), path.to_path_buf());
+            notebook.add_page( &page, &label, true, None);
+        }
+        TabKind::Vcd => {
+            let  	content = std::fs::read_to_string( path).unwrap_or_default();
+            let  	displayModel = ParseVcd( &content)
+                .map( |m| VcdDisplayModel::FromVcdModel( &m))
+                .unwrap_or_default();
+            let  	page = build_wave_view_panel( notebook, state.clone(), displayModel, path.to_path_buf());
             notebook.add_page( &page, &label, true, None);
         }
         TabKind::Text => {

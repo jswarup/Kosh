@@ -17,6 +17,7 @@ pub enum TabKind
     Obj,
     Fresco,
     Image,
+    Vcd,
     Text,
 }
 
@@ -35,6 +36,8 @@ impl TabKind
             TabKind::Fresco
         } else if ext == "png" || ext == "jpg" || ext == "jpeg" {
             TabKind::Image
+        } else if ext == "vcd" {
+            TabKind::Vcd
         } else {
             TabKind::Text
         }
@@ -47,6 +50,7 @@ impl TabKind
             TabKind::Obj => "OBJ",
             TabKind::Fresco => "FRESCO",
             TabKind::Image => "IMG",
+            TabKind::Vcd => "VCD",
             TabKind::Text => "TXT",
         }
     }

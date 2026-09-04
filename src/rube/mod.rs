@@ -12,6 +12,7 @@ pub mod registry;
 pub mod trigger;
 pub mod vcd;
 pub mod vcdio;
+pub mod vcd_model;
 pub mod fifo;
 mod _tests;
 
@@ -27,6 +28,8 @@ pub use	reg::{ Reg, RegVal };
 
 pub use	trigger::{ ITriggerWad, TriggerId, TriggerWad };
 pub use vcd::VcdWriter;
+pub use vcdio::{ ParseVcd, VcdScope };
+pub use vcd_model::{ VcdDisplayModel, VcdSignal };
 pub use fifo::Fifo;
 
 //---------------------------------------------------------------------------------------------------------------------------------

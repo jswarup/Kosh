@@ -351,6 +351,120 @@ b1100 "
     //-----------------------------------------------------------------------------------------------------------------------------
 
     #[test]
+    fn	test_vcd_parser_hierarchy()
+    {
+        use	crate::rube::vcdio::ParseVcd;
+
+        let  	vcdContent = r#"
+$version Kosh Rube Engine $end
+$timescale 1ns $end
+$scope module top $end
+$var wire 1 ! clk $end
+$scope module alu $end
+$var wire 4 " a $end
+$var wire 4 # b $end
+$var wire 4 % out $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$dumpvars
+0!
+b0000 "
+b0000 #
+b0000 %
+$end
+#5
+1!
+b0011 "
+b0101 #
+#10
+0!
+b1000 %
+"#;
+
+        let  	model = ParseVcd( vcdContent).expect( "Failed to parse hierarchical VCD");
+
+        assert_eq!( model._Scopes.Size().0, 1);
+        let  	top = &model._Scopes[U32( 0)];
+        assert_eq!( top._Name, "top");
+        assert_eq!( top._Vars.Size().0, 1);
+        assert_eq!( top._Vars[U32( 0)]._Name, "clk");
+        assert_eq!( top._Scopes.Size().0, 1);
+
+        let  	alu = &top._Scopes[U32( 0)];
+        assert_eq!( alu._Name, "alu");
+        assert_eq!( alu._Vars.Size().0, 3);
+        assert_eq!( alu._Vars[U32( 0)]._Name, "a");
+        assert_eq!( alu._Vars[U32( 1)]._Name, "b");
+        assert_eq!( alu._Vars[U32( 2)]._Name, "out");
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_vcd_display_model()
+    {
+        use	crate::rube::{ vcdio::ParseVcd, VcdDisplayModel };
+
+        let  	vcdContent = r#"
+$version Kosh Rube Engine $end
+$timescale 1ns $end
+$scope module top $end
+$var wire 1 ! clk $end
+$scope module alu $end
+$var wire 4 " a $end
+$var wire 4 % out $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$dumpvars
+0!
+b0001 "
+b0001 %
+$end
+#10
+1!
+b0010 "
+#20
+0!
+b0100 %
+"#;
+
+        let  	model = ParseVcd( vcdContent).expect( "Failed to parse VCD");
+        let  	display = VcdDisplayModel::FromVcdModel( &model);
+
+        assert_eq!( display.SignalCount().0, 3);
+        assert_eq!( display._TimeMin, 0);
+        assert_eq!( display._TimeMax, 20);
+
+        let  	clk = display.Signal( U32( 0)).unwrap();
+        assert_eq!( clk._FullName, "top.clk");
+        assert!( clk.IsSingleBit());
+        assert_eq!( clk.ValueAt( 0), "0");
+        assert_eq!( clk.ValueAt( 5), "0");
+        assert_eq!( clk.ValueAt( 10), "1");
+        assert_eq!( clk.ValueAt( 15), "1");
+        assert_eq!( clk.ValueAt( 20), "0");
+        assert_eq!( clk.ValueAt( 100), "0");
+
+        let  	aluA = display.Signal( U32( 1)).unwrap();
+        assert_eq!( aluA._FullName, "top.alu.a");
+        assert!( !aluA.IsSingleBit());
+        assert_eq!( aluA.ValueAt( 0), "0001");
+        assert_eq!( aluA.ValueAt( 9), "0001");
+        assert_eq!( aluA.ValueAt( 10), "0010");
+        assert_eq!( aluA.ValueAt( 25), "0010");
+
+        let  	aluOut = display.Signal( U32( 2)).unwrap();
+        assert_eq!( aluOut._FullName, "top.alu.out");
+        assert_eq!( aluOut.ValueAt( 0), "0001");
+        assert_eq!( aluOut.ValueAt( 19), "0001");
+        assert_eq!( aluOut.ValueAt( 20), "0100");
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
     fn	test_fifo()
     {
         use crate::rube::fifo::Fifo;
@@ -692,14 +806,14 @@ b1100 "
         println!( "{}", jsonStr);
 
         let  	mut importedFifo = Fifo::default();
-        
+
         let  	mut stream = FixedStream::from( jsonStr.as_str());
         let  	mut parser = Parser::New( &mut stream);
-        
+
         let  	mut field = FieldImp::Null;
         importedFifo.FetchFieldImp( &mut field);
         let  	json_parser = JSon::New( field);
-        
+
         assert!( parser.ParseGrammar( &json_parser, U32( 0)).is_some());
         drop(json_parser);
 

@@ -8,6 +8,7 @@ pub mod explorer;
 pub mod geom_view;
 pub mod fresco_view;
 pub mod img_view;
+pub mod wave_view;
 pub mod app;
 
 pub use app::run;

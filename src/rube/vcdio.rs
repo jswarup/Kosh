@@ -84,20 +84,28 @@ impl VcdModel
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+struct ScopeBuilder
+{
+    _Type:        String,
+    _Name:        String,
+    _Vars:        Stash< VcdVar>,
+    _ChildScopes: Stash< VcdScope>,
+}
+
 pub(crate) struct VcdParserCtx
 {
-    _Version: String,
-    _Date: String,
-    _Timescale: String,
+    _Version:       String,
+    _Date:          String,
+    _Timescale:     String,
 
-    _ScopeStash: Stash< VcdScope>,
-    _VarStash: Stash< VcdVar>,
+    _ScopeStack:    Stash< ScopeBuilder>,
+    _RootScopes:    Stash< VcdScope>,
 
-    _TimeSteps: Stash< VcdTimeStep>,
-    _CurrentTime: u64,
+    _TimeSteps:     Stash< VcdTimeStep>,
+    _CurrentTime:   u64,
     _CurrentValues: Stash< VcdValue>,
 
-    _TempStash: Stash< String>,
+    _TempStash:     Stash< String>,
 }
 
 impl VcdParserCtx
@@ -105,15 +113,34 @@ impl VcdParserCtx
     fn	New() -> Self
     {
         Self {
-            _Version: String::new(),
-            _Date: String::new(),
-            _Timescale: String::new(),
-            _ScopeStash: Stash::New(),
-            _VarStash: Stash::New(),
-            _TimeSteps: Stash::New(),
-            _CurrentTime: 0,
+            _Version:       String::new(),
+            _Date:          String::new(),
+            _Timescale:     String::new(),
+            _ScopeStack:    Stash::New(),
+            _RootScopes:    Stash::New(),
+            _TimeSteps:     Stash::New(),
+            _CurrentTime:   0,
             _CurrentValues: Stash::New(),
-            _TempStash: Stash::New(),
+            _TempStash:     Stash::New(),
+        }
+    }
+
+    fn	DrainScopeStack( &mut self)
+    {
+        while self._ScopeStack.Size() > U32( 0) {
+            let  	popped = self._ScopeStack.Pop().unwrap();
+            let  	scope = VcdScope {
+                _Type:   popped._Type,
+                _Name:   popped._Name,
+                _Vars:   popped._Vars.IntoBuff(),
+                _Scopes: popped._ChildScopes.IntoBuff(),
+            };
+            if self._ScopeStack.Size() > U32( 0) {
+                let  	parentIdx = self._ScopeStack.Size() - U32( 1);
+                self._ScopeStack[parentIdx]._ChildScopes.Push( scope);
+            } else {
+                self._RootScopes.Push( scope);
+            }
         }
     }
 }
@@ -177,13 +204,13 @@ impl VcdParserCtxMM
     {
         let  	ctx = self.Get();
         if ctx._TempStash.Size() >= U32( 2) {
-            let  	s = VcdScope {
-                _Type: ctx._TempStash[U32( 0)].clone(),
-                _Name: ctx._TempStash[U32( 1)].clone(),
-                _Vars: Buff::New(),
-                _Scopes: Buff::New(),
+            let  	builder = ScopeBuilder {
+                _Type:        ctx._TempStash[U32( 0)].clone(),
+                _Name:        ctx._TempStash[U32( 1)].clone(),
+                _Vars:        Stash::New(),
+                _ChildScopes: Stash::New(),
             };
-            ctx._ScopeStash.Push( s);
+            ctx._ScopeStack.Push( builder);
         }
         ctx._TempStash.Clear();
         true
@@ -197,10 +224,13 @@ impl VcdParserCtxMM
             let  	v = VcdVar {
                 _Type: ctx._TempStash[U32( 0)].clone(),
                 _Bits: U32( ctx._TempStash[U32( 1)].parse().unwrap_or( 1)),
-                _Id: ctx._TempStash[U32( 2)].clone(),
+                _Id:   ctx._TempStash[U32( 2)].clone(),
                 _Name: ctx._TempStash[U32( 3)].clone(),
             };
-            ctx._VarStash.Push( v);
+            if ctx._ScopeStack.Size() > U32( 0) {
+                let  	topIdx = ctx._ScopeStack.Size() - U32( 1);
+                ctx._ScopeStack[topIdx]._Vars.Push( v);
+            }
         }
         ctx._TempStash.Clear();
         true
@@ -210,14 +240,28 @@ impl VcdParserCtxMM
     fn	PopScope( &self) -> bool
     {
         let  	ctx = self.Get();
-        // In a real hierarchical parser we'd build the tree.
-        // For provisions, we just collect scopes and vars linearly.
+        if ctx._ScopeStack.Size() > U32( 0) {
+            let  	popped = ctx._ScopeStack.Pop().unwrap();
+            let  	scope = VcdScope {
+                _Type:   popped._Type,
+                _Name:   popped._Name,
+                _Vars:   popped._Vars.IntoBuff(),
+                _Scopes: popped._ChildScopes.IntoBuff(),
+            };
+            if ctx._ScopeStack.Size() > U32( 0) {
+                let  	parentIdx = ctx._ScopeStack.Size() - U32( 1);
+                ctx._ScopeStack[parentIdx]._ChildScopes.Push( scope);
+            } else {
+                ctx._RootScopes.Push( scope);
+            }
+        }
         true
     }
 
     #[inline( always)]
     fn	EndDefinitions( &self) -> bool
     {
+        self.Get().DrainScopeStack();
         true
     }
 
@@ -318,13 +362,12 @@ impl< 'a> IGrammar for VcdShard< 'a>
             return false;
         }
 
-        // We successfully consumed the file, but we didn't populate the model.
-        // Full VCD grammar implementation is deferred.
+        ctx.DrainScopeStack();
 
         // Flush last time step
         if ctx._CurrentValues.Size() > U32( 0) {
             let  	ts = VcdTimeStep {
-                _Time: ctx._CurrentTime,
+                _Time:   ctx._CurrentTime,
                 _Values: ctx._CurrentValues.ToBuff(),
             };
             ctx._TimeSteps.Push( ts);
@@ -333,7 +376,7 @@ impl< 'a> IGrammar for VcdShard< 'a>
         model._Version = ctx._Version;
         model._Date = ctx._Date;
         model._Timescale = ctx._Timescale;
-        model._Scopes = ctx._ScopeStash.IntoBuff();
+        model._Scopes = ctx._RootScopes.IntoBuff();
         model._TimeSteps = ctx._TimeSteps.IntoBuff();
 
         true
