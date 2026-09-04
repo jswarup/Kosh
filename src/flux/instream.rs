@@ -49,7 +49,7 @@ impl<'a> IStream for FixedStream<'a> {
         let  	start = offset.AsUsize();
         if offset < sz {
             let  	end = cmp::min( start + count.AsUsize(), sz.AsUsize());
-            self._Arr.Subset( offset, U32((end - start) as u32))
+            self._Arr.Snip( offset, U32((end - start) as u32))
         } else {
             let  	empty: &[U8] = &[];
             Arr::from( empty)
@@ -170,7 +170,7 @@ impl<R: Read> IStream for BuffStream<R> {
         let  	start = offset.AsUsize();
         if offset < sz {
             let  	end = cmp::min( start + count.AsUsize(), sz.AsUsize());
-            self._Buff.Arr().Subset( offset, U32((end - start) as u32))
+            self._Buff.Arr().Snip( offset, U32((end - start) as u32))
         } else {
             let  	empty: &[U8] = &[];
             Arr::from( empty)

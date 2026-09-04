@@ -61,7 +61,7 @@ classDiagram
         +At(k) &'a T
         +MutAt(k) &'a mut T
         +Swap(i, j)
-        +Subset(first, sz) Arr
+        +Snip(first, sz) Arr
         +Slice() &'a [T]
     }
 
@@ -195,7 +195,7 @@ A lightweight, Copy-enabled, non-owning slice reference (`_Ptr: NonNull<T>`, `_S
 - `Swap<I, J>(&self, i: I, j: J)`: Swaps two elements in-place.
 - `LSnip<C>(&self, count: C) -> Arr<'a, T>`: Trims `count` elements from the left.
 - `RSnip<C>(&self, count: C) -> Arr<'a, T>`: Trims `count` elements from the right.
-- `Subset<F, Sz>(&self, first: F, sz: Sz) -> Arr<'a, T>`: Windowed sub-slice.
+- `Snip<F, Sz>(&self, first: F, sz: Sz) -> Arr<'a, T>`: Windowed sub-slice (also aliased as `Subset`).
 
 ### `Stk<'a, 'b, T>`
 Lock-free, fixed-capacity stack backed by `Arr<'b, T>` with atomic CAS size pointer `_Size: &'a Atm<U32>`:
@@ -225,7 +225,7 @@ Unsigned index interval `[_First, _Last]` (`_First: U32`, `_Last: U32`):
 | Trait | Purpose | Key Methods |
 | :--- | :--- | :--- |
 | `IAccess<'a, T>` | Read-only indexed collection access | `Size() -> U32`, `At(k) -> &'a T`, `IsEmpty()`, `First()`, `Last()`, `USeg()`, `Span()`, `Traverse()`, `Iter()` |
-| `IArr<'a, T>` | Mutable array operations on top of `IAccess` | `Ptr() -> *const T`, `MutAt(k) -> &'a mut T`, `SetAt(k, a)`, `SwapAt(k, a)`, `Swap(i, j)`, `SwapFrom(...)`, `LSnip()`, `RSnip()`, `Subset()`, `QuickSorter(less)` |
+| `IArr<'a, T>` | Mutable array operations on top of `IAccess` | `Ptr() -> *const T`, `MutAt(k) -> &'a mut T`, `SetAt(k, a)`, `SwapAt(k, a)`, `Swap(i, j)`, `SwapFrom(&src)`, `CopyFrom(&src)`, `Snip()`, `LSnip()`, `RSnip()`, `QuickSorter(less)` |
 | `ICastExt` | Zero-cost type transmute with runtime size assertion | `Cast<U>(self) -> U` |
 | `IPtrExt` | Casts `*mut T` to `*mut U` (fat pointer lifetime transmutation) | `CastLife<U>(self) -> *mut U` |
 | `IConstPtrExt` | Casts `*const T` to `*const U` | `CastLife<U>(self) -> *const U` |

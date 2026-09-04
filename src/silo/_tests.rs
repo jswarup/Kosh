@@ -100,6 +100,71 @@ fn	ArrBasicOpsTest()
 //---------------------------------------------------------------------------------------------------------------------------------
 
 #[test]
+fn	TestArrCopyFrom()
+{
+    let  	srcBuff = Buff::Create( 5, |i| ( i.0 + 1) * 10);
+    let  	dstBuff = Buff::Create( 5, |_| 0u32);
+
+    let  	srcArr = srcBuff.Arr();
+    let  	dstArr = dstBuff.Arr();
+
+    // Copy 3 elements from srcArr at offset 1 to dstArr at offset 2 using Snip
+    dstArr.Snip( 2, 3).CopyFrom( &srcArr.Snip( 1, 3));
+
+    assert_eq!( dstBuff[0], 0);
+    assert_eq!( dstBuff[1], 0);
+    assert_eq!( dstBuff[2], 20);
+    assert_eq!( dstBuff[3], 30);
+    assert_eq!( dstBuff[4], 40);
+
+    // Source remains unchanged
+    assert_eq!( srcBuff[0], 10);
+    assert_eq!( srcBuff[1], 20);
+    assert_eq!( srcBuff[2], 30);
+    assert_eq!( srcBuff[3], 40);
+    assert_eq!( srcBuff[4], 50);
+
+    // Full copy
+    let  	dstBuff2 = Buff::Create( 5, |_| 0u32);
+    let  	dstArr2 = dstBuff2.Arr();
+    dstArr2.CopyFrom( &srcArr);
+    assert_eq!( dstBuff2[0], 10);
+    assert_eq!( dstBuff2[1], 20);
+    assert_eq!( dstBuff2[2], 30);
+    assert_eq!( dstBuff2[3], 40);
+    assert_eq!( dstBuff2[4], 50);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
+fn	TestArrSwapFrom()
+{
+    let  	buffA = Buff::Create( 5, |i| ( i.0 + 1) * 10);
+    let  	buffB = Buff::Create( 5, |i| ( i.0 + 1) * 100);
+
+    let  	arrA = buffA.Arr();
+    let  	arrB = buffB.Arr();
+
+    // Swap 2 elements between arrA (offset 1: [20, 30]) and arrB (offset 3: [400, 500])
+    arrA.Snip( 1, 2).SwapFrom( &arrB.Snip( 3, 2));
+
+    assert_eq!( buffA[0], 10);
+    assert_eq!( buffA[1], 400);
+    assert_eq!( buffA[2], 500);
+    assert_eq!( buffA[3], 40);
+    assert_eq!( buffA[4], 50);
+
+    assert_eq!( buffB[0], 100);
+    assert_eq!( buffB[1], 200);
+    assert_eq!( buffB[2], 300);
+    assert_eq!( buffB[3], 20);
+    assert_eq!( buffB[4], 30);
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[test]
 fn	TestArrFromArr()
 {
     // Test creating an Arr from an array reference

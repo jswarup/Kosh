@@ -267,7 +267,7 @@ impl ExprRepos
             Collect( repos, node.Child( 0), curOp, exprStk);
             Collect( repos, node.Child( 1), curOp, exprStk);
 
-            let  	arr = exprStk.Arr().Subset( startIdx, exprStk.Size() - startIdx);
+            let  	arr = exprStk.Arr().Snip( startIdx, exprStk.Size() - startIdx);
             exprStk.SetSize( startIdx);
             let  	emptyArr = Arr::from( &[][..]);
             let  	exprId = match curOp {
@@ -278,13 +278,13 @@ impl ExprRepos
                     repos.ProdCreate( arr, emptyArr)
                 }
                 BinOp::Sub => {
-                    repos.SumCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1))
+                    repos.SumCreate( arr.Snip( 0, 1), arr.Snip( 1, arr.Size() - 1))
                 }
                 BinOp::Div => {
-                    repos.ProdCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1))
+                    repos.ProdCreate( arr.Snip( 0, 1), arr.Snip( 1, arr.Size() - 1))
                 }
                 BinOp::Pow => {
-                    repos.PowCreate( arr.Subset( 0, 1), arr.Subset( 1, arr.Size() - 1))
+                    repos.PowCreate( arr.Snip( 0, 1), arr.Snip( 1, arr.Size() - 1))
                 }
                 _ => {
                     panic!( "Unsupported BinOp in PostTermTree: {:?}", curOp);

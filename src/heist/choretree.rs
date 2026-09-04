@@ -515,7 +515,7 @@ impl< 'a, T: Copy + Send + Sync> IChoreNode for SpawnQuellNode< 'a, T>
         while start < end {
             let  	rem = end - start;
             let  	sz = if rem < chunkSize { rem } else { chunkSize };
-            let  	chunkArr = self._Data.Subset( start, sz);
+            let  	chunkArr = self._Data.Snip( start, sz);
 
             let  	spawnWork = SpawnChunkWork {
                 _Data:    chunkArr,

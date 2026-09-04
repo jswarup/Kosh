@@ -143,7 +143,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
             return U32( 0);
         }
         let  	stkSz = stk._Size.FetchAdd( U32( 0) - szAlloc, Ordering::AcqRel) - szAlloc;
-        self._Arr.SwapFrom( oldSz, &stk._Arr, stkSz, szAlloc);
+        self._Arr.Snip( oldSz, szAlloc).SwapFrom( &stk._Arr.Snip( stkSz, szAlloc));
         szAlloc
     }
 
@@ -176,7 +176,7 @@ impl< 'a, 'b, T> Stk< 'a, 'b, T>
             return U32( 0);
         }
         let  	szStk = stk._Size.FetchAdd( U32( 0) + szAlloc, Ordering::AcqRel);
-        stk._Arr.SwapFrom( szStk, &self._Arr, oldSz - szAlloc, szAlloc);
+        stk._Arr.Snip( szStk, szAlloc).SwapFrom( &self._Arr.Snip( oldSz - szAlloc, szAlloc));
         szAlloc
     }
 }

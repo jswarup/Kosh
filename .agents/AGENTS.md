@@ -6,6 +6,13 @@
   - Dynamic accumulation uses `Stash< T>` with raw pointer growth and amortized $O(1)$ operations.
   - Once populated, `stash.IntoBuff()` transfers ownership into an immutable, fixed-size `Buff< T>` with zero reallocations or wasted capacity.
   - Non-owning borrowed views use `Arr< 'a, T>` (`buff.Arr()`, `stash.Arr()`).
+  - Range slicing on `Buff` uses `.Slice()[start..end]` or `.SliceMut()[start..end]`.
+- **Zero-Allocation Slicing & Memory Transfer (`Snip`, `CopyFrom`, `SwapFrom`)**:
+  - Windowing and sub-slice views on `Arr` MUST use `.Snip( first, sz)`, `.LSnip( count)`, or `.RSnip( count)` (the legacy `Subset` is deprecated).
+  - Memory copying and swapping between `Arr` instances MUST use streamlined `.CopyFrom( &src)` and `.SwapFrom( &src)`.
+  - NEVER pass manual offset/count arguments to transfer methods; callers compose `.Snip(...)` beforehand:
+    `dst.Snip( dstOffset, count).CopyFrom( &src.Snip( srcOffset, count) );`
+  - Transfers automatically bound to `self.Size().min( src.Size())`, with a safe no-op on zero length.
 - **Zero-Allocation AST & Tree Invariants**:
   - Eliminate heap allocation overhead. Use stack-allocated references (`&'a DynINode<'a>`) for tree-based structures instead of owned heap allocations (`Box<DynINode<'a>>`).
   - AST node constructors must be implemented via macro expansions (`NodeTree!`, `ShardTree!`, `TermTree!`, `ChoreTree!`) or inline struct declarations to extend temporary lifetimes in the caller's stack frame.
@@ -32,6 +39,7 @@
 - **Custom Numeric Types**:
   - Always use project-defined types (`U8`, `U16`, `U32`, `U64`, `USz` from `silo::uint`).
   - Never use native Rust primitives (`u8`, `u32`, `usize`, etc.) unless strictly required by external C/system APIs.
+  - Do not introduce internal variables of Rust primitives unless required for explicit raw memory storage (e.g., pointer offsets or hardware registers).
   - Always explore alternatives within the framework before resorting to primitives.
   - All public and internal method arguments and return types must use Custom Numeric Types.
   - Function arguments accepting numeric values, sizes, or indices should be parameterized by respective `Into` traits (e.g., `Idx: Into< U32>`, `Sz: Into< U32>`).
@@ -102,6 +110,7 @@
   - Clean up only your own mess (remove unused imports/variables your changes orphaned).
 - **Simplicity First**:
   - Write the minimum code needed to solve the problem. Do not build speculative features, "flexible" abstractions, or unnecessary error handling.
+  - Favor minimal, composable interfaces (e.g., `dst.Snip(...).CopyFrom(&src.Snip(...))`) over parameter-bloated methods.
 - **Goal-Driven Execution**:
   - Define clear success criteria (e.g., "Write test, then make it pass").
   - Loop and verify independently before declaring completion.

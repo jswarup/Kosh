@@ -1,5 +1,5 @@
 //-- arr.rs -----------------------------------------------------------------------------------------------------------------------
-use	std::{ fmt, ptr::{ swap, swap_nonoverlapping }, slice::{ from_raw_parts, from_raw_parts_mut }, str::from_utf8_unchecked };
+use	std::{ fmt, ptr::{ copy_nonoverlapping, swap, swap_nonoverlapping }, slice::{ from_raw_parts, from_raw_parts_mut }, str::from_utf8_unchecked };
 use	crate::silo::cast::ICastExt;
 use	crate::silo::{ IAccess, AccessIter, U8, U32 };
 use	crate::stalks::DynIWorker;
@@ -58,19 +58,37 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	SwapFrom< S: Into< U32>, D: Into< U32>>(
-        &self,
-        dstStart: D,
-        src: &Arr< '_, T>,
-        srcStart: S,
-        count: U32,
-    ) where
+    fn	SwapFrom( &self, src: &Arr< '_, T>)
+    where
         T: Copy,
     {
+        let  	count = self.Size().min( src.Size());
+        if count == 0 {
+            return;
+        }
         unsafe {
             swap_nonoverlapping(
-                src.Ptr().cast_mut().add( srcStart.into().AsUsize()),
-                self.Ptr().cast_mut().add( dstStart.into().AsUsize()),
+                src.Ptr().cast_mut(),
+                self.Ptr().cast_mut(),
+                count.AsUsize(),
+            );
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	CopyFrom( &self, src: &Arr< '_, T>)
+    where
+        T: Copy,
+    {
+        let  	count = self.Size().min( src.Size());
+        if count == 0 {
+            return;
+        }
+        unsafe {
+            copy_nonoverlapping(
+                src.Ptr(),
+                self.Ptr().cast_mut(),
                 count.AsUsize(),
             );
         }
@@ -82,7 +100,7 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
     {
         let  	cnt = count.into();
         Arr::New(
-            unsafe { NonNull::new_unchecked(self.Ptr().cast_mut().add( cnt.AsU32() as usize)) },
+            unsafe { NonNull::new_unchecked( self.Ptr().cast_mut().add( cnt.AsU32() as usize)) },
             self.Size() - cnt,
         )
     }
@@ -92,14 +110,22 @@ pub trait IArr< 'a, T: 'a>: IAccess< 'a, T> {
     fn	RSnip< C: Into< U32>>( &self, count: C) -> Arr< 'a, T>
     {
         let  	cnt = count.into();
-        Arr::New( unsafe { NonNull::new_unchecked(self.Ptr().cast_mut()) }, self.Size() - cnt)
+        Arr::New( unsafe { NonNull::new_unchecked( self.Ptr().cast_mut()) }, self.Size() - cnt)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    fn	Snip< F: Into< U32>, Sz: Into< U32>>( &self, first: F, sz:  Sz) -> Arr< 'a, T>
+    {
+        Arr::New( unsafe { NonNull::new_unchecked( self.Ptr().cast_mut().add( first.into().AsU32() as usize)) }, sz.into())
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[inline]
     fn	Subset< F: Into< U32>, Sz: Into< U32>>( &self, first: F, sz:  Sz) -> Arr< 'a, T>
     {
-        Arr::New( unsafe { NonNull::new_unchecked(self.Ptr().cast_mut().add( first.into().AsU32() as usize)) }, sz.into())
+        self.Snip( first, sz)
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
