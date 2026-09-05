@@ -6,8 +6,8 @@ use	crate::{
         engine::SimEngine,
         gates::{ AndGate, OrGate, XorGate },
         layout::Layout,
-        module::{ HierModule, HierarchyError, IModule, KernelKind, ModuleId, PortSpec, SealedModule },
-        port::{ PortDesc, PortId, PortType },
+        module::{ IModule, KernelKind, ModuleId },
+        port::{ PortDesc, PortId },
         reg::Reg,
     },
     silo::{ Buff, Stash, U32, USeg },
@@ -452,69 +452,112 @@ impl BusAdder32
         };
     }
 
-    pub fn	Hierarchical( name: &str) -> Result< SealedModule, HierarchyError>
-    {
-        let  	mut inPorts = Stash::New();
-        inPorts.Push( PortSpec::Input( "a", PortType::U32Val));
-        inPorts.Push( PortSpec::Input( "b", PortType::U32Val));
-
-        let  	mut outPorts = Stash::New();
-        outPorts.Push( PortSpec::Output( "sum", PortType::U32Val));
-        outPorts.Push( PortSpec::Output( "carry", PortType::Bool));
-
-        let  	mut module = HierModule::New( name, inPorts.IntoBuff(), outPorts.IntoBuff());
-        module._Kernel = KernelKind::Custom( "BusAdder32_Kernel");
-        return module.Seal();
-    }
-
     #[inline]
     pub const fn	Id( &self) -> ModuleId
     {
         return self._Id;
     }
+
+    #[inline]
+    pub fn	A( &self) -> PortId { self._A }
+
+    #[inline]
+    pub fn	B( &self) -> PortId { self._B }
+
+    #[inline]
+    pub fn	Sum( &self) -> PortId { self._Sum }
+
+    #[inline]
+    pub fn	Carry( &self) -> PortId { self._Carry }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct AdderPipeline;
+pub struct AdderPipeline
+{
+    pub _Id:      ModuleId,
+    pub _A:       PortId,
+    pub _B:       PortId,
+    pub _C:       PortId,
+    pub _Sum:     PortId,
+    pub _Carry:   PortId,
+    pub _Adder1:  BusAdder32,
+    pub _Adder2:  BusAdder32,
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
 impl AdderPipeline
 {
-    pub fn	Hierarchical( name: &str) -> Result< SealedModule, HierarchyError>
+    pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
     {
-        let  	mut inPorts = Stash::New();
-        inPorts.Push( PortSpec::Input( "a", PortType::U32Val));
-        inPorts.Push( PortSpec::Input( "b", PortType::U32Val));
-        inPorts.Push( PortSpec::Input( "c", PortType::U32Val));
+        let  	modId = layout.AddModule(
+            name,
+            parent,
+            &[ PortDesc::U32( "a"), PortDesc::U32( "b"), PortDesc::U32( "c") ],
+            &[ PortDesc::U32( "sum"), PortDesc::Bool( "carry") ],
+            KernelKind::None,
+        );
 
-        let  	mut outPorts = Stash::New();
-        outPorts.Push( PortSpec::Output( "sum", PortType::U32Val));
-        outPorts.Push( PortSpec::Output( "carry", PortType::Bool));
+        let  	a = layout.InPort( modId, 0).unwrap();
+        let  	b = layout.InPort( modId, 1).unwrap();
+        let  	c = layout.InPort( modId, 2).unwrap();
+        let  	sum = layout.OutPort( modId, 0).unwrap();
+        let  	carry = layout.OutPort( modId, 1).unwrap();
 
-        let  	mut module = HierModule::New( name, inPorts.IntoBuff(), outPorts.IntoBuff());
+        let  	adder1 = BusAdder32::New( layout, &format!( "{name}.Adder1"), Some( modId));
+        let  	adder2 = BusAdder32::New( layout, &format!( "{name}.Adder2"), Some( modId));
 
-        let  	adder1 = module.AddSealedSubModule( "Adder1", BusAdder32::Hierarchical( "Adder1")?)?;
-        let  	adder2 = module.AddSealedSubModule( "Adder2", BusAdder32::Hierarchical( "Adder2")?)?;
+        // Submodule chaining: Adder1.Sum -> Adder2.A
+        layout.Connect( adder1.Sum(), adder2.A());
 
-        // Internal chaining: adder1.sum (0) -> adder2.a (0)
-        module.ConnectSubModules( adder1, 0, adder2, 0)?;
+        // Boundary pass-down bindings
+        layout.Connect( a, adder1.A());
+        layout.Connect( b, adder1.B());
+        layout.Connect( c, adder2.B());
 
-        // Boundary bindings:
-        // this.a (0) -> adder1.a (0)
-        module.BindInPort( 0, adder1, 0)?;
-        // this.b (1) -> adder1.b (1)
-        module.BindInPort( 1, adder1, 1)?;
-        // this.c (2) -> adder2.b (1)
-        module.BindInPort( 2, adder2, 1)?;
+        // Boundary pass-up bindings
+        layout.Connect( adder2.Sum(), sum);
+        layout.Connect( adder2.Carry(), carry);
 
-        // adder2.sum (0) -> this.sum (0)
-        module.BindOutPort( 0, adder2, 0)?;
-        // adder2.carry (1) -> this.carry (1)
-        module.BindOutPort( 1, adder2, 1)?;
+        layout.SealModule( modId);
 
-        return module.Seal();
+        return Self {
+            _Id:      modId,
+            _A:       a,
+            _B:       b,
+            _C:       c,
+            _Sum:     sum,
+            _Carry:   carry,
+            _Adder1:  adder1,
+            _Adder2:  adder2,
+        };
+    }
+
+    #[inline]
+    pub fn	A( &self) -> PortId { self._A }
+
+    #[inline]
+    pub fn	B( &self) -> PortId { self._B }
+
+    #[inline]
+    pub fn	C( &self) -> PortId { self._C }
+
+    #[inline]
+    pub fn	Sum( &self) -> PortId { self._Sum }
+
+    #[inline]
+    pub fn	Carry( &self) -> PortId { self._Carry }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl IModule for AdderPipeline
+{
+    #[inline]
+    fn	Id( &self) -> ModuleId
+    {
+        return self._Id;
     }
 }
 

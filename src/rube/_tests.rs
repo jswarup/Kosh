@@ -10,14 +10,14 @@ mod _tests
             engine::{ SimEngine, SimEngineMode },
             gates::{ AndGate, NandGate, NotGate, OrGate, XorGate },
             latches::{ CRSLatch, DLatch },
-            layout::{ HierarchyBuilder, Layout },
-            module::{ HierModule, HierarchyError, IModule, KernelKind, ModuleId, PortSpec, SealedModule },
+            layout::Layout,
+            module::{ IModule, KernelKind, ModuleId },
             netlist::INetlist,
-            port::{ IPort, PortDesc, PortId, PortType },
+            port::{ IPort, PortDesc, PortId },
             reg::Reg,
             vcd::VcdWriter,
         },
-        silo::{ Buff, ConsoleTest, Stash, U8, U32, USeg },
+        silo::{ ConsoleTest, Stash, U8, U32, USeg },
         stalks::Coro,
     };
 
@@ -1094,175 +1094,166 @@ b0100 %
     //-----------------------------------------------------------------------------------------------------------------------------
 
     #[test]
-    fn	test_hierarchical_module_encapsulation()
+    fn	test_static_module_encapsulation()
     {
-        // Construct encapsulated 2-stage Adder Pipeline:
-        // Inputs: a (U32), b (U32), c (U32)
-        // Output: res (U32)
-        // Internal: Adder1 computes (a + b) -> sum1
-        //           Adder2 computes (sum1 + c) -> res
-        let  	mut inPorts = Stash::New();
-        inPorts.Push( PortSpec::Input( "a", PortType::U32Val));
-        inPorts.Push( PortSpec::Input( "b", PortType::U32Val));
-        inPorts.Push( PortSpec::Input( "c", PortType::U32Val));
+        let  	mut layout = Layout::New();
+        let  	pipeline = AdderPipeline::New( &mut layout, "AdderPipeline", None);
+        layout.Freeze().expect( "Compilation failed");
 
-        let  	mut outPorts = Stash::New();
-        outPorts.Push( PortSpec::Output( "res", PortType::U32Val));
-
-        let  	mut pipeline = HierModule::New( "AdderPipeline", inPorts.IntoBuff(), outPorts.IntoBuff());
-
-        // Internal submodules: Adder1 and Adder2 (each is a BusAdder32_Kernel)
-        let  	adder1 = pipeline.AddSubModule( "Adder1", KernelKind::Custom( "BusAdder32_Kernel"))
-            .expect( "Failed to add Adder1");
-        let  	adder2 = pipeline.AddSubModule( "Adder2", KernelKind::Custom( "BusAdder32_Kernel"))
-            .expect( "Failed to add Adder2");
-
-        // Internal connection: Adder1.sum (outport 0) -> Adder2.a (inport 0)
-        pipeline.ConnectSubModules( adder1, 0, adder2, 0)
-            .expect( "Failed to connect Adder1 to Adder2");
-
-        // Boundary bindings:
-        // pipeline.a (inport 0) -> Adder1.a (inport 0)
-        pipeline.BindInPort( 0, adder1, 0).expect( "Failed to bind pipeline.a");
-        // pipeline.b (inport 1) -> Adder1.b (inport 1)
-        pipeline.BindInPort( 1, adder1, 1).expect( "Failed to bind pipeline.b");
-        // pipeline.c (inport 2) -> Adder2.b (inport 1)
-        pipeline.BindInPort( 2, adder2, 1).expect( "Failed to bind pipeline.c");
-        // Adder2.sum (outport 0) -> pipeline.res (outport 0)
-        pipeline.BindOutPort( 0, adder2, 0).expect( "Failed to bind pipeline.res");
-
-        // Seal the module to guarantee encapsulation and immutability
-        let  	sealedPipeline = pipeline.Seal().expect( "Failed to seal AdderPipeline");
-
-        // Top-level composition via HierarchyBuilder
-        let  	builder = HierarchyBuilder::New( "RubeTest_Top")
-            .AddSealedModule( "Pipeline", sealedPipeline)
-            .expect( "Failed to add sealed pipeline to builder");
-
-        let  	layout = builder.Build().expect( "Hierarchy build and flattening failed");
         let  	mut engine = SimEngine::Create( &layout);
 
-        // Find the top-level ports in the flattened layout
-        // Pipeline is child 0 in RubeTest_Top (which is module 0, Pipeline is module 1)
-        let  	pipelineModId = ModuleId( U32( 1));
-        let  	portA = layout.InPort( pipelineModId, 0).unwrap();
-        let  	portB = layout.InPort( pipelineModId, 1).unwrap();
-        let  	portC = layout.InPort( pipelineModId, 2).unwrap();
-        let  	portRes = layout.OutPort( pipelineModId, 0).unwrap();
-
         // Test vector 1: 15 + 25 + 60 = 100
-        engine.SetPortU32( portA, Reg::Known( 15));
-        engine.SetPortU32( portB, Reg::Known( 25));
-        engine.SetPortU32( portC, Reg::Known( 60));
+        engine.SetPortU32( pipeline.A(), Reg::Known( 15));
+        engine.SetPortU32( pipeline.B(), Reg::Known( 25));
+        engine.SetPortU32( pipeline.C(), Reg::Known( 60));
 
         USeg::New( U32::_0, U32( 5)).Traverse( |_| {
             engine.Drive();
         });
 
-        let  	resVal1 = engine.GetPortU32( portRes).unwrap();
+        let  	resVal1 = engine.GetPortU32( pipeline.Sum()).unwrap();
         assert_eq!( resVal1, Reg::Known( 100));
 
         // Test vector 2: 1000 + 2000 + 3000 = 6000
-        engine.SetPortU32( portA, Reg::Known( 1000));
-        engine.SetPortU32( portB, Reg::Known( 2000));
-        engine.SetPortU32( portC, Reg::Known( 3000));
+        engine.SetPortU32( pipeline.A(), Reg::Known( 1000));
+        engine.SetPortU32( pipeline.B(), Reg::Known( 2000));
+        engine.SetPortU32( pipeline.C(), Reg::Known( 3000));
 
         USeg::New( U32::_0, U32( 5)).Traverse( |_| {
             engine.Drive();
         });
 
-        let  	resVal2 = engine.GetPortU32( portRes).unwrap();
+        let  	resVal2 = engine.GetPortU32( pipeline.Sum()).unwrap();
         assert_eq!( resVal2, Reg::Known( 6000));
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    #[test]
-    fn	test_hierarchical_nested_containers()
+    pub struct NestedAdderPipeline
     {
-        let  	mut midIn = Stash::New();
-        midIn.Push( PortSpec::Input( "x", PortType::U32Val));
-        midIn.Push( PortSpec::Input( "y", PortType::U32Val));
-        let  	mut midOut = Stash::New();
-        midOut.Push( PortSpec::Output( "z", PortType::U32Val));
+        pub _Id:      ModuleId,
+        pub _Stage1:  BusAdder32,
+        pub _Stage2:  BusAdder32,
+        pub _V1:      PortId,
+        pub _V2:      PortId,
+        pub _V3:      PortId,
+        pub _VOut:    PortId,
+    }
 
-        let  	mut midModule = HierModule::New( "MidAdder", midIn.IntoBuff(), midOut.IntoBuff());
-        let  	leafAdder = midModule.AddSubModule( "Core", KernelKind::Custom( "BusAdder32_Kernel")).unwrap();
-        midModule.BindInPort( 0, leafAdder, 0).unwrap();
-        midModule.BindInPort( 1, leafAdder, 1).unwrap();
-        midModule.BindOutPort( 0, leafAdder, 0).unwrap();
-        let  	sealedMid = midModule.Seal().unwrap();
+    //-----------------------------------------------------------------------------------------------------------------------------
 
-        let  	mut topIn = Stash::New();
-        topIn.Push( PortSpec::Input( "v1", PortType::U32Val));
-        topIn.Push( PortSpec::Input( "v2", PortType::U32Val));
-        topIn.Push( PortSpec::Input( "v3", PortType::U32Val));
-        let  	mut topOut = Stash::New();
-        topOut.Push( PortSpec::Output( "vout", PortType::U32Val));
+    impl NestedAdderPipeline
+    {
+        pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>) -> Self
+        {
+            let  	modId = layout.AddModule(
+                name,
+                parent,
+                &[ PortDesc::U32( "v1"), PortDesc::U32( "v2"), PortDesc::U32( "v3") ],
+                &[ PortDesc::U32( "vout") ],
+                KernelKind::None,
+            );
 
-        let  	mut topModule = HierModule::New( "TopContainer", topIn.IntoBuff(), topOut.IntoBuff());
-        let  	stage1 = topModule.AddSealedSubModule( "Stage1", sealedMid.clone()).unwrap();
-        let  	stage2 = topModule.AddSealedSubModule( "Stage2", sealedMid).unwrap();
+            let  	v1 = layout.InPort( modId, 0).unwrap();
+            let  	v2 = layout.InPort( modId, 1).unwrap();
+            let  	v3 = layout.InPort( modId, 2).unwrap();
+            let  	vout = layout.OutPort( modId, 0).unwrap();
 
-        topModule.BindInPort( 0, stage1, 0).unwrap();
-        topModule.BindInPort( 1, stage1, 1).unwrap();
-        topModule.ConnectSubModules( stage1, 0, stage2, 0).unwrap();
-        topModule.BindInPort( 2, stage2, 1).unwrap();
-        topModule.BindOutPort( 0, stage2, 0).unwrap();
+            let  	stage1 = BusAdder32::New( layout, &format!( "{name}.Stage1"), Some( modId));
+            let  	stage2 = BusAdder32::New( layout, &format!( "{name}.Stage2"), Some( modId));
 
-        let  	sealedTop = topModule.Seal().unwrap();
+            layout.Connect( v1, stage1.A());
+            layout.Connect( v2, stage1.B());
+            layout.Connect( stage1.Sum(), stage2.A());
+            layout.Connect( v3, stage2.B());
+            layout.Connect( stage2.Sum(), vout);
 
-        let  	layout = HierarchyBuilder::New( "Root")
-            .AddSealedModule( "DUT", sealedTop)
-            .unwrap()
-            .Build()
-            .unwrap();
+            layout.SealModule( modId);
+
+            return Self {
+                _Id:      modId,
+                _Stage1:  stage1,
+                _Stage2:  stage2,
+                _V1:      v1,
+                _V2:      v2,
+                _V3:      v3,
+                _VOut:    vout,
+            };
+        }
+
+        #[inline]
+        pub const fn	Id( &self) -> ModuleId
+        {
+            return self._Id;
+        }
+
+        #[inline]
+        pub const fn	V1( &self) -> PortId
+        {
+            return self._V1;
+        }
+
+        #[inline]
+        pub const fn	V2( &self) -> PortId
+        {
+            return self._V2;
+        }
+
+        #[inline]
+        pub const fn	V3( &self) -> PortId
+        {
+            return self._V3;
+        }
+
+        #[inline]
+        pub const fn	VOut( &self) -> PortId
+        {
+            return self._VOut;
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_static_nested_containers()
+    {
+        let  	mut layout = Layout::New();
+        let  	pipeline = NestedAdderPipeline::New( &mut layout, "DUT", None);
+        layout.Freeze().expect( "Compilation failed");
 
         let  	mut engine = SimEngine::Create( &layout);
-        let  	dutModId = ModuleId( U32( 1));
-        let  	pV1 = layout.InPort( dutModId, 0).unwrap();
-        let  	pV2 = layout.InPort( dutModId, 1).unwrap();
-        let  	pV3 = layout.InPort( dutModId, 2).unwrap();
-        let  	pVOut = layout.OutPort( dutModId, 0).unwrap();
 
-        engine.SetPortU32( pV1, Reg::Known( 111));
-        engine.SetPortU32( pV2, Reg::Known( 222));
-        engine.SetPortU32( pV3, Reg::Known( 333));
+        engine.SetPortU32( pipeline.V1(), Reg::Known( 111));
+        engine.SetPortU32( pipeline.V2(), Reg::Known( 222));
+        engine.SetPortU32( pipeline.V3(), Reg::Known( 333));
 
         USeg::New( U32::_0, U32( 5)).Traverse( |_| {
             engine.Drive();
         });
 
-        assert_eq!( engine.GetPortU32( pVOut).unwrap(), Reg::Known( 666));
+        assert_ne!( pipeline.Id(), pipeline._Stage1.Id());
+        assert_eq!( engine.GetPortU32( pipeline.VOut()).unwrap(), Reg::Known( 666));
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub struct RubeTest_Adder
+    pub struct AdderTestIO
     {
-        pub _Top: SealedModule,
+        pub _Id:     ModuleId,
+        pub _Sum:    PortId,
+        pub _Carry:  PortId,
+        pub _A:      PortId,
+        pub _B:      PortId,
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    impl RubeTest_Adder
+    impl AdderTestIO
     {
-        pub fn	New( passedFlag: std::sync::Arc< std::sync::atomic::AtomicBool>) -> Result< Self, HierarchyError>
+        pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>, passedFlag: std::sync::Arc< std::sync::atomic::AtomicBool>) -> Self
         {
-            let  	mut top = HierModule::New( "RubeTest_Adder", Buff::New(), Buff::New());
-
-            let  	dut = top.AddSealedSubModule( "DUT", BusAdder32::Hierarchical( "DUT")?)?;
-
-            let  	mut testIn = Stash::New();
-            testIn.Push( PortSpec::Input( "sum", PortType::U32Val));
-            testIn.Push( PortSpec::Input( "carry", PortType::Bool));
-
-            let  	mut testOut = Stash::New();
-            testOut.Push( PortSpec::Output( "a", PortType::U32Val));
-            testOut.Push( PortSpec::Output( "b", PortType::U32Val));
-
             let  	passed = std::sync::Arc::clone( &passedFlag);
-            let  	testIoKernel = KernelKind::Coro( std::sync::Arc::new( move || {
+            let  	coroKernel = KernelKind::Coro( std::sync::Arc::new( move || {
                 let  	passedRef = std::sync::Arc::clone( &passed);
                 Coro::New( move |yielder, _inPorts: CoroPorts| {
                     // Cycle 0: Drive 15 + 25
@@ -1302,16 +1293,105 @@ b0100 %
                 })
             }));
 
-            let  	testIo = top.AddLeafSubModule( "TestIO", testIn.IntoBuff(), testOut.IntoBuff(), testIoKernel)?;
+            let  	modId = layout.AddModule(
+                name,
+                parent,
+                &[ PortDesc::U32( "sum"), PortDesc::Bool( "carry") ],
+                &[ PortDesc::U32( "a"), PortDesc::U32( "b") ],
+                coroKernel,
+            );
 
-            // Interconnect submodules internally:
-            top.ConnectSubModules( testIo, 0, dut, 0)?;
-            top.ConnectSubModules( testIo, 1, dut, 1)?;
-            top.ConnectSubModules( dut, 0, testIo, 0)?;
-            top.ConnectSubModules( dut, 1, testIo, 1)?;
+            let  	sum = layout.InPort( modId, 0).unwrap();
+            let  	carry = layout.InPort( modId, 1).unwrap();
+            let  	a = layout.OutPort( modId, 0).unwrap();
+            let  	b = layout.OutPort( modId, 1).unwrap();
 
-            let  	sealedTop = top.Seal()?;
-            return Ok( Self { _Top: sealedTop });
+            layout.SealModule( modId);
+
+            return Self {
+                _Id:     modId,
+                _Sum:    sum,
+                _Carry:  carry,
+                _A:      a,
+                _B:      b,
+            };
+        }
+
+        #[inline]
+        pub const fn	Id( &self) -> ModuleId
+        {
+            return self._Id;
+        }
+
+        #[inline]
+        pub const fn	Sum( &self) -> PortId
+        {
+            return self._Sum;
+        }
+
+        #[inline]
+        pub const fn	Carry( &self) -> PortId
+        {
+            return self._Carry;
+        }
+
+        #[inline]
+        pub const fn	A( &self) -> PortId
+        {
+            return self._A;
+        }
+
+        #[inline]
+        pub const fn	B( &self) -> PortId
+        {
+            return self._B;
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub struct RubeTest_Adder
+    {
+        pub _Id:      ModuleId,
+        pub _DUT:     BusAdder32,
+        pub _TestIO:  AdderTestIO,
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    impl RubeTest_Adder
+    {
+        pub fn	New( layout: &mut Layout, name: &str, passedFlag: std::sync::Arc< std::sync::atomic::AtomicBool>) -> Self
+        {
+            let  	topId = layout.AddModule(
+                name,
+                None,
+                &[],
+                &[],
+                KernelKind::None,
+            );
+
+            let  	dut = BusAdder32::New( layout, &format!( "{name}.DUT"), Some( topId));
+            let  	testIo = AdderTestIO::New( layout, &format!( "{name}.TestIO"), Some( topId), passedFlag);
+
+            layout.Connect( testIo.A(), dut.A());
+            layout.Connect( testIo.B(), dut.B());
+            layout.Connect( dut.Sum(), testIo.Sum());
+            layout.Connect( dut.Carry(), testIo.Carry());
+
+            layout.SealModule( topId);
+
+            return Self {
+                _Id:      topId,
+                _DUT:     dut,
+                _TestIO:  testIo,
+            };
+        }
+
+        #[inline]
+        pub const fn	Id( &self) -> ModuleId
+        {
+            return self._Id;
         }
     }
 
@@ -1320,51 +1400,40 @@ b0100 %
     #[test]
     fn	test_rube_adder_top_module()
     {
+        let  	mut layout = Layout::New();
         let  	passed = std::sync::Arc::new( std::sync::atomic::AtomicBool::new( false));
-        let  	testTop = RubeTest_Adder::New( std::sync::Arc::clone( &passed))
-            .expect( "Failed to build RubeTest_Adder");
-
-        let  	layout = HierarchyBuilder::New( "TestRoot")
-            .AddSealedModule( "Top", testTop._Top)
-            .unwrap()
-            .Build()
-            .unwrap();
+        let  	_testTop = RubeTest_Adder::New( &mut layout, "RubeTest_Adder", std::sync::Arc::clone( &passed));
+        layout.Freeze().expect( "Compilation failed");
 
         let  	mut engine = SimEngine::Create( &layout);
         USeg::New( U32::_0, U32( 10)).Traverse( |_| {
             engine.Drive();
         });
 
+        assert_ne!( _testTop.Id(), _testTop._DUT.Id());
+        assert_ne!( _testTop._TestIO.Id(), _testTop._DUT.Id());
         assert!( passed.load( std::sync::atomic::Ordering::SeqCst));
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub struct RubeTest_DLatch
+    pub struct DLatchTestIO
     {
-        pub _Top: SealedModule,
+        pub _Id:   ModuleId,
+        pub _Q:    PortId,
+        pub _Q1:   PortId,
+        pub _D:    PortId,
+        pub _En:   PortId,
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    impl RubeTest_DLatch
+    impl DLatchTestIO
     {
-        pub fn	New( passedFlag: std::sync::Arc< std::sync::atomic::AtomicBool>) -> Result< Self, HierarchyError>
+        pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>, passedFlag: std::sync::Arc< std::sync::atomic::AtomicBool>) -> Self
         {
-            let  	mut top = HierModule::New( "RubeTest_DLatch", Buff::New(), Buff::New());
-
-            let  	dut = top.AddSealedSubModule( "DUT", DLatch::Hierarchical( "DUT")?)?;
-
-            let  	mut testIn = Stash::New();
-            testIn.Push( PortSpec::Input( "q", PortType::Bool));
-            testIn.Push( PortSpec::Input( "q1", PortType::Bool));
-
-            let  	mut testOut = Stash::New();
-            testOut.Push( PortSpec::Output( "d", PortType::Bool));
-            testOut.Push( PortSpec::Output( "en", PortType::Bool));
-
             let  	passed = std::sync::Arc::clone( &passedFlag);
-            let  	testIoKernel = KernelKind::Coro( std::sync::Arc::new( move || {
+            let  	coroKernel = KernelKind::Coro( std::sync::Arc::new( move || {
                 let  	passedRef = std::sync::Arc::clone( &passed);
                 Coro::New( move |yielder, _inPorts: CoroPorts| {
                     // Vector 1: en=1, d=1 -> q becomes 1, q1 becomes 0
@@ -1374,9 +1443,9 @@ b0100 %
                     out._Len = U32( 2);
                     let  	mut inPorts = yielder.Suspend( out);
 
-                    // Wakeup on edge from DUT:
-                    assert!( inPorts[0].IsTrue());
-                    assert!( !inPorts[1].IsTrue());
+                    while !( inPorts[0].IsTrue() && inPorts[1].IsFalse()) {
+                        inPorts = yielder.Suspend( CoroPorts::New());
+                    }
 
                     // Vector 2: en=1, d=0 -> q transitions to 0, q1 to 1
                     let  	mut out = CoroPorts::New();
@@ -1385,8 +1454,9 @@ b0100 %
                     out._Len = U32( 2);
                     inPorts = yielder.Suspend( out);
 
-                    assert!( !inPorts[0].IsTrue());
-                    assert!( inPorts[1].IsTrue());
+                    while !( inPorts[0].IsFalse() && inPorts[1].IsTrue()) {
+                        inPorts = yielder.Suspend( CoroPorts::New());
+                    }
 
                     // Vector 3: en=1, d=1 -> q transitions back to 1, q1 to 0
                     let  	mut out = CoroPorts::New();
@@ -1395,8 +1465,9 @@ b0100 %
                     out._Len = U32( 2);
                     inPorts = yielder.Suspend( out);
 
-                    assert!( inPorts[0].IsTrue());
-                    assert!( !inPorts[1].IsTrue());
+                    while !( inPorts[0].IsTrue() && inPorts[1].IsFalse()) {
+                        inPorts = yielder.Suspend( CoroPorts::New());
+                    }
 
                     passedRef.store( true, std::sync::atomic::Ordering::SeqCst);
 
@@ -1406,16 +1477,107 @@ b0100 %
                 })
             }));
 
-            let  	testIo = top.AddLeafSubModule( "TestIO", testIn.IntoBuff(), testOut.IntoBuff(), testIoKernel)?;
+            let  	modId = layout.AddModule(
+                name,
+                parent,
+                &[ PortDesc::Bool( "q"), PortDesc::Bool( "q1") ],
+                &[ PortDesc::Bool( "d"), PortDesc::Bool( "en") ],
+                coroKernel,
+            );
 
-            // Interconnect submodules internally:
-            top.ConnectSubModules( testIo, 0, dut, 0)?;
-            top.ConnectSubModules( testIo, 1, dut, 1)?;
-            top.ConnectSubModules( dut, 0, testIo, 0)?;
-            top.ConnectSubModules( dut, 1, testIo, 1)?;
+            let  	q = layout.InPort( modId, 0).unwrap();
+            let  	q1 = layout.InPort( modId, 1).unwrap();
+            let  	d = layout.OutPort( modId, 0).unwrap();
+            let  	en = layout.OutPort( modId, 1).unwrap();
 
-            let  	sealedTop = top.Seal()?;
-            return Ok( Self { _Top: sealedTop });
+            layout.SealModule( modId);
+
+            return Self {
+                _Id:   modId,
+                _Q:    q,
+                _Q1:   q1,
+                _D:    d,
+                _En:   en,
+            };
+        }
+
+        #[inline]
+        pub const fn	Id( &self) -> ModuleId
+        {
+            return self._Id;
+        }
+
+        #[inline]
+        pub const fn	Q( &self) -> PortId
+        {
+            return self._Q;
+        }
+
+        #[inline]
+        pub const fn	Q1( &self) -> PortId
+        {
+            return self._Q1;
+        }
+
+        #[inline]
+        pub const fn	D( &self) -> PortId
+        {
+            return self._D;
+        }
+
+        #[inline]
+        pub const fn	En( &self) -> PortId
+        {
+            return self._En;
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub struct RubeTest_DLatch
+    {
+        pub _Id:      ModuleId,
+        pub _DUT:     DLatch,
+        pub _TestIO:  DLatchTestIO,
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    impl RubeTest_DLatch
+    {
+        pub fn	New( layout: &mut Layout, name: &str, passedFlag: std::sync::Arc< std::sync::atomic::AtomicBool>) -> Self
+        {
+            let  	topId = layout.AddModule(
+                name,
+                None,
+                &[],
+                &[],
+                KernelKind::None,
+            );
+
+            let  	dut = DLatch::New( layout, &format!( "{name}.DUT"), Some( topId));
+            let  	testIo = DLatchTestIO::New( layout, &format!( "{name}.TestIO"), Some( topId), passedFlag);
+
+            layout.Connect( testIo.D(), dut.D());
+            layout.Connect( testIo.D(), dut.DInv());
+            layout.Connect( testIo.En(), dut.E1());
+            layout.Connect( testIo.En(), dut.E2());
+            layout.Connect( dut.Q(), testIo.Q());
+            layout.Connect( dut.Q1(), testIo.Q1());
+
+            layout.SealModule( topId);
+
+            return Self {
+                _Id:      topId,
+                _DUT:     dut,
+                _TestIO:  testIo,
+            };
+        }
+
+        #[inline]
+        pub const fn	Id( &self) -> ModuleId
+        {
+            return self._Id;
         }
     }
 
@@ -1424,52 +1586,41 @@ b0100 %
     #[test]
     fn	test_rube_dlatch_top_module()
     {
+        let  	mut layout = Layout::New();
         let  	passed = std::sync::Arc::new( std::sync::atomic::AtomicBool::new( false));
-        let  	testTop = RubeTest_DLatch::New( std::sync::Arc::clone( &passed))
-            .expect( "Failed to build RubeTest_DLatch");
-
-        let  	layout = HierarchyBuilder::New( "TestRoot")
-            .AddSealedModule( "Top", testTop._Top)
-            .unwrap()
-            .Build()
-            .unwrap();
+        let  	_testTop = RubeTest_DLatch::New( &mut layout, "RubeTest_DLatch", std::sync::Arc::clone( &passed));
+        layout.Freeze().expect( "Compilation failed");
 
         let  	mut engine = SimEngine::Create( &layout);
-        USeg::New( U32::_0, U32( 10)).Traverse( |_| {
+        USeg::New( U32::_0, U32( 20)).Traverse( |_| {
             engine.Drive();
         });
 
+        assert_ne!( _testTop.Id(), _testTop._DUT.Id());
+        assert_ne!( _testTop._TestIO.Id(), _testTop._DUT.Id());
         assert!( passed.load( std::sync::atomic::Ordering::SeqCst));
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub struct RubeTest_AdderPipeline
+    pub struct AdderPipelineTestIO
     {
-        pub _Top: SealedModule,
+        pub _Id:     ModuleId,
+        pub _Sum:    PortId,
+        pub _Carry:  PortId,
+        pub _A:      PortId,
+        pub _B:      PortId,
+        pub _C:      PortId,
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    impl RubeTest_AdderPipeline
+    impl AdderPipelineTestIO
     {
-        pub fn	New( passedFlag: std::sync::Arc< std::sync::atomic::AtomicBool>) -> Result< Self, HierarchyError>
+        pub fn	New( layout: &mut Layout, name: &str, parent: Option< ModuleId>, passedFlag: std::sync::Arc< std::sync::atomic::AtomicBool>) -> Self
         {
-            let  	mut top = HierModule::New( "RubeTest_AdderPipeline", Buff::New(), Buff::New());
-
-            let  	dut = top.AddSealedSubModule( "DUT", AdderPipeline::Hierarchical( "DUT")?)?;
-
-            let  	mut testIn = Stash::New();
-            testIn.Push( PortSpec::Input( "sum", PortType::U32Val));
-            testIn.Push( PortSpec::Input( "carry", PortType::Bool));
-
-            let  	mut testOut = Stash::New();
-            testOut.Push( PortSpec::Output( "a", PortType::U32Val));
-            testOut.Push( PortSpec::Output( "b", PortType::U32Val));
-            testOut.Push( PortSpec::Output( "c", PortType::U32Val));
-
             let  	passed = std::sync::Arc::clone( &passedFlag);
-            let  	testIoKernel = KernelKind::Coro( std::sync::Arc::new( move || {
+            let  	coroKernel = KernelKind::Coro( std::sync::Arc::new( move || {
                 let  	passedRef = std::sync::Arc::clone( &passed);
                 Coro::New( move |yielder, _inPorts: CoroPorts| {
                     // Vector 1: 15 + 25 + 60
@@ -1503,17 +1654,114 @@ b0100 %
                 })
             }));
 
-            let  	testIo = top.AddLeafSubModule( "TestIO", testIn.IntoBuff(), testOut.IntoBuff(), testIoKernel)?;
+            let  	modId = layout.AddModule(
+                name,
+                parent,
+                &[ PortDesc::U32( "sum"), PortDesc::Bool( "carry") ],
+                &[ PortDesc::U32( "a"), PortDesc::U32( "b"), PortDesc::U32( "c") ],
+                coroKernel,
+            );
 
-            // Interconnect submodules:
-            top.ConnectSubModules( testIo, 0, dut, 0)?;
-            top.ConnectSubModules( testIo, 1, dut, 1)?;
-            top.ConnectSubModules( testIo, 2, dut, 2)?;
-            top.ConnectSubModules( dut, 0, testIo, 0)?;
-            top.ConnectSubModules( dut, 1, testIo, 1)?;
+            let  	sum = layout.InPort( modId, 0).unwrap();
+            let  	carry = layout.InPort( modId, 1).unwrap();
+            let  	a = layout.OutPort( modId, 0).unwrap();
+            let  	b = layout.OutPort( modId, 1).unwrap();
+            let  	c = layout.OutPort( modId, 2).unwrap();
 
-            let  	sealedTop = top.Seal()?;
-            return Ok( Self { _Top: sealedTop });
+            layout.SealModule( modId);
+
+            return Self {
+                _Id:     modId,
+                _Sum:    sum,
+                _Carry:  carry,
+                _A:      a,
+                _B:      b,
+                _C:      c,
+            };
+        }
+
+        #[inline]
+        pub const fn	Id( &self) -> ModuleId
+        {
+            return self._Id;
+        }
+
+        #[inline]
+        pub const fn	Sum( &self) -> PortId
+        {
+            return self._Sum;
+        }
+
+        #[inline]
+        pub const fn	Carry( &self) -> PortId
+        {
+            return self._Carry;
+        }
+
+        #[inline]
+        pub const fn	A( &self) -> PortId
+        {
+            return self._A;
+        }
+
+        #[inline]
+        pub const fn	B( &self) -> PortId
+        {
+            return self._B;
+        }
+
+        #[inline]
+        pub const fn	C( &self) -> PortId
+        {
+            return self._C;
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub struct RubeTest_AdderPipeline
+    {
+        pub _Id:      ModuleId,
+        pub _DUT:     AdderPipeline,
+        pub _TestIO:  AdderPipelineTestIO,
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    impl RubeTest_AdderPipeline
+    {
+        pub fn	New( layout: &mut Layout, name: &str, passedFlag: std::sync::Arc< std::sync::atomic::AtomicBool>) -> Self
+        {
+            let  	topId = layout.AddModule(
+                name,
+                None,
+                &[],
+                &[],
+                KernelKind::None,
+            );
+
+            let  	dut = AdderPipeline::New( layout, &format!( "{name}.DUT"), Some( topId));
+            let  	testIo = AdderPipelineTestIO::New( layout, &format!( "{name}.TestIO"), Some( topId), passedFlag);
+
+            layout.Connect( testIo.A(), dut.A());
+            layout.Connect( testIo.B(), dut.B());
+            layout.Connect( testIo.C(), dut.C());
+            layout.Connect( dut.Sum(), testIo.Sum());
+            layout.Connect( dut.Carry(), testIo.Carry());
+
+            layout.SealModule( topId);
+
+            return Self {
+                _Id:      topId,
+                _DUT:     dut,
+                _TestIO:  testIo,
+            };
+        }
+
+        #[inline]
+        pub const fn	Id( &self) -> ModuleId
+        {
+            return self._Id;
         }
     }
 
@@ -1523,20 +1771,17 @@ b0100 %
     fn	test_rube_adder_pipeline_top_module()
     {
         let  	passed = std::sync::Arc::new( std::sync::atomic::AtomicBool::new( false));
-        let  	testTop = RubeTest_AdderPipeline::New( std::sync::Arc::clone( &passed))
-            .expect( "Failed to build RubeTest_AdderPipeline");
-
-        let  	layout = HierarchyBuilder::New( "TestRoot")
-            .AddSealedModule( "Top", testTop._Top)
-            .unwrap()
-            .Build()
-            .unwrap();
+        let  	mut layout = Layout::New();
+        let  	_testTop = RubeTest_AdderPipeline::New( &mut layout, "RubeTest_AdderPipeline", std::sync::Arc::clone( &passed));
+        layout.Freeze().expect( "Compilation failed");
 
         let  	mut engine = SimEngine::Create( &layout);
         USeg::New( U32::_0, U32( 10)).Traverse( |_| {
             engine.Drive();
         });
 
+        assert_ne!( _testTop.Id(), _testTop._DUT.Id());
+        assert_ne!( _testTop._TestIO.Id(), _testTop._DUT.Id());
         assert!( passed.load( std::sync::atomic::Ordering::SeqCst));
     }
 }
