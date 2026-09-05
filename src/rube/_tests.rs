@@ -5,18 +5,20 @@ mod _tests
 {
     use	crate::{
         rube::{
-            adder::{ Adder, FullAdder, HalfAdder },
+            adder::{ Adder, AdderPipeline, BusAdder32, FullAdder, HalfAdder },
+            coro_kernel::CoroPorts,
             engine::{ SimEngine, SimEngineMode },
             gates::{ AndGate, NandGate, NotGate, OrGate, XorGate },
             latches::{ CRSLatch, DLatch },
             layout::{ HierarchyBuilder, Layout },
-            module::{ HierModule, IModule, KernelKind, ModuleId, PortSpec },
+            module::{ HierModule, HierarchyError, IModule, KernelKind, ModuleId, PortSpec, SealedModule },
             netlist::INetlist,
             port::{ IPort, PortDesc, PortId, PortType },
             reg::Reg,
             vcd::VcdWriter,
         },
-        silo::{ ConsoleTest, Stash, U8, U32, USeg },
+        silo::{ Buff, ConsoleTest, Stash, U8, U32, USeg },
+        stalks::Coro,
     };
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -1232,6 +1234,310 @@ b0100 %
         });
 
         assert_eq!( engine.GetPortU32( pVOut).unwrap(), Reg::Known( 666));
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub struct RubeTest_Adder
+    {
+        pub _Top: SealedModule,
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    impl RubeTest_Adder
+    {
+        pub fn	New( passedFlag: std::sync::Arc< std::sync::atomic::AtomicBool>) -> Result< Self, HierarchyError>
+        {
+            let  	mut top = HierModule::New( "RubeTest_Adder", Buff::New(), Buff::New());
+
+            let  	dut = top.AddSealedSubModule( "DUT", BusAdder32::Hierarchical( "DUT")?)?;
+
+            let  	mut testIn = Stash::New();
+            testIn.Push( PortSpec::Input( "sum", PortType::U32Val));
+            testIn.Push( PortSpec::Input( "carry", PortType::Bool));
+
+            let  	mut testOut = Stash::New();
+            testOut.Push( PortSpec::Output( "a", PortType::U32Val));
+            testOut.Push( PortSpec::Output( "b", PortType::U32Val));
+
+            let  	passed = std::sync::Arc::clone( &passedFlag);
+            let  	testIoKernel = KernelKind::Coro( std::sync::Arc::new( move || {
+                let  	passedRef = std::sync::Arc::clone( &passed);
+                Coro::New( move |yielder, _inPorts: CoroPorts| {
+                    // Cycle 0: Drive 15 + 25
+                    let  	mut out = CoroPorts::New();
+                    out._Vals[0] = Reg::Known( 15);
+                    out._Vals[1] = Reg::Known( 25);
+                    out._Len = U32( 2);
+                    let  	mut inPorts = yielder.Suspend( out);
+
+                    // Cycle 1: Check 15 + 25 = 40, Drive 100 + 200
+                    assert_eq!( inPorts[0].Val(), 40);
+                    assert!( !inPorts[1].IsTrue());
+                    let  	mut out = CoroPorts::New();
+                    out._Vals[0] = Reg::Known( 100);
+                    out._Vals[1] = Reg::Known( 200);
+                    out._Len = U32( 2);
+                    inPorts = yielder.Suspend( out);
+
+                    // Cycle 2: Check 100 + 200 = 300, Drive 0xFFFF_FFFF + 1
+                    assert_eq!( inPorts[0].Val(), 300);
+                    assert!( !inPorts[1].IsTrue());
+                    let  	mut out = CoroPorts::New();
+                    out._Vals[0] = Reg::Known( 0xFFFF_FFFF);
+                    out._Vals[1] = Reg::Known( 1);
+                    out._Len = U32( 2);
+                    inPorts = yielder.Suspend( out);
+
+                    // Cycle 3: Check 0xFFFF_FFFF + 1 = 0 (carry=true)
+                    assert_eq!( inPorts[0].Val(), 0);
+                    assert!( inPorts[1].IsTrue());
+
+                    passedRef.store( true, std::sync::atomic::Ordering::SeqCst);
+
+                    loop {
+                        let  	_ = yielder.Suspend( CoroPorts::New());
+                    }
+                })
+            }));
+
+            let  	testIo = top.AddLeafSubModule( "TestIO", testIn.IntoBuff(), testOut.IntoBuff(), testIoKernel)?;
+
+            // Interconnect submodules internally:
+            top.ConnectSubModules( testIo, 0, dut, 0)?;
+            top.ConnectSubModules( testIo, 1, dut, 1)?;
+            top.ConnectSubModules( dut, 0, testIo, 0)?;
+            top.ConnectSubModules( dut, 1, testIo, 1)?;
+
+            let  	sealedTop = top.Seal()?;
+            return Ok( Self { _Top: sealedTop });
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_rube_adder_top_module()
+    {
+        let  	passed = std::sync::Arc::new( std::sync::atomic::AtomicBool::new( false));
+        let  	testTop = RubeTest_Adder::New( std::sync::Arc::clone( &passed))
+            .expect( "Failed to build RubeTest_Adder");
+
+        let  	layout = HierarchyBuilder::New( "TestRoot")
+            .AddSealedModule( "Top", testTop._Top)
+            .unwrap()
+            .Build()
+            .unwrap();
+
+        let  	mut engine = SimEngine::Create( &layout);
+        USeg::New( U32::_0, U32( 10)).Traverse( |_| {
+            engine.Drive();
+        });
+
+        assert!( passed.load( std::sync::atomic::Ordering::SeqCst));
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub struct RubeTest_DLatch
+    {
+        pub _Top: SealedModule,
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    impl RubeTest_DLatch
+    {
+        pub fn	New( passedFlag: std::sync::Arc< std::sync::atomic::AtomicBool>) -> Result< Self, HierarchyError>
+        {
+            let  	mut top = HierModule::New( "RubeTest_DLatch", Buff::New(), Buff::New());
+
+            let  	dut = top.AddSealedSubModule( "DUT", DLatch::Hierarchical( "DUT")?)?;
+
+            let  	mut testIn = Stash::New();
+            testIn.Push( PortSpec::Input( "q", PortType::Bool));
+            testIn.Push( PortSpec::Input( "q1", PortType::Bool));
+
+            let  	mut testOut = Stash::New();
+            testOut.Push( PortSpec::Output( "d", PortType::Bool));
+            testOut.Push( PortSpec::Output( "en", PortType::Bool));
+
+            let  	passed = std::sync::Arc::clone( &passedFlag);
+            let  	testIoKernel = KernelKind::Coro( std::sync::Arc::new( move || {
+                let  	passedRef = std::sync::Arc::clone( &passed);
+                Coro::New( move |yielder, _inPorts: CoroPorts| {
+                    // Vector 1: en=1, d=1 -> q becomes 1, q1 becomes 0
+                    let  	mut out = CoroPorts::New();
+                    out._Vals[0] = Reg::TRUE;
+                    out._Vals[1] = Reg::TRUE;
+                    out._Len = U32( 2);
+                    let  	mut inPorts = yielder.Suspend( out);
+
+                    // Wakeup on edge from DUT:
+                    assert!( inPorts[0].IsTrue());
+                    assert!( !inPorts[1].IsTrue());
+
+                    // Vector 2: en=1, d=0 -> q transitions to 0, q1 to 1
+                    let  	mut out = CoroPorts::New();
+                    out._Vals[0] = Reg::FALSE;
+                    out._Vals[1] = Reg::TRUE;
+                    out._Len = U32( 2);
+                    inPorts = yielder.Suspend( out);
+
+                    assert!( !inPorts[0].IsTrue());
+                    assert!( inPorts[1].IsTrue());
+
+                    // Vector 3: en=1, d=1 -> q transitions back to 1, q1 to 0
+                    let  	mut out = CoroPorts::New();
+                    out._Vals[0] = Reg::TRUE;
+                    out._Vals[1] = Reg::TRUE;
+                    out._Len = U32( 2);
+                    inPorts = yielder.Suspend( out);
+
+                    assert!( inPorts[0].IsTrue());
+                    assert!( !inPorts[1].IsTrue());
+
+                    passedRef.store( true, std::sync::atomic::Ordering::SeqCst);
+
+                    loop {
+                        let  	_ = yielder.Suspend( CoroPorts::New());
+                    }
+                })
+            }));
+
+            let  	testIo = top.AddLeafSubModule( "TestIO", testIn.IntoBuff(), testOut.IntoBuff(), testIoKernel)?;
+
+            // Interconnect submodules internally:
+            top.ConnectSubModules( testIo, 0, dut, 0)?;
+            top.ConnectSubModules( testIo, 1, dut, 1)?;
+            top.ConnectSubModules( dut, 0, testIo, 0)?;
+            top.ConnectSubModules( dut, 1, testIo, 1)?;
+
+            let  	sealedTop = top.Seal()?;
+            return Ok( Self { _Top: sealedTop });
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_rube_dlatch_top_module()
+    {
+        let  	passed = std::sync::Arc::new( std::sync::atomic::AtomicBool::new( false));
+        let  	testTop = RubeTest_DLatch::New( std::sync::Arc::clone( &passed))
+            .expect( "Failed to build RubeTest_DLatch");
+
+        let  	layout = HierarchyBuilder::New( "TestRoot")
+            .AddSealedModule( "Top", testTop._Top)
+            .unwrap()
+            .Build()
+            .unwrap();
+
+        let  	mut engine = SimEngine::Create( &layout);
+        USeg::New( U32::_0, U32( 10)).Traverse( |_| {
+            engine.Drive();
+        });
+
+        assert!( passed.load( std::sync::atomic::Ordering::SeqCst));
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub struct RubeTest_AdderPipeline
+    {
+        pub _Top: SealedModule,
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    impl RubeTest_AdderPipeline
+    {
+        pub fn	New( passedFlag: std::sync::Arc< std::sync::atomic::AtomicBool>) -> Result< Self, HierarchyError>
+        {
+            let  	mut top = HierModule::New( "RubeTest_AdderPipeline", Buff::New(), Buff::New());
+
+            let  	dut = top.AddSealedSubModule( "DUT", AdderPipeline::Hierarchical( "DUT")?)?;
+
+            let  	mut testIn = Stash::New();
+            testIn.Push( PortSpec::Input( "sum", PortType::U32Val));
+            testIn.Push( PortSpec::Input( "carry", PortType::Bool));
+
+            let  	mut testOut = Stash::New();
+            testOut.Push( PortSpec::Output( "a", PortType::U32Val));
+            testOut.Push( PortSpec::Output( "b", PortType::U32Val));
+            testOut.Push( PortSpec::Output( "c", PortType::U32Val));
+
+            let  	passed = std::sync::Arc::clone( &passedFlag);
+            let  	testIoKernel = KernelKind::Coro( std::sync::Arc::new( move || {
+                let  	passedRef = std::sync::Arc::clone( &passed);
+                Coro::New( move |yielder, _inPorts: CoroPorts| {
+                    // Vector 1: 15 + 25 + 60
+                    let  	mut out = CoroPorts::New();
+                    out._Vals[0] = Reg::Known( 15);
+                    out._Vals[1] = Reg::Known( 25);
+                    out._Vals[2] = Reg::Known( 60);
+                    out._Len = U32( 3);
+                    let  	_ = yielder.Suspend( out);
+
+                    // Wait 1 cycle for 2-stage adder pipeline propagation
+                    let  	mut inPorts = yielder.Suspend( CoroPorts::New());
+                    assert_eq!( inPorts[0].Val(), 100);
+
+                    // Vector 2: 1000 + 2000 + 3000
+                    let  	mut out = CoroPorts::New();
+                    out._Vals[0] = Reg::Known( 1000);
+                    out._Vals[1] = Reg::Known( 2000);
+                    out._Vals[2] = Reg::Known( 3000);
+                    out._Len = U32( 3);
+                    let  	_ = yielder.Suspend( out);
+
+                    inPorts = yielder.Suspend( CoroPorts::New());
+                    assert_eq!( inPorts[0].Val(), 6000);
+
+                    passedRef.store( true, std::sync::atomic::Ordering::SeqCst);
+
+                    loop {
+                        let  	_ = yielder.Suspend( CoroPorts::New());
+                    }
+                })
+            }));
+
+            let  	testIo = top.AddLeafSubModule( "TestIO", testIn.IntoBuff(), testOut.IntoBuff(), testIoKernel)?;
+
+            // Interconnect submodules:
+            top.ConnectSubModules( testIo, 0, dut, 0)?;
+            top.ConnectSubModules( testIo, 1, dut, 1)?;
+            top.ConnectSubModules( testIo, 2, dut, 2)?;
+            top.ConnectSubModules( dut, 0, testIo, 0)?;
+            top.ConnectSubModules( dut, 1, testIo, 1)?;
+
+            let  	sealedTop = top.Seal()?;
+            return Ok( Self { _Top: sealedTop });
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_rube_adder_pipeline_top_module()
+    {
+        let  	passed = std::sync::Arc::new( std::sync::atomic::AtomicBool::new( false));
+        let  	testTop = RubeTest_AdderPipeline::New( std::sync::Arc::clone( &passed))
+            .expect( "Failed to build RubeTest_AdderPipeline");
+
+        let  	layout = HierarchyBuilder::New( "TestRoot")
+            .AddSealedModule( "Top", testTop._Top)
+            .unwrap()
+            .Build()
+            .unwrap();
+
+        let  	mut engine = SimEngine::Create( &layout);
+        USeg::New( U32::_0, U32( 10)).Traverse( |_| {
+            engine.Drive();
+        });
+
+        assert!( passed.load( std::sync::atomic::Ordering::SeqCst));
     }
 }
 

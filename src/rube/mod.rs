@@ -17,7 +17,7 @@ pub mod fifo;
 pub mod coro_kernel;
 mod _tests;
 
-pub use	adder::{ Adder, BusAdder32, FullAdder, HalfAdder };
+pub use	adder::{ Adder, AdderPipeline, BusAdder32, FullAdder, HalfAdder };
 pub use	coro_kernel::{ CoroInstance, CoroKernelFactory, CoroPorts, CoroWarp, CORO_MAX_PORTS };
 pub use	engine::{ SimEngine, SimEngineMode };
 pub use	gates::{ AndGate, NandGate, NotGate, OrGate, XorGate };

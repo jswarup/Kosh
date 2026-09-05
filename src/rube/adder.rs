@@ -6,8 +6,8 @@ use	crate::{
         engine::SimEngine,
         gates::{ AndGate, OrGate, XorGate },
         layout::Layout,
-        module::{ IModule, KernelKind, ModuleId },
-        port::{ PortDesc, PortId },
+        module::{ HierModule, HierarchyError, IModule, KernelKind, ModuleId, PortSpec, SealedModule },
+        port::{ PortDesc, PortId, PortType },
         reg::Reg,
     },
     silo::{ Buff, Stash, U32, USeg },
@@ -452,10 +452,69 @@ impl BusAdder32
         };
     }
 
+    pub fn	Hierarchical( name: &str) -> Result< SealedModule, HierarchyError>
+    {
+        let  	mut inPorts = Stash::New();
+        inPorts.Push( PortSpec::Input( "a", PortType::U32Val));
+        inPorts.Push( PortSpec::Input( "b", PortType::U32Val));
+
+        let  	mut outPorts = Stash::New();
+        outPorts.Push( PortSpec::Output( "sum", PortType::U32Val));
+        outPorts.Push( PortSpec::Output( "carry", PortType::Bool));
+
+        let  	mut module = HierModule::New( name, inPorts.IntoBuff(), outPorts.IntoBuff());
+        module._Kernel = KernelKind::Custom( "BusAdder32_Kernel");
+        return module.Seal();
+    }
+
     #[inline]
     pub const fn	Id( &self) -> ModuleId
     {
         return self._Id;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub struct AdderPipeline;
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl AdderPipeline
+{
+    pub fn	Hierarchical( name: &str) -> Result< SealedModule, HierarchyError>
+    {
+        let  	mut inPorts = Stash::New();
+        inPorts.Push( PortSpec::Input( "a", PortType::U32Val));
+        inPorts.Push( PortSpec::Input( "b", PortType::U32Val));
+        inPorts.Push( PortSpec::Input( "c", PortType::U32Val));
+
+        let  	mut outPorts = Stash::New();
+        outPorts.Push( PortSpec::Output( "sum", PortType::U32Val));
+        outPorts.Push( PortSpec::Output( "carry", PortType::Bool));
+
+        let  	mut module = HierModule::New( name, inPorts.IntoBuff(), outPorts.IntoBuff());
+
+        let  	adder1 = module.AddSealedSubModule( "Adder1", BusAdder32::Hierarchical( "Adder1")?)?;
+        let  	adder2 = module.AddSealedSubModule( "Adder2", BusAdder32::Hierarchical( "Adder2")?)?;
+
+        // Internal chaining: adder1.sum (0) -> adder2.a (0)
+        module.ConnectSubModules( adder1, 0, adder2, 0)?;
+
+        // Boundary bindings:
+        // this.a (0) -> adder1.a (0)
+        module.BindInPort( 0, adder1, 0)?;
+        // this.b (1) -> adder1.b (1)
+        module.BindInPort( 1, adder1, 1)?;
+        // this.c (2) -> adder2.b (1)
+        module.BindInPort( 2, adder2, 1)?;
+
+        // adder2.sum (0) -> this.sum (0)
+        module.BindOutPort( 0, adder2, 0)?;
+        // adder2.carry (1) -> this.carry (1)
+        module.BindOutPort( 1, adder2, 1)?;
+
+        return module.Seal();
     }
 }
 

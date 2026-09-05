@@ -5,10 +5,11 @@ use	crate::{
         engine::SimEngine,
         gates::{ NandGate, NotGate },
         layout::Layout,
-        module::{ IModule, KernelKind, ModuleId },
-        port::{ PortDesc, PortId },
+        module::{ HierModule, HierarchyError, IModule, KernelKind, ModuleId, PortSpec, SealedModule },
+        port::{ PortDesc, PortId, PortType },
         reg::Reg,
     },
+    silo::Stash,
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -331,6 +332,28 @@ impl DLatch
             _Q:     q,
             _Q1:    q1,
         };
+    }
+
+    pub fn	Hierarchical( name: &str) -> Result< SealedModule, HierarchyError>
+    {
+        let  	mut inPorts = Stash::New();
+        inPorts.Push( PortSpec::Input( "d", PortType::Bool));
+        inPorts.Push( PortSpec::Input( "en", PortType::Bool));
+
+        let  	mut outPorts = Stash::New();
+        outPorts.Push( PortSpec::Output( "q", PortType::Bool));
+        outPorts.Push( PortSpec::Output( "q1", PortType::Bool));
+
+        let  	mut module = HierModule::New( name, inPorts.IntoBuff(), outPorts.IntoBuff());
+        module._Kernel = KernelKind::Behavioral( std::sync::Arc::new( |inVals, outVals| {
+            let  	d = inVals[0];
+            let  	en = inVals[1];
+            if en.IsTrue() {
+                outVals[0] = d;
+                outVals[1] = !d;
+            }
+        }));
+        return module.Seal();
     }
 
     #[inline]
