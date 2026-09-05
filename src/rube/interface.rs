@@ -155,20 +155,20 @@ impl ModuleInterface
     pub fn	ValidatePorts( &self) -> Result< (), InterfaceError>
     {
         let mut	names = std::collections::HashSet::new();
-        
+
         for port in self._InPorts.iter().chain( self._OutPorts.iter()) {
             if !names.insert( port._Name) {
                 return Err( InterfaceError::DuplicatePortName( port._Name));
             }
         }
-        
+
         Ok( ())
     }
 
     pub fn	ToSystemVerilog( &self) -> String
     {
         let mut	sv = format!( "module {} (\n", self._Name);
-        
+
         for port in self._InPorts {
             match port._BusType {
                 BusType::Bus( w) if w > 1 => {
@@ -179,7 +179,7 @@ impl ModuleInterface
                 }
             }
         }
-        
+
         for ( i, port) in self._OutPorts.iter().enumerate() {
             let  	suffix = if i == self._OutPorts.len() - 1 { "\n" } else { ",\n" };
             match port._BusType {
@@ -191,7 +191,7 @@ impl ModuleInterface
                 }
             }
         }
-        
+
         sv.push_str( ");\n");
         sv.push_str( &format!( "    // {}\n", self._Description));
         sv.push_str( "endmodule\n");
@@ -241,4 +241,33 @@ macro_rules! DefineModuleInterface {
             }
         }
     };
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests
+{
+    use	super::*;
+
+    #[test]
+    fn	TestPortInterfaceCreation()
+    {
+        let  	port = PortInterface::Input( "data", 32, Some( "Input data"));
+        assert_eq!( port._Width, 32);
+        assert_eq!( port._Name, "data");
+    }
+
+    #[test]
+    fn	TestSystemVerilogExport()
+    {
+        let  	interface = crate::rube::adder::BusAdder32::Interface();
+
+        let  	sv = interface.ToSystemVerilog();
+        assert!( sv.contains( "module bus_adder_32"));
+        assert!( sv.contains( "input [31:0] a"));
+        assert!( sv.contains( "input [31:0] b"));
+        assert!( sv.contains( "output [31:0] sum"));
+        assert!( sv.contains( "output carry"));
+    }
 }

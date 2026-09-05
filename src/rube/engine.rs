@@ -97,6 +97,27 @@ fn	behavioral_warp_spawn< 'a>( chunk: crate::silo::Arr< 'a, BehavioralWarp>, _w:
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+fn	trait_warp_spawn< 'a>( chunk: crate::silo::Arr< 'a, crate::rube::module::TraitWarp>, _w: &DynIWorker< '_>)
+{
+    let  	enginePtr = CURRENT_SIM_ENGINE.load( Ordering::Acquire);
+    let  	engine = unsafe { &mut *enginePtr };
+    let  	readyWords = &engine._ReadyWords;
+    let  	triggers = &mut engine._Triggers;
+    chunk.USeg().Traverse( |i| {
+        let  	warp = chunk.At( i);
+        let  	count = warp._Count.AsUsize();
+        let  	modStart = warp._ModStart.AsUsize();
+        SimEngine::ForEachReadyLane( readyWords, modStart, count, |l| {
+            let  	cb = &warp._Instances[l];
+            let  	inTrigs = &warp._InTriggers[l];
+            let  	outTrigs = &warp._OutTriggers[l];
+            SimEngine::EvalTraitInstance( cb, inTrigs, outTrigs, triggers);
+        });
+    });
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 #[derive( Copy, Clone, PartialEq, Eq)]
 pub enum SimEngineMode
 {
@@ -113,6 +134,7 @@ pub struct SimEngine
     pub _CustomWarps:     Buff< CustomWarp>,
     pub _CustomCallbacks: Buff< CustomKernelFn>,
     pub _BehavioralWarps: Buff< BehavioralWarp>,
+    pub _TraitWarps:      Buff< crate::rube::module::TraitWarp>,
     pub _CoroWarps:       Buff< CoroWarp>,
     pub _PortToTrigger:   Buff< TriggerId>,
     pub _ReadyWords:      Buff< u64>,
@@ -133,7 +155,7 @@ impl SimEngine
     {
         let  	portToTrigger = layout.PortToTrigger();
         let  	triggers = layout.BuildTriggers( &portToTrigger);
-        let  	( fastWarps, customWarps, behavioralWarps, coroWarps) = layout.CompileWarps( &portToTrigger);
+        let  	( fastWarps, customWarps, behavioralWarps, coroWarps, traitWarps) = layout.CompileWarps( &portToTrigger);
         let  	modCount = layout._Modules.Size().AsUsize();
         let  	wordCount = ( modCount + 63) / 64;
         let  	readyWords = Buff::Create( U32( wordCount as u32), |_| 0u64);
@@ -153,6 +175,7 @@ impl SimEngine
             _CustomWarps:     customWarps,
             _CustomCallbacks: callbacks.IntoBuff(),
             _BehavioralWarps: behavioralWarps,
+            _TraitWarps:      traitWarps,
             _CoroWarps:       coroWarps,
             _PortToTrigger:   portToTrigger,
             _ReadyWords:      readyWords,
@@ -228,6 +251,24 @@ impl SimEngine
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    fn	EvalTraitWarps( &mut self)
+    {
+        let  	readyWords = &self._ReadyWords;
+        let  	triggers = &mut self._Triggers;
+        self._TraitWarps.Arr().Traverse( |warp| {
+            let  	count = warp._Count.AsUsize();
+            let  	modStart = warp._ModStart.AsUsize();
+            Self::ForEachReadyLane( readyWords, modStart, count, |l| {
+                let  	cb = &warp._Instances[l];
+                let  	inTrigs = &warp._InTriggers[l];
+                let  	outTrigs = &warp._OutTriggers[l];
+                Self::EvalTraitInstance( cb, inTrigs, outTrigs, triggers);
+            });
+        });
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     /// Executes a single synchronous discrete-event simulation cycle with ZERO heap allocations:
     /// 1. Phase 1: Pure evaluation reading immutable Present values ( T) from AoS cells and writing directly to Future slots ( T+1).
     /// 2. Phase 2: Custom module evaluations.
@@ -245,6 +286,7 @@ impl SimEngine
             self.EvalFastWarps();
             self.EvalCustomWarps();
             self.EvalBehavioralWarps();
+            self.EvalTraitWarps();
             self.EvalCoroWarps();
         }
 
@@ -284,8 +326,14 @@ impl SimEngine
                 |_chunk, _w| {}
             );
 
+            let  	traitNode = CpuSpawnQuell!(
+                self._TraitWarps.Arr(),
+                trait_warp_spawn,
+                |_chunk, _w| {}
+            );
+
             // Compose parallel execution graph
-            let  	warpPhase = ChoreTree!( fastNode | customNode | behavioralNode );
+            let  	warpPhase = ChoreTree!( fastNode | customNode | behavioralNode | traitNode );
             atelier.MainMaestro().PostChoreTree( &warpPhase );
             atelier.DoLaunch();
 
@@ -410,6 +458,47 @@ impl SimEngine
             let  	mut outVals = Buff::Create( outLen, |k| triggers._FutureVals[outTriggers[k]]);
 
             ( cb)( &inVals, &mut outVals);
+
+            USeg::New( U32::_0, outLen).Traverse( |k| {
+                triggers._FutureVals[outTriggers[k]] = outVals[k];
+            });
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	EvalTraitInstance(
+        cb: &Arc< dyn crate::rube::kernel::IKernel>,
+        inTriggers: &Buff< TriggerId>,
+        outTriggers: &Buff< TriggerId>,
+        triggers: &mut TriggerWad,
+    )
+    {
+        let  	inLen = inTriggers.Size();
+        let  	outLen = outTriggers.Size();
+
+        // Stack-allocated buffers for modules with up to 16 inputs/outputs
+        if inLen.0 <= 16 && outLen.0 <= 16 {
+            let  	mut inBuf = [Reg::default(); 16];
+            let  	mut outBuf = [Reg::default(); 16];
+
+            USeg::New( U32::_0, inLen).Traverse( |k| {
+                inBuf[k.AsUsize()] = triggers._CurrentVals[inTriggers[k]];
+            });
+            USeg::New( U32::_0, outLen).Traverse( |k| {
+                outBuf[k.AsUsize()] = triggers._FutureVals[outTriggers[k]];
+            });
+
+            let _ = cb.Execute( &inBuf[..inLen.AsUsize()], &mut outBuf[..outLen.AsUsize()]);
+
+            USeg::New( U32::_0, outLen).Traverse( |k| {
+                triggers._FutureVals[outTriggers[k]] = outBuf[k.AsUsize()];
+            });
+        } else {
+            let  	inVals = Buff::Create( inLen, |k| triggers._CurrentVals[inTriggers[k]]);
+            let  	mut outVals = Buff::Create( outLen, |k| triggers._FutureVals[outTriggers[k]]);
+
+            let _ = cb.Execute( &inVals, &mut outVals);
 
             USeg::New( U32::_0, outLen).Traverse( |k| {
                 triggers._FutureVals[outTriggers[k]] = outVals[k];

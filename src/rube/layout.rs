@@ -726,12 +726,13 @@ impl Layout
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	CompileWarps( &self, portToTrigger: &Buff< TriggerId>) -> ( Buff< FastWarp>, Buff< CustomWarp>, Buff< BehavioralWarp>, Buff< CoroWarp>)
+    pub fn	CompileWarps( &self, portToTrigger: &Buff< TriggerId>) -> ( Buff< FastWarp>, Buff< CustomWarp>, Buff< BehavioralWarp>, Buff< CoroWarp>, Buff< crate::rube::module::TraitWarp>)
     {
         let  	mut fastWarps = Stash::New();
         let  	mut customWarps = Stash::New();
         let  	mut behavioralWarps = Stash::New();
         let  	mut coroWarps = Stash::New();
+        let  	mut traitWarps = Stash::New();
 
         let  	modules = self._Modules.Slice();
         let  	mut i = 0;
@@ -763,6 +764,33 @@ impl Layout
 
                     let  	count = ( i - startIdx) as u32;
                     coroWarps.Push( CoroWarp::New(
+                        U32( startIdx as u32),
+                        U32( count),
+                        instances.IntoBuff(),
+                        inTriggersList.IntoBuff(),
+                        outTriggersList.IntoBuff(),
+                    ));
+                }
+                KernelKind::Trait( _) => {
+                    let  	vtablePtr = m._Kernel.ClassKey().1;
+                    let  	startIdx = i;
+                    let  	mut instances = Stash::New();
+                    let  	mut inTriggersList = Stash::New();
+                    let  	mut outTriggersList = Stash::New();
+
+                    while i < modules.len() && modules[i]._Kernel.ClassKey() == ( 5, vtablePtr) {
+                        let  	curMod = &modules[i];
+                        if let KernelKind::Trait( tr) = &curMod._Kernel {
+                            instances.Push( std::sync::Arc::clone( tr));
+                        }
+
+                        inTriggersList.Push( self.PortTriggersOf( curMod._InPorts, portToTrigger));
+                        outTriggersList.Push( self.PortTriggersOf( curMod._OutPorts, portToTrigger));
+                        i += 1;
+                    }
+
+                    let  	count = ( i - startIdx) as u32;
+                    traitWarps.Push( crate::rube::module::TraitWarp::New(
                         U32( startIdx as u32),
                         U32( count),
                         instances.IntoBuff(),
@@ -872,7 +900,7 @@ impl Layout
             }
         }
 
-        return ( fastWarps.IntoBuff(), customWarps.IntoBuff(), behavioralWarps.IntoBuff(), coroWarps.IntoBuff());
+        return ( fastWarps.IntoBuff(), customWarps.IntoBuff(), behavioralWarps.IntoBuff(), coroWarps.IntoBuff(), traitWarps.IntoBuff());
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------

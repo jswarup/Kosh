@@ -15,10 +15,14 @@ pub mod vcdio;
 pub mod vcd_model;
 pub mod fifo;
 pub mod interface;
+pub mod introspect;
+pub mod kernel;
 pub mod coro_kernel;
 mod _tests;
 
 pub use interface::{ ModuleInterface, PortInterface, DataType, BusType, IModuleInterface };
+pub use introspect::{ IModuleIntrospection, PortIntrospection };
+pub use kernel::{ IKernel, KernelSignature, KernelError };
 
 pub use	adder::{ Adder, AdderPipeline, BusAdder32, FullAdder, HalfAdder };
 pub use	coro_kernel::{ CoroInstance, CoroKernelFactory, CoroPorts, CoroWarp, CORO_MAX_PORTS };

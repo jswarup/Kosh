@@ -180,3 +180,14 @@ impl Default for Fifo
 }
 
 crate::ImplFluxSource!( Fifo, _Id, _Clk, _Reset, _Push, _Pop, _DataIn, _DataOut, _Empty, _Full);
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+crate::DefineModuleInterface!(
+    Fifo,
+    "fifo",
+    "1.0.0",
+    "Synchronous FIFO (First-In, First-Out) memory queue",
+    inports: [ ("Clk", 1), ("Reset", 1), ("Push", 1), ("Pop", 1), ("DataIn", 32) ],
+    outports: [ ("DataOut", 32), ("Empty", 1), ("Full", 1) ]
+);

@@ -31,7 +31,7 @@ fn	CreateGate2( layout: &mut Layout, name: &str, parent: Option< ModuleId>, kind
 
 macro_rules! DefineGate2
 {
-    ( $gate:ident, $op:ident, $doc:expr) => {
+    ( $gate:ident, $op:ident, $gate_str:expr, $doc:expr) => {
         #[doc = $doc]
         #[derive( Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
         pub struct $gate
@@ -86,15 +86,24 @@ macro_rules! DefineGate2
         }
 
         crate::ImplFluxSource!( $gate, _Id, _In1, _In2, _Out);
+
+        crate::DefineModuleInterface!(
+            $gate,
+            $gate_str,
+            "1.0.0",
+            $doc,
+            inports: [ ("in1", 1), ("in2", 1) ],
+            outports: [ ("out", 1) ]
+        );
     };
 }
 
-DefineGate2!( NandGate, Nand, "2-Input NAND Gate");
-DefineGate2!( AndGate, And, "2-Input AND Gate");
-DefineGate2!( OrGate, Or, "2-Input OR Gate");
-DefineGate2!( XorGate, Xor, "2-Input XOR Gate");
-DefineGate2!( NorGate, Nor, "2-Input NOR Gate");
-DefineGate2!( XnorGate, Xnor, "2-Input XNOR Gate");
+DefineGate2!( NandGate, Nand, "nand_gate", "2-Input NAND Gate");
+DefineGate2!( AndGate, And, "and_gate", "2-Input AND Gate");
+DefineGate2!( OrGate, Or, "or_gate", "2-Input OR Gate");
+DefineGate2!( XorGate, Xor, "xor_gate", "2-Input XOR Gate");
+DefineGate2!( NorGate, Nor, "nor_gate", "2-Input NOR Gate");
+DefineGate2!( XnorGate, Xnor, "xnor_gate", "2-Input XNOR Gate");
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -164,3 +173,12 @@ impl IModule for NotGate
 //---------------------------------------------------------------------------------------------------------------------------------
 
 crate::ImplFluxSource!( NotGate, _Id, _In, _Out);
+
+crate::DefineModuleInterface!(
+    NotGate,
+    "not_gate",
+    "1.0.0",
+    "1-Input Inverter / NOT Gate",
+    inports: [ ("in", 1) ],
+    outports: [ ("out", 1) ]
+);

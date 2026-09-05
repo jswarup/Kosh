@@ -112,6 +112,7 @@ pub enum KernelKind
     Behavioral( Arc< dyn Fn( &[Reg], &mut [Reg]) + Send + Sync>),
     Custom( &'static str),
     Coro( CoroKernelFactory),
+    Trait( Arc< dyn crate::rube::kernel::IKernel>),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -126,6 +127,7 @@ impl fmt::Debug for KernelKind
             Self::Behavioral( _) => write!( f, "Behavioral( ..)"),
             Self::Custom( n) => write!( f, "Custom( {})", n),
             Self::Coro( _) => write!( f, "Coro( ..)"),
+            Self::Trait( t) => write!( f, "Trait( {})", t.Name()),
         }
     }
 }
@@ -165,6 +167,11 @@ impl KernelKind
                 let  	rawDyn: *const ( dyn Fn() -> CoroInstance + Send + Sync) = Arc::as_ptr( factory);
                 let  	vtablePtr = unsafe { std::mem::transmute::< _, ( usize, usize)>( rawDyn).1 };
                 return ( 4, vtablePtr);
+            }
+            KernelKind::Trait( tr) => {
+                let  	rawDyn: *const dyn crate::rube::kernel::IKernel = Arc::as_ptr( tr);
+                let  	vtablePtr = unsafe { std::mem::transmute::< _, ( usize, usize)>( rawDyn).1 };
+                return ( 5, vtablePtr);
             }
         };
     }
@@ -448,6 +455,7 @@ impl IFluxExportSource for KernelKind
             Self::Custom( name) => *field = FieldExp::Str( name),
             Self::Behavioral( _) => *field = FieldExp::Str( "Behavioral"),
             Self::Coro( _) => *field = FieldExp::Str( "Coro"),
+            Self::Trait( t) => *field = FieldExp::Str( t.Name()),
         }
     }
 }
@@ -511,6 +519,40 @@ impl BehavioralWarp
         modStart: U32,
         count: U32,
         instances: Buff< Arc< dyn Fn( &[Reg], &mut [Reg]) + Send + Sync>>,
+        inTriggers: Buff< Buff< TriggerId>>,
+        outTriggers: Buff< Buff< TriggerId>>,
+    ) -> Self
+    {
+        return Self {
+            _ModStart:    modStart,
+            _Count:       count,
+            _Instances:   instances,
+            _InTriggers:  inTriggers,
+            _OutTriggers: outTriggers,
+        };
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[derive( Clone)]
+pub struct TraitWarp
+{
+    pub _ModStart:    U32,
+    pub _Count:       U32,
+    pub _Instances:   Buff< Arc< dyn crate::rube::kernel::IKernel>>,
+    pub _InTriggers:  Buff< Buff< TriggerId>>,
+    pub _OutTriggers: Buff< Buff< TriggerId>>,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl TraitWarp
+{
+    pub fn	New(
+        modStart: U32,
+        count: U32,
+        instances: Buff< Arc< dyn crate::rube::kernel::IKernel>>,
         inTriggers: Buff< Buff< TriggerId>>,
         outTriggers: Buff< Buff< TriggerId>>,
     ) -> Self

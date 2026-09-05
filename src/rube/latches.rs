@@ -405,3 +405,34 @@ impl IModule for DLatch
 crate::ImplFluxSource!( RSLatch, _Id, _Nand1, _Nand2, _S, _R, _Q, _Q1);
 crate::ImplFluxSource!( CRSLatch, _Id, _GateS, _GateR, _RS, _Clk1, _Clk2, _S, _R, _Q, _Q1);
 crate::ImplFluxSource!( DLatch, _Id, _Not, _CRS, _D, _DInv, _E1, _E2, _Q, _Q1);
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+crate::DefineModuleInterface!(
+    RSLatch,
+    "rs_latch",
+    "1.0.0",
+    "Asynchronous RS Latch",
+    inports: [ ("S", 1), ("R", 1) ],
+    outports: [ ("Q", 1), ("Q1", 1) ]
+);
+
+crate::DefineModuleInterface!(
+    CRSLatch,
+    "crs_latch",
+    "1.0.0",
+    "Clocked RS Latch",
+    inports: [ ("Clk1", 1), ("Clk2", 1), ("S", 1), ("R", 1) ],
+    outports: [ ("Q", 1), ("Q1", 1) ]
+);
+
+crate::DefineModuleInterface!(
+    DLatch,
+    "d_latch",
+    "1.0.0",
+    "Transparent D-Latch",
+    inports: [ ("D", 1), ("DInv", 1), ("E1", 1), ("E2", 1) ],
+    outports: [ ("Q", 1), ("Q1", 1) ]
+);
+
+//---------------------------------------------------------------------------------------------------------------------------------

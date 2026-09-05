@@ -9,9 +9,41 @@ use	crate::{
         module::{ IModule, KernelKind, ModuleId },
         port::{ PortDesc, PortId },
         reg::Reg,
+        kernel::{ IKernel, KernelSignature, KernelError },
     },
     silo::{ Buff, Stash, U32, USeg },
 };
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+pub struct BusAdder32Kernel;
+
+impl IKernel for BusAdder32Kernel
+{
+    fn	Name( &self) -> &'static str { "BusAdder32_Kernel" }
+    fn	Version( &self) -> &'static str { "1.0.0" }
+    fn	Signature( &self) -> &'static KernelSignature
+    {
+        static SIG: KernelSignature = KernelSignature {
+            _InputPorts: 2,
+            _OutputPorts: 2,
+            _Parameters: &[],
+        };
+        &SIG
+    }
+
+    fn	Execute( &self, inputs: &[Reg], outputs: &mut [Reg]) -> Result< (), KernelError>
+    {
+        let  	aVal = inputs[0].Val();
+        let  	bVal = inputs[1].Val();
+        let  	sum = aVal.wrapping_add( bVal) & 0xFFFF_FFFF;
+        let  	carry = ( aVal + bVal) > 0xFFFF_FFFF;
+
+        outputs[0] = Reg::FromU32( U32( sum as u32));
+        outputs[1] = Reg::FromBool( carry);
+        Ok( ())
+    }
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -433,7 +465,7 @@ impl BusAdder32
             parent,
             &[ PortDesc::U32( "a"), PortDesc::U32( "b") ],
             &[ PortDesc::U32( "sum"), PortDesc::Bool( "carry") ],
-            KernelKind::Custom( "BusAdder32_Kernel"),
+            KernelKind::Trait( std::sync::Arc::new( BusAdder32Kernel)),
         );
 
         let  	a = layout.InPort( modId, 0).unwrap();
