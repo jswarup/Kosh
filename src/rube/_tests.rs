@@ -6,7 +6,7 @@ mod _tests
     use	crate::{
         rube::{
             adder::{ Adder, FullAdder, HalfAdder },
-            engine::SimEngine,
+            engine::{ SimEngine, SimEngineMode },
             gates::{ AndGate, NandGate, NotGate, OrGate, XorGate },
             latches::{ CRSLatch, DLatch },
             layout::Layout,
@@ -14,8 +14,9 @@ mod _tests
             netlist::INetlist,
             port::{ IPort, PortDesc, PortId },
             reg::Reg,
+            vcd::VcdWriter,
         },
-        silo::{ Stash, U32, USeg },
+        silo::{ ConsoleTest, Stash, U8, U32, USeg },
     };
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -1022,6 +1023,71 @@ b0100 %
         assert_eq!( engine.GetPortBool( ackPort), Some( Reg::FALSE));
         assert_eq!( engine.GetPortValue( resultPort), Some( Reg::Known( 0) ) );
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    ConsoleTest!( TestParallelDeterminism {
+        let  	mut layout = Layout::New();
+        let  	adder = Adder::< 8>::New( &mut layout, "test_adder", None);
+        layout.Freeze().unwrap();
+
+        let  	mut serialEngine = SimEngine::Create( &layout);
+        let  	mut parallelEngine = SimEngine::Create( &layout).WithMode( SimEngineMode::Parallel( U8( 4)));
+
+        let  	isConsole = crate::silo::IsConsoleEnabled();
+        let  	mut vcdOpt = if isConsole {
+            let  	w = VcdWriter::New( &layout, &parallelEngine);
+            let  	mut s = String::new();
+            w.WriteHeader( &layout, &parallelEngine, &mut s);
+            Some( ( w, s))
+        } else {
+            None
+        };
+
+        // 4 distinct test vectors x 25 cycles each = 100 cycles total
+        let  	testCases = [
+            ( 0x55u32, 0xAAu32, Reg::FALSE, 0xFFusize, false),
+            ( 0xFFu32, 0x01u32, Reg::FALSE, 0x00usize, true),
+            ( 0x7Fu32, 0x7Fu32, Reg::TRUE,  0xFFusize, false),
+            ( 0xFFu32, 0xFFu32, Reg::TRUE,  0xFFusize, true),
+        ];
+
+        for ( aVal, bVal, cinVal, expectedSum, expectedCarry) in testCases {
+            adder.SetA( &mut serialEngine, U32( aVal));
+            adder.SetB( &mut serialEngine, U32( bVal));
+            adder.SetCarryIn( &mut serialEngine, cinVal);
+
+            adder.SetA( &mut parallelEngine, U32( aVal));
+            adder.SetB( &mut parallelEngine, U32( bVal));
+            adder.SetCarryIn( &mut parallelEngine, cinVal);
+
+            for _ in 0..25 {
+                serialEngine.Drive();
+                parallelEngine.Drive();
+
+                assert_eq!( serialEngine._CycleCount, parallelEngine._CycleCount);
+                // Verify strict bit-for-bit parity across every single trigger in the circuit
+                assert_eq!( serialEngine._Triggers._CurrentVals, parallelEngine._Triggers._CurrentVals);
+
+                if let Some( ( ref w, ref mut s)) = vcdOpt {
+                    w.DumpCycle( &parallelEngine, s);
+                }
+            }
+
+            // Verify final converged arithmetic results on both engines
+            assert_eq!( adder.GetSum( &serialEngine), expectedSum);
+            assert_eq!( adder.GetSum( &parallelEngine), expectedSum);
+            assert_eq!( serialEngine.GetPortBool( adder.Carry()).unwrap().IsTrue(), expectedCarry);
+            assert_eq!( parallelEngine.GetPortBool( adder.Carry()).unwrap().IsTrue(), expectedCarry);
+        }
+
+        assert_eq!( parallelEngine._CycleCount, 100);
+
+        if let Some( ( _, ref vcdStr)) = vcdOpt {
+            crate::cprintln!( "{}", vcdStr);
+            let  	_ = std::fs::write( "test_parallel_determinism.vcd", vcdStr);
+        }
+    });
 }
 
 

@@ -16,7 +16,7 @@ use	crate::{
     },
     silo::{ Buff, IAccess, U32, U8, USeg, arr::IArr },
     stalks::{ CoroRes, ICoro, DynIWorker },
-    heist::{ Atelier, IAtelier, IMaestro, ChoreTarget, IChoreNode, SpawnQuellNode },
+    heist::{ Atelier, IAtelier, IMaestro },
     CpuSpawnQuell, ChoreTree,
 };
 
@@ -26,62 +26,71 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 
 static CURRENT_SIM_ENGINE: AtomicPtr<SimEngine> = AtomicPtr::new(std::ptr::null_mut());
 
-fn fast_warp_spawn<'a>(chunk: crate::silo::Arr<'a, FastWarp>, _w: &DynIWorker<'_>) {
-    let engine_ptr = CURRENT_SIM_ENGINE.load(Ordering::Acquire);
-    let engine = unsafe { &mut *engine_ptr };
-    let readyWords = &engine._ReadyWords;
-    let triggers = &mut engine._Triggers;
-    chunk.USeg().Traverse(|i| {
-        let warp = chunk.At(i);
-        let op = warp._Op;
-        let mask = warp._Mask;
-        let count = warp._Count.AsUsize();
-        let modStart = warp._ModStart.AsUsize();
-        SimEngine::ForEachReadyLane(readyWords, modStart, count, |l| {
-            let in1 = triggers._CurrentVals[warp._In1[l]];
-            let in2 = triggers._CurrentVals[warp._In2[l]];
-            triggers._FutureVals[warp._Out[l]] = op.Eval(in1, in2, mask);
+//---------------------------------------------------------------------------------------------------------------------------------
+
+fn	fast_warp_spawn< 'a>( chunk: crate::silo::Arr< 'a, FastWarp>, _w: &DynIWorker< '_>)
+{
+    let  	enginePtr = CURRENT_SIM_ENGINE.load( Ordering::Acquire);
+    let  	engine = unsafe { &mut *enginePtr };
+    let  	readyWords = &engine._ReadyWords;
+    let  	triggers = &mut engine._Triggers;
+    chunk.USeg().Traverse( |i| {
+        let  	warp = chunk.At( i);
+        let  	op = warp._Op;
+        let  	mask = warp._Mask;
+        let  	count = warp._Count.AsUsize();
+        let  	modStart = warp._ModStart.AsUsize();
+        SimEngine::ForEachReadyLane( readyWords, modStart, count, |l| {
+            let  	in1 = triggers._CurrentVals[warp._In1[l]];
+            let  	in2 = triggers._CurrentVals[warp._In2[l]];
+            triggers._FutureVals[warp._Out[l]] = op.Eval( in1, in2, mask);
         });
     });
 }
 
-fn custom_warp_spawn<'a>(chunk: crate::silo::Arr<'a, CustomWarp>, _w: &DynIWorker<'_>) {
-    let engine_ptr = CURRENT_SIM_ENGINE.load(Ordering::Acquire);
-    let engine = unsafe { &mut *engine_ptr };
-    let readyWords = &engine._ReadyWords;
-    let triggers = &mut engine._Triggers;
-    let customCallbacks = &engine._CustomCallbacks;
-    chunk.USeg().Traverse(|i| {
-        let warp = chunk.At(i);
-        let count = warp._Count.AsUsize();
-        let modStart = warp._ModStart.AsUsize();
-        let basePtr = engine._CustomWarps.Arr().Ptr();
-        let warpPtr = warp as *const CustomWarp;
-        let globalIdx = unsafe { warpPtr.offset_from(basePtr) as usize };
-        let cb = &customCallbacks[globalIdx];
+//---------------------------------------------------------------------------------------------------------------------------------
 
-        SimEngine::ForEachReadyLane(readyWords, modStart, count, |l| {
-            let inTrigs = &warp._InTriggers[l];
-            let outTrigs = &warp._OutTriggers[l];
-            SimEngine::EvalCustomInstance(cb, inTrigs, outTrigs, triggers);
+fn	custom_warp_spawn< 'a>( chunk: crate::silo::Arr< 'a, CustomWarp>, _w: &DynIWorker< '_>)
+{
+    let  	enginePtr = CURRENT_SIM_ENGINE.load( Ordering::Acquire);
+    let  	engine = unsafe { &mut *enginePtr };
+    let  	readyWords = &engine._ReadyWords;
+    let  	triggers = &mut engine._Triggers;
+    let  	customCallbacks = &engine._CustomCallbacks;
+    chunk.USeg().Traverse( |i| {
+        let  	warp = chunk.At( i);
+        let  	count = warp._Count.AsUsize();
+        let  	modStart = warp._ModStart.AsUsize();
+        let  	basePtr = engine._CustomWarps.Arr().Ptr();
+        let  	warpPtr = warp as *const CustomWarp;
+        let  	globalIdx = unsafe { warpPtr.offset_from( basePtr) as usize };
+        let  	cb = &customCallbacks[globalIdx];
+
+        SimEngine::ForEachReadyLane( readyWords, modStart, count, |l| {
+            let  	inTrigs = &warp._InTriggers[l];
+            let  	outTrigs = &warp._OutTriggers[l];
+            SimEngine::EvalCustomInstance( cb, inTrigs, outTrigs, triggers);
         });
     });
 }
 
-fn behavioral_warp_spawn<'a>(chunk: crate::silo::Arr<'a, BehavioralWarp>, _w: &DynIWorker<'_>) {
-    let engine_ptr = CURRENT_SIM_ENGINE.load(Ordering::Acquire);
-    let engine = unsafe { &mut *engine_ptr };
-    let readyWords = &engine._ReadyWords;
-    let triggers = &mut engine._Triggers;
-    chunk.USeg().Traverse(|i| {
-        let warp = chunk.At(i);
-        let count = warp._Count.AsUsize();
-        let modStart = warp._ModStart.AsUsize();
-        SimEngine::ForEachReadyLane(readyWords, modStart, count, |l| {
-            let cb = &warp._Instances[l];
-            let inTrigs = &warp._InTriggers[l];
-            let outTrigs = &warp._OutTriggers[l];
-            SimEngine::EvalCustomInstance(cb, inTrigs, outTrigs, triggers);
+//---------------------------------------------------------------------------------------------------------------------------------
+
+fn	behavioral_warp_spawn< 'a>( chunk: crate::silo::Arr< 'a, BehavioralWarp>, _w: &DynIWorker< '_>)
+{
+    let  	enginePtr = CURRENT_SIM_ENGINE.load( Ordering::Acquire);
+    let  	engine = unsafe { &mut *enginePtr };
+    let  	readyWords = &engine._ReadyWords;
+    let  	triggers = &mut engine._Triggers;
+    chunk.USeg().Traverse( |i| {
+        let  	warp = chunk.At( i);
+        let  	count = warp._Count.AsUsize();
+        let  	modStart = warp._ModStart.AsUsize();
+        SimEngine::ForEachReadyLane( readyWords, modStart, count, |l| {
+            let  	cb = &warp._Instances[l];
+            let  	inTrigs = &warp._InTriggers[l];
+            let  	outTrigs = &warp._OutTriggers[l];
+            SimEngine::EvalCustomInstance( cb, inTrigs, outTrigs, triggers);
         });
     });
 }
@@ -584,35 +593,6 @@ impl SimEngine
     pub fn	GetPortOutput( &self, id: PortId) -> Reg
     {
         return self.GetTrigger( self._PortToTrigger[id.Index()]);
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------------------
-
-#[cfg( test)]
-mod tests {
-    use super::*;
-    use crate::rube::{ Layout, Adder };
-
-    #[test]
-    fn	test_parallel_determinism()
-    {
-        let  	mut layout = Layout::New();
-        let  	adder = Adder::< 8>::New( &mut layout, "test_adder", None);
-        layout.Freeze().unwrap();
-
-        let  	mut serialEngine = SimEngine::Create( &layout);
-        let  	mut parallelEngine = SimEngine::Create( &layout).WithMode( SimEngineMode::Parallel( U8( 4)));
-
-        for _ in 0..100 {
-            serialEngine.Drive();
-            parallelEngine.Drive();
-
-            assert_eq!( serialEngine._CycleCount, parallelEngine._CycleCount);
-            let  	outSerial = serialEngine.GetPortOutput( adder._Carry);
-            let  	outParallel = parallelEngine.GetPortOutput( adder._Carry);
-            assert_eq!( outSerial, outParallel, "Mismatch between serial and parallel outputs");
-        }
     }
 }
 

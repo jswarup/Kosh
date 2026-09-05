@@ -19,7 +19,7 @@ mod _tests;
 
 pub use	adder::{ Adder, BusAdder32, FullAdder, HalfAdder };
 pub use	coro_kernel::{ CoroInstance, CoroKernelFactory, CoroPorts, CoroWarp, CORO_MAX_PORTS };
-pub use	engine::SimEngine;
+pub use	engine::{ SimEngine, SimEngineMode };
 pub use	gates::{ AndGate, NandGate, NotGate, OrGate, XorGate };
 pub use	latches::{ CRSLatch, DLatch, RSLatch };
 pub use	layout::{ Layout, LayoutError };

@@ -365,7 +365,9 @@ impl< 'a> IAtelier< 'a> for Atelier< 'a>
         let  	j = jobId.into();
         let  	s = succId.into();
         self._SuccIds.Arr().SetAt( j, &s);
-        self.SzPred( s).Add( 1);
+        if s != U16::_0 {
+            self.SzPred( s).Add( 1);
+        }
     }
 
     fn	ConstructJob< M: Into< U32>, S: Into< U16>>( &self, maestroIdx: M, succId: S, job: WorkPtr< 'a>, docStr: &'static str) -> U16
@@ -378,8 +380,11 @@ impl< 'a> IAtelier< 'a> for Atelier< 'a>
         }
         self._JobBuff.Arr().SetAt( jobId, &job);
         self._JobDocBuff.Arr().SetAt( jobId, &docStr);
+        self.SzPred( jobId).Store( U16::_0, Ordering::Release);
         if sId != 0 {
             self.SetSucc( jobId, sId);
+        } else {
+            self._SuccIds.Arr().SetAt( jobId, &U16::_0);
         }
         jobId
     }
