@@ -9,10 +9,10 @@ mod _tests
             engine::{ SimEngine, SimEngineMode },
             gates::{ AndGate, NandGate, NotGate, OrGate, XorGate },
             latches::{ CRSLatch, DLatch },
-            layout::Layout,
-            module::{ IModule, KernelKind },
+            layout::{ HierarchyBuilder, Layout },
+            module::{ HierModule, IModule, KernelKind, ModuleId, PortSpec },
             netlist::INetlist,
-            port::{ IPort, PortDesc, PortId },
+            port::{ IPort, PortDesc, PortId, PortType },
             reg::Reg,
             vcd::VcdWriter,
         },
@@ -1088,6 +1088,151 @@ b0100 %
             let  	_ = std::fs::write( "test_parallel_determinism.vcd", vcdStr);
         }
     });
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_hierarchical_module_encapsulation()
+    {
+        // Construct encapsulated 2-stage Adder Pipeline:
+        // Inputs: a (U32), b (U32), c (U32)
+        // Output: res (U32)
+        // Internal: Adder1 computes (a + b) -> sum1
+        //           Adder2 computes (sum1 + c) -> res
+        let  	mut inPorts = Stash::New();
+        inPorts.Push( PortSpec::Input( "a", PortType::U32Val));
+        inPorts.Push( PortSpec::Input( "b", PortType::U32Val));
+        inPorts.Push( PortSpec::Input( "c", PortType::U32Val));
+
+        let  	mut outPorts = Stash::New();
+        outPorts.Push( PortSpec::Output( "res", PortType::U32Val));
+
+        let  	mut pipeline = HierModule::New( "AdderPipeline", inPorts.IntoBuff(), outPorts.IntoBuff());
+
+        // Internal submodules: Adder1 and Adder2 (each is a BusAdder32_Kernel)
+        let  	adder1 = pipeline.AddSubModule( "Adder1", KernelKind::Custom( "BusAdder32_Kernel"))
+            .expect( "Failed to add Adder1");
+        let  	adder2 = pipeline.AddSubModule( "Adder2", KernelKind::Custom( "BusAdder32_Kernel"))
+            .expect( "Failed to add Adder2");
+
+        // Internal connection: Adder1.sum (outport 0) -> Adder2.a (inport 0)
+        pipeline.ConnectSubModules( adder1, 0, adder2, 0)
+            .expect( "Failed to connect Adder1 to Adder2");
+
+        // Boundary bindings:
+        // pipeline.a (inport 0) -> Adder1.a (inport 0)
+        pipeline.BindInPort( 0, adder1, 0).expect( "Failed to bind pipeline.a");
+        // pipeline.b (inport 1) -> Adder1.b (inport 1)
+        pipeline.BindInPort( 1, adder1, 1).expect( "Failed to bind pipeline.b");
+        // pipeline.c (inport 2) -> Adder2.b (inport 1)
+        pipeline.BindInPort( 2, adder2, 1).expect( "Failed to bind pipeline.c");
+        // Adder2.sum (outport 0) -> pipeline.res (outport 0)
+        pipeline.BindOutPort( 0, adder2, 0).expect( "Failed to bind pipeline.res");
+
+        // Seal the module to guarantee encapsulation and immutability
+        let  	sealedPipeline = pipeline.Seal().expect( "Failed to seal AdderPipeline");
+
+        // Top-level composition via HierarchyBuilder
+        let  	builder = HierarchyBuilder::New( "RubeTest_Top")
+            .AddSealedModule( "Pipeline", sealedPipeline)
+            .expect( "Failed to add sealed pipeline to builder");
+
+        let  	layout = builder.Build().expect( "Hierarchy build and flattening failed");
+        let  	mut engine = SimEngine::Create( &layout);
+
+        // Find the top-level ports in the flattened layout
+        // Pipeline is child 0 in RubeTest_Top (which is module 0, Pipeline is module 1)
+        let  	pipelineModId = ModuleId( U32( 1));
+        let  	portA = layout.InPort( pipelineModId, 0).unwrap();
+        let  	portB = layout.InPort( pipelineModId, 1).unwrap();
+        let  	portC = layout.InPort( pipelineModId, 2).unwrap();
+        let  	portRes = layout.OutPort( pipelineModId, 0).unwrap();
+
+        // Test vector 1: 15 + 25 + 60 = 100
+        engine.SetPortU32( portA, Reg::Known( 15));
+        engine.SetPortU32( portB, Reg::Known( 25));
+        engine.SetPortU32( portC, Reg::Known( 60));
+
+        USeg::New( U32::_0, U32( 5)).Traverse( |_| {
+            engine.Drive();
+        });
+
+        let  	resVal1 = engine.GetPortU32( portRes).unwrap();
+        assert_eq!( resVal1, Reg::Known( 100));
+
+        // Test vector 2: 1000 + 2000 + 3000 = 6000
+        engine.SetPortU32( portA, Reg::Known( 1000));
+        engine.SetPortU32( portB, Reg::Known( 2000));
+        engine.SetPortU32( portC, Reg::Known( 3000));
+
+        USeg::New( U32::_0, U32( 5)).Traverse( |_| {
+            engine.Drive();
+        });
+
+        let  	resVal2 = engine.GetPortU32( portRes).unwrap();
+        assert_eq!( resVal2, Reg::Known( 6000));
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_hierarchical_nested_containers()
+    {
+        let  	mut midIn = Stash::New();
+        midIn.Push( PortSpec::Input( "x", PortType::U32Val));
+        midIn.Push( PortSpec::Input( "y", PortType::U32Val));
+        let  	mut midOut = Stash::New();
+        midOut.Push( PortSpec::Output( "z", PortType::U32Val));
+
+        let  	mut midModule = HierModule::New( "MidAdder", midIn.IntoBuff(), midOut.IntoBuff());
+        let  	leafAdder = midModule.AddSubModule( "Core", KernelKind::Custom( "BusAdder32_Kernel")).unwrap();
+        midModule.BindInPort( 0, leafAdder, 0).unwrap();
+        midModule.BindInPort( 1, leafAdder, 1).unwrap();
+        midModule.BindOutPort( 0, leafAdder, 0).unwrap();
+        let  	sealedMid = midModule.Seal().unwrap();
+
+        let  	mut topIn = Stash::New();
+        topIn.Push( PortSpec::Input( "v1", PortType::U32Val));
+        topIn.Push( PortSpec::Input( "v2", PortType::U32Val));
+        topIn.Push( PortSpec::Input( "v3", PortType::U32Val));
+        let  	mut topOut = Stash::New();
+        topOut.Push( PortSpec::Output( "vout", PortType::U32Val));
+
+        let  	mut topModule = HierModule::New( "TopContainer", topIn.IntoBuff(), topOut.IntoBuff());
+        let  	stage1 = topModule.AddSealedSubModule( "Stage1", sealedMid.clone()).unwrap();
+        let  	stage2 = topModule.AddSealedSubModule( "Stage2", sealedMid).unwrap();
+
+        topModule.BindInPort( 0, stage1, 0).unwrap();
+        topModule.BindInPort( 1, stage1, 1).unwrap();
+        topModule.ConnectSubModules( stage1, 0, stage2, 0).unwrap();
+        topModule.BindInPort( 2, stage2, 1).unwrap();
+        topModule.BindOutPort( 0, stage2, 0).unwrap();
+
+        let  	sealedTop = topModule.Seal().unwrap();
+
+        let  	layout = HierarchyBuilder::New( "Root")
+            .AddSealedModule( "DUT", sealedTop)
+            .unwrap()
+            .Build()
+            .unwrap();
+
+        let  	mut engine = SimEngine::Create( &layout);
+        let  	dutModId = ModuleId( U32( 1));
+        let  	pV1 = layout.InPort( dutModId, 0).unwrap();
+        let  	pV2 = layout.InPort( dutModId, 1).unwrap();
+        let  	pV3 = layout.InPort( dutModId, 2).unwrap();
+        let  	pVOut = layout.OutPort( dutModId, 0).unwrap();
+
+        engine.SetPortU32( pV1, Reg::Known( 111));
+        engine.SetPortU32( pV2, Reg::Known( 222));
+        engine.SetPortU32( pV3, Reg::Known( 333));
+
+        USeg::New( U32::_0, U32( 5)).Traverse( |_| {
+            engine.Drive();
+        });
+
+        assert_eq!( engine.GetPortU32( pVOut).unwrap(), Reg::Known( 666));
+    }
 }
 
 

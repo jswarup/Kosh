@@ -9,7 +9,10 @@ use	crate::{
 
     rube::{
         coro_kernel::{ CoroInstance, CoroWarp },
-        module::{ BehavioralWarp, CustomModule, CustomWarp, FastModule, FastWarp, IModule, KernelKind, Module, ModuleId },
+        module::{
+            BehavioralWarp, CustomModule, CustomWarp, FastModule, FastWarp, HierModule, HierarchyError,
+            IModule, KernelKind, Module, ModuleId, PortAccess, PortRef, SealedModule,
+        },
         netlist::{ INetlist, Netlist },
         port::{ IPort, PortDesc, PortDir, PortId, PortType },
         reg::Reg,
@@ -906,9 +909,159 @@ impl Layout
 
         return ( fastModules.IntoBuff(), customModules.IntoBuff());
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	ResolveHierPort( &self, portRef: &PortRef, thisFlatId: ModuleId, childMap: &Stash< ModuleId>) -> PortId
+    {
+        let  	targetFlatModId = if portRef._ModuleId.0 == U32::_X {
+            thisFlatId
+        } else {
+            let  	cIdx = portRef._ModuleId.0;
+            assert!( cIdx < childMap.Size(), "Child module index out of bounds in hierarchy");
+            childMap[cIdx]
+        };
+
+        return match portRef._Access {
+            PortAccess::InPort( pIdx) => {
+                self.InPort( targetFlatModId, pIdx)
+                    .expect( "Invalid inport index resolving port ref")
+            }
+            PortAccess::OutPort( pIdx) => {
+                self.OutPort( targetFlatModId, pIdx)
+                    .expect( "Invalid outport index resolving port ref")
+            }
+        };
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	FlattenModule(
+        &mut self,
+        module: &HierModule,
+        parentFlatId: Option< ModuleId>,
+    ) -> Result< ModuleId, HierarchyError>
+    {
+        let  	mut inPortDescs = Stash::WithCapacity( module._InPorts.Size());
+        module._InPorts.Arr().Traverse( |spec| {
+            inPortDescs.Push( PortDesc::New( spec._Name.clone(), spec._Type));
+        });
+
+        let  	mut outPortDescs = Stash::WithCapacity( module._OutPorts.Size());
+        module._OutPorts.Arr().Traverse( |spec| {
+            outPortDescs.Push( PortDesc::New( spec._Name.clone(), spec._Type));
+        });
+
+        let  	inArr = inPortDescs.IntoBuff();
+        let  	outArr = outPortDescs.IntoBuff();
+
+        let  	thisFlatId = self.AddModule(
+            &module._Name,
+            parentFlatId,
+            inArr.Arr(),
+            outArr.Arr(),
+            module._Kernel.clone(),
+        );
+
+        let  	childCount = module._Children.Size();
+        let  	mut childMap = Stash::WithCapacity( childCount);
+        USeg::New( U32::_0, childCount).Traverse( |idx| {
+            let  	childModule = &module._Children[idx];
+            let  	childFlatId = self.FlattenModule( childModule, Some( thisFlatId))
+                .expect( "Failed to flatten child module");
+            childMap.Push( childFlatId);
+        });
+
+        module._Connections.Arr().Traverse( |conn| {
+            let  	srcPort = self.ResolveHierPort( &conn._Src, thisFlatId, &childMap);
+            let  	dstPort = self.ResolveHierPort( &conn._Dst, thisFlatId, &childMap);
+            self.ConnectPorts( srcPort, dstPort);
+        });
+
+        let  	inCount = module._InPorts.Size();
+        USeg::New( U32::_0, inCount).Traverse( |i| {
+            let  	driverRef = &module._InPortDrivers[i];
+            if driverRef._ModuleId.0 != U32::_X {
+                let  	thisIn = self.InPort( thisFlatId, i).unwrap();
+                let  	childIn = self.ResolveHierPort( driverRef, thisFlatId, &childMap);
+                self.ConnectPorts( thisIn, childIn);
+            }
+        });
+
+        let  	outCount = module._OutPorts.Size();
+        USeg::New( U32::_0, outCount).Traverse( |i| {
+            let  	sourceRef = &module._OutPortSources[i];
+            if sourceRef._ModuleId.0 != U32::_X {
+                let  	thisOut = self.OutPort( thisFlatId, i).unwrap();
+                let  	childOut = self.ResolveHierPort( sourceRef, thisFlatId, &childMap);
+                self.ConnectPorts( childOut, thisOut);
+            }
+        });
+
+        return Ok( thisFlatId);
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
+
+pub struct HierarchyBuilder
+{
+    pub _Root: HierModule,
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl HierarchyBuilder
+{
+    pub fn	New( topName: &str) -> Self
+    {
+        return Self {
+            _Root: HierModule::New( topName, Buff::New(), Buff::New()),
+        };
+    }
+
+    #[inline]
+    pub fn	Root( &self) -> &HierModule
+    {
+        return &self._Root;
+    }
+
+    #[inline]
+    pub fn	RootMut( &mut self) -> &mut HierModule
+    {
+        return &mut self._Root;
+    }
+
+    pub fn	AddModule< F>( mut self, name: &str, setup: F) -> Result< Self, HierarchyError>
+    where
+        F: FnOnce( &mut HierModule) -> Result< (), HierarchyError>,
+    {
+        let  	mut module = HierModule::New( name, Buff::New(), Buff::New());
+        setup( &mut module)?;
+        let  	sealed = module.Seal()?;
+        self._Root.AddSealedSubModule( name, sealed)?;
+        return Ok( self);
+    }
+
+    pub fn	AddSealedModule( mut self, name: &str, sealed: SealedModule) -> Result< Self, HierarchyError>
+    {
+        self._Root.AddSealedSubModule( name, sealed)?;
+        return Ok( self);
+    }
+
+    pub fn	Build( self) -> Result< Layout, HierarchyError>
+    {
+        let  	sealedRoot = if self._Root._IsSealed {
+            SealedModule( self._Root)
+        } else {
+            self._Root.Seal()?
+        };
+        let  	mut layout = Layout::New();
+        layout.FlattenModule( sealedRoot.AsModule(), None)?;
+        layout.Freeze().map_err( |_| HierarchyError::NotSealed)?;
+        return Ok( layout);
+    }
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 

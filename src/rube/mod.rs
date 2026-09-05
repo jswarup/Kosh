@@ -22,8 +22,11 @@ pub use	coro_kernel::{ CoroInstance, CoroKernelFactory, CoroPorts, CoroWarp, COR
 pub use	engine::{ SimEngine, SimEngineMode };
 pub use	gates::{ AndGate, NandGate, NotGate, OrGate, XorGate };
 pub use	latches::{ CRSLatch, DLatch, RSLatch };
-pub use	layout::{ Layout, LayoutError };
-pub use	module::{ CustomModule, CustomWarp, FastModule, FastWarp, KernelKind, KernelOp, Module, ModuleId };
+pub use	layout::{ HierarchyBuilder, Layout, LayoutError };
+pub use	module::{
+    CustomModule, CustomWarp, FastModule, FastWarp, HierModule, HierarchyError,
+    KernelKind, KernelOp, Module, ModuleId, PortAccess, PortRef, PortSpec, SealedModule,
+};
 pub use	netlist::{ INetlist, Netlist };
 pub use	port::{ PortDesc, PortDir, PortId, PortType };
 pub use	reg::{ Reg, RegVal };
