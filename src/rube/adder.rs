@@ -580,6 +580,44 @@ crate::ImplFluxSource!( FullAdder, _Id, _HA1, _HA2, _Or, _In1, _In2, _CIn, _Sum,
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+crate::DefineModuleInterface!(
+    BusAdder32,
+    "bus_adder_32",
+    "1.0.0",
+    "32-bit high-performance bus adder with carry-out",
+    inports: [ ("a", 32), ("b", 32) ],
+    outports: [ ("sum", 32), ("carry", 1) ]
+);
+
+crate::DefineModuleInterface!(
+    HalfAdder,
+    "half_adder",
+    "1.0.0",
+    "1-bit half adder",
+    inports: [ ("a", 1), ("b", 1) ],
+    outports: [ ("sum", 1), ("carry", 1) ]
+);
+
+crate::DefineModuleInterface!(
+    FullAdder,
+    "full_adder",
+    "1.0.0",
+    "1-bit full adder",
+    inports: [ ("a", 1), ("b", 1), ("cin", 1) ],
+    outports: [ ("sum", 1), ("carry", 1) ]
+);
+
+crate::DefineModuleInterface!(
+    AdderPipeline,
+    "adder_pipeline",
+    "1.0.0",
+    "2-stage 32-bit adder pipeline",
+    inports: [ ("a", 32), ("b", 32), ("c", 32) ],
+    outports: [ ("sum", 32), ("carry", 1) ]
+);
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl< const N: usize> IFluxExportSource for Adder< N>
 {
     fn	FetchFieldExp< 'a>( &'a self, field: &mut FieldExp< 'a>)
