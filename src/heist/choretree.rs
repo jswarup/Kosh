@@ -397,7 +397,6 @@ where
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Copy, Clone)]
 pub struct SpawnQuellNode< 'a, T>
 {
     pub _Data:       Arr< 'a, T>,
@@ -407,6 +406,11 @@ pub struct SpawnQuellNode< 'a, T>
     pub _SpawnFn:    fn( Arr< 'a, T>, &DynIWorker< '_>),
     pub _QuellFn:    fn( Arr< 'a, T>, &DynIWorker< '_>),
 }
+
+impl< 'a, T> Clone for SpawnQuellNode< 'a, T> {
+    fn clone(&self) -> Self { *self }
+}
+impl< 'a, T> Copy for SpawnQuellNode< 'a, T> {}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -432,14 +436,18 @@ impl< 'a, T> SpawnQuellNode< 'a, T>
     }
 }
 
-#[derive( Copy, Clone)]
 pub struct SpawnChunkWork< 'a, T>
 {
     pub _Data:    Arr< 'a, T>,
     pub _SpawnFn: fn( Arr< 'a, T>, &DynIWorker< '_>),
 }
 
-impl< 'a, T: Copy + Send + Sync> IWork for SpawnChunkWork< 'a, T>
+impl< 'a, T> Clone for SpawnChunkWork< 'a, T> {
+    fn clone(&self) -> Self { *self }
+}
+impl< 'a, T> Copy for SpawnChunkWork< 'a, T> {}
+
+impl< 'a, T: Send + Sync> IWork for SpawnChunkWork< 'a, T>
 {
     fn	DoWork( &mut self, worker: &DynIWorker< '_>)
     {
@@ -447,14 +455,18 @@ impl< 'a, T: Copy + Send + Sync> IWork for SpawnChunkWork< 'a, T>
     }
 }
 
-#[derive( Copy, Clone)]
 pub struct QuellWork< 'a, T>
 {
     pub _Data:    Arr< 'a, T>,
     pub _QuellFn: fn( Arr< 'a, T>, &DynIWorker< '_>),
 }
 
-impl< 'a, T: Copy + Send + Sync> IWork for QuellWork< 'a, T>
+impl< 'a, T> Clone for QuellWork< 'a, T> {
+    fn clone(&self) -> Self { *self }
+}
+impl< 'a, T> Copy for QuellWork< 'a, T> {}
+
+impl< 'a, T: Send + Sync> IWork for QuellWork< 'a, T>
 {
     fn	DoWork( &mut self, worker: &DynIWorker< '_>)
     {
@@ -464,7 +476,7 @@ impl< 'a, T: Copy + Send + Sync> IWork for QuellWork< 'a, T>
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl< 'a, T: Copy + Send + Sync> IChoreNode for SpawnQuellNode< 'a, T>
+impl< 'a, T: Send + Sync> IChoreNode for SpawnQuellNode< 'a, T>
 {
     fn	Weight( &self) -> U32
     {
@@ -495,7 +507,8 @@ impl< 'a, T: Copy + Send + Sync> IChoreNode for SpawnQuellNode< 'a, T>
             return spawnJobId;
         }
 
-        let  	numMaestros = maestro.Atelier().Maestros().Size();
+        let  	numMaestros = maestro.Atelier().ActiveWorkers();
+        let  	numMaestros = if numMaestros == U32( 0) { U32( 1) } else { numMaestros };
         let  	mut c = numMaestros * U32( 2);
         let  	maxChunks = totalWeight / fusionThres;
         if c > maxChunks {

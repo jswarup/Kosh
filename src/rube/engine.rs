@@ -14,9 +14,86 @@ use	crate::{
         registry::{ CustomKernelFn, KernelRegistry },
         trigger::{ ITriggerWad, TriggerId, TriggerWad },
     },
-    silo::{ Buff, IAccess, U32, USeg },
-    stalks::{ CoroRes, ICoro },
+    silo::{ Buff, IAccess, U32, U8, USeg, arr::IArr },
+    stalks::{ CoroRes, ICoro, DynIWorker },
+    heist::{ Atelier, IAtelier, IMaestro, ChoreTarget, IChoreNode, SpawnQuellNode },
+    CpuSpawnQuell, ChoreTree,
 };
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+use std::sync::atomic::{AtomicPtr, Ordering};
+
+static CURRENT_SIM_ENGINE: AtomicPtr<SimEngine> = AtomicPtr::new(std::ptr::null_mut());
+
+fn fast_warp_spawn<'a>(chunk: crate::silo::Arr<'a, FastWarp>, _w: &DynIWorker<'_>) {
+    let engine_ptr = CURRENT_SIM_ENGINE.load(Ordering::Acquire);
+    let engine = unsafe { &mut *engine_ptr };
+    let readyWords = &engine._ReadyWords;
+    let triggers = &mut engine._Triggers;
+    chunk.USeg().Traverse(|i| {
+        let warp = chunk.At(i);
+        let op = warp._Op;
+        let mask = warp._Mask;
+        let count = warp._Count.AsUsize();
+        let modStart = warp._ModStart.AsUsize();
+        SimEngine::ForEachReadyLane(readyWords, modStart, count, |l| {
+            let in1 = triggers._CurrentVals[warp._In1[l]];
+            let in2 = triggers._CurrentVals[warp._In2[l]];
+            triggers._FutureVals[warp._Out[l]] = op.Eval(in1, in2, mask);
+        });
+    });
+}
+
+fn custom_warp_spawn<'a>(chunk: crate::silo::Arr<'a, CustomWarp>, _w: &DynIWorker<'_>) {
+    let engine_ptr = CURRENT_SIM_ENGINE.load(Ordering::Acquire);
+    let engine = unsafe { &mut *engine_ptr };
+    let readyWords = &engine._ReadyWords;
+    let triggers = &mut engine._Triggers;
+    let customCallbacks = &engine._CustomCallbacks;
+    chunk.USeg().Traverse(|i| {
+        let warp = chunk.At(i);
+        let count = warp._Count.AsUsize();
+        let modStart = warp._ModStart.AsUsize();
+        let basePtr = engine._CustomWarps.Arr().Ptr();
+        let warpPtr = warp as *const CustomWarp;
+        let globalIdx = unsafe { warpPtr.offset_from(basePtr) as usize };
+        let cb = &customCallbacks[globalIdx];
+
+        SimEngine::ForEachReadyLane(readyWords, modStart, count, |l| {
+            let inTrigs = &warp._InTriggers[l];
+            let outTrigs = &warp._OutTriggers[l];
+            SimEngine::EvalCustomInstance(cb, inTrigs, outTrigs, triggers);
+        });
+    });
+}
+
+fn behavioral_warp_spawn<'a>(chunk: crate::silo::Arr<'a, BehavioralWarp>, _w: &DynIWorker<'_>) {
+    let engine_ptr = CURRENT_SIM_ENGINE.load(Ordering::Acquire);
+    let engine = unsafe { &mut *engine_ptr };
+    let readyWords = &engine._ReadyWords;
+    let triggers = &mut engine._Triggers;
+    chunk.USeg().Traverse(|i| {
+        let warp = chunk.At(i);
+        let count = warp._Count.AsUsize();
+        let modStart = warp._ModStart.AsUsize();
+        SimEngine::ForEachReadyLane(readyWords, modStart, count, |l| {
+            let cb = &warp._Instances[l];
+            let inTrigs = &warp._InTriggers[l];
+            let outTrigs = &warp._OutTriggers[l];
+            SimEngine::EvalCustomInstance(cb, inTrigs, outTrigs, triggers);
+        });
+    });
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[derive( Copy, Clone, PartialEq, Eq)]
+pub enum SimEngineMode
+{
+    Serial,
+    Parallel( U8),
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -31,6 +108,7 @@ pub struct SimEngine
     pub _PortToTrigger:   Buff< TriggerId>,
     pub _ReadyWords:      Buff< u64>,
     pub _CycleCount:      usize,
+    pub _Mode:            SimEngineMode,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -70,7 +148,14 @@ impl SimEngine
             _PortToTrigger:   portToTrigger,
             _ReadyWords:      readyWords,
             _CycleCount:      0,
+            _Mode:            SimEngineMode::Serial,
         };
+    }
+
+    pub fn	WithMode( mut self, mode: SimEngineMode) -> Self
+    {
+        self._Mode = mode;
+        self
     }
 
     #[inline]
@@ -141,12 +226,60 @@ impl SimEngine
     #[inline]
     pub fn	Drive( &mut self) -> usize
     {
+        if let SimEngineMode::Parallel( numWorkers) = self._Mode {
+            return self.Drive_Parallel( numWorkers);
+        }
+
         let  	hasReady = self.ResolveReadyModules();
 
         if hasReady {
             self.EvalFastWarps();
             self.EvalCustomWarps();
             self.EvalBehavioralWarps();
+            self.EvalCoroWarps();
+        }
+
+        self._Triggers.AdvanceAll();
+        self._CycleCount += 1;
+        return self._CycleCount;
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	Drive_Parallel( &mut self, numWorkers: U8) -> usize
+    {
+        let  	hasReady = self.ResolveReadyModules();
+
+        if hasReady {
+            Atelier::Init( U32( numWorkers.0 as u32));
+            let  	atelier = Atelier::Get();
+
+            // Store the engine pointer in our thread-safe static for parallel workers to access
+            CURRENT_SIM_ENGINE.store( self as *mut SimEngine, std::sync::atomic::Ordering::Release);
+
+            let  	fastNode = CpuSpawnQuell!(
+                self._FastWarps.Arr(),
+                fast_warp_spawn,
+                |_chunk, _w| {} // No-op quell
+            );
+
+            let  	customNode = CpuSpawnQuell!(
+                self._CustomWarps.Arr(),
+                custom_warp_spawn,
+                |_chunk, _w| {}
+            );
+
+            let  	behavioralNode = CpuSpawnQuell!(
+                self._BehavioralWarps.Arr(),
+                behavioral_warp_spawn,
+                |_chunk, _w| {}
+            );
+
+            // Compose parallel execution graph
+            let  	warpPhase = ChoreTree!( fastNode | customNode | behavioralNode );
+            atelier.MainMaestro().PostChoreTree( &warpPhase );
+            atelier.DoLaunch();
+
             self.EvalCoroWarps();
         }
 
@@ -445,6 +578,41 @@ impl SimEngine
     pub fn	IsEdge( &self, id: TriggerId) -> bool
     {
         return self._Triggers.IsEdge( id);
+    }
+
+    #[inline]
+    pub fn	GetPortOutput( &self, id: PortId) -> Reg
+    {
+        return self.GetTrigger( self._PortToTrigger[id.Index()]);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+#[cfg( test)]
+mod tests {
+    use super::*;
+    use crate::rube::{ Layout, Adder };
+
+    #[test]
+    fn	test_parallel_determinism()
+    {
+        let  	mut layout = Layout::New();
+        let  	adder = Adder::< 8>::New( &mut layout, "test_adder", None);
+        layout.Freeze().unwrap();
+
+        let  	mut serialEngine = SimEngine::Create( &layout);
+        let  	mut parallelEngine = SimEngine::Create( &layout).WithMode( SimEngineMode::Parallel( U8( 4)));
+
+        for _ in 0..100 {
+            serialEngine.Drive();
+            parallelEngine.Drive();
+
+            assert_eq!( serialEngine._CycleCount, parallelEngine._CycleCount);
+            let  	outSerial = serialEngine.GetPortOutput( adder._Carry);
+            let  	outParallel = parallelEngine.GetPortOutput( adder._Carry);
+            assert_eq!( outSerial, outParallel, "Mismatch between serial and parallel outputs");
+        }
     }
 }
 

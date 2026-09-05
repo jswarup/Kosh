@@ -26,6 +26,10 @@ pub trait IAtelier< 'a>
     where
         Self: Sized;
     fn	DoLaunch( &self);
+    fn	SetWorkerCount< S: Into< U32>>( &self, newSz: S)
+    where
+        Self: Sized;
+    fn	ActiveWorkers( &self) -> U32;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -46,6 +50,7 @@ pub struct Atelier< 'a>
     _FusionThres:  U32,
     _Swarm:        Option< Arc< SwarmEngine>>,                          // Shared heterogeneous compute runtime instance
     _WorkerThreads:Buff< OnceLock< thread::Thread>>,
+    _ActiveWorkers:Atm< U32>,
 }
 
 
@@ -56,37 +61,26 @@ impl Atelier< 'static>
     pub fn	Init< S: Into< U32>>( szMaestro: S)
     {
         let  	sz = szMaestro.into();
-        let  	atelier = Atelier::New( sz);
-        if GLOBAL_ATELIER.set( atelier).is_err() {
-            return;
-        }
-        let  	globalAtelier = Self::Get();
-
-        globalAtelier._Maestros.Arr().USeg().Traverse( |mIdx| {
-            globalAtelier._Maestros.Arr().MutAt( mIdx).SetAtelier( globalAtelier);
-        });
-
-        if sz > U32( 1) {
-            USeg::New( U32( 1), sz - U32( 1)).Traverse( |maestroIdx| {
-                let  	handle = thread::spawn( move || {
-                    Maestro::SetCurrentIndex( maestroIdx);
-                    loop {
-                        globalAtelier.ExecuteLoop( maestroIdx);
-                        thread::park();
-                    }
+        let  	isSet = GLOBAL_ATELIER.get().is_some();
+        if !isSet {
+            let  	atelier = Atelier::New( sz);
+            if GLOBAL_ATELIER.set( atelier).is_ok() {
+                let  	globalAtelier = GLOBAL_ATELIER.get().unwrap();
+                globalAtelier._Maestros.Arr().USeg().Traverse( |mIdx| {
+                    globalAtelier._Maestros.Arr().MutAt( mIdx).SetAtelier( globalAtelier);
                 });
-                globalAtelier._WorkerThreads.Arr().At( maestroIdx.AsU32()).set( handle.thread().clone()).unwrap();
-            });
+            }
         }
+        let  	globalAtelier = GLOBAL_ATELIER.get().unwrap();
+        globalAtelier.SetWorkerCount( sz);
     }
 
     pub fn	Get() -> &'static Atelier< 'static>
     {
-        GLOBAL_ATELIER.get_or_init( || {
-            let  	atelier = Atelier::New( U32( 4)); // Default to 4 workers if auto-initialized
-            let  	_sz = atelier._Maestros.Size();
-            panic!( "Atelier must be initialized explicitly via Atelier::Init");
-        })
+        if GLOBAL_ATELIER.get().is_none() {
+            Self::Init( U32( 0)); // Standardize on szMaestro = 0
+        }
+        GLOBAL_ATELIER.get().unwrap()
     }
 
     pub fn	Post( job: impl crate::stalks::IntoWorkPtr< 'static> + 'static)
@@ -98,7 +92,11 @@ impl Atelier< 'static>
         maestro.EnqueueJob( jobId);
         maestro.FlushTempQueue();
 
-        atelier.WakeWorker();
+        if atelier._ActiveWorkers.Load( Ordering::Acquire) == U32( 0) {
+            atelier.ExecuteLoop( maestroIdx);
+        } else {
+            atelier.WakeWorker();
+        }
     }
 
     pub fn	PostChoreTree( jobTree: impl crate::heist::choretree::IChoreNode + 'static)
@@ -108,7 +106,11 @@ impl Atelier< 'static>
         let  	maestro = atelier._Maestros.Arr().MutAt( maestroIdx);
         maestro.PostChoreTree( &jobTree);
         maestro.FlushTempQueue();
-        atelier.WakeWorker();
+        if atelier._ActiveWorkers.Load( Ordering::Acquire) == U32( 0) {
+            atelier.ExecuteLoop( maestroIdx);
+        } else {
+            atelier.WakeWorker();
+        }
     }
 
     pub fn	Wait()
@@ -131,9 +133,10 @@ impl< 'a> Atelier< 'a>
     pub fn	New< S: Into< U32>>( szMaestro: S) -> Atelier< 'a>
     {
         let  	sz = szMaestro.into();
+        let  	maxSz = U32( 64);
         let  	mut atelier = Self {
             _SzSchedJob:   Atm::New( U32::_0),
-            _Maestros:     Buff::Create( sz, Maestro::New),
+            _Maestros:     Buff::Create( maxSz, Maestro::New),
             _SzPreds:      Buff::Create( U32::_16Sz, |_i| Atm::New( U16::_0)),
             _SuccIds:      Buff::< U16>::Create( U32::_16Sz, |_| U16::_0),
             _FreeJobLock:  Spinlock::New(),
@@ -143,7 +146,8 @@ impl< 'a> Atelier< 'a>
             _Terminal:     U16::_0,
             _FusionThres:  U32( 2),
             _Swarm:        None,
-            _WorkerThreads:Buff::Create( sz, |_| OnceLock::new()),
+            _WorkerThreads:Buff::Create( maxSz, |_| OnceLock::new()),
+            _ActiveWorkers:Atm::New( sz),
         };
         atelier._FreeJobStash.DoIndexSetup();
         atelier._Terminal = atelier.ConstructJob( U32::_0, U16::_0, WorkPtr::Dummy(), "Terminal");
@@ -194,7 +198,7 @@ impl< 'a> Atelier< 'a>
 
     pub( crate) fn	WakeWorker( &self)
     {
-        let  	sz = self._Maestros.Size();
+        let  	sz = self._ActiveWorkers.Load( Ordering::Acquire);
         if sz > U32( 1) {
             USeg::New( U32( 1), sz - U32( 1)).Traverse( |mIdx| {
                 if let Some( t) = self._WorkerThreads.Arr().At( mIdx.AsU32()).get() {
@@ -249,7 +253,8 @@ impl< 'a> Atelier< 'a>
     fn	GrabJob( &self, idx: U32, stealSeed: &mut u32) -> U16
     {
         let  	maestros = self._Maestros.Arr();
-        let  	sz = maestros.Size();
+        let  	active = self._ActiveWorkers.Load( Ordering::Acquire);
+        let  	sz = if active == U32( 0) { U32( 1) } else { active };
         let  	knuthMultHash = 2654435761u32;
         *stealSeed = stealSeed.wrapping_mul( knuthMultHash).wrapping_add( 1u32);
         let  	seed = *stealSeed;
@@ -382,7 +387,8 @@ impl< 'a> IAtelier< 'a> for Atelier< 'a>
     fn	DoLaunch( &self)
     {
         let  	maestros = self._Maestros.Arr();
-        let  	sz = maestros.Size();
+        let  	active = self._ActiveWorkers.Load( Ordering::Acquire);
+        let  	sz = if active == U32( 0) { U32( 1) } else { active };
         scope( |s| {
             if sz > U32( 1) {
                 USeg::New( U32( 1), sz - U32( 1)).Traverse( |maestroIdx| {
@@ -395,10 +401,44 @@ impl< 'a> IAtelier< 'a> for Atelier< 'a>
         });
         println!();
         print!( "Atelier[ ");
-        maestros.USeg().Traverse( |maestroIdx| {
+        USeg::New( U32( 0), sz).Traverse( |maestroIdx| {
             print!( "( Maestro-{}: {})", maestroIdx, maestros.At( maestroIdx).SzProcessed());
         });
         println!( "]");
+    }
+
+    fn	SetWorkerCount< S: Into< U32>>( &self, newSz: S)
+    {
+        let  	sz = newSz.into();
+        let  	maxSz = U32( 64);
+        let  	targetSz = if sz > maxSz { maxSz } else { sz };
+
+        self._ActiveWorkers.Store( targetSz, Ordering::Release);
+
+        if targetSz > U32( 1) {
+            USeg::New( U32( 1), targetSz - U32( 1)).Traverse( |maestroIdx| {
+                let  	threadSlot = self._WorkerThreads.Arr().At( maestroIdx.AsU32());
+                if threadSlot.get().is_none() {
+                    let  	handle = thread::spawn( move || {
+                        Maestro::SetCurrentIndex( maestroIdx);
+                        loop {
+                            let  	active = Atelier::Get()._ActiveWorkers.Load( Ordering::Acquire);
+                            if maestroIdx < active {
+                                Atelier::Get().ExecuteLoop( maestroIdx);
+                            }
+                            thread::park();
+                        }
+                    });
+                    threadSlot.set( handle.thread().clone()).unwrap();
+                }
+            });
+        }
+        self.WakeWorker();
+    }
+
+    fn	ActiveWorkers( &self) -> U32
+    {
+        self._ActiveWorkers.Load( Ordering::Acquire)
     }
 }
 

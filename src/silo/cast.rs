@@ -221,4 +221,47 @@ impl< T: Copy> ISliceExt for [T]
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+/// A generic fat pointer wrapper that erases lifetimes and mutability rules.
+/// Use with extreme caution for work-stealing/parallel contexts where disjoint access is guaranteed.
+#[derive( Copy, Clone)]
+pub struct MutAliasPtr< T: ?Sized>
+{
+    pub _Ptr: *const T,
+}
+
+impl< T: ?Sized> MutAliasPtr< T>
+{
+    #[inline( always)]
+    pub fn	New( ptr: &T) -> Self
+    {
+        Self {
+            _Ptr: unsafe { std::mem::transmute_copy( &ptr) }
+        }
+    }
+
+    #[inline( always)]
+    pub fn	NewMut( ptr: &mut T) -> Self
+    {
+        Self {
+            _Ptr: unsafe { std::mem::transmute_copy( &ptr) }
+        }
+    }
+
+    #[inline( always)]
+    #[allow( invalid_reference_casting)]
+    pub fn	MutRef< 'a>( &self) -> &'a mut T
+    {
+        unsafe { &mut *( self._Ptr as *mut T) }
+    }
+
+    #[inline( always)]
+    pub fn	Ref< 'a>( &self) -> &'a T
+    {
+        unsafe { &*self._Ptr }
+    }
+}
+
+unsafe impl< T: ?Sized> Send for MutAliasPtr< T> {}
+unsafe impl< T: ?Sized> Sync for MutAliasPtr< T> {}
+
 //---------------------------------------------------------------------------------------------------------------------------------
