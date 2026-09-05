@@ -1,0 +1,21 @@
+$version Kosh Rube Engine $end
+$timescale 1ns $end
+$scope module top $end
+$var wire 1 ! clk $end
+$scope module alu $end
+$var wire 4 " a $end
+$var wire 4 % out $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$dumpvars
+0!
+b0001 "
+b0001 %
+$end
+#10
+1!
+b0010 "
+#20
+0!
+b0100 %

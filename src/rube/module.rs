@@ -5,6 +5,7 @@ use	std::sync::Arc;
 use	crate::{
     flux::{ FieldExp, IFluxExportSource, FieldImp, IFluxImportSource },
     rube::{
+        coro_kernel::{ CoroInstance, CoroKernelFactory },
         reg::Reg,
         registry::KernelRegistry,
         trigger::TriggerId,
@@ -110,6 +111,7 @@ pub enum KernelKind
     Fast( KernelOp),
     Behavioral( Arc< dyn Fn( &[Reg], &mut [Reg]) + Send + Sync>),
     Custom( &'static str),
+    Coro( CoroKernelFactory),
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -123,6 +125,7 @@ impl fmt::Debug for KernelKind
             Self::Fast( op) => write!( f, "KernelKind::Fast({:?})", op),
             Self::Behavioral( _) => write!( f, "Behavioral( ..)"),
             Self::Custom( n) => write!( f, "Custom( {})", n),
+            Self::Coro( _) => write!( f, "Coro( ..)"),
         }
     }
 }
@@ -157,6 +160,11 @@ impl KernelKind
             }
             KernelKind::Custom( name) => {
                 return ( 3, name.as_ptr() as usize);
+            }
+            KernelKind::Coro( factory) => {
+                let  	rawDyn: *const ( dyn Fn() -> CoroInstance + Send + Sync) = Arc::as_ptr( factory);
+                let  	vtablePtr = unsafe { std::mem::transmute::< _, ( usize, usize)>( rawDyn).1 };
+                return ( 4, vtablePtr);
             }
         };
     }
@@ -439,6 +447,7 @@ impl IFluxExportSource for KernelKind
             Self::Fast( op) => op.FetchFieldExp( field),
             Self::Custom( name) => *field = FieldExp::Str( name),
             Self::Behavioral( _) => *field = FieldExp::Str( "Behavioral"),
+            Self::Coro( _) => *field = FieldExp::Str( "Coro"),
         }
     }
 }
@@ -453,6 +462,9 @@ impl crate::flux::IFluxImportSink for KernelKind
                 return true;
             }
             if *s == "Behavioral" {
+                return false;
+            }
+            if *s == "Coro" {
                 return false;
             }
             let  	sCopy: String = s.to_string();

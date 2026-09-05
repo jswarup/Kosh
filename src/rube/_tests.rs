@@ -827,6 +827,201 @@ b0100 %
         assert_eq!( fifo._Empty, importedFifo._Empty);
         assert_eq!( fifo._Full, importedFifo._Full);
     }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_coro_module_with_output()
+    {
+        use	crate::{
+            rube::{
+                coro_kernel::CoroPorts,
+                engine::SimEngine,
+                layout::Layout,
+                port::{ PortDesc, PortType },
+                reg::Reg,
+            },
+            stalks::Coro,
+        };
+
+        let  	mut layout = Layout::New();
+        let  	inPorts = [PortDesc::New( "In", PortType::U32Val)];
+        let  	outPorts = [PortDesc::New( "Out", PortType::U32Val)];
+
+        let  	modId = layout.AddCoroModule( "Accumulator", None, &inPorts[..], &outPorts[..], || {
+            Coro::New( move |yielder, mut inPorts: CoroPorts| {
+                let  	mut counter: u64 = 0;
+                loop {
+                    let  	inVal = inPorts[0].Val();
+                    counter += inVal;
+                    inPorts = yielder.Suspend( CoroPorts::Single( Reg::Known( counter) ) );
+                }
+            })
+        });
+
+        layout.Freeze().unwrap();
+        let  	mut engine = SimEngine::Create( &layout);
+        let  	inPortId = layout.InPort( modId, 0).unwrap();
+        let  	outPortId = layout.OutPort( modId, 0).unwrap();
+
+        // Cycle 0: initial evaluation
+        engine.Drive();
+        assert_eq!( engine.GetPortValue( outPortId), Some( Reg::Known( 0) ) );
+
+        // Cycle 1: inport changes from 0 to 5
+        engine.SetPortValue( inPortId, Reg::Known( 5));
+        engine.Drive();
+        assert_eq!( engine.GetPortValue( outPortId), Some( Reg::Known( 5) ) );
+
+        // Cycle 2: inport unchanged (still 5) -> coroutine NOT resumed
+        engine.Drive();
+        assert_eq!( engine.GetPortValue( outPortId), Some( Reg::Known( 5) ) );
+
+        // Cycle 3: inport changes from 5 to 10 -> counter accumulates 10 (total 15)
+        engine.SetPortValue( inPortId, Reg::Known( 10));
+        engine.Drive();
+        assert_eq!( engine.GetPortValue( outPortId), Some( Reg::Known( 15) ) );
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_coro_module_without_output()
+    {
+        use	std::sync::{
+            atomic::{ AtomicU64, Ordering },
+            Arc,
+        };
+        use	crate::{
+            rube::{
+                coro_kernel::CoroPorts,
+                engine::SimEngine,
+                layout::Layout,
+                port::{ PortDesc, PortType },
+                reg::Reg,
+            },
+            stalks::Coro,
+        };
+
+        let  	received = Arc::new( AtomicU64::new( 0) );
+        let  	recClone = Arc::clone( &received);
+
+        let  	mut layout = Layout::New();
+        let  	inPorts = [PortDesc::New( "DataIn", PortType::U32Val)];
+        let  	outPorts: [PortDesc; 0] = [];
+
+        let  	modId = layout.AddCoroModule( "SinkMonitor", None, &inPorts[..], &outPorts[..], move || {
+            let  	r = Arc::clone( &recClone);
+            Coro::New( move |yielder, mut inPorts: CoroPorts| {
+                loop {
+                    let  	val = inPorts[0].Val();
+                    r.store( val, Ordering::SeqCst);
+                    inPorts = yielder.Suspend( CoroPorts::Empty() );
+                }
+            })
+        });
+
+        layout.Freeze().unwrap();
+        let  	mut engine = SimEngine::Create( &layout);
+        let  	inPortId = layout.InPort( modId, 0).unwrap();
+
+        // Cycle 0: initial evaluation (inport is 0)
+        engine.Drive();
+        assert_eq!( received.load( Ordering::SeqCst), 0);
+
+        // Cycle 1: send 42
+        engine.SetPortValue( inPortId, Reg::Known( 42));
+        engine.Drive();
+        assert_eq!( received.load( Ordering::SeqCst), 42);
+
+        // Cycle 2: unchanged
+        engine.Drive();
+        assert_eq!( received.load( Ordering::SeqCst), 42);
+
+        // Cycle 3: send 99
+        engine.SetPortValue( inPortId, Reg::Known( 99));
+        engine.Drive();
+        assert_eq!( received.load( Ordering::SeqCst), 99);
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_coro_module_multistep_protocol()
+    {
+        use	crate::{
+            rube::{
+                coro_kernel::CoroPorts,
+                engine::SimEngine,
+                layout::Layout,
+                port::{ PortDesc, PortType },
+                reg::Reg,
+            },
+            stalks::Coro,
+        };
+
+        let  	mut layout = Layout::New();
+        let  	inPorts = [
+            PortDesc::New( "Req", PortType::Bool),
+            PortDesc::New( "Data", PortType::U32Val),
+        ];
+        let  	outPorts = [
+            PortDesc::New( "Ack", PortType::Bool),
+            PortDesc::New( "Result", PortType::U32Val),
+        ];
+
+        // Handshake coroutine:
+        // Waits for Req=1, then asserts Ack=1 and Result = Data * 2.
+        // Then waits for Req=0, then de-asserts Ack=0.
+        let  	modId = layout.AddCoroModule( "ProtocolServer", None, &inPorts[..], &outPorts[..], || {
+            Coro::New( move |yielder, mut inPorts: CoroPorts| {
+                loop {
+                    // Idle state: Ack = 0, Result = 0
+                    while !inPorts[0].IsTrue() {
+                        inPorts = yielder.Suspend( CoroPorts::Pair( Reg::FALSE, Reg::Known( 0) ) );
+                    }
+                    // Req received: compute result and Ack = 1
+                    let  	dataVal = inPorts[1].Val();
+                    let  	res = dataVal * 2;
+                    while inPorts[0].IsTrue() {
+                        inPorts = yielder.Suspend( CoroPorts::Pair( Reg::TRUE, Reg::Known( res) ) );
+                    }
+                    // Req de-asserted: return to Ack = 0
+                    inPorts = yielder.Suspend( CoroPorts::Pair( Reg::FALSE, Reg::Known( 0) ) );
+                }
+            })
+        });
+
+        layout.Freeze().unwrap();
+        let  	mut engine = SimEngine::Create( &layout);
+        let  	reqPort = layout.InPort( modId, 0).unwrap();
+        let  	dataPort = layout.InPort( modId, 1).unwrap();
+        let  	ackPort = layout.OutPort( modId, 0).unwrap();
+        let  	resultPort = layout.OutPort( modId, 1).unwrap();
+
+        // Cycle 0: initial idle state
+        engine.Drive();
+        assert_eq!( engine.GetPortBool( ackPort), Some( Reg::FALSE));
+        assert_eq!( engine.GetPortValue( resultPort), Some( Reg::Known( 0) ) );
+
+        // Cycle 1: Request with Data=21
+        engine.SetPortValue( dataPort, Reg::Known( 21));
+        engine.SetPortBool( reqPort, Reg::TRUE);
+        engine.Drive();
+        assert_eq!( engine.GetPortBool( ackPort), Some( Reg::TRUE));
+        assert_eq!( engine.GetPortValue( resultPort), Some( Reg::Known( 42) ) );
+
+        // Cycle 2: Keep Req=1
+        engine.Drive();
+        assert_eq!( engine.GetPortBool( ackPort), Some( Reg::TRUE));
+        assert_eq!( engine.GetPortValue( resultPort), Some( Reg::Known( 42) ) );
+
+        // Cycle 3: Deassert Req=0
+        engine.SetPortBool( reqPort, Reg::FALSE);
+        engine.Drive();
+        assert_eq!( engine.GetPortBool( ackPort), Some( Reg::FALSE));
+        assert_eq!( engine.GetPortValue( resultPort), Some( Reg::Known( 0) ) );
+    }
 }
 
 

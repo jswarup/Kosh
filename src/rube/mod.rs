@@ -14,9 +14,11 @@ pub mod vcd;
 pub mod vcdio;
 pub mod vcd_model;
 pub mod fifo;
+pub mod coro_kernel;
 mod _tests;
 
 pub use	adder::{ Adder, BusAdder32, FullAdder, HalfAdder };
+pub use	coro_kernel::{ CoroInstance, CoroKernelFactory, CoroPorts, CoroWarp, CORO_MAX_PORTS };
 pub use	engine::SimEngine;
 pub use	gates::{ AndGate, NandGate, NotGate, OrGate, XorGate };
 pub use	latches::{ CRSLatch, DLatch, RSLatch };

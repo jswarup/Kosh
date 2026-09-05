@@ -1,31 +1,36 @@
 //-- engine.rs -----------------------------------------------------------------------------------------------------------------------
 
-use	std::sync::Arc;
+use	std::{
+    cell::RefCell,
+    sync::Arc,
+};
 use	crate::{
     rube::{
-        registry::{ KernelRegistry, CustomKernelFn },
+        coro_kernel::{ CoroInstance, CoroPorts, CoroWarp, CORO_MAX_PORTS },
         layout::Layout,
         module::{ BehavioralWarp, CustomWarp, FastWarp },
         port::PortId,
         reg::Reg,
+        registry::{ CustomKernelFn, KernelRegistry },
         trigger::{ ITriggerWad, TriggerId, TriggerWad },
     },
     silo::{ Buff, IAccess, U32, USeg },
+    stalks::{ CoroRes, ICoro },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-#[derive( Clone)]
 pub struct SimEngine
 {
-    pub _Triggers:      TriggerWad,
-    pub _FastWarps:     Buff< FastWarp>,
-    pub _CustomWarps:   Buff< CustomWarp>,
+    pub _Triggers:        TriggerWad,
+    pub _FastWarps:       Buff< FastWarp>,
+    pub _CustomWarps:     Buff< CustomWarp>,
     pub _CustomCallbacks: Buff< CustomKernelFn>,
     pub _BehavioralWarps: Buff< BehavioralWarp>,
-    pub _PortToTrigger: Buff< TriggerId>,
-    pub _ReadyWords:    Buff< u64>,
-    pub _CycleCount:    usize,
+    pub _CoroWarps:       Buff< CoroWarp>,
+    pub _PortToTrigger:   Buff< TriggerId>,
+    pub _ReadyWords:      Buff< u64>,
+    pub _CycleCount:      usize,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -41,11 +46,11 @@ impl SimEngine
     {
         let  	portToTrigger = layout.PortToTrigger();
         let  	triggers = layout.BuildTriggers( &portToTrigger);
-        let  	( fastWarps, customWarps, behavioralWarps) = layout.CompileWarps( &portToTrigger);
+        let  	( fastWarps, customWarps, behavioralWarps, coroWarps) = layout.CompileWarps( &portToTrigger);
         let  	modCount = layout._Modules.Size().AsUsize();
         let  	wordCount = ( modCount + 63) / 64;
         let  	readyWords = Buff::Create( U32( wordCount as u32), |_| 0u64);
-        
+
         let  	mut callbacks = crate::silo::Stash::WithCapacity( customWarps.Size());
         customWarps.Arr().Traverse( |warp| {
             if let Some( cb) = registry._Map.get( warp._KernelName) {
@@ -56,14 +61,15 @@ impl SimEngine
         });
 
         return Self {
-            _Triggers:      triggers,
-            _FastWarps:     fastWarps,
-            _CustomWarps:   customWarps,
-            _BehavioralWarps: behavioralWarps,
+            _Triggers:        triggers,
+            _FastWarps:       fastWarps,
+            _CustomWarps:     customWarps,
             _CustomCallbacks: callbacks.IntoBuff(),
-            _PortToTrigger: portToTrigger,
-            _ReadyWords:    readyWords,
-            _CycleCount:    0,
+            _BehavioralWarps: behavioralWarps,
+            _CoroWarps:       coroWarps,
+            _PortToTrigger:   portToTrigger,
+            _ReadyWords:      readyWords,
+            _CycleCount:      0,
         };
     }
 
@@ -110,6 +116,24 @@ impl SimEngine
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
+    fn	EvalCoroWarps( &mut self)
+    {
+        let  	readyWords = &self._ReadyWords;
+        let  	triggers = &mut self._Triggers;
+        self._CoroWarps.Arr().Traverse( |warp| {
+            let  	count = warp._Count.AsUsize();
+            let  	modStart = warp._ModStart.AsUsize();
+            Self::ForEachReadyLane( readyWords, modStart, count, |l| {
+                let  	inTrigs = &warp._InTriggers[l];
+                let  	outTrigs = &warp._OutTriggers[l];
+                let  	coroRef = &warp._Instances[l];
+                Self::EvalCoroInstance( coroRef, inTrigs, outTrigs, triggers);
+            });
+        });
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
     /// Executes a single synchronous discrete-event simulation cycle with ZERO heap allocations:
     /// 1. Phase 1: Pure evaluation reading immutable Present values ( T) from AoS cells and writing directly to Future slots ( T+1).
     /// 2. Phase 2: Custom module evaluations.
@@ -123,6 +147,7 @@ impl SimEngine
             self.EvalFastWarps();
             self.EvalCustomWarps();
             self.EvalBehavioralWarps();
+            self.EvalCoroWarps();
         }
 
         self._Triggers.AdvanceAll();
@@ -247,6 +272,43 @@ impl SimEngine
             USeg::New( U32::_0, outLen).Traverse( |k| {
                 triggers._FutureVals[outTriggers[k]] = outVals[k];
             });
+        }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    fn	EvalCoroInstance(
+        coroRef: &RefCell< CoroInstance>,
+        inTriggers: &Buff< TriggerId>,
+        outTriggers: &Buff< TriggerId>,
+        triggers: &mut TriggerWad,
+    )
+    {
+        let  	inLen = inTriggers.Size();
+        let  	outLen = outTriggers.Size();
+
+        let  	mut inPorts = CoroPorts::New();
+        let  	inCount = inLen.min( U32( CORO_MAX_PORTS as u32));
+        USeg::New( U32::_0, inCount).Traverse( |k| {
+            inPorts._Vals[k.AsUsize()] = triggers._CurrentVals[inTriggers[k]];
+        });
+        inPorts._Len = inCount;
+
+        let  	mut coro = coroRef.borrow_mut();
+        if coro.IsDone() {
+            return;
+        }
+
+        match coro.Resume( inPorts) {
+            CoroRes::Yield( outPorts) => {
+                if outLen > U32::_0 {
+                    let  	outCount = outLen.min( outPorts.Len());
+                    USeg::New( U32::_0, outCount).Traverse( |k| {
+                        triggers._FutureVals[outTriggers[k]] = outPorts._Vals[k.AsUsize()];
+                    });
+                }
+            }
+            CoroRes::Done( _) => {}
         }
     }
 

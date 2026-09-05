@@ -1,9 +1,14 @@
 //-- layout.rs -----------------------------------------------------------------------------------------------------------------------
 
-use	std::fmt;
+use	std::{
+    cell::RefCell,
+    fmt,
+    sync::Arc,
+};
 use	crate::{
 
     rube::{
+        coro_kernel::{ CoroInstance, CoroWarp },
         module::{ BehavioralWarp, CustomModule, CustomWarp, FastModule, FastWarp, IModule, KernelKind, Module, ModuleId },
         netlist::{ INetlist, Netlist },
         port::{ IPort, PortDesc, PortDir, PortId, PortType },
@@ -165,6 +170,24 @@ impl Layout
         }
 
         return modId;
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	AddCoroModule< 'a, I, O, F>(
+        &mut self,
+        name: &str,
+        parent: Option< ModuleId>,
+        inPorts: I,
+        outPorts: O,
+        factory: F,
+    ) -> ModuleId
+    where
+        I: Into< Arr< 'a, PortDesc>>,
+        O: Into< Arr< 'a, PortDesc>>,
+        F: Fn() -> CoroInstance + Send + Sync + 'static,
+    {
+        return self.AddModule( name, parent, inPorts, outPorts, KernelKind::Coro( Arc::new( factory)) );
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -700,11 +723,12 @@ impl Layout
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	CompileWarps( &self, portToTrigger: &Buff< TriggerId>) -> ( Buff< FastWarp>, Buff< CustomWarp>, Buff< BehavioralWarp>)
+    pub fn	CompileWarps( &self, portToTrigger: &Buff< TriggerId>) -> ( Buff< FastWarp>, Buff< CustomWarp>, Buff< BehavioralWarp>, Buff< CoroWarp>)
     {
         let  	mut fastWarps = Stash::New();
         let  	mut customWarps = Stash::New();
         let  	mut behavioralWarps = Stash::New();
+        let  	mut coroWarps = Stash::New();
 
         let  	modules = self._Modules.Slice();
         let  	mut i = 0;
@@ -715,6 +739,33 @@ impl Layout
                 KernelKind::None => {
                     i += 1;
                     continue;
+                }
+                KernelKind::Coro( _) => {
+                    let  	vtablePtr = m._Kernel.ClassKey().1;
+                    let  	startIdx = i;
+                    let  	mut instances = Stash::New();
+                    let  	mut inTriggersList = Stash::New();
+                    let  	mut outTriggersList = Stash::New();
+
+                    while i < modules.len() && modules[i]._Kernel.ClassKey() == ( 4, vtablePtr) {
+                        let  	curMod = &modules[i];
+                        if let KernelKind::Coro( factory) = &curMod._Kernel {
+                            instances.Push( RefCell::new( ( factory)() ));
+                        }
+
+                        inTriggersList.Push( self.PortTriggersOf( curMod._InPorts, portToTrigger));
+                        outTriggersList.Push( self.PortTriggersOf( curMod._OutPorts, portToTrigger));
+                        i += 1;
+                    }
+
+                    let  	count = ( i - startIdx) as u32;
+                    coroWarps.Push( CoroWarp::New(
+                        U32( startIdx as u32),
+                        U32( count),
+                        instances.IntoBuff(),
+                        inTriggersList.IntoBuff(),
+                        outTriggersList.IntoBuff(),
+                    ));
                 }
                 KernelKind::Behavioral( _) => {
                     let  	vtablePtr = m._Kernel.ClassKey().1;
@@ -818,7 +869,7 @@ impl Layout
             }
         }
 
-        return ( fastWarps.IntoBuff(), customWarps.IntoBuff(), behavioralWarps.IntoBuff());
+        return ( fastWarps.IntoBuff(), customWarps.IntoBuff(), behavioralWarps.IntoBuff(), coroWarps.IntoBuff());
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -843,7 +894,7 @@ impl Layout
                 let  	outPortIdx = module._OutPorts.First();
                 let  	outPortType = self._Ports[outPortIdx]._Type;
                 fastModules.Push( FastModule::New( module._Id, in1, in2, outTrig, op, outPortType.Mask()));
-            } else if let KernelKind::Behavioral( _cb) = &module._Kernel { } else if let KernelKind::Custom( kernelName) = &module._Kernel {
+            } else if let KernelKind::Behavioral( _cb) = &module._Kernel { } else if let KernelKind::Coro( _f) = &module._Kernel { } else if let KernelKind::Custom( kernelName) = &module._Kernel {
                 customModules.Push( CustomModule::New(
                     module._Id,
                     inTriggers,
