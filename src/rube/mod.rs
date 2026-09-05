@@ -19,7 +19,9 @@ pub mod introspect;
 pub mod kernel;
 pub mod coro_kernel;
 pub mod sim_ctrl;
-mod _tests;
+pub mod dpi;
+pub mod package;
+pub mod _tests;
 
 pub use interface::{ ModuleInterface, PortInterface, DataType, BusType, IModuleInterface };
 pub use introspect::{ IModuleIntrospection, PortIntrospection };
