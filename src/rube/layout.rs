@@ -9,6 +9,7 @@ use	crate::{
 
     rube::{
         coro_kernel::{ CoroInstance, CoroWarp },
+        coro_kernel::{ CoroCell, CoroInstance, CoroWarp },
         module::{
             BehavioralWarp, CustomModule, CustomWarp, FastModule, FastWarp,
             IModule, KernelKind, Module, ModuleId,
@@ -755,6 +756,7 @@ impl Layout
                         let  	curMod = &modules[i];
                         if let KernelKind::Coro( factory) = &curMod._Kernel {
                             instances.Push( RefCell::new( ( factory)() ));
+                            instances.Push( CoroCell::New( ( factory)() ));
                         }
 
                         inTriggersList.Push( self.PortTriggersOf( curMod._InPorts, portToTrigger));

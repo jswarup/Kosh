@@ -4,6 +4,7 @@ use	std::sync::atomic::Ordering;
 use	std::{ hint::spin_loop, thread::{ self, scope, yield_now } };
 use	crate::heist::{ Maestro, IMaestro };
 use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, USeg, U16, U32 };
+use	crate::silo::{ Arr, Buff, IAccess, IArr, IsConsoleEnabled, Stash, USeg, U16, U32 };
 use	crate::stalks::{ Atm, Spinlock, WorkPtr };
 use	crate::swarm::SwarmEngine;
 
@@ -410,6 +411,14 @@ impl< 'a> IAtelier< 'a> for Atelier< 'a>
             print!( "( Maestro-{}: {})", maestroIdx, maestros.At( maestroIdx).SzProcessed());
         });
         println!( "]");
+        if IsConsoleEnabled() {
+            println!();
+            print!( "Atelier[ ");
+            USeg::New( U32( 0), sz).Traverse( |maestroIdx| {
+                print!( "( Maestro-{}: {})", maestroIdx, maestros.At( maestroIdx).SzProcessed());
+            });
+            println!( "]");
+        }
     }
 
     fn	SetWorkerCount< S: Into< U32>>( &self, newSz: S)

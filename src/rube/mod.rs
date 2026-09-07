@@ -29,6 +29,7 @@ pub use kernel::{ IKernel, KernelSignature, KernelError };
 
 pub use	adder::{ Adder, AdderPipeline, BusAdder32, FullAdder, HalfAdder };
 pub use	coro_kernel::{ CoroInstance, CoroKernelFactory, CoroPorts, CoroWarp, CORO_MAX_PORTS };
+pub use	coro_kernel::{ CoroCell, CoroInstance, CoroKernelFactory, CoroPorts, CoroWarp, CORO_MAX_PORTS };
 pub use	engine::{ SimEngine, SimEngineMode };
 pub use	gates::{ AndGate, NandGate, NotGate, OrGate, XorGate };
 pub use	latches::{ CRSLatch, DLatch, RSLatch };

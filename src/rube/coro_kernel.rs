@@ -169,11 +169,40 @@ pub type CoroKernelFactory = Arc< dyn Fn() -> CoroInstance + Send + Sync>;
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+pub struct CoroCell
+{
+    _Inner: std::cell::UnsafeCell< CoroInstance>,
+}
+
+unsafe impl Sync for CoroCell {}
+unsafe impl Send for CoroCell {}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl CoroCell
+{
+    pub fn	New( coro: CoroInstance) -> Self
+    {
+        return Self {
+            _Inner: std::cell::UnsafeCell::new( coro),
+        };
+    }
+
+    #[inline]
+    pub fn	GetMut( &self) -> &mut CoroInstance
+    {
+        return unsafe { &mut *self._Inner.get() };
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 pub struct CoroWarp
 {
     pub _ModStart:    U32,
     pub _Count:       U32,
     pub _Instances:   Buff< RefCell< CoroInstance>>,
+    pub _Instances:   Buff< CoroCell>,
     pub _InTriggers:  Buff< Buff< TriggerId>>,
     pub _OutTriggers: Buff< Buff< TriggerId>>,
 }
@@ -186,6 +215,7 @@ impl CoroWarp
         modStart: U32,
         count: U32,
         instances: Buff< RefCell< CoroInstance>>,
+        instances: Buff< CoroCell>,
         inTriggers: Buff< Buff< TriggerId>>,
         outTriggers: Buff< Buff< TriggerId>>,
     ) -> Self

@@ -1262,6 +1262,8 @@ b0100 %
                     out._Vals[1] = Reg::Known( 25);
                     out._Len = U32( 2);
                     let  	mut inPorts = yielder.Suspend( out);
+                    let  	_ = yielder.Suspend( out);
+                    let  	mut inPorts = yielder.Suspend( CoroPorts::New());
 
                     // Cycle 1: Check 15 + 25 = 40, Drive 100 + 200
                     assert_eq!( inPorts[0].Val(), 40);
@@ -1271,6 +1273,8 @@ b0100 %
                     out._Vals[1] = Reg::Known( 200);
                     out._Len = U32( 2);
                     inPorts = yielder.Suspend( out);
+                    let  	_ = yielder.Suspend( out);
+                    inPorts = yielder.Suspend( CoroPorts::New());
 
                     // Cycle 2: Check 100 + 200 = 300, Drive 0xFFFF_FFFF + 1
                     assert_eq!( inPorts[0].Val(), 300);
@@ -1280,6 +1284,8 @@ b0100 %
                     out._Vals[1] = Reg::Known( 1);
                     out._Len = U32( 2);
                     inPorts = yielder.Suspend( out);
+                    let  	_ = yielder.Suspend( out);
+                    inPorts = yielder.Suspend( CoroPorts::New());
 
                     // Cycle 3: Check 0xFFFF_FFFF + 1 = 0 (carry=true)
                     assert_eq!( inPorts[0].Val(), 0);
@@ -1632,6 +1638,8 @@ b0100 %
                     let  	_ = yielder.Suspend( out);
 
                     // Wait 1 cycle for 2-stage adder pipeline propagation
+                    // Wait 2 cycles for 2-stage adder pipeline propagation
+                    let  	_ = yielder.Suspend( CoroPorts::New());
                     let  	mut inPorts = yielder.Suspend( CoroPorts::New());
                     assert_eq!( inPorts[0].Val(), 100);
 
@@ -1643,6 +1651,7 @@ b0100 %
                     out._Len = U32( 3);
                     let  	_ = yielder.Suspend( out);
 
+                    let  	_ = yielder.Suspend( CoroPorts::New());
                     inPorts = yielder.Suspend( CoroPorts::New());
                     assert_eq!( inPorts[0].Val(), 6000);
 

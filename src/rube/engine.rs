@@ -3,10 +3,14 @@
 use	std::{
     cell::RefCell,
     sync::Arc,
+use	std::sync::{
+    atomic::{ AtomicPtr, Ordering },
+    Arc,
 };
 use	crate::{
     rube::{
         coro_kernel::{ CoroInstance, CoroPorts, CoroWarp, CORO_MAX_PORTS },
+        coro_kernel::{ CoroCell, CoroPorts, CoroWarp, CORO_MAX_PORTS },
         layout::Layout,
         module::{ BehavioralWarp, CustomWarp, FastWarp },
         port::PortId,
@@ -16,6 +20,7 @@ use	crate::{
     },
     silo::{ Buff, IAccess, U32, U8, USeg, arr::IArr },
     stalks::{ CoroRes, ICoro, DynIWorker },
+    stalks::{ CoroRes, DynIWorker, ICoro, Spinlock },
     heist::{ Atelier, IAtelier, IMaestro },
     CpuSpawnQuell, ChoreTree,
 };
@@ -23,6 +28,8 @@ use	crate::{
 //---------------------------------------------------------------------------------------------------------------------------------
 
 use std::sync::atomic::{AtomicPtr, Ordering};
+static CURRENT_SIM_ENGINE: AtomicPtr< SimEngine> = AtomicPtr::new( std::ptr::null_mut() );
+static SIM_DRIVE_LOCK: Spinlock = Spinlock::New();
 
 static CURRENT_SIM_ENGINE: AtomicPtr<SimEngine> = AtomicPtr::new(std::ptr::null_mut());
 
@@ -112,6 +119,24 @@ fn	trait_warp_spawn< 'a>( chunk: crate::silo::Arr< 'a, crate::rube::module::Trai
             let  	inTrigs = &warp._InTriggers[l];
             let  	outTrigs = &warp._OutTriggers[l];
             SimEngine::EvalTraitInstance( cb, inTrigs, outTrigs, triggers);
+        });
+    });
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+fn	coro_warp_spawn< 'a>( chunk: crate::silo::Arr< 'a, CoroWarp>, _w: &DynIWorker< '_>)
+{
+    let  	enginePtr = CURRENT_SIM_ENGINE.load( Ordering::Acquire);
+    let  	engine = unsafe { &mut *enginePtr };
+    let  	triggers = &mut engine._Triggers;
+    chunk.USeg().Traverse( |i| {
+        let  	warp = chunk.At( i);
+        USeg::New( U32::_0, warp._Count).Traverse( |l| {
+            let  	inTrigs = &warp._InTriggers[l];
+            let  	outTrigs = &warp._OutTriggers[l];
+            let  	coroCell = &warp._Instances[l];
+            SimEngine::EvalCoroInstance( coroCell, inTrigs, outTrigs, triggers);
         });
     });
 }
@@ -279,8 +304,10 @@ impl SimEngine
         if let SimEngineMode::Parallel( numWorkers) = self._Mode {
             return self.Drive_Parallel( numWorkers);
         }
+        let  	_guard = SIM_DRIVE_LOCK.Lock();
 
         let  	hasReady = self.ResolveReadyModules();
+        let  	hasCoros = self._CoroWarps.Size() > U32::_0;
 
         if hasReady {
             self.EvalFastWarps();
@@ -289,6 +316,11 @@ impl SimEngine
             self.EvalTraitWarps();
             self.EvalCoroWarps();
         }
+        if hasReady || hasCoros {
+            let  	numWorkers = match self._Mode {
+                SimEngineMode::Serial => U32( 0),
+                SimEngineMode::Parallel( n) => U32::from( n),
+            };
 
         self._Triggers.AdvanceAll();
         self._CycleCount += 1;
@@ -303,10 +335,12 @@ impl SimEngine
 
         if hasReady {
             Atelier::Init( U32( numWorkers.0 as u32));
+            Atelier::Init( numWorkers);
             let  	atelier = Atelier::Get();
 
             // Store the engine pointer in our thread-safe static for parallel workers to access
             CURRENT_SIM_ENGINE.store( self as *mut SimEngine, std::sync::atomic::Ordering::Release);
+            CURRENT_SIM_ENGINE.store( self as *mut SimEngine, Ordering::Release);
 
             let  	fastNode = CpuSpawnQuell!(
                 self._FastWarps.Arr(),
@@ -332,8 +366,15 @@ impl SimEngine
                 |_chunk, _w| {}
             );
 
+            let  	coroNode = CpuSpawnQuell!(
+                self._CoroWarps.Arr(),
+                coro_warp_spawn,
+                |_chunk, _w| {}
+            );
+
             // Compose parallel execution graph
             let  	warpPhase = ChoreTree!( fastNode | customNode | behavioralNode | traitNode );
+            let  	warpPhase = ChoreTree!( fastNode | customNode | behavioralNode | traitNode | coroNode );
             atelier.MainMaestro().PostChoreTree( &warpPhase );
             atelier.DoLaunch();
 
@@ -343,6 +384,14 @@ impl SimEngine
         self._Triggers.AdvanceAll();
         self._CycleCount += 1;
         return self._CycleCount;
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	Drive_Parallel( &mut self, numWorkers: U8) -> usize
+    {
+        self._Mode = SimEngineMode::Parallel( numWorkers);
+        return self.Drive();
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -510,6 +559,7 @@ impl SimEngine
 
     fn	EvalCoroInstance(
         coroRef: &RefCell< CoroInstance>,
+        coroCell: &CoroCell,
         inTriggers: &Buff< TriggerId>,
         outTriggers: &Buff< TriggerId>,
         triggers: &mut TriggerWad,
@@ -526,6 +576,7 @@ impl SimEngine
         inPorts._Len = inCount;
 
         let  	mut coro = coroRef.borrow_mut();
+        let  	coro = coroCell.GetMut();
         if coro.IsDone() {
             return;
         }
