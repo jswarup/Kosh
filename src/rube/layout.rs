@@ -1,14 +1,11 @@
 //-- layout.rs -----------------------------------------------------------------------------------------------------------------------
 
 use	std::{
-    cell::RefCell,
     fmt,
     sync::Arc,
 };
 use	crate::{
-
     rube::{
-        coro_kernel::{ CoroInstance, CoroWarp },
         coro_kernel::{ CoroCell, CoroInstance, CoroWarp },
         module::{
             BehavioralWarp, CustomModule, CustomWarp, FastModule, FastWarp,
@@ -16,10 +13,9 @@ use	crate::{
         },
         netlist::{ INetlist, Netlist },
         port::{ IPort, PortDesc, PortDir, PortId, PortType },
-        reg::Reg,
-        trigger::{ TriggerId, TriggerWad },
+        trigger::{ ITriggerVal, TriggerId, TriggerWad },
     },
-    silo::{ Arr, Buff, IAccess, IArr, Stash, U32, USeg },
+    silo::{ Arr, Buff, IAccess, IArr, Stash, U8, U32, U64, USeg },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -679,20 +675,28 @@ impl Layout
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    pub fn	BuildTriggers( &self, portToTrigger: &Buff< TriggerId>) -> TriggerWad
+    pub fn	BuildTriggers( &self, portToTrigger: &Buff< TriggerId>) -> TriggerWad< U64>
+    {
+        return self.BuildTriggersTyped::< U64>( portToTrigger);
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    pub fn	BuildTriggersTyped< T: ITriggerVal>( &self, portToTrigger: &Buff< TriggerId>) -> TriggerWad< T>
     {
         let  	groupCount = self._Netlist.TriggerCount();
-        let  	mut pastVals = Stash::WithCapacity( groupCount);
+        let  	mut pastVals: Stash<T> = Stash::WithCapacity( groupCount);
         let  	mut currentVals = Stash::WithCapacity( groupCount);
         let  	mut futureVals = Stash::WithCapacity( groupCount);
+        let  	mut flags = Stash::WithCapacity( groupCount);
 
-        USeg::New( U32::_0, groupCount).Traverse( |grpIdx| {
-            let  	portType = self._Netlist.TriggerType( grpIdx);
-            let  	defaultVal = Reg::DefaultTyped( portType);
+        USeg::New( U32::_0, groupCount).Traverse( |_grpIdx| {
+            let  	defaultVal = T::default();
 
             pastVals.Push( defaultVal);
             currentVals.Push( defaultVal);
             futureVals.Push( defaultVal);
+            flags.Push( U8( 0));
         });
 
         let  	mut subscribersLists = Buff::Create( groupCount, |_| Stash::New());
@@ -720,6 +724,7 @@ impl Layout
             pastVals.IntoBuff(),
             currentVals.IntoBuff(),
             futureVals.IntoBuff(),
+            flags.IntoBuff(),
             subscriberSpans.IntoBuff(),
             subscribers.IntoBuff(),
         );
@@ -755,7 +760,6 @@ impl Layout
                     while i < modules.len() && modules[i]._Kernel.ClassKey() == ( 4, vtablePtr) {
                         let  	curMod = &modules[i];
                         if let KernelKind::Coro( factory) = &curMod._Kernel {
-                            instances.Push( RefCell::new( ( factory)() ));
                             instances.Push( CoroCell::New( ( factory)() ));
                         }
 

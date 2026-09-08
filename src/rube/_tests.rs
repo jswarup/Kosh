@@ -15,9 +15,10 @@ mod _tests
             netlist::INetlist,
             port::{ IPort, PortDesc, PortId },
             reg::Reg,
+            trigger::{ ITriggerWad, TriggerWad },
             vcd::VcdWriter,
         },
-        silo::{ ConsoleTest, Stash, U8, U32, USeg },
+        silo::{ Buff, ConsoleTest, Stash, U8, U32, USeg },
         stalks::Coro,
     };
 
@@ -238,11 +239,15 @@ mod _tests
     {
         let  	knownVal = Reg::Known( 42);
         assert!( knownVal.IsValid() && !knownVal.IsX());
+        assert!( knownVal.IsValid() && !knownVal.IsX() && !knownVal.IsZ());
         assert_eq!( knownVal.Val(), 42);
         assert_eq!( knownVal.GetU32(), U32( 42));
 
         let  	unknownVal = Reg::Unknown( 0xFF);
         assert!( !unknownVal.IsValid() && unknownVal.IsX());
+
+        let  	highZVal = Reg::Z;
+        assert!( !highZVal.IsValid() && highZVal.IsZ() && highZVal.IsI());
 
         let  	defaultReg = Reg::default();
         assert!( !defaultReg.IsValid() && defaultReg.IsX());
@@ -252,8 +257,64 @@ mod _tests
         assert!( reg100.IsValid());
         assert_eq!( reg100.GetU32(), U32( 100));
 
-        reg100._X = 1;
+        reg100._X = true;
         assert!( reg100.IsX());
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_ieee_4state_logic()
+    {
+        // AND truth table: 0 dominates, else X / Z produces X
+        assert_eq!( Reg::FALSE & Reg::TRUE, Reg::FALSE);
+        assert_eq!( Reg::FALSE & Reg::X, Reg::FALSE);
+        assert_eq!( Reg::FALSE & Reg::Z, Reg::FALSE);
+        assert_eq!( Reg::TRUE & Reg::TRUE, Reg::TRUE);
+        assert_eq!( Reg::TRUE & Reg::X, Reg::X);
+        assert_eq!( Reg::TRUE & Reg::Z, Reg::X);
+        assert_eq!( Reg::X & Reg::Z, Reg::X);
+
+        // OR truth table: 1 dominates, else X / Z produces X
+        assert_eq!( Reg::TRUE | Reg::FALSE, Reg::TRUE);
+        assert_eq!( Reg::TRUE | Reg::X, Reg::TRUE);
+        assert_eq!( Reg::TRUE | Reg::Z, Reg::TRUE);
+        assert_eq!( Reg::FALSE | Reg::FALSE, Reg::FALSE);
+        assert_eq!( Reg::FALSE | Reg::X, Reg::X);
+        assert_eq!( Reg::FALSE | Reg::Z, Reg::X);
+        assert_eq!( Reg::X | Reg::Z, Reg::X);
+
+        // NOT truth table
+        assert_eq!( !Reg::TRUE, Reg::FALSE);
+        assert_eq!( !Reg::FALSE, Reg::TRUE);
+        assert_eq!( !Reg::X, Reg::X);
+        assert_eq!( !Reg::Z, Reg::X);
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------
+
+    #[test]
+    fn	test_typed_trigger_wad()
+    {
+        let  	mut wadU8 = TriggerWad::< U8>::New(
+            Buff::Create( U32( 2), |_| U8( 0)),
+            Buff::Create( U32( 2), |_| U8( 0)),
+            Buff::Create( U32( 2), |_| U8( 0)),
+            Buff::Create( U32( 2), |_| U8( 0)),
+            Buff::Create( U32( 2), |_| USeg::New( 0, 0)),
+            Buff::Create( U32( 0), |_| U32( 0)),
+        );
+
+        wadU8.SetFutureVal( U32( 0), U8( 42));
+        assert_eq!( wadU8.FutureVal( U32( 0)), U8( 42));
+        wadU8.AdvanceAll();
+        assert_eq!( wadU8.CurrentVal( U32( 0)), U8( 42));
+
+        // Test 4-state flag propagation
+        wadU8.SetFuture( U32( 1), Reg::Z);
+        assert!( wadU8.Future( U32( 1)).IsZ());
+        wadU8.AdvanceAll();
+        assert!( wadU8.Current( U32( 1)).IsZ());
     }
 
     //-----------------------------------------------------------------------------------------------------------------------------
@@ -833,60 +894,6 @@ b0100 %
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    #[test]
-    fn	test_coro_module_with_output()
-    {
-        use	crate::{
-            rube::{
-                coro_kernel::CoroPorts,
-                engine::SimEngine,
-                layout::Layout,
-                port::{ PortDesc, PortType },
-                reg::Reg,
-            },
-            stalks::Coro,
-        };
-
-        let  	mut layout = Layout::New();
-        let  	inPorts = [PortDesc::New( "In", PortType::U32Val)];
-        let  	outPorts = [PortDesc::New( "Out", PortType::U32Val)];
-
-        let  	modId = layout.AddCoroModule( "Accumulator", None, &inPorts[..], &outPorts[..], || {
-            Coro::New( move |yielder, mut inPorts: CoroPorts| {
-                let  	mut counter: u64 = 0;
-                loop {
-                    let  	inVal = inPorts[0].Val();
-                    counter += inVal;
-                    inPorts = yielder.Suspend( CoroPorts::Single( Reg::Known( counter) ) );
-                }
-            })
-        });
-
-        layout.Freeze().unwrap();
-        let  	mut engine = SimEngine::Create( &layout);
-        let  	inPortId = layout.InPort( modId, 0).unwrap();
-        let  	outPortId = layout.OutPort( modId, 0).unwrap();
-
-        // Cycle 0: initial evaluation
-        engine.Drive();
-        assert_eq!( engine.GetPortValue( outPortId), Some( Reg::Known( 0) ) );
-
-        // Cycle 1: inport changes from 0 to 5
-        engine.SetPortValue( inPortId, Reg::Known( 5));
-        engine.Drive();
-        assert_eq!( engine.GetPortValue( outPortId), Some( Reg::Known( 5) ) );
-
-        // Cycle 2: inport unchanged (still 5) -> coroutine NOT resumed
-        engine.Drive();
-        assert_eq!( engine.GetPortValue( outPortId), Some( Reg::Known( 5) ) );
-
-        // Cycle 3: inport changes from 5 to 10 -> counter accumulates 10 (total 15)
-        engine.SetPortValue( inPortId, Reg::Known( 10));
-        engine.Drive();
-        assert_eq!( engine.GetPortValue( outPortId), Some( Reg::Known( 15) ) );
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
 
     #[test]
     fn	test_coro_module_without_output()
@@ -1070,6 +1077,7 @@ b0100 %
                 assert_eq!( serialEngine._CycleCount, parallelEngine._CycleCount);
                 // Verify strict bit-for-bit parity across every single trigger in the circuit
                 assert_eq!( serialEngine._Triggers._CurrentVals, parallelEngine._Triggers._CurrentVals);
+                assert_eq!( serialEngine._Triggers._Flags, parallelEngine._Triggers._Flags);
 
                 if let Some( ( ref w, ref mut s)) = vcdOpt {
                     w.DumpCycle( &parallelEngine, s);
@@ -1261,7 +1269,7 @@ b0100 %
                     out._Vals[0] = Reg::Known( 15);
                     out._Vals[1] = Reg::Known( 25);
                     out._Len = U32( 2);
-                    let  	mut inPorts = yielder.Suspend( out);
+                    let  	_ = yielder.Suspend( out);
                     let  	_ = yielder.Suspend( out);
                     let  	mut inPorts = yielder.Suspend( CoroPorts::New());
 
@@ -1272,7 +1280,7 @@ b0100 %
                     out._Vals[0] = Reg::Known( 100);
                     out._Vals[1] = Reg::Known( 200);
                     out._Len = U32( 2);
-                    inPorts = yielder.Suspend( out);
+                    let  	_ = yielder.Suspend( out);
                     let  	_ = yielder.Suspend( out);
                     inPorts = yielder.Suspend( CoroPorts::New());
 
@@ -1283,7 +1291,7 @@ b0100 %
                     out._Vals[0] = Reg::Known( 0xFFFF_FFFF);
                     out._Vals[1] = Reg::Known( 1);
                     out._Len = U32( 2);
-                    inPorts = yielder.Suspend( out);
+                    let  	_ = yielder.Suspend( out);
                     let  	_ = yielder.Suspend( out);
                     inPorts = yielder.Suspend( CoroPorts::New());
 

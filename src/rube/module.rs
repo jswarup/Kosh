@@ -59,7 +59,7 @@ pub enum KernelOp
 impl KernelOp
 {
     #[inline]
-    pub fn	Eval( self, in1: Reg, in2: Reg, mask: u64) -> Reg
+    pub fn	EvalRaw( self, in1: u64, in2: u64, mask: u64) -> u64
     {
         let  	res = match self {
             Self::Nand => !( in1 & in2),
@@ -69,30 +69,49 @@ impl KernelOp
             Self::Xor => in1 ^ in2,
             Self::Nor => !( in1 | in2),
             Self::Xnor => !( in1 ^ in2),
-            Self::Add => {
-                if in1.IsX() || in2.IsX() {
-                    Reg::Unknown( mask)
+            Self::Add => in1.wrapping_add( in2),
+            Self::Sub => in1.wrapping_sub( in2),
+            Self::Shl => in1.wrapping_shl( in2 as u32),
+            Self::Shr => in1.wrapping_shr( in2 as u32),
+        };
+        return res & mask;
+    }
+
+    #[inline]
+    pub fn	Eval( self, in1: Reg, in2: Reg, mask: u64) -> Reg
+    {
+        let  	res = match self {
+            Self::Nand => !( in1 & in2),
+            Self::And  => in1 & in2,
+            Self::Or   => in1 | in2,
+            Self::Not  => !in1,
+            Self::Xor  => in1 ^ in2,
+            Self::Nor  => !( in1 | in2),
+            Self::Xnor => !( in1 ^ in2),
+            Self::Add  => {
+                if in1.IsX() || in2.IsX() || in1.IsI() || in2.IsI() {
+                    Reg::X
                 } else {
                     Reg::Known( in1.Val().wrapping_add( in2.Val()))
                 }
             }
-            Self::Sub => {
-                if in1.IsX() || in2.IsX() {
-                    Reg::Unknown( mask)
+            Self::Sub  => {
+                if in1.IsX() || in2.IsX() || in1.IsI() || in2.IsI() {
+                    Reg::X
                 } else {
                     Reg::Known( in1.Val().wrapping_sub( in2.Val()))
                 }
             }
-            Self::Shl => {
-                if in1.IsX() || in2.IsX() {
-                    Reg::Unknown( mask)
+            Self::Shl  => {
+                if in1.IsX() || in2.IsX() || in1.IsI() || in2.IsI() {
+                    Reg::X
                 } else {
                     Reg::Known( in1.Val().wrapping_shl( in2.Val() as u32))
                 }
             }
-            Self::Shr => {
-                if in1.IsX() || in2.IsX() {
-                    Reg::Unknown( mask)
+            Self::Shr  => {
+                if in1.IsX() || in2.IsX() || in1.IsI() || in2.IsI() {
+                    Reg::X
                 } else {
                     Reg::Known( in1.Val().wrapping_shr( in2.Val() as u32))
                 }

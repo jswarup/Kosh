@@ -3,7 +3,6 @@ use	std::sync::{ Arc, OnceLock };
 use	std::sync::atomic::Ordering;
 use	std::{ hint::spin_loop, thread::{ self, scope, yield_now } };
 use	crate::heist::{ Maestro, IMaestro };
-use	crate::silo::{ Arr, Buff, IAccess, IArr, Stash, USeg, U16, U32 };
 use	crate::silo::{ Arr, Buff, IAccess, IArr, IsConsoleEnabled, Stash, USeg, U16, U32 };
 use	crate::stalks::{ Atm, Spinlock, WorkPtr };
 use	crate::swarm::SwarmEngine;

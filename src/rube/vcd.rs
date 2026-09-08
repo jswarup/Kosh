@@ -132,7 +132,9 @@ impl VcdWriter
     fn	FormatVal( val: Reg, bits: u32, id: &str, out: &mut String)
     {
         if bits == 1 {
-            if val.IsX() {
+            if val.IsI() {
+                out.push( 'z');
+            } else if val.IsX() {
                 out.push( 'x');
             } else {
                 out.push( if val.IsTrue() { '1' } else { '0' });
@@ -141,19 +143,22 @@ impl VcdWriter
             out.push( '\n');
         } else {
             out.push( 'b');
-            let  	mut started = false;
-            // Iterate from MSB to LSB
-            for i in ( 0..bits).rev() {
-                let  	mask = 1u64 << i;
-                if ( val._X & mask) != 0 {
-                    out.push( 'x');
-                    started = true;
-                } else if ( val._Val & mask) != 0 {
-                    out.push( '1');
-                    started = true;
-                } else {
-                    if started || i == 0 {
-                        out.push( '0');
+            if val.IsI() {
+                out.push( 'z');
+            } else if val.IsX() {
+                out.push( 'x');
+            } else {
+                let  	mut started = false;
+                // Iterate from MSB to LSB
+                for i in ( 0..bits).rev() {
+                    let  	mask = 1u64 << i;
+                    if ( val.Val() & mask) != 0 {
+                        out.push( '1');
+                        started = true;
+                    } else {
+                        if started || i == 0 {
+                            out.push( '0');
+                        }
                     }
                 }
             }

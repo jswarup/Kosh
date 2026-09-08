@@ -3,19 +3,21 @@ use	std::fmt;
 use	std::ops::{ BitAnd, BitOr, BitXor, Not };
 use	crate::{
     rube::port::PortType,
-    silo::U32,
+    silo::{ U32, U64 },
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-/// Unified 16-byte bit-packed register value ( 3-state / 4-state logic).
-/// `_Val`: Data bits ( Bool at bit 0, U8 at 0..7, U16 at 0..15, U32 at 0..31, U64 at 0..63).
-/// `_X`: Unknown mask bits ( 1 = bit is unknown X, 0 = bit is known valid).
+/// Unified bit-packed register value with 4-state logic ( 0, 1, X, Z/I).
+/// `_Val`: Data bits as U64.
+/// `_X`: Unknown boolean flag ( true = register value is unknown X).
+/// `_I`: High-Impedance boolean flag ( true = register value is high-impedance Z/I).
 #[derive( Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Reg
 {
-    pub _Val: u64,
-    pub _X: u64,
+    pub _Val: U64,
+    pub _X:   bool,
+    pub _I:   bool,
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -37,29 +39,51 @@ impl Default for Reg
 
 impl Reg
 {
-    pub const TRUE: Self = Self { _Val: 1, _X: 0 };
-    pub const FALSE: Self = Self { _Val: 0, _X: 0 };
-    pub const X: Self = Self { _Val: 0, _X: 1 };
-    pub const X_BOOL: Self = Self { _Val: 0, _X: 1 };
-    pub const X_U8: Self = Self { _Val: 0, _X: 0xFF };
-    pub const X_U16: Self = Self { _Val: 0, _X: 0xFFFF };
-    pub const X_U32: Self = Self { _Val: 0, _X: 0xFFFF_FFFF };
-    pub const X_U64: Self = Self { _Val: 0, _X: 0xFFFF_FFFF_FFFF_FFFF };
+    pub const TRUE:   Self = Self { _Val: U64::_1, _X: false, _I: false };
+    pub const FALSE:  Self = Self { _Val: U64::_0, _X: false, _I: false };
+    pub const X:      Self = Self { _Val: U64::_0, _X: true,  _I: false };
+    pub const Z:      Self = Self { _Val: U64::_0, _X: false, _I: true  };
+    pub const I:      Self = Self::Z;
+    pub const HIGH_Z: Self = Self::Z;
+
+    pub const X_BOOL: Self = Self::X;
+    pub const X_U8:   Self = Self::X;
+    pub const X_U16:  Self = Self::X;
+    pub const X_U32:  Self = Self::X;
+    pub const X_U64:  Self = Self::X;
+
+    pub const Z_BOOL: Self = Self::Z;
+    pub const Z_U8:   Self = Self::Z;
+    pub const Z_U16:  Self = Self::Z;
+    pub const Z_U32:  Self = Self::Z;
+    pub const Z_U64:  Self = Self::Z;
 
     #[inline]
     pub const fn	Known( val: u64) -> Self
     {
-        return Self { _Val: val, _X: 0 };
+        return Self { _Val: U64( val), _X: false, _I: false };
     }
 
     #[inline]
-    pub const fn	Unknown( xMask: u64) -> Self
+    pub const fn	Unknown( _dummy: u64) -> Self
     {
-        return Self { _Val: 0, _X: xMask };
+        return Self::X;
+    }
+
+    #[inline]
+    pub const fn	HighZ( _dummy: u64) -> Self
+    {
+        return Self::Z;
     }
 
     #[inline]
     pub const fn	Val( &self) -> u64
+    {
+        return self._Val.0;
+    }
+
+    #[inline]
+    pub const fn	GetU64( &self) -> U64
     {
         return self._Val;
     }
@@ -67,34 +91,49 @@ impl Reg
     #[inline]
     pub const fn	IsX( &self) -> bool
     {
-        return self._X != 0;
+        return self._X;
+    }
+
+    #[inline]
+    pub const fn	IsZ( &self) -> bool
+    {
+        return self._I;
+    }
+
+    #[inline]
+    pub const fn	IsI( &self) -> bool
+    {
+        return self._I;
     }
 
     #[inline]
     pub const fn	IsValid( &self) -> bool
     {
-        return self._X == 0;
+        return !self._X && !self._I;
     }
 
     #[inline]
     pub const fn	IsTrue( &self) -> bool
     {
-        return ( self._X & 1) == 0 && ( self._Val & 1) != 0;
+        return !self._X && !self._I && ( self._Val.0 & 1) != 0;
     }
 
     #[inline]
     pub const fn	IsFalse( &self) -> bool
     {
-        return ( self._X & 1) == 0 && ( self._Val & 1) == 0;
+        return !self._X && !self._I && ( self._Val.0 & 1) == 0;
     }
 
     #[inline]
     pub const fn	AsBool( &self) -> Self
     {
-        if ( self._X & 1) != 0 {
+        if self._I {
+            return Self::Z;
+        }
+        if self._X {
             return Self::X;
         }
-        if ( self._Val & 1) != 0 {
+        if ( self._Val.0 & 1) != 0 {
             return Self::TRUE;
         }
         return Self::FALSE;
@@ -103,15 +142,16 @@ impl Reg
     #[inline]
     pub const fn	GetU32( &self) -> U32
     {
-        return U32( ( self._Val & 0xFFFF_FFFF) as u32);
+        return U32( ( self._Val.0 & 0xFFFF_FFFF) as u32);
     }
 
     #[inline]
     pub const fn	Masked( &self, mask: u64) -> Self
     {
         return Self {
-            _Val: self._Val & mask,
-            _X: self._X & mask,
+            _Val: U64( self._Val.0 & mask),
+            _X:   self._X,
+            _I:   self._I,
         };
     }
 
@@ -125,6 +165,12 @@ impl Reg
     pub const fn	FromU32( val: U32) -> Self
     {
         return Self::Known( val.0 as u64);
+    }
+
+    #[inline]
+    pub const fn	FromU64( val: U64) -> Self
+    {
+        return Self { _Val: val, _X: false, _I: false };
     }
 
     #[inline]
@@ -148,9 +194,19 @@ impl Not for Reg
     #[inline]
     fn	not( self) -> Self::Output
     {
+        if self._X || self._I {
+            return Self::X;
+        }
+        if self._Val == U64::_1 {
+            return Self::FALSE;
+        }
+        if self._Val == U64::_0 {
+            return Self::TRUE;
+        }
         return Self {
-            _Val: ( !self._Val) & ( !self._X),
-            _X: self._X,
+            _Val: !self._Val,
+            _X:   false,
+            _I:   false,
         };
     }
 }
@@ -164,12 +220,16 @@ impl BitAnd for Reg
     #[inline]
     fn	bitand( self, rhs: Self) -> Self::Output
     {
-        let  	zeros = ( !self._Val & !self._X) | ( !rhs._Val & !rhs._X);
-        let  	ones = ( self._Val & !self._X) & ( rhs._Val & !rhs._X);
-        let  	x = !zeros & !ones;
+        if self.IsFalse() || rhs.IsFalse() {
+            return Self::FALSE;
+        }
+        if self.IsX() || self.IsI() || rhs.IsX() || rhs.IsI() {
+            return Self::X;
+        }
         return Self {
-            _Val: ones,
-            _X: x,
+            _Val: self._Val & rhs._Val,
+            _X:   false,
+            _I:   false,
         };
     }
 }
@@ -183,12 +243,16 @@ impl BitOr for Reg
     #[inline]
     fn	bitor( self, rhs: Self) -> Self::Output
     {
-        let  	ones = ( self._Val & !self._X) | ( rhs._Val & !rhs._X);
-        let  	zeros = ( !self._Val & !self._X) & ( !rhs._Val & !rhs._X);
-        let  	x = !zeros & !ones;
+        if self.IsTrue() || rhs.IsTrue() {
+            return Self::TRUE;
+        }
+        if self.IsX() || self.IsI() || rhs.IsX() || rhs.IsI() {
+            return Self::X;
+        }
         return Self {
-            _Val: ones,
-            _X: x,
+            _Val: self._Val | rhs._Val,
+            _X:   false,
+            _I:   false,
         };
     }
 }
@@ -202,11 +266,13 @@ impl BitXor for Reg
     #[inline]
     fn	bitxor( self, rhs: Self) -> Self::Output
     {
-        let  	x = self._X | rhs._X;
-        let  	val = ( self._Val ^ rhs._Val) & !x;
+        if self.IsX() || self.IsI() || rhs.IsX() || rhs.IsI() {
+            return Self::X;
+        }
         return Self {
-            _Val: val,
-            _X: x,
+            _Val: self._Val ^ rhs._Val,
+            _X:   false,
+            _I:   false,
         };
     }
 }
@@ -235,14 +301,28 @@ impl From< U32> for Reg
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
+impl From< U64> for Reg
+{
+    #[inline]
+    fn	from( val: U64) -> Self
+    {
+        return Self::FromU64( val);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 impl fmt::Debug for Reg
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
-        if self._X != 0 {
-            return write!( f, "Reg(Val: 0x{:X}, X: 0x{:X})", self._Val, self._X);
+        if self._I {
+            return write!( f, "Reg(Z)");
         }
-        return write!( f, "Reg(0x{:X})", self._Val);
+        if self._X {
+            return write!( f, "Reg(X)");
+        }
+        return write!( f, "Reg(0x{:X})", self._Val.0);
     }
 }
 
@@ -252,13 +332,16 @@ impl fmt::Display for Reg
 {
     fn	fmt( &self, f: &mut fmt::Formatter< '_>) -> fmt::Result
     {
-        if self._X != 0 {
+        if self._I {
+            return write!( f, "Z");
+        }
+        if self._X {
             return write!( f, "X");
         }
-        return write!( f, "0x{:X}", self._Val);
+        return write!( f, "0x{:X}", self._Val.0);
     }
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-crate::ImplFluxSource!( Reg, _Val, _X);
+crate::ImplFluxSource!( Reg, _Val, _X, _I);

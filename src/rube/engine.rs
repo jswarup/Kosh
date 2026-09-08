@@ -1,25 +1,20 @@
 //-- engine.rs -----------------------------------------------------------------------------------------------------------------------
 
-use	std::{
-    cell::RefCell,
-    sync::Arc,
 use	std::sync::{
     atomic::{ AtomicPtr, Ordering },
     Arc,
 };
 use	crate::{
     rube::{
-        coro_kernel::{ CoroInstance, CoroPorts, CoroWarp, CORO_MAX_PORTS },
         coro_kernel::{ CoroCell, CoroPorts, CoroWarp, CORO_MAX_PORTS },
         layout::Layout,
         module::{ BehavioralWarp, CustomWarp, FastWarp },
         port::PortId,
         reg::Reg,
         registry::{ CustomKernelFn, KernelRegistry },
-        trigger::{ ITriggerWad, TriggerId, TriggerWad },
+        trigger::{ ITriggerVal, ITriggerWad, TriggerId, TriggerWad },
     },
-    silo::{ Buff, IAccess, U32, U8, USeg, arr::IArr },
-    stalks::{ CoroRes, ICoro, DynIWorker },
+    silo::{ arr::IArr, Buff, IAccess, U8, U32, U64, USeg },
     stalks::{ CoroRes, DynIWorker, ICoro, Spinlock },
     heist::{ Atelier, IAtelier, IMaestro },
     CpuSpawnQuell, ChoreTree,
@@ -27,11 +22,8 @@ use	crate::{
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-use std::sync::atomic::{AtomicPtr, Ordering};
-static CURRENT_SIM_ENGINE: AtomicPtr< SimEngine> = AtomicPtr::new( std::ptr::null_mut() );
+static CURRENT_SIM_ENGINE: AtomicPtr< SimEngine< U64>> = AtomicPtr::new( std::ptr::null_mut() );
 static SIM_DRIVE_LOCK: Spinlock = Spinlock::New();
-
-static CURRENT_SIM_ENGINE: AtomicPtr<SimEngine> = AtomicPtr::new(std::ptr::null_mut());
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
@@ -47,10 +39,36 @@ fn	fast_warp_spawn< 'a>( chunk: crate::silo::Arr< 'a, FastWarp>, _w: &DynIWorker
         let  	mask = warp._Mask;
         let  	count = warp._Count.AsUsize();
         let  	modStart = warp._ModStart.AsUsize();
-        SimEngine::ForEachReadyLane( readyWords, modStart, count, |l| {
-            let  	in1 = triggers._CurrentVals[warp._In1[l]];
-            let  	in2 = triggers._CurrentVals[warp._In2[l]];
-            triggers._FutureVals[warp._Out[l]] = op.Eval( in1, in2, mask);
+        SimEngine::< U64>::ForEachReadyLane( readyWords, modStart, count, |l| {
+            let  	in1Trig = warp._In1[l];
+            let  	in2Trig = warp._In2[l];
+            let  	outTrig = warp._Out[l];
+            let  	in1 = triggers._CurrentVals[in1Trig];
+            let  	in2 = triggers._CurrentVals[in2Trig];
+            let  	f1 = triggers._Flags[in1Trig].0;
+            let  	f2 = triggers._Flags[in2Trig].0;
+            if ( ( f1 | f2 ) & crate::rube::trigger::CURR_MASK ) == 0 {
+                let  	raw = op.EvalRaw( in1.0, in2.0, mask);
+                triggers._FutureVals[outTrig] = U64( raw);
+                triggers._Flags[outTrig] = U8( triggers._Flags[outTrig].0 & !crate::rube::trigger::FUTR_MASK );
+            } else {
+                let  	r1 = Reg {
+                    _Val: in1,
+                    _X:   ( f1 & crate::rube::trigger::CURR_X) != 0,
+                    _I:   ( f1 & crate::rube::trigger::CURR_I) != 0,
+                };
+                let  	r2 = Reg {
+                    _Val: in2,
+                    _X:   ( f2 & crate::rube::trigger::CURR_X) != 0,
+                    _I:   ( f2 & crate::rube::trigger::CURR_I) != 0,
+                };
+                let  	res = op.Eval( r1, r2, mask);
+                triggers._FutureVals[outTrig] = res._Val;
+                let  	mut f = triggers._Flags[outTrig].0 & !crate::rube::trigger::FUTR_MASK;
+                if res.IsX() { f |= crate::rube::trigger::FUTR_X; }
+                if res.IsI() { f |= crate::rube::trigger::FUTR_I; }
+                triggers._Flags[outTrig] = U8( f);
+            }
         });
     });
 }
@@ -73,10 +91,10 @@ fn	custom_warp_spawn< 'a>( chunk: crate::silo::Arr< 'a, CustomWarp>, _w: &DynIWo
         let  	globalIdx = unsafe { warpPtr.offset_from( basePtr) as usize };
         let  	cb = &customCallbacks[globalIdx];
 
-        SimEngine::ForEachReadyLane( readyWords, modStart, count, |l| {
+        SimEngine::< U64>::ForEachReadyLane( readyWords, modStart, count, |l| {
             let  	inTrigs = &warp._InTriggers[l];
             let  	outTrigs = &warp._OutTriggers[l];
-            SimEngine::EvalCustomInstance( cb, inTrigs, outTrigs, triggers);
+            SimEngine::< U64>::EvalCustomInstance( cb, inTrigs, outTrigs, triggers);
         });
     });
 }
@@ -93,11 +111,11 @@ fn	behavioral_warp_spawn< 'a>( chunk: crate::silo::Arr< 'a, BehavioralWarp>, _w:
         let  	warp = chunk.At( i);
         let  	count = warp._Count.AsUsize();
         let  	modStart = warp._ModStart.AsUsize();
-        SimEngine::ForEachReadyLane( readyWords, modStart, count, |l| {
+        SimEngine::< U64>::ForEachReadyLane( readyWords, modStart, count, |l| {
             let  	cb = &warp._Instances[l];
             let  	inTrigs = &warp._InTriggers[l];
             let  	outTrigs = &warp._OutTriggers[l];
-            SimEngine::EvalCustomInstance( cb, inTrigs, outTrigs, triggers);
+            SimEngine::< U64>::EvalCustomInstance( cb, inTrigs, outTrigs, triggers);
         });
     });
 }
@@ -114,11 +132,11 @@ fn	trait_warp_spawn< 'a>( chunk: crate::silo::Arr< 'a, crate::rube::module::Trai
         let  	warp = chunk.At( i);
         let  	count = warp._Count.AsUsize();
         let  	modStart = warp._ModStart.AsUsize();
-        SimEngine::ForEachReadyLane( readyWords, modStart, count, |l| {
+        SimEngine::< U64>::ForEachReadyLane( readyWords, modStart, count, |l| {
             let  	cb = &warp._Instances[l];
             let  	inTrigs = &warp._InTriggers[l];
             let  	outTrigs = &warp._OutTriggers[l];
-            SimEngine::EvalTraitInstance( cb, inTrigs, outTrigs, triggers);
+            SimEngine::< U64>::EvalTraitInstance( cb, inTrigs, outTrigs, triggers);
         });
     });
 }
@@ -136,7 +154,7 @@ fn	coro_warp_spawn< 'a>( chunk: crate::silo::Arr< 'a, CoroWarp>, _w: &DynIWorker
             let  	inTrigs = &warp._InTriggers[l];
             let  	outTrigs = &warp._OutTriggers[l];
             let  	coroCell = &warp._Instances[l];
-            SimEngine::EvalCoroInstance( coroCell, inTrigs, outTrigs, triggers);
+            SimEngine::< U64>::EvalCoroInstance( coroCell, inTrigs, outTrigs, triggers);
         });
     });
 }
@@ -152,9 +170,9 @@ pub enum SimEngineMode
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-pub struct SimEngine
+pub struct SimEngine< T: ITriggerVal = U64>
 {
-    pub _Triggers:        TriggerWad,
+    pub _Triggers:        TriggerWad< T>,
     pub _FastWarps:       Buff< FastWarp>,
     pub _CustomWarps:     Buff< CustomWarp>,
     pub _CustomCallbacks: Buff< CustomKernelFn>,
@@ -169,7 +187,7 @@ pub struct SimEngine
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-impl SimEngine
+impl SimEngine< U64>
 {
     pub fn	Create( layout: &Layout) -> Self
     {
@@ -178,8 +196,23 @@ impl SimEngine
 
     pub fn	CreateWithRegistry( layout: &Layout, registry: &KernelRegistry) -> Self
     {
+        return Self::CreateTypedWithRegistry( layout, registry);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
+impl< T: ITriggerVal> SimEngine< T>
+{
+    pub fn	CreateTyped( layout: &Layout) -> Self
+    {
+        return Self::CreateTypedWithRegistry( layout, &KernelRegistry::Default());
+    }
+
+    pub fn	CreateTypedWithRegistry( layout: &Layout, registry: &KernelRegistry) -> Self
+    {
         let  	portToTrigger = layout.PortToTrigger();
-        let  	triggers = layout.BuildTriggers( &portToTrigger);
+        let  	triggers = layout.BuildTriggersTyped::< T>( &portToTrigger);
         let  	( fastWarps, customWarps, behavioralWarps, coroWarps, traitWarps) = layout.CompileWarps( &portToTrigger);
         let  	modCount = layout._Modules.Size().AsUsize();
         let  	wordCount = ( modCount + 63) / 64;
@@ -240,112 +273,29 @@ impl SimEngine
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	EvalBehavioralWarps( &mut self)
-    {
-        let  	readyWords = &self._ReadyWords;
-        let  	triggers = &mut self._Triggers;
-        self._BehavioralWarps.Arr().Traverse( |warp| {
-            let  	count = warp._Count.AsUsize();
-            let  	modStart = warp._ModStart.AsUsize();
-            Self::ForEachReadyLane( readyWords, modStart, count, |l| {
-                let  	cb = &warp._Instances[l];
-                let  	inTrigs = &warp._InTriggers[l];
-                let  	outTrigs = &warp._OutTriggers[l];
-                Self::EvalCustomInstance( cb, inTrigs, outTrigs, triggers);
-            });
-        });
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    fn	EvalCoroWarps( &mut self)
-    {
-        let  	readyWords = &self._ReadyWords;
-        let  	triggers = &mut self._Triggers;
-        self._CoroWarps.Arr().Traverse( |warp| {
-            let  	count = warp._Count.AsUsize();
-            let  	modStart = warp._ModStart.AsUsize();
-            Self::ForEachReadyLane( readyWords, modStart, count, |l| {
-                let  	inTrigs = &warp._InTriggers[l];
-                let  	outTrigs = &warp._OutTriggers[l];
-                let  	coroRef = &warp._Instances[l];
-                Self::EvalCoroInstance( coroRef, inTrigs, outTrigs, triggers);
-            });
-        });
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    fn	EvalTraitWarps( &mut self)
-    {
-        let  	readyWords = &self._ReadyWords;
-        let  	triggers = &mut self._Triggers;
-        self._TraitWarps.Arr().Traverse( |warp| {
-            let  	count = warp._Count.AsUsize();
-            let  	modStart = warp._ModStart.AsUsize();
-            Self::ForEachReadyLane( readyWords, modStart, count, |l| {
-                let  	cb = &warp._Instances[l];
-                let  	inTrigs = &warp._InTriggers[l];
-                let  	outTrigs = &warp._OutTriggers[l];
-                Self::EvalTraitInstance( cb, inTrigs, outTrigs, triggers);
-            });
-        });
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    /// Executes a single synchronous discrete-event simulation cycle with ZERO heap allocations:
-    /// 1. Phase 1: Pure evaluation reading immutable Present values ( T) from AoS cells and writing directly to Future slots ( T+1).
-    /// 2. Phase 2: Custom module evaluations.
-    /// 3. Phase 3: Clock tick latching ( Past <- Present, Present <- Future).
     #[inline]
     pub fn	Drive( &mut self) -> usize
     {
-        if let SimEngineMode::Parallel( numWorkers) = self._Mode {
-            return self.Drive_Parallel( numWorkers);
-        }
         let  	_guard = SIM_DRIVE_LOCK.Lock();
 
         let  	hasReady = self.ResolveReadyModules();
         let  	hasCoros = self._CoroWarps.Size() > U32::_0;
 
-        if hasReady {
-            self.EvalFastWarps();
-            self.EvalCustomWarps();
-            self.EvalBehavioralWarps();
-            self.EvalTraitWarps();
-            self.EvalCoroWarps();
-        }
         if hasReady || hasCoros {
             let  	numWorkers = match self._Mode {
                 SimEngineMode::Serial => U32( 0),
                 SimEngineMode::Parallel( n) => U32::from( n),
             };
 
-        self._Triggers.AdvanceAll();
-        self._CycleCount += 1;
-        return self._CycleCount;
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    pub fn	Drive_Parallel( &mut self, numWorkers: U8) -> usize
-    {
-        let  	hasReady = self.ResolveReadyModules();
-
-        if hasReady {
-            Atelier::Init( U32( numWorkers.0 as u32));
             Atelier::Init( numWorkers);
             let  	atelier = Atelier::Get();
 
-            // Store the engine pointer in our thread-safe static for parallel workers to access
-            CURRENT_SIM_ENGINE.store( self as *mut SimEngine, std::sync::atomic::Ordering::Release);
-            CURRENT_SIM_ENGINE.store( self as *mut SimEngine, Ordering::Release);
+            CURRENT_SIM_ENGINE.store( self as *mut SimEngine< T> as *mut SimEngine< U64>, Ordering::Release);
 
             let  	fastNode = CpuSpawnQuell!(
                 self._FastWarps.Arr(),
                 fast_warp_spawn,
-                |_chunk, _w| {} // No-op quell
+                |_chunk, _w| {}
             );
 
             let  	customNode = CpuSpawnQuell!(
@@ -372,13 +322,9 @@ impl SimEngine
                 |_chunk, _w| {}
             );
 
-            // Compose parallel execution graph
-            let  	warpPhase = ChoreTree!( fastNode | customNode | behavioralNode | traitNode );
             let  	warpPhase = ChoreTree!( fastNode | customNode | behavioralNode | traitNode | coroNode );
             atelier.MainMaestro().PostChoreTree( &warpPhase );
             atelier.DoLaunch();
-
-            self.EvalCoroWarps();
         }
 
         self._Triggers.AdvanceAll();
@@ -400,20 +346,17 @@ impl SimEngine
     {
         let  	wordCount = self._ReadyWords.Size();
         if self._CycleCount == 0 {
-            // First cycle: evaluate all modules to initialize combinational logic
             USeg::New( U32::_0, wordCount).Traverse( |i| {
                 self._ReadyWords[i] = !0u64;
             });
             return true;
         }
 
-        // Reset readiness words
         USeg::New( U32::_0, wordCount).Traverse( |i| {
             self._ReadyWords[i] = 0u64;
         });
 
         let  	mut hasReady = false;
-        // Find triggers that changed and mark sensitive modules bitwise
         USeg::New( U32::_0, self._Triggers.Size()).Traverse( |tIdx| {
             let  	trigId = tIdx;
             if self._Triggers.IsEdge( trigId) {
@@ -435,81 +378,40 @@ impl SimEngine
 
     //-----------------------------------------------------------------------------------------------------------------------------
 
-    fn	EvalFastWarps( &mut self)
-    {
-        let  	readyWords = &self._ReadyWords;
-        let  	triggers = &mut self._Triggers;
-        self._FastWarps.Arr().Traverse( |warp| {
-            let  	op = warp._Op;
-            let  	mask = warp._Mask;
-            let  	count = warp._Count.AsUsize();
-            let  	modStart = warp._ModStart.AsUsize();
-            Self::ForEachReadyLane( readyWords, modStart, count, |l| {
-                let  	in1 = triggers._CurrentVals[warp._In1[l]];
-                let  	in2 = triggers._CurrentVals[warp._In2[l]];
-                triggers._FutureVals[warp._Out[l]] = op.Eval( in1, in2, mask);
-            });
-        });
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
-    fn	EvalCustomWarps( &mut self)
-    {
-        let  	readyWords = &self._ReadyWords;
-        let  	triggers = &mut self._Triggers;
-        let  	customCallbacks = &self._CustomCallbacks;
-        let  	mut warpIdx = 0;
-        self._CustomWarps.Arr().Traverse( |warp| {
-            let  	count = warp._Count.AsUsize();
-            let  	modStart = warp._ModStart.AsUsize();
-            let  	cb = &customCallbacks[warpIdx];
-            warpIdx += 1;
-            Self::ForEachReadyLane( readyWords, modStart, count, |l| {
-                let  	inTrigs = &warp._InTriggers[l];
-                let  	outTrigs = &warp._OutTriggers[l];
-                Self::EvalCustomInstance( cb, inTrigs, outTrigs, triggers);
-            });
-        });
-    }
-
-    //-----------------------------------------------------------------------------------------------------------------------------
-
     fn	EvalCustomInstance(
         cb: &Arc< dyn Fn( &[Reg], &mut [Reg]) + Send + Sync>,
         inTriggers: &Buff< TriggerId>,
         outTriggers: &Buff< TriggerId>,
-        triggers: &mut TriggerWad,
+        triggers: &mut TriggerWad< T>,
     )
     {
         let  	inLen = inTriggers.Size();
         let  	outLen = outTriggers.Size();
 
-        // Stack-allocated buffers for modules with up to 16 inputs/outputs
         if inLen.0 <= 16 && outLen.0 <= 16 {
             let  	mut inBuf = [Reg::default(); 16];
             let  	mut outBuf = [Reg::default(); 16];
 
             USeg::New( U32::_0, inLen).Traverse( |k| {
-                inBuf[k.AsUsize()] = triggers._CurrentVals[inTriggers[k]];
+                inBuf[k.AsUsize()] = triggers.Current( inTriggers[k] );
             });
             USeg::New( U32::_0, outLen).Traverse( |k| {
-                outBuf[k.AsUsize()] = triggers._FutureVals[outTriggers[k]];
+                outBuf[k.AsUsize()] = triggers.Future( outTriggers[k] );
             });
 
             ( cb)( &inBuf[..inLen.AsUsize()], &mut outBuf[..outLen.AsUsize()]);
 
             USeg::New( U32::_0, outLen).Traverse( |k| {
-                triggers._FutureVals[outTriggers[k]] = outBuf[k.AsUsize()];
+                triggers.SetFuture( outTriggers[k], outBuf[k.AsUsize()] );
             });
         } else {
-            let  	inVals = Buff::Create( inLen, |k| triggers._CurrentVals[inTriggers[k]]);
-            let  	mut outVals = Buff::Create( outLen, |k| triggers._FutureVals[outTriggers[k]]);
+            let  	inVals = Buff::Create( inLen, |k| triggers.Current( inTriggers[k] ));
+            let  	mut outVals = Buff::Create( outLen, |k| triggers.Future( outTriggers[k] ));
 
-            ( cb)( &inVals, &mut outVals);
+            ( cb)( inVals.Slice(), outVals.SliceMut());
 
             USeg::New( U32::_0, outLen).Traverse( |k| {
-                triggers._FutureVals[outTriggers[k]] = outVals[k];
+                triggers.SetFuture( outTriggers[k], outVals[k] );
             });
         }
     }
@@ -520,37 +422,36 @@ impl SimEngine
         cb: &Arc< dyn crate::rube::kernel::IKernel>,
         inTriggers: &Buff< TriggerId>,
         outTriggers: &Buff< TriggerId>,
-        triggers: &mut TriggerWad,
+        triggers: &mut TriggerWad< T>,
     )
     {
         let  	inLen = inTriggers.Size();
         let  	outLen = outTriggers.Size();
 
-        // Stack-allocated buffers for modules with up to 16 inputs/outputs
         if inLen.0 <= 16 && outLen.0 <= 16 {
             let  	mut inBuf = [Reg::default(); 16];
             let  	mut outBuf = [Reg::default(); 16];
 
             USeg::New( U32::_0, inLen).Traverse( |k| {
-                inBuf[k.AsUsize()] = triggers._CurrentVals[inTriggers[k]];
+                inBuf[k.AsUsize()] = triggers.Current( inTriggers[k] );
             });
             USeg::New( U32::_0, outLen).Traverse( |k| {
-                outBuf[k.AsUsize()] = triggers._FutureVals[outTriggers[k]];
+                outBuf[k.AsUsize()] = triggers.Future( outTriggers[k] );
             });
 
             let _ = cb.Execute( &inBuf[..inLen.AsUsize()], &mut outBuf[..outLen.AsUsize()]);
 
             USeg::New( U32::_0, outLen).Traverse( |k| {
-                triggers._FutureVals[outTriggers[k]] = outBuf[k.AsUsize()];
+                triggers.SetFuture( outTriggers[k], outBuf[k.AsUsize()] );
             });
         } else {
-            let  	inVals = Buff::Create( inLen, |k| triggers._CurrentVals[inTriggers[k]]);
-            let  	mut outVals = Buff::Create( outLen, |k| triggers._FutureVals[outTriggers[k]]);
+            let  	inVals = Buff::Create( inLen, |k| triggers.Current( inTriggers[k] ));
+            let  	mut outVals = Buff::Create( outLen, |k| triggers.Future( outTriggers[k] ));
 
             let _ = cb.Execute( &inVals, &mut outVals);
 
             USeg::New( U32::_0, outLen).Traverse( |k| {
-                triggers._FutureVals[outTriggers[k]] = outVals[k];
+                triggers.SetFuture( outTriggers[k], outVals[k] );
             });
         }
     }
@@ -558,11 +459,10 @@ impl SimEngine
     //-----------------------------------------------------------------------------------------------------------------------------
 
     fn	EvalCoroInstance(
-        coroRef: &RefCell< CoroInstance>,
         coroCell: &CoroCell,
         inTriggers: &Buff< TriggerId>,
         outTriggers: &Buff< TriggerId>,
-        triggers: &mut TriggerWad,
+        triggers: &mut TriggerWad< T>,
     )
     {
         let  	inLen = inTriggers.Size();
@@ -571,11 +471,10 @@ impl SimEngine
         let  	mut inPorts = CoroPorts::New();
         let  	inCount = inLen.min( U32( CORO_MAX_PORTS as u32));
         USeg::New( U32::_0, inCount).Traverse( |k| {
-            inPorts._Vals[k.AsUsize()] = triggers._CurrentVals[inTriggers[k]];
+            inPorts._Vals[k.AsUsize()] = triggers.Current( inTriggers[k] );
         });
         inPorts._Len = inCount;
 
-        let  	mut coro = coroRef.borrow_mut();
         let  	coro = coroCell.GetMut();
         if coro.IsDone() {
             return;
@@ -586,7 +485,7 @@ impl SimEngine
                 if outLen > U32::_0 {
                     let  	outCount = outLen.min( outPorts.Len());
                     USeg::New( U32::_0, outCount).Traverse( |k| {
-                        triggers._FutureVals[outTriggers[k]] = outPorts._Vals[k.AsUsize()];
+                        triggers.SetFuture( outTriggers[k], outPorts._Vals[k.AsUsize()] );
                     });
                 }
             }
@@ -603,13 +502,13 @@ impl SimEngine
     }
 
     #[inline]
-    pub fn	Triggers( &self) -> &TriggerWad
+    pub fn	Triggers( &self) -> &TriggerWad< T>
     {
         return &self._Triggers;
     }
 
     #[inline]
-    pub fn	TriggersMut( &mut self) -> &mut TriggerWad
+    pub fn	TriggersMut( &mut self) -> &mut TriggerWad< T>
     {
         return &mut self._Triggers;
     }
@@ -648,6 +547,24 @@ impl SimEngine
     pub fn	SetTriggerImmediate( &mut self, id: TriggerId, val: Reg)
     {
         self._Triggers.SetImmediate( id, val);
+    }
+
+    #[inline]
+    pub fn	GetTriggerVal( &self, id: TriggerId) -> T
+    {
+        return self._Triggers.CurrentVal( id);
+    }
+
+    #[inline]
+    pub fn	SetTriggerVal( &mut self, id: TriggerId, val: T)
+    {
+        self._Triggers.SetFutureVal( id, val);
+    }
+
+    #[inline]
+    pub fn	SetTriggerImmediateVal( &mut self, id: TriggerId, val: T)
+    {
+        self._Triggers.SetImmediateVal( id, val);
     }
 
     #[inline]
@@ -735,5 +652,3 @@ impl SimEngine
         return self.GetTrigger( self._PortToTrigger[id.Index()]);
     }
 }
-
-//---------------------------------------------------------------------------------------------------------------------------------

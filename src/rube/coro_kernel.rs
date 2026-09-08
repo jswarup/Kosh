@@ -1,7 +1,6 @@
 //-- coro_kernel.rs ---------------------------------------------------------------------------------------------------------------
 
 use	std::{
-    cell::RefCell,
     ops::{ Index, IndexMut },
     sync::Arc,
 };
@@ -201,7 +200,6 @@ pub struct CoroWarp
 {
     pub _ModStart:    U32,
     pub _Count:       U32,
-    pub _Instances:   Buff< RefCell< CoroInstance>>,
     pub _Instances:   Buff< CoroCell>,
     pub _InTriggers:  Buff< Buff< TriggerId>>,
     pub _OutTriggers: Buff< Buff< TriggerId>>,
@@ -214,7 +212,6 @@ impl CoroWarp
     pub fn	New(
         modStart: U32,
         count: U32,
-        instances: Buff< RefCell< CoroInstance>>,
         instances: Buff< CoroCell>,
         inTriggers: Buff< Buff< TriggerId>>,
         outTriggers: Buff< Buff< TriggerId>>,
