@@ -4,81 +4,70 @@
 
 The `rube` module is Kosh's **ultra-low-latency synchronous digital logic simulation and SIMT execution engine**. It provides an end-to-end framework for declaring hardware netlists, performing topological net compilation, and simulating digital systems with zero heap allocation during the simulation hot path.
 
-**Current Version**: 2.0 (Const-Generic Architecture with EDA Compatibility Roadmap)
+**Current Version**: 2.0 (Runtime Module Architecture with EDA Compatibility Roadmap)
 
 Key architectural highlights:
 1. **Unified Register Currency (`Reg`)**: 16-byte bit-packed register supporting 2-state and 4-state IEEE-1364 logic (0, 1, X) across Boolean, U8, U16, U32, and U64 bus widths.
-2. **Const-Generic Module Hierarchy (`Module<IN, OUT, SUBS, State>`)**: Type-safe, statically-emplaced module structure with compile-time sealing via type-state pattern (`PhantomData<Sealed>`), eliminating heap allocations and wrapper indirection.
+2. **Runtime Module Hierarchy (`Module`)**: Module records use runtime `USeg` ranges into layout-owned port and submodule storage. Modules can be sealed during layout construction, with the current implementation enforcing the sealed state through runtime checks.
 3. **Structure-of-Arrays Temporal Storage (`TriggerWad`)**: Contiguous arrays for temporal states (`_PastVals`, `_CurrentVals`, `_FutureVals`) and subscriber spans (`_SubscriberSpans`, `_Subscribers`) maximizing L1 cache locality.
 4. **Graph Broadcast Net Partitioning (`EdgeBroadcast`)**: Merges connected input and output ports into canonical net trigger IDs using breadth-first CSR traversal.
 5. **SIMT Warp Execution Pipeline**:
    - **`Layout::Freeze` Step 1**: Automatically sorts modules by opcode for fast primitive gates and by closure `vtable` pointer for custom behavioral blocks.
    - **`FastWarp` & `CustomWarp`**: Batched Structure-of-Arrays (SoA) execution blocks eliminating dynamic opcode switching.
    - **64-Lane Word Predication (`_ReadyWords`)**: Bit-packed readiness tracking (8x memory compression) enabling the engine to skip 64 inactive gates in a single CPU cycle.
-6. **Type-Safe Kernel System (`IKernel`)**: Trait-based kernel signatures with compile-time validation, replacing ad-hoc string-based registry (Phase 2, in development).
-7. **Rich Module Interfaces (`IModuleInterface`)**: Self-documenting module contracts with automatic SystemVerilog/VHDL export, enabling EDA ecosystem integration (Phase 1, in development).
-8. **Zero `std::vec::Vec` Invariant**: All buffers and metadata use project-native `silo::Buff` and `silo::Stash`.
+6. **Type-Safe Kernel System (`IKernel`)**: Trait-based kernel signatures and runtime slice validation, alongside the existing fast, behavioral, custom, coroutine, and trait kernel kinds.
+7. **Rich Module Interfaces (`IModuleInterface`)**: Static self-documenting module contracts with SystemVerilog export and introspection support. VHDL export and broader EDA integration remain future work.
+8. **Native Simulation Storage**: Core simulation buffers use project-native `silo::Buff` and `silo::Stash`; boundary APIs such as introspection and breakpoint control may use standard collections.
 9. **VCD Waveform I/O (`vcd`, `vcdio`)**: Full IEEE-1364 Value Change Dump (VCD) writer and zero-heap `ShardTree` parser.
 10. **Rich Standard Component Library**: Built-in primitives for standard logic gates (`NandGate`, `AndGate`, `XorGate`, etc.), latches (`DLatch`, `CRSLatch`, `RSLatch`), adders (`HalfAdder`, `FullAdder`, `Adder<N>`, `BusAdder32`), and synchronous memory queues (`Fifo`).
 
 ---
 
-## 2. Architecture: Const-Generic Module Hierarchy
+## 2. Architecture: Runtime Module Hierarchy
 
-### 2.1 The New Module<IN, OUT, SUBS, State> Architecture
+### 2.1 Runtime Module Architecture
 
-**Rube 2.0** introduces a type-safe, zero-allocation module system using Rust const generics:
+Rube's current module representation is a runtime layout record. The layout owns the actual port and submodule collections; each module stores compact `USeg` ranges into those collections. This keeps module records small and allows a single layout to contain heterogeneous modules.
 
 ```rust
-pub struct Module<const IN: usize, const OUT: usize, const SUBS: usize, S> {
+pub struct Module {
     pub _Id: ModuleId,
     pub _Parent: Option<ModuleId>,
     pub _Name: String,
 
-    // External interface (visible to parent)
-    pub _InPorts: [PortInterface; IN],      // Const-sized input ports
-    pub _OutPorts: [PortInterface; OUT],    // Const-sized output ports
-
-    // Internal structure (invisible to parent)
-    pub _SubModules: [ModuleId; SUBS],      // Stack-allocated submodule IDs
-    pub _Connections: Stash<InternalConnection>,  // Hidden interconnections
-    pub _Kernel: Option<KernelKind>,        // Optional kernel
-
-    // Type-state sealing: PhantomData<S> is zero-cost
-    pub _State: PhantomData<S>,
+    // Ranges into layout-owned port and module storage
+    pub _InPorts: USeg,
+    pub _OutPorts: USeg,
+    pub _SubModules: USeg,
+    pub _Descendents: USeg,
+    pub _Kernel: KernelKind,
+    pub _IsSealed: bool,
 }
-
-// Type-state markers (compile-time only, zero runtime size)
-pub struct Construction;
-pub struct Sealed;
 ```
 
-**Key Benefits**:
-- ✅ **Compile-Time Sealing**: Impossible to call `AddSubModule()` on a sealed module (type system prevents it)
-- ✅ **Zero Allocations**: `[PortInterface; IN]` and `[ModuleId; SUBS]` are stack arrays, not `Vec`
-- ✅ **Type Safety**: Port count verified at compile time, not runtime
-- ✅ **Unified Type**: No `HierModule` or `SealedModule` wrappers (single `Module<...>` type)
-- ✅ **Better Cache**: Stack arrays have perfect locality vs. heap fragmentation
-- ✅ **Performance**: +5-10% faster than wrapper-based approach
+**Current properties**:
+- Port and submodule counts are runtime values represented by compact segments.
+- Sealing is a layout-construction state enforced by runtime assertions, not a Rust type-state transition.
+- The layout owns shared storage, so the module record does not embed port or submodule arrays.
+- The runtime representation supports heterogeneous modules and the later compilation of modules into specialized warp arrays.
 
 ### 2.2 Module Lifecycle
 
 ```
-1. Module::New("name", inport_specs, outport_specs)
-   ↓ Create with Module<IN, OUT, SUBS, Construction>
+1. Layout::AddModule or Layout::AddStdModule
+    ↓ Create a Module with runtime port ranges
 
-2. Constructor {
-     .AddSubModule("Sub1", kernel)?;
-     .ConnectSubModules(0, 1)?;
-     .BindInPort(0, 0, 0)?;  // Connect this.inport to sub.outport
-   }
+2. Layout construction {
+         .AddModule(...);
+         .Connect(...);
+         .AddSubModule(...);
+     }
 
-3. .Seal()
-   ↓ Transform to Module<IN, OUT, SUBS, Sealed>
+3. SealModule(module_id)
+    ↓ Mark the runtime module as sealed and validate construction rules
 
-4. Use in parent or layout
-   ↓ Only inports/outports visible (external API)
-      Internal structure hidden (encapsulation guaranteed)
+4. Layout::Freeze()
+    ↓ Partition nets, validate connections, sort modules, and compile warps
 ```
 
 ---
@@ -89,21 +78,16 @@ pub struct Sealed;
 
 ```mermaid
 classDiagram
-    class Module_IN_OUT_SUBS_S {
+    class Module {
         +ModuleId _Id
         +Option~ModuleId~ _Parent
         +String _Name
-        +[PortInterface; IN] _InPorts
-        +[PortInterface; OUT] _OutPorts
-        +[ModuleId; SUBS] _SubModules
-        +Stash~InternalConnection~ _Connections
-        +Option~KernelKind~ _Kernel
-        +PhantomData~S~ _State
-        +AddSubModule(name, kernel) ModuleId
-        +ConnectSubModules(...) Result
-        +BindInPort(...) Result
-        +BindOutPort(...) Result
-        +Seal() Result~Module_IN_OUT_SUBS_Sealed~
+        +USeg _InPorts
+        +USeg _OutPorts
+        +USeg _SubModules
+        +USeg _Descendents
+        +KernelKind _Kernel
+        +bool _IsSealed
     }
 
     class PortInterface {
@@ -242,7 +226,7 @@ classDiagram
         +list_outports() Vec~PortIntrospection~
     }
 
-    Module_IN_OUT_SUBS_S --> PortInterface : contains
+    Module --> PortInterface : references through layout ranges
     Module_IN_OUT_SUBS_S --> IModuleInterface : implements
     IModuleInterface --> ModuleInterface : returns
     ModuleInterface --> PortInterface : contains
@@ -264,19 +248,16 @@ classDiagram
 
 ## 3. Core Subsystems
 
-### 3.1 Const-Generic Module Hierarchy (`Module<IN, OUT, SUBS, State>`)
-Modules are type-safe containers with:
-- **Input Ports** (`_InPorts: [PortInterface; IN]`): External inputs, stack-allocated
-- **Output Ports** (`_OutPorts: [PortInterface; OUT]`): External outputs, stack-allocated
-- **Submodules** (`_SubModules: [ModuleId; SUBS]`): Internal modules, invisible to parent
-- **Encapsulation**: Internal connections (`_Connections`) are hidden; only inports/outports visible externally
-- **Type-State Sealing**: `Module<IN, OUT, SUBS, Construction>` vs. `Module<IN, OUT, SUBS, Sealed>` enforced by Rust type system
+### 3.1 Runtime Module Hierarchy (`Module`)
+Modules are layout records with runtime-sized ranges into shared storage:
+- **Input ports** (`_InPorts: USeg`): range of external input port records
+- **Output ports** (`_OutPorts: USeg`): range of external output port records
+- **Submodules** (`_SubModules: USeg`): range of child module IDs
+- **Descendents** (`_Descendents: USeg`): range used for hierarchy traversal
+- **Kernel** (`_Kernel: KernelKind`): fast, behavioral, custom, coroutine, or trait-backed behavior
+- **Sealing** (`_IsSealed: bool`): runtime construction state checked by layout operations
 
-**Compiler Guarantees**:
-- Cannot call `AddSubModule()` on sealed module (compile error)
-- Cannot expose internal submodule ports (visibility rules)
-- Port count known at compile time (const generic parameters)
-- No heap allocations for port or submodule arrays
+This representation does not provide compile-time port-count validation or a type-state `Construction`/`Sealed` distinction. Its advantage is that one layout can own compact, heterogeneous module records while `Layout::Freeze()` compiles them into specialized net and warp data structures.
 
 ### 3.2 Module Interface System (`IModuleInterface`, `ModuleInterface`)
 **Purpose**: Self-documenting modules with automatic HDL export
@@ -358,7 +339,7 @@ pub trait IKernel: Send + Sync {
 ```
 
 **Benefits**:
-- ✅ Compile-time signature validation
+- ✅ Explicit kernel signatures with runtime input/output slice validation
 - ✅ Self-documenting kernel interfaces
 - ✅ Type-safe kernel composition
 - ✅ Enables kernel parameters and factories
@@ -476,25 +457,26 @@ During `SimEngine::Drive()`:
 Rube is evolving to be fully compatible with industry Electronic Design Automation (EDA) tools and verification frameworks. This roadmap outlines the phases:
 
 ### Phase 0: Validation & Setup (Week 1)
-- ✅ Validate const-generic port arrays
-- ✅ Test PortInterface struct in const context
-- ✅ Performance baseline measurements
-- **Status**: Ready to begin
+- ✅ Validate runtime port metadata and layout construction
+- ✅ Test `PortInterface` and module interface metadata
+- ⏳ Performance baseline measurements remain to be completed
+- **Status**: Partially complete
 
 ### Phase 1: Module Interface Standards (Weeks 2-3)
-- 🔄 **IN PROGRESS**: Implement `ModuleInterface` + `IModuleInterface` trait
-- 🔄 **IN PROGRESS**: Add rich `PortInterface` metadata
-- 🔄 **IN PROGRESS**: Implement module introspection API
-- 🔄 **IN PROGRESS**: SystemVerilog/VHDL export capability
+- ✅ `ModuleInterface` + `IModuleInterface` trait implemented
+- ✅ Static port metadata and module introspection implemented
+- ✅ SystemVerilog export implemented through `ToSystemVerilog()`
+- ⏳ VHDL export remains pending
+- **Status**: Mostly complete; remaining work is VHDL output and broader tool integration
 - **Benefits**: Self-documenting modules, automated HDL generation, reflection APIs
 - **See**: `EDA_PHASE1_IMPLEMENTATION.md`
 
 ### Phase 2: Type-Safe Kernel System (Weeks 4-6)
-- ⏳ **PENDING**: Define `IKernel` trait with `KernelSignature`
-- ⏳ **PENDING**: Migrate all standard kernels to `IKernel`
+- ✅ Define `IKernel` trait with `KernelSignature`
+- ⏳ Migrate all standard kernels to `IKernel`
 - ⏳ **PENDING**: Replace string-based registry with type-safe `KernelRegistry`
 - ⏳ **PENDING**: Create deprecation wrapper for backward compatibility
-- **Benefits**: Compile-time kernel validation, type-safe composition
+- **Benefits**: Explicit kernel contracts and type-safe composition
 - **See**: `EDA_IMPLEMENTATION_CHECKLIST.md` Phase 2
 
 ### Phase 3: Simulation Control Protocol (Weeks 7-9)
@@ -586,7 +568,7 @@ for _ in 0..48 {
 assert_eq!(adder.GetSum(&engine), 6912);
 ```
 
-### 6.2 Hierarchical Module with Const Generics (New Approach)
+### 6.2 Hierarchical Module with Layout-Owned Runtime Records
 
 ```rust
 use crate::rube::{
@@ -604,31 +586,18 @@ impl IModuleInterface for AdderPipeline {
     }
 }
 
-// Can be instantiated as: Module<1, 1, 3, Sealed>
-let mut adder: Module<1, 1, 3, Construction> = Module::New(
-    "AdderPipeline",
-    vec![PortInterface::input("data_in", 32, Some("Input"))],
-    vec![PortInterface::output("result", 32, Some("Output"))],
-);
+let mut layout = Layout::New();
+let stage1 = BusAdder32::New(&mut layout, "Stage1", None);
+let stage2 = DLatch::New(&mut layout, "Stage2", None);
+let stage3 = DLatch::New(&mut layout, "Stage3", None);
 
-// Build internal structure
-let stage1 = adder.AddSubModule("Stage1", KernelKind::Trait(Arc::new(BusAdder32)))?;
-let stage2 = adder.AddSubModule("Stage2", KernelKind::Trait(Arc::new(DLatch)))?;
-let stage3 = adder.AddSubModule("Stage3", KernelKind::Trait(Arc::new(DLatch)))?;
-
-// Connect internally (hidden from parent)
-adder.ConnectSubModules(stage1, 0, stage2, 0)?;
-adder.ConnectSubModules(stage2, 0, stage3, 0)?;
-
-// Connect to external interface
-adder.BindInPort(0, stage1, 0)?;   // data_in → Stage1
-adder.BindOutPort(0, stage3, 0)?;  // Stage3 → result
-
-// Seal and use
-let sealed: Module<1, 1, 3, Sealed> = adder.Seal()?;
-
-// Now sealed.interface() provides full documentation
-println!("{}", sealed.interface().to_systemverilog());
+// Connect modules through layout-owned ports and nets.
+layout.Connect(stage1.Out(), stage2.In())?;
+layout.Connect(stage2.Out(), stage3.In())?;
+layout.SealModule(stage1.Id());
+layout.SealModule(stage2.Id());
+layout.SealModule(stage3.Id());
+layout.Freeze()?;
 // Output:
 // module adder_pipeline (
 //     input [31:0] data_in,
@@ -701,20 +670,24 @@ println!("Path: {}", module.hierarchy_path());
 ### Simulation Throughput
 - **Hot-Path Zero-Allocation**: `SimEngine::Drive()` uses no heap allocations
 - **SIMT Throughput**: 64-lane predication enables skipping blocks of inactive gates
-- **Typical Performance**: 100M+ gate operations per second on modern CPUs
+- **Performance target**: 100M+ gate operations per second is a design target, not a measured repository benchmark
 - **Cache Efficiency**: SoA storage maximizes L1 cache hit rates
 
 ### Memory Overhead
-- **Const-Generic Modules**: Stack-allocated port/submodule arrays (no heap overhead)
-- **Per-Module Memory**: ~256 bytes for small modules (module ID, parent, name, state)
+- **Module records**: Compact runtime IDs, `USeg` ranges, kernel kind, and sealing state; exact size depends on target and field layout
 - **Trigger Storage**: One 16-byte `Reg` per trigger (past, current, future state)
-- **Binary Size**: Const generics may increase binary size 5-15% due to monomorphization
 
 ### Introspection Performance (Phase 1+)
-- **Interface Query**: O(1), compile-time data
+- **Interface Query**: O(1) for static interface metadata
 - **Port Lookup**: O(n) where n = port count (typically <20)
 - **Hierarchy Path**: O(depth), computed on demand
 - **Breakpoint Overhead**: <1% when not firing (single hash lookup per cycle)
+
+### Parallel and Heterogeneous Execution
+- **CPU parallelism**: `Drive_Parallel()` is an opt-in Heist/Atelier path that chunks warp arrays with `CpuSpawnQuell!` and composes them with `ChoreTree!`.
+- **Current safety boundary**: The parallel path uses a shared engine pointer for worker callbacks; partition ownership and determinism require continued validation and are not compile-time guarantees.
+- **GPU status**: `swarm`/`symph` provide independent CPU/GPU abstractions and portable shader experiments, but GPU dispatch is not currently connected to `SimEngine::Drive()`.
+- **Benchmark status**: CPU scaling and GPU speedups remain to be measured with representative Rube circuits.
 
 ---
 
@@ -722,21 +695,12 @@ println!("Path: {}", module.hierarchy_path());
 
 ### Pattern 1: Hierarchical Module Composition
 ```rust
-// Define a container module
-pub struct PipelineAdder<const WIDTH: usize>;
-
-impl PipelineAdder<32> {
-    pub fn New() -> Result<Module<1, 1, 4, Sealed>, HierarchyError> {
-        let mut m = Module::New(...);
-        // Add submodules and interconnect
-        m.Seal()
-    }
-}
-
-// Use in parent
-let pipeline = PipelineAdder::<32>::New()?;
-let mut parent = Module::New(...);
-parent.AddSubModule("Adder", pipeline)?;
+let mut layout = Layout::New();
+let pipeline = layout.AddContainer("Pipeline");
+let adder = BusAdder32::New(&mut layout, "Adder", Some(pipeline));
+layout.Connect(adder.Out(), pipeline.In())?;
+layout.SealModule(pipeline);
+layout.Freeze()?;
 ```
 
 ### Pattern 2: Testing with RubeTest_XXXX
@@ -777,11 +741,11 @@ impl IKernel for MyCustomKernel {
 
 ## 9. Troubleshooting & FAQ
 
-**Q: When should I use const generics vs. dynamic modules?**
-A: Always use const generics (`Module<IN, OUT, SUBS, State>`) for new code. Dynamic modules are deprecated and available only via compatibility layer.
+**Q: How are module sizes represented?**
+A: The current `Module` stores runtime `USeg` ranges into layout-owned port and submodule storage. `Layout::Freeze()` validates and compiles these records into simulation structures.
 
-**Q: What's the difference between `Construction` and `Sealed` states?**
-A: `Construction` state allows calling `AddSubModule()`, `Connect()`, and `Bind*()` methods. `Sealed` state is immutable and can be used in layouts or as submodules. Rust's type system prevents mixing them.
+**Q: What does sealing do?**
+A: `SealModule()` marks a module as no longer under construction. The current implementation tracks this with `_IsSealed` and runtime checks; it is not a compile-time type-state distinction.
 
 **Q: How do I migrate existing code to the new IKernel system?**
 A: See the deprecation wrapper in Phase 2. Existing `KernelKind::Custom("string")` code continues to work. Implement `IKernel` for new kernels and use `KernelKind::Trait(Arc::new(...))`.
@@ -790,13 +754,14 @@ A: See the deprecation wrapper in Phase 2. Existing `KernelKind::Custom("string"
 A: Phase 4 adds DPI/VPI support. Until then, you can export generated SystemVerilog module definitions (Phase 1) and integrate manually.
 
 **Q: What's the performance impact of module interfaces?**
-A: Zero at runtime (all static const). Only introspection queries have minimal cost (O(n) where n = port count).
+A: Interface metadata is static, while introspection materializes small query results. Port listing is O(n), where n is the number of interface ports.
 
 ---
 
 ## 10. Related Documentation
 
-- `CONST_GENERIC_ANALYSIS.md` - Design decisions for const-generic modules
+- `RubePerformancePlan.md` - Measured optimization plan for serial, Heist CPU, SIMD, and future Swarm/Symph GPU execution
+- `CONST_GENERIC_ANALYSIS.md` - Historical design analysis; verify examples against the runtime module implementation
 - `HIERARCHICAL_MODULE_FRAMEWORK.md` - Hierarchical encapsulation design
 - `EDA_COMPATIBILITY_EVALUATION.md` - Industry standards alignment
 - `EDA_IMPLEMENTATION_CHECKLIST.md` - Phase-by-phase tasks
@@ -809,8 +774,8 @@ A: Zero at runtime (all static const). Only introspection queries have minimal c
 
 | Version | Release | Key Features |
 |---------|---------|---|
-| **2.0** | 2026-Q3 | Const-generic modules, Module interfaces (Phase 1), Type-safe kernels (Phase 2) |
-| **1.5** | 2026-Q2 | Legacy `HierModule`/`SealedModule` (deprecated in 2.0) |
+| **2.0** | 2026-Q3 | Runtime module records, warp compilation, module interfaces, type-safe kernel trait support |
+| **1.5** | 2026-Q2 | Earlier layout and warp architecture |
 | **1.0** | 2026-Q1 | Initial flat netlist architecture, SIMT execution, VCD I/O |
 
 
